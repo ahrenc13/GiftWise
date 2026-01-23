@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gift Ideas for {{ display_name }} - Giftwise</title>
+    <meta name="description" content="Perfect gift recommendations for {{ display_name }} based on their real interests">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f9fafb;
+            color: #333;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+        
+        .platform-badges {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: 25px;
+            flex-wrap: wrap;
+        }
+        
+        .platform-badge {
+            background: rgba(255,255,255,0.2);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.95em;
+            backdrop-filter: blur(10px);
+        }
+        
+        .viral-banner {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        
+        .viral-banner h2 {
+            font-size: 1.8em;
+            margin-bottom: 15px;
+        }
+        
+        .viral-banner p {
+            font-size: 1.15em;
+            margin-bottom: 25px;
+            opacity: 0.95;
+        }
+        
+        .viral-cta {
+            background: white;
+            color: #10b981;
+            padding: 18px 45px;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 50px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .viral-cta:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        
+        .section-title {
+            text-align: center;
+            font-size: 2.2em;
+            margin-bottom: 15px;
+            color: #1f2937;
+        }
+        
+        .section-subtitle {
+            text-align: center;
+            color: #6b7280;
+            margin-bottom: 50px;
+            font-size: 1.1em;
+        }
+        
+        .recommendations-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 30px;
+        }
+        
+        .rec-card {
+            background: white;
+            border: 2px solid #e5e7eb;
+            border-radius: 18px;
+            padding: 30px;
+            transition: all 0.3s;
+        }
+        
+        .rec-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 15px 40px rgba(102, 126, 234, 0.2);
+            border-color: #667eea;
+        }
+        
+        .rec-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 18px;
+        }
+        
+        .rec-title {
+            font-size: 1.15em;
+            font-weight: 600;
+            color: #1f2937;
+            flex: 1;
+            line-height: 1.4;
+        }
+        
+        .rec-match {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.95em;
+            font-weight: 600;
+            margin-left: 12px;
+            white-space: nowrap;
+        }
+        
+        .rec-price {
+            font-size: 1.4em;
+            color: #059669;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+        
+        .rec-confidence {
+            display: inline-block;
+            padding: 5px 14px;
+            background: #f3f4f6;
+            border-radius: 15px;
+            font-size: 0.9em;
+            color: #6b7280;
+            margin-bottom: 18px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+        
+        .rec-reason {
+            color: #6b7280;
+            line-height: 1.7;
+            margin-bottom: 20px;
+        }
+        
+        .amazon-button {
+            width: 100%;
+            padding: 14px;
+            background: #FF9900;
+            color: #131921;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.05em;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        
+        .amazon-button:hover {
+            background: #FFA724;
+            transform: scale(1.02);
+        }
+        
+        .footer {
+            background: #1f2937;
+            color: white;
+            padding: 40px 20px;
+            text-align: center;
+            margin-top: 80px;
+        }
+        
+        .footer p {
+            opacity: 0.8;
+            margin: 8px 0;
+        }
+        
+        @media (max-width: 768px) {
+            .recommendations-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="header">
+        <h1>🎁 Gift Ideas for {{ display_name }}</h1>
+        <p>AI-generated recommendations based on their real interests</p>
+        <div class="platform-badges">
+            {% for platform in platforms %}
+            <span class="platform-badge">
+                {% if platform == 'instagram' %}📷 Instagram{% endif %}
+                {% if platform == 'spotify' %}🎵 Spotify{% endif %}
+                {% if platform == 'pinterest' %}📌 Pinterest{% endif %}
+                {% if platform == 'tiktok' %}🎬 TikTok{% endif %}
+            </span>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Viral CTA Banner -->
+    <div class="viral-banner">
+        <h2>Want Gift Ideas for YOUR Friends?</h2>
+        <p>Get ultra-specific recommendations based on Instagram, Spotify, Pinterest & TikTok</p>
+        <a href="/signup?ref={{ username }}" class="viral-cta">
+            Get My Gift Recommendations →
+        </a>
+    </div>
+    
+    <!-- Recommendations -->
+    <div class="container">
+        <h2 class="section-title">Perfect Gifts for {{ display_name }}</h2>
+        <p class="section-subtitle">Based on {{ platforms|length }} connected platforms</p>
+        
+        <div class="recommendations-grid">
+            {% for rec in recommendations %}
+            <div class="rec-card">
+                <div class="rec-header">
+                    <div class="rec-title">{{ rec.name }}</div>
+                    <div class="rec-match">{{ rec.match }}%</div>
+                </div>
+                
+                <div class="rec-price">{{ rec.price }}</div>
+                <div class="rec-confidence">{{ rec.confidence }}</div>
+                
+                <p class="rec-reason">{{ rec.reason }}</p>
+                
+                <a href="{{ rec.amazon_search_url }}" target="_blank" class="amazon-button">
+                    View on Amazon →
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Bottom Viral CTA -->
+    <div class="viral-banner" style="margin-top: 80px;">
+        <h2>Stop Guessing. Start Gifting Perfectly.</h2>
+        <p>Create your own shareable gift profile in under 2 minutes</p>
+        <a href="/signup?ref={{ username }}" class="viral-cta">
+            Start Free Trial →
+        </a>
+    </div>
+    
+    <!-- Footer -->
+    <div class="footer">
+        <p>&copy; 2026 Giftwise. All rights reserved.</p>
+        <p style="margin-top: 10px;">As an Amazon Associate, we earn from qualifying purchases.</p>
+    </div>
+</body>
+</html>

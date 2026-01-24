@@ -761,7 +761,246 @@ def stripe_webhook():
     
     except Exception as e:
         return jsonify({'error': str(e)}), 400
+# ============================================================================
+# PINTEREST OAUTH ROUTES
+# Add these routes to your giftwise_app.py file
+# ============================================================================
 
+# STEP 1: User clicks "Connect Pinterest" - send them to Pinterest
+@app.route('/auth/pinterest')
+def pinterest_auth():
+    """Initiate Pinterest OAuth flow"""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    
+    # Check if platform is allowed for user's tier
+    tier = get_user_tier(user)
+    if not check_platform_allowed('pinterest', tier):
+        return redirect('/upgrade?error=platform_not_allowed')
+    
+    # Pinterest OAuth parameters
+    params = {
+        'client_id': PINTEREST_CLIENT_ID,
+        'redirect_uri': PINTEREST_REDIRECT_URI,
+        'response_type': 'code',
+        'scope': 'boards:read,pins:read,user_accounts:read',
+        'state': session.get('user_id')  # Security: verify this on callback
+    }
+    
+    # Build authorization URL
+    auth_url = f"{PINTEREST_AUTH_URL}?client_id={params['client_id']}&redirect_uri={params['redirect_uri']}&response_type={params['response_type']}&scope={params['scope']}&state={params['state']}"
+    
+    return redirect(auth_url)
+
+
+# STEP 2: Pinterest redirects back with authorization code
+@app.route('/auth/pinterest/callback')
+def pinterest_callback():
+    """Handle Pinterest OAuth callback"""
+    # Get authorization code from Pinterest
+    code = request.args.get('code')
+    state = request.args.get('state')
+    error = request.args.get('error')
+    
+    # Check for errors
+    if error:
+        return redirect(f'/connect-platforms?error=pinterest_{error}')
+    
+    if not code:
+        return redirect('/connect-platforms?error=pinterest_no_code')
+    
+    # Verify state matches (security check)
+    if state != session.get('user_id'):
+        return redirect('/connect-platforms?error=pinterest_invalid_state')
+    
+    try:
+        # Exchange authorization code for access token
+        token_data = {
+            'grant_type': 'authorization_code',
+            'code': code,
+            'redirect_uri': PINTEREST_REDIRECT_URI
+        }
+        
+        # Pinterest requires Basic Auth with client_id:client_secret
+        import base64
+        credentials = f"{PINTEREST_CLIENT_ID}:{PINTEREST_CLIENT_SECRET}"
+        encoded_credentials = base64.b64encode(credentials.encode()).decode()
+        
+        token_response = requests.post(
+            PINTEREST_TOKEN_URL,
+            data=token_data,
+            headers={
+                'Authorization': f'Basic {encoded_credentials}',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        )
+        
+        if token_response.status_code != 200:
+            print(f"Pinterest token error: {token_response.text}")
+            return redirect('/connect-platforms?error=pinterest_token_failed')
+        
+        token_info = token_response.json()
+        access_token = token_info.get('access_token')
+        refresh_token = token_info.get('refresh_token')
+        
+        if not access_token:
+            return redirect('/connect-platforms?error=pinterest_no_token')
+        
+        # Fetch user's Pinterest data
+        user_info = fetch_pinterest_user_info(access_token)
+        boards = fetch_pinterest_boards(access_token)
+        pins = fetch_pinterest_pins(access_token)
+        
+        # Save to database
+        user = get_session_user()
+        platforms = user.get('platforms', {})
+        platforms['pinterest'] = {
+            'access_token': access_token,
+            'refresh_token': refresh_token,
+            'connected_at': datetime.now().isoformat(),
+            'user_info': user_info,
+            'boards': boards[:10],  # Save first 10 boards
+            'pins': pins[:50],      # Save first 50 pins
+            'total_boards': len(boards),
+            'total_pins': len(pins)
+        }
+        
+        save_user(session.get('user_id'), {'platforms': platforms})
+        
+        return redirect('/connect-platforms?success=pinterest')
+    
+    except Exception as e:
+        print(f"Pinterest OAuth error: {str(e)}")
+        return redirect(f'/connect-platforms?error=pinterest_exception')
+
+
+# ============================================================================
+# PINTEREST DATA FETCHING FUNCTIONS
+# ============================================================================
+
+def fetch_pinterest_user_info(access_token):
+    """Fetch user's basic Pinterest profile info"""
+    try:
+        response = requests.get(
+            f"{PINTEREST_API_URL}/user_account",
+            headers={'Authorization': f'Bearer {access_token}'}
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Pinterest user info error: {response.text}")
+            return {}
+    except Exception as e:
+        print(f"Error fetching Pinterest user info: {e}")
+        return {}
+
+
+def fetch_pinterest_boards(access_token):
+    """Fetch user's Pinterest boards"""
+    try:
+        all_boards = []
+        bookmark = None
+        
+        # Pinterest uses cursor-based pagination
+        while True:
+            params = {'page_size': 25}
+            if bookmark:
+                params['bookmark'] = bookmark
+            
+            response = requests.get(
+                f"{PINTEREST_API_URL}/boards",
+                headers={'Authorization': f'Bearer {access_token}'},
+                params=params
+            )
+            
+            if response.status_code != 200:
+                print(f"Pinterest boards error: {response.text}")
+                break
+            
+            data = response.json()
+            boards = data.get('items', [])
+            all_boards.extend(boards)
+            
+            # Check if there are more pages
+            bookmark = data.get('bookmark')
+            if not bookmark or len(all_boards) >= 100:  # Limit to 100 boards
+                break
+        
+        return all_boards
+    
+    except Exception as e:
+        print(f"Error fetching Pinterest boards: {e}")
+        return []
+
+
+def fetch_pinterest_pins(access_token):
+    """Fetch user's Pinterest pins"""
+    try:
+        all_pins = []
+        bookmark = None
+        
+        # Fetch pins from all boards
+        while True:
+            params = {'page_size': 25}
+            if bookmark:
+                params['bookmark'] = bookmark
+            
+            response = requests.get(
+                f"{PINTEREST_API_URL}/pins",
+                headers={'Authorization': f'Bearer {access_token}'},
+                params=params
+            )
+            
+            if response.status_code != 200:
+                print(f"Pinterest pins error: {response.text}")
+                break
+            
+            data = response.json()
+            pins = data.get('items', [])
+            all_pins.extend(pins)
+            
+            # Check if there are more pages
+            bookmark = data.get('bookmark')
+            if not bookmark or len(all_pins) >= 200:  # Limit to 200 pins
+                break
+        
+        return all_pins
+    
+    except Exception as e:
+        print(f"Error fetching Pinterest pins: {e}")
+        return []
+
+
+def refresh_pinterest_token(refresh_token):
+    """Refresh expired Pinterest access token"""
+    try:
+        import base64
+        credentials = f"{PINTEREST_CLIENT_ID}:{PINTEREST_CLIENT_SECRET}"
+        encoded_credentials = base64.b64encode(credentials.encode()).decode()
+        
+        response = requests.post(
+            PINTEREST_TOKEN_URL,
+            data={
+                'grant_type': 'refresh_token',
+                'refresh_token': refresh_token
+            },
+            headers={
+                'Authorization': f'Basic {encoded_credentials}',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        )
+        
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"Pinterest token refresh error: {response.text}")
+            return None
+    
+    except Exception as e:
+        print(f"Error refreshing Pinterest token: {e}")
+        return None
 # ============================================================================
 # ADMIN / UTILS
 # ============================================================================

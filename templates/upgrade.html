@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upgrade to Pro - Giftwise</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f9fafb;
+            color: #333;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            padding: 60px 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 3.5em;
+            margin-bottom: 15px;
+        }
+        
+        .header p {
+            font-size: 1.5em;
+            opacity: 0.95;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 50px 0;
+        }
+        
+        .tier-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
+        .tier-card.pro {
+            border: 3px solid #f59e0b;
+            transform: scale(1.05);
+        }
+        
+        .tier-name {
+            font-size: 1.5em;
+            font-weight: 600;
+            margin-bottom: 15px;
+        }
+        
+        .tier-price {
+            font-size: 3em;
+            font-weight: 700;
+            margin: 20px 0;
+        }
+        
+        .tier-price span {
+            font-size: 0.4em;
+            opacity: 0.7;
+        }
+        
+        .tier-features {
+            list-style: none;
+            margin: 30px 0;
+        }
+        
+        .tier-features li {
+            padding: 15px 0;
+            border-bottom: 1px solid #f3f4f6;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .tier-features li:last-child {
+            border-bottom: none;
+        }
+        
+        .check {
+            color: #10b981;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+        
+        .cross {
+            color: #ef4444;
+            font-size: 1.3em;
+        }
+        
+        .upgrade-button {
+            width: 100%;
+            padding: 18px;
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.2em;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: block;
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        .upgrade-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(245, 158, 11, 0.3);
+        }
+        
+        .current-plan {
+            width: 100%;
+            padding: 18px;
+            background: #f3f4f6;
+            color: #6b7280;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.2em;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        .benefits {
+            background: white;
+            border-radius: 20px;
+            padding: 50px;
+            margin: 50px 0;
+        }
+        
+        .benefits h2 {
+            font-size: 2.5em;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+        
+        .benefit-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+            margin-top: 40px;
+        }
+        
+        .benefit {
+            text-align: center;
+            padding: 30px;
+        }
+        
+        .benefit-icon {
+            font-size: 3em;
+            margin-bottom: 20px;
+        }
+        
+        .benefit h3 {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+        }
+        
+        .benefit p {
+            color: #6b7280;
+            line-height: 1.6;
+        }
+        
+        @media (max-width: 768px) {
+            .comparison {
+                grid-template-columns: 1fr;
+            }
+            
+            .tier-card.pro {
+                transform: none;
+            }
+            
+            .header h1 {
+                font-size: 2.5em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⭐ Upgrade to Pro</h1>
+        <p>Get the most out of Giftwise</p>
+    </div>
+    
+    <div class="container">
+        <div class="comparison">
+            <!-- FREE TIER -->
+            <div class="tier-card">
+                <div class="tier-name">Free</div>
+                <div class="tier-price">$0<span>/month</span></div>
+                <ul class="tier-features">
+                    <li><span class="check">✓</span> 2 platforms (Instagram + Spotify)</li>
+                    <li><span class="check">✓</span> 5 recommendations</li>
+                    <li><span class="check">✓</span> One-time generation</li>
+                    <li><span class="cross">✗</span> Monthly updates</li>
+                    <li><span class="cross">✗</span> Shareable profile</li>
+                    <li><span class="cross">✗</span> Pinterest & TikTok</li>
+                    <li><span class="cross">✗</span> 95% match accuracy</li>
+                </ul>
+                <div class="current-plan">Current Plan</div>
+            </div>
+            
+            <!-- PRO TIER -->
+            <div class="tier-card pro">
+                <div class="tier-name">Pro ⭐</div>
+                <div class="tier-price">$4.99<span>/month</span></div>
+                <ul class="tier-features">
+                    <li><span class="check">✓</span> All 4 platforms</li>
+                    <li><span class="check">✓</span> 10 recommendations</li>
+                    <li><span class="check">✓</span> Monthly updates</li>
+                    <li><span class="check">✓</span> Shareable profile</li>
+                    <li><span class="check">✓</span> Cross-platform validation</li>
+                    <li><span class="check">✓</span> 95% match accuracy</li>
+                    <li><span class="check">✓</span> Friend network (soon)</li>
+                </ul>
+                <a href="/create-checkout-session" class="upgrade-button">
+                    Upgrade Now
+                </a>
+                <p style="text-align: center; margin-top: 15px; color: #6b7280; font-size: 0.9em;">
+                    Cancel anytime
+                </p>
+            </div>
+        </div>
+        
+        <!-- BENEFITS -->
+        <div class="benefits">
+            <h2>Why Upgrade?</h2>
+            <div class="benefit-grid">
+                <div class="benefit">
+                    <div class="benefit-icon">📊</div>
+                    <h3>Better Recommendations</h3>
+                    <p>4 platforms = 95% match accuracy vs 2 platforms = 75%. Cross-platform validation finds what you REALLY love.</p>
+                </div>
+                
+                <div class="benefit">
+                    <div class="benefit-icon">🔄</div>
+                    <h3>Monthly Updates</h3>
+                    <p>Your interests change. Your recommendations should too. Pro users get fresh recommendations every month automatically.</p>
+                </div>
+                
+                <div class="benefit">
+                    <div class="benefit-icon">🔗</div>
+                    <h3>Shareable Profile</h3>
+                    <p>Share your gift profile with friends and family. They'll know exactly what to get you for birthdays, holidays, etc.</p>
+                </div>
+                
+                <div class="benefit">
+                    <div class="benefit-icon">🎯</div>
+                    <h3>More Recommendations</h3>
+                    <p>10 specific products (not 5). More choices means finding the PERFECT gift, not just a good one.</p>
+                </div>
+                
+                <div class="benefit">
+                    <div class="benefit-icon">📌</div>
+                    <h3>Pinterest Insights</h3>
+                    <p>Pinterest shows what you're literally pinning and wishing for. The highest-intent gift data possible.</p>
+                </div>
+                
+                <div class="benefit">
+                    <div class="benefit-icon">🎬</div>
+                    <h3>TikTok Trends</h3>
+                    <p>See what you're interested in RIGHT NOW. Current trends and active interests from your TikTok activity.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

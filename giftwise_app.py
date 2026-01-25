@@ -393,15 +393,7 @@ def pinterest_oauth_callback():
         # Exchange code for access token using Basic Auth (per Pinterest API docs)
         print(f"Attempting Pinterest token exchange...")
         print(f"Using client_id: {PINTEREST_CLIENT_ID}")
-        print(f"Client secret (first 10 chars): {PINTEREST_CLIENT_SECRET[:10]}...")
-        print(f"Code received: {code}")
         print(f"Redirect URI: {PINTEREST_REDIRECT_URI}")
-        
-        import base64
-        # Show what Basic Auth header will be
-        credentials = f"{PINTEREST_CLIENT_ID}:{PINTEREST_CLIENT_SECRET}"
-        encoded = base64.b64encode(credentials.encode()).decode()
-        print(f"Basic Auth header: Basic {encoded[:20]}...")
         
         response = requests.post(
             PINTEREST_TOKEN_URL, 
@@ -417,6 +409,50 @@ def pinterest_oauth_callback():
         )
         
         print(f"Pinterest token response status: {response.status_code}")
+        
+        if response.status_code != 200:
+            print(f"Pinterest token error: {response.text}")
+            return redirect('/connect-platforms?error=pinterest_token_failed')
+        
+        token_data = response.json()
+        access_token = token_data.get('access_token')
+        
+        if not access_token:
+            print("Pinterest: No access token in response")
+            return redirect('/connect-platforms?error=pinterest_no_token')
+        
+        print("Pinterest: Token received, fetching data...")
+        
+        # Fetch Pinterest data immediately
+        user_info = fetch_pinterest_user_info(access_token)
+        boards = fetch_pinterest_boards(access_token)
+        pins = fetch_pinterest_pins(access_token)
+        
+        print(f"Pinterest: Fetched {len(boards)} boards and {len(pins)} pins")
+        
+        # Save everything to database
+        platforms = user.get('platforms', {})
+        platforms['pinterest'] = {
+            'access_token': access_token,
+            'refresh_token': token_data.get('refresh_token'),
+            'connected_at': datetime.now().isoformat(),
+            'user_info': user_info,
+            'boards': boards[:10],  # Save first 10 boards
+            'pins': pins[:50],      # Save first 50 pins
+            'total_boards': len(boards),
+            'total_pins': len(pins)
+        }
+        
+        save_user(session['user_id'], {'platforms': platforms})
+        
+        print("Pinterest: Successfully connected!")
+        return redirect('/connect-platforms?success=pinterest')
+    
+    except Exception as e:
+        print(f"Pinterest OAuth exception: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return redirect('/connect-platforms?error=pinterest_exception')
 
 # ============================================================================
 # INSTAGRAM - PUBLIC SCRAPING (USERNAME INPUT)

@@ -367,6 +367,8 @@ def pinterest_oauth_start():
     query_string = urllib.parse.urlencode(params)
     authorization_url = f"{PINTEREST_AUTH_URL}?{query_string}"
     
+    print(f"Pinterest auth URL: {authorization_url}")  # ADD THIS LINE
+    
     return redirect(authorization_url)
 
 @app.route('/oauth/pinterest/callback')

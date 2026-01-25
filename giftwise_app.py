@@ -41,7 +41,7 @@ STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID')
 PINTEREST_CLIENT_ID = os.environ.get('PINTEREST_CLIENT_ID')
 PINTEREST_CLIENT_SECRET = os.environ.get('PINTEREST_CLIENT_SECRET')
 PINTEREST_REDIRECT_URI = os.environ.get('PINTEREST_REDIRECT_URI', 'http://localhost:5000/oauth/pinterest/callback')
-PINTEREST_AUTH_URL = 'https://www.pinterest.com/oauth/'
+PINTEREST_AUTH_URL = 'https://www.pinterest.com/oauth/authorize'
 PINTEREST_TOKEN_URL = 'https://api.pinterest.com/v5/oauth/token'
 PINTEREST_API_URL = 'https://api.pinterest.com/v5'
 

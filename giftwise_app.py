@@ -415,25 +415,26 @@ def pinterest_oauth_callback():
         return redirect('/connect-platforms?error=pinterest_no_code')
     
     try:
-        # Exchange code for access token
-        print(f"Attempting Pinterest token exchange...")
         import base64
-
-credentials = f"{PINTEREST_CLIENT_ID}:{PINTEREST_CLIENT_SECRET}"
-encoded_credentials = base64.b64encode(credentials.encode()).decode()
-
-response = requests.post(
-    PINTEREST_TOKEN_URL, 
-    data={
-        'grant_type': 'authorization_code',
-        'code': code,
-        'redirect_uri': PINTEREST_REDIRECT_URI
-    },
-    headers={
-        'Authorization': f'Basic {encoded_credentials}',
-        'Content-Type': 'application/x-www-form-urlencoded'
-    }
-)
+        
+        # Exchange code for access token with proper Basic Auth
+        print(f"Attempting Pinterest token exchange...")
+        
+        credentials = f"{PINTEREST_CLIENT_ID}:{PINTEREST_CLIENT_SECRET}"
+        encoded_credentials = base64.b64encode(credentials.encode()).decode()
+        
+        response = requests.post(
+            PINTEREST_TOKEN_URL, 
+            data={
+                'grant_type': 'authorization_code',
+                'code': code,
+                'redirect_uri': PINTEREST_REDIRECT_URI
+            },
+            headers={
+                'Authorization': f'Basic {encoded_credentials}',
+                'Content-Type': 'application/x-www-form-urlencoded'
+            }
+        )
         
         print(f"Pinterest token response status: {response.status_code}")
         print(f"Pinterest token response: {response.text}")

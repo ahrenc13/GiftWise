@@ -41,7 +41,7 @@ STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID')
 PINTEREST_CLIENT_ID = os.environ.get('PINTEREST_CLIENT_ID')
 PINTEREST_CLIENT_SECRET = os.environ.get('PINTEREST_CLIENT_SECRET')
 PINTEREST_REDIRECT_URI = os.environ.get('PINTEREST_REDIRECT_URI', 'http://localhost:5000/oauth/pinterest/callback')
-PINTEREST_AUTH_URL = 'https://www.pinterest.com/oauth/authorize'
+PINTEREST_AUTH_URL = 'https://www.pinterest.com/oauth/'
 PINTEREST_TOKEN_URL = 'https://api.pinterest.com/v5/oauth/token'
 PINTEREST_API_URL = 'https://api.pinterest.com/v5'
 
@@ -367,7 +367,7 @@ def pinterest_oauth_start():
     query_string = urllib.parse.urlencode(params)
     authorization_url = f"{PINTEREST_AUTH_URL}?{query_string}"
     
-    print(f"Pinterest auth URL: {authorization_url}")  # ADD THIS LINE
+    print(f"Pinterest OAuth start - redirecting to: {authorization_url}")
     
     return redirect(authorization_url)
 
@@ -390,8 +390,9 @@ def pinterest_oauth_callback():
         return redirect('/connect-platforms?error=pinterest_no_code')
     
     try:
-        # Exchange code for access token - send credentials in POST body
+        # Exchange code for access token using Basic Auth (per Pinterest API docs)
         print(f"Attempting Pinterest token exchange...")
+        print(f"Using client_id: {PINTEREST_CLIENT_ID}")
         print(f"Redirect URI: {PINTEREST_REDIRECT_URI}")
         
         response = requests.post(
@@ -399,10 +400,9 @@ def pinterest_oauth_callback():
             data={
                 'grant_type': 'authorization_code',
                 'code': code,
-                'redirect_uri': PINTEREST_REDIRECT_URI,
-                'client_id': PINTEREST_CLIENT_ID,
-                'client_secret': PINTEREST_CLIENT_SECRET
+                'redirect_uri': PINTEREST_REDIRECT_URI
             },
+            auth=(PINTEREST_CLIENT_ID, PINTEREST_CLIENT_SECRET),
             headers={
                 'Content-Type': 'application/x-www-form-urlencoded'
             }

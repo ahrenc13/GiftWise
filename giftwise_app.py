@@ -554,8 +554,8 @@ def generate_recommendations_route():
     
     platforms = user.get('platforms', {})
     
-    if len(platforms) < 2:
-        return redirect('/connect-platforms?error=need_more_platforms')
+    if len(platforms) < 1:
+        return redirect('/connect-platforms?error=need_platforms')
     
     # Show loading page
     return render_template('generating.html', platforms=list(platforms.keys()))
@@ -568,37 +568,117 @@ def api_generate_recommendations():
         return jsonify({'error': 'Not logged in'}), 401
     
     try:
-        # Import platform-specific data fetchers
-        from platform_integrations import (
-            fetch_instagram_data,
-            fetch_spotify_data,
-            fetch_tiktok_data
-        )
-        from recommendation_engine import generate_multi_platform_recommendations
-        
         platforms = user.get('platforms', {})
-        all_data = {}
         
-        # Fetch data from each connected platform (no tier restrictions)
-        if 'instagram' in platforms:
-            all_data['instagram'] = fetch_instagram_data(platforms['instagram'])
+        # Collect data from connected platforms
+        platform_data = []
         
-        if 'spotify' in platforms:
-            all_data['spotify'] = fetch_spotify_data(platforms['spotify'])
-        
+        # Pinterest data (already saved when they connected)
         if 'pinterest' in platforms:
-            all_data['pinterest'] = fetch_pinterest_data(platforms['pinterest'])
+            pinterest = platforms['pinterest']
+            boards = pinterest.get('boards', [])
+            pins = pinterest.get('pins', [])
+            
+            board_names = [b.get('name', '') for b in boards if b.get('name')]
+            pin_descriptions = [p.get('description', '')[:200] for p in pins[:30] if p.get('description')]
+            
+            platform_data.append(f"""
+PINTEREST DATA:
+- Total Boards: {pinterest.get('total_boards', 0)}
+- Total Pins: {pinterest.get('total_pins', 0)}
+- Board Names: {', '.join(board_names[:20])}
+- Recent Pin Interests: {'; '.join(pin_descriptions[:15])}
+""")
         
+        # Instagram (username only for now - scraping not implemented yet)
+        if 'instagram' in platforms:
+            instagram = platforms['instagram']
+            platform_data.append(f"""
+INSTAGRAM DATA:
+- Username: @{instagram.get('username', 'unknown')}
+- Note: Full scraping coming soon
+""")
+        
+        # TikTok (username only for now - scraping not implemented yet)
         if 'tiktok' in platforms:
-            all_data['tiktok'] = fetch_tiktok_data(platforms['tiktok'], APIFY_API_TOKEN)
+            tiktok = platforms['tiktok']
+            platform_data.append(f"""
+TIKTOK DATA:
+- Username: @{tiktok.get('username', 'unknown')}
+- Note: Full scraping coming soon
+""")
         
-        # Generate recommendations (no max limit during testing)
-        recommendations = generate_multi_platform_recommendations(
-            all_data,
-            user.get('email', 'user'),
-            claude_client,
-            max_recommendations=10  # Fixed at 10 for testing
+        # Build prompt for Claude
+        prompt = f"""You are a personalized gift recommendation expert. Based on the following user data from their social media, generate 10 highly specific, thoughtful gift recommendations.
+
+USER DATA:
+{chr(10).join(platform_data)}
+
+INSTRUCTIONS:
+Generate exactly 10 gift recommendations. For each recommendation, provide:
+1. Gift name/title
+2. Brief description (2-3 sentences explaining what it is)
+3. Why it matches their interests (based on their social media data)
+4. Approximate price range
+5. Where to buy (be specific - actual store names or websites)
+
+Focus on gifts that are:
+- Specific and actionable (not generic categories)
+- Based on clear signals from their social media activity
+- Varied in price ($20 to $200 range)
+- Actually available to purchase
+
+Return ONLY a valid JSON array with this structure:
+[
+  {{
+    "name": "Gift name",
+    "description": "What this gift is...",
+    "why_perfect": "Why it matches based on their Pinterest/social media...",
+    "price_range": "$XX-$XX",
+    "where_to_buy": "Specific store or website"
+  }}
+]
+
+Return ONLY the JSON array, no other text."""
+
+        print(f"Generating recommendations for user: {user.get('email', 'unknown')}")
+        print(f"Using platforms: {list(platforms.keys())}")
+        
+        # Call Claude API
+        message = claude_client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4000,
+            messages=[{"role": "user", "content": prompt}]
         )
+        
+        # Get response text
+        response_text = message.content[0].text.strip()
+        
+        print(f"Claude response received, length: {len(response_text)}")
+        
+        # Try to parse as JSON
+        import json
+        try:
+            # Remove markdown code fences if present
+            if response_text.startswith('```'):
+                response_text = response_text.split('```')[1]
+                if response_text.startswith('json'):
+                    response_text = response_text[4:]
+                response_text = response_text.strip()
+            
+            recommendations = json.loads(response_text)
+            print(f"Successfully parsed {len(recommendations)} recommendations")
+            
+        except json.JSONDecodeError as e:
+            print(f"JSON parse error: {e}")
+            # If parsing fails, return raw text for now
+            recommendations = [{
+                'name': 'Recommendations generated',
+                'description': response_text,
+                'why_perfect': 'See full response above',
+                'price_range': 'Various',
+                'where_to_buy': 'Various retailers'
+            }]
         
         # Save recommendations to user
         save_user(session['user_id'], {
@@ -613,6 +693,8 @@ def api_generate_recommendations():
         
     except Exception as e:
         print(f"Recommendation generation error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': str(e)

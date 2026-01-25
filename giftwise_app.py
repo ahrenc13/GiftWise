@@ -425,16 +425,17 @@ def pinterest_oauth_callback():
         
         response = requests.post(
             PINTEREST_TOKEN_URL, 
-            data={
-                'grant_type': 'authorization_code',
-                'code': code,
-                'redirect_uri': PINTEREST_REDIRECT_URI
-            },
-            headers={
-                'Authorization': f'Basic {encoded_credentials}',
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
-        )
+             data={
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': PINTEREST_REDIRECT_URI,
+        'client_id': PINTEREST_CLIENT_ID,
+        'client_secret': PINTEREST_CLIENT_SECRET
+    },
+    headers={
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+)
         
         print(f"Pinterest token response status: {response.status_code}")
         print(f"Pinterest token response: {response.text}")

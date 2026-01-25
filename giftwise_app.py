@@ -386,7 +386,7 @@ def pinterest_oauth_start():
     pinterest = OAuth2Session(
         PINTEREST_CLIENT_ID,
         redirect_uri=PINTEREST_REDIRECT_URI,
-        scope=scope.split(',')
+        scope=scope.split()
     )
     
     authorization_url, state = pinterest.authorization_url(

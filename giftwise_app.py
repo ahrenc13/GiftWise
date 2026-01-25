@@ -417,15 +417,23 @@ def pinterest_oauth_callback():
     try:
         # Exchange code for access token
         print(f"Attempting Pinterest token exchange...")
-        response = requests.post(
-            PINTEREST_TOKEN_URL, 
-            data={
-                'grant_type': 'authorization_code',
-                'code': code,
-                'redirect_uri': PINTEREST_REDIRECT_URI
-            }, 
-            auth=(PINTEREST_CLIENT_ID, PINTEREST_CLIENT_SECRET)
-        )
+        import base64
+
+credentials = f"{PINTEREST_CLIENT_ID}:{PINTEREST_CLIENT_SECRET}"
+encoded_credentials = base64.b64encode(credentials.encode()).decode()
+
+response = requests.post(
+    PINTEREST_TOKEN_URL, 
+    data={
+        'grant_type': 'authorization_code',
+        'code': code,
+        'redirect_uri': PINTEREST_REDIRECT_URI
+    },
+    headers={
+        'Authorization': f'Basic {encoded_credentials}',
+        'Content-Type': 'application/x-www-form-urlencoded'
+    }
+)
         
         print(f"Pinterest token response status: {response.status_code}")
         print(f"Pinterest token response: {response.text}")

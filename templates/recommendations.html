@@ -52,11 +52,91 @@
         
         .page-subtitle {
             color: #6b7280;
-            margin-bottom: 50px;
+            margin-bottom: 40px;
             font-size: 1.15em;
             text-align: center;
         }
         
+        /* Filters Section */
+        .filters-section {
+            background: white;
+            padding: 30px;
+            border-radius: 18px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-bottom: 40px;
+        }
+        
+        .filters-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #1f2937;
+        }
+        
+        .filters-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 25px;
+        }
+        
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .filter-label {
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 10px;
+            font-size: 0.95em;
+        }
+        
+        .filter-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .filter-button {
+            padding: 10px 20px;
+            border: 2px solid #e5e7eb;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            transition: all 0.2s;
+            color: #6b7280;
+        }
+        
+        .filter-button:hover {
+            border-color: #667eea;
+            color: #667eea;
+        }
+        
+        .filter-button.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+        
+        .price-slider {
+            margin-top: 10px;
+        }
+        
+        .price-range-display {
+            color: #667eea;
+            font-weight: 600;
+            margin-top: 8px;
+            font-size: 1.1em;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            margin-top: 10px;
+        }
+        
+        /* Recommendations Grid */
         .recommendations-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
@@ -71,12 +151,21 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             transition: all 0.3s;
             border: 2px solid transparent;
+            display: flex;
+            flex-direction: column;
         }
         
         .recommendation-card:hover {
             transform: translateY(-6px);
             box-shadow: 0 12px 30px rgba(0,0,0,0.12);
             border-color: #667eea;
+        }
+        
+        .rec-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 15px;
         }
         
         .rec-number {
@@ -89,7 +178,39 @@
             text-align: center;
             line-height: 35px;
             font-weight: bold;
-            margin-bottom: 15px;
+        }
+        
+        .rec-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8em;
+            font-weight: 600;
+        }
+        
+        .badge.safe-bet {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .badge.adventurous {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .badge.physical {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        
+        .badge.experience {
+            background: #fce7f3;
+            color: #9f1239;
         }
         
         .rec-name {
@@ -117,25 +238,58 @@
             line-height: 1.6;
         }
         
-        .rec-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .rec-footer {
+            margin-top: auto;
             padding-top: 15px;
             border-top: 2px solid #f3f4f6;
         }
         
         .rec-price {
-            font-size: 1.2em;
+            font-size: 1.3em;
             font-weight: 600;
             color: #10b981;
+            margin-bottom: 10px;
         }
         
         .rec-where {
             color: #6b7280;
             font-size: 0.9em;
+            margin-bottom: 12px;
         }
         
+        .rec-link {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+        
+        .rec-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .rec-link.disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        .rec-link.disabled:hover {
+            transform: none;
+        }
+        
+        .no-results {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6b7280;
+            font-size: 1.2em;
+        }
+        
+        /* Actions Section */
         .actions-section {
             background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
             padding: 50px 40px;
@@ -206,6 +360,10 @@
                 font-size: 2em;
             }
             
+            .filters-grid {
+                grid-template-columns: 1fr;
+            }
+            
             .button-group {
                 flex-direction: column;
             }
@@ -226,27 +384,88 @@
     
     <div class="container">
         <h1 class="page-title">Your Gift Recommendations</h1>
-        <p class="page-subtitle">Based on your interests from Pinterest and social media</p>
+        <p class="page-subtitle">Based on social media insights • {{ recommendations|length }} gifts found</p>
         
-        <div class="recommendations-grid">
+        <!-- Filters Section -->
+        <div class="filters-section">
+            <div class="filters-title">🔍 Filter Recommendations</div>
+            <div class="filters-grid">
+                <!-- Price Filter -->
+                <div class="filter-group">
+                    <div class="filter-label">Price Range</div>
+                    <div class="filter-buttons">
+                        <button class="filter-button active" data-filter-type="price" data-filter-value="all">All Prices</button>
+                        <button class="filter-button" data-filter-type="price" data-filter-value="20-50">$20-50</button>
+                        <button class="filter-button" data-filter-type="price" data-filter-value="50-100">$50-100</button>
+                        <button class="filter-button" data-filter-type="price" data-filter-value="100-200">$100-200</button>
+                    </div>
+                </div>
+                
+                <!-- Gift Type Filter -->
+                <div class="filter-group">
+                    <div class="filter-label">Gift Type</div>
+                    <div class="filter-buttons">
+                        <button class="filter-button active" data-filter-type="type" data-filter-value="all">All Types</button>
+                        <button class="filter-button" data-filter-type="type" data-filter-value="physical">Physical</button>
+                        <button class="filter-button" data-filter-type="type" data-filter-value="experience">Experience</button>
+                    </div>
+                </div>
+                
+                <!-- Confidence Filter -->
+                <div class="filter-group">
+                    <div class="filter-label">Confidence Level</div>
+                    <div class="filter-buttons">
+                        <button class="filter-button active" data-filter-type="confidence" data-filter-value="all">All Levels</button>
+                        <button class="filter-button" data-filter-type="confidence" data-filter-value="safe_bet">Safe Bet</button>
+                        <button class="filter-button" data-filter-type="confidence" data-filter-value="adventurous">Adventurous</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Recommendations Grid -->
+        <div class="recommendations-grid" id="recommendations-grid">
             {% for rec in recommendations %}
-            <div class="recommendation-card">
-                <div class="rec-number">{{ loop.index }}</div>
+            <div class="recommendation-card" 
+                 data-price="{{ rec.price_range }}"
+                 data-type="{{ rec.gift_type }}"
+                 data-confidence="{{ rec.confidence_level }}">
+                <div class="rec-header">
+                    <div class="rec-number">{{ loop.index }}</div>
+                    <div class="rec-badges">
+                        <span class="badge {{ rec.confidence_level|replace('_', '-') }}">
+                            {{ 'Safe Bet' if rec.confidence_level == 'safe_bet' else 'Adventurous' }}
+                        </span>
+                        <span class="badge {{ rec.gift_type }}">
+                            {{ rec.gift_type|capitalize }}
+                        </span>
+                    </div>
+                </div>
                 <h2 class="rec-name">{{ rec.name }}</h2>
                 <p class="rec-description">{{ rec.description }}</p>
                 <div class="rec-why">
                     <strong>Why it's perfect:</strong> {{ rec.why_perfect }}
                 </div>
-                <div class="rec-meta">
-                    <div>
-                        <div class="rec-price">{{ rec.price_range }}</div>
-                        <div class="rec-where">{{ rec.where_to_buy }}</div>
-                    </div>
+                <div class="rec-footer">
+                    <div class="rec-price">{{ rec.price_range }}</div>
+                    <div class="rec-where">Available at: {{ rec.where_to_buy }}</div>
+                    {% if rec.purchase_link %}
+                    <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link">
+                        View Product →
+                    </a>
+                    {% else %}
+                    <span class="rec-link disabled">Link Coming Soon</span>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}
         </div>
         
+        <div class="no-results" id="no-results" style="display: none;">
+            No recommendations match your current filters. Try adjusting your selection!
+        </div>
+        
+        <!-- Actions Section -->
         <div class="actions-section">
             <h2 class="actions-title">What's Next?</h2>
             <p class="actions-description">Help us improve Giftwise with your feedback!</p>
@@ -257,5 +476,102 @@
             </div>
         </div>
     </div>
+    
+    <script>
+        // Filtering Logic
+        const filterButtons = document.querySelectorAll('.filter-button');
+        const recommendationCards = document.querySelectorAll('.recommendation-card');
+        const noResultsMessage = document.getElementById('no-results');
+        
+        let activeFilters = {
+            price: 'all',
+            type: 'all',
+            confidence: 'all'
+        };
+        
+        // Parse price range for filtering
+        function parsePriceRange(priceString) {
+            const match = priceString.match(/\$(\d+)-\$(\d+)/);
+            if (match) {
+                return {
+                    min: parseInt(match[1]),
+                    max: parseInt(match[2])
+                };
+            }
+            return null;
+        }
+        
+        // Check if card matches current filters
+        function cardMatchesFilters(card) {
+            const cardPrice = card.dataset.price;
+            const cardType = card.dataset.type;
+            const cardConfidence = card.dataset.confidence;
+            
+            // Price filter
+            if (activeFilters.price !== 'all') {
+                const [minPrice, maxPrice] = activeFilters.price.split('-').map(Number);
+                const range = parsePriceRange(cardPrice);
+                
+                if (range) {
+                    // Check if there's any overlap between filter range and card range
+                    if (range.max < minPrice || range.min > maxPrice) {
+                        return false;
+                    }
+                }
+            }
+            
+            // Type filter
+            if (activeFilters.type !== 'all' && cardType !== activeFilters.type) {
+                return false;
+            }
+            
+            // Confidence filter
+            if (activeFilters.confidence !== 'all' && cardConfidence !== activeFilters.confidence) {
+                return false;
+            }
+            
+            return true;
+        }
+        
+        // Apply filters
+        function applyFilters() {
+            let visibleCount = 0;
+            
+            recommendationCards.forEach(card => {
+                if (cardMatchesFilters(card)) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+            
+            // Show/hide no results message
+            if (visibleCount === 0) {
+                noResultsMessage.style.display = 'block';
+            } else {
+                noResultsMessage.style.display = 'none';
+            }
+        }
+        
+        // Handle filter button clicks
+        filterButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                const filterType = this.dataset.filterType;
+                const filterValue = this.dataset.filterValue;
+                
+                // Update active filters
+                activeFilters[filterType] = filterValue;
+                
+                // Update button states
+                const siblingButtons = this.parentElement.querySelectorAll('.filter-button');
+                siblingButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Apply filters
+                applyFilters();
+            });
+        });
+    </script>
 </body>
 </html>

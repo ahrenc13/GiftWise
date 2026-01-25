@@ -4,8 +4,8 @@ AI-Powered Gift Recommendations from Social Media
 
 CURRENT PLATFORM STATUS (January 2026):
 ✅ Pinterest - OAuth available (full data access)
-✅ Instagram - Public scraping only (OAuth blocked by Meta)
-✅ TikTok - Public scraping only (no OAuth available)
+✅ Instagram - Public scraping via Apify (50 posts)
+✅ TikTok - Public scraping via Apify (50 videos with repost analysis)
 ⏳ Spotify - OAuth blocked (not accepting new apps)
 
 Author: Chad + Claude
@@ -14,6 +14,7 @@ Date: January 2026
 
 import os
 import json
+import time
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, session, jsonify, url_for
 import stripe
@@ -45,21 +46,14 @@ PINTEREST_AUTH_URL = 'https://www.pinterest.com/oauth/'
 PINTEREST_TOKEN_URL = 'https://api.pinterest.com/v5/oauth/token'
 PINTEREST_API_URL = 'https://api.pinterest.com/v5'
 
-# Instagram - Public Scraping Only (OAuth not available)
+# Apify Configuration
 APIFY_API_TOKEN = os.environ.get('APIFY_API_TOKEN')
+APIFY_INSTAGRAM_ACTOR = 'apify/instagram-profile-scraper'  # Official Apify Instagram scraper
+APIFY_TIKTOK_ACTOR = 'clockworks/tiktok-scraper'  # TikTok scraper
 
-# Spotify - Blocked (keeping config for future if they reopen)
+# Spotify (keeping for future)
 SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID', '')
 SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET', '')
-SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI', '')
-SPOTIFY_AUTH_URL = 'https://accounts.spotify.com/authorize'
-SPOTIFY_TOKEN_URL = 'https://accounts.spotify.com/api/token'
-SPOTIFY_API_URL = 'https://api.spotify.com/v1'
-
-# Instagram (keeping for reference, not used)
-INSTAGRAM_AUTH_URL = 'https://api.instagram.com/oauth/authorize'
-INSTAGRAM_TOKEN_URL = 'https://api.instagram.com/oauth/access_token'
-INSTAGRAM_API_URL = 'https://graph.instagram.com/me'
 
 # Initialize clients
 stripe.api_key = STRIPE_SECRET_KEY
@@ -80,18 +74,18 @@ PLATFORM_STATUS = {
     'instagram': {
         'available': True,
         'method': 'scraping',
-        'status': 'Public profile data only',
+        'status': 'Public profile data (50 posts)',
         'icon': '📷',
         'color': '#E1306C',
-        'note': 'OAuth blocked by Meta - using public data only'
+        'note': 'OAuth blocked by Meta - using public data via Apify'
     },
     'tiktok': {
         'available': True,
         'method': 'scraping',
-        'status': 'Public profile data only',
+        'status': 'Public profile data (50 videos)',
         'icon': '🎬',
         'color': '#000000',
-        'note': 'No OAuth available - using public data only'
+        'note': 'No OAuth available - using public data via Apify'
     },
     'spotify': {
         'available': False,
@@ -104,21 +98,17 @@ PLATFORM_STATUS = {
 }
 
 # ============================================================================
-# SIMPLIFIED PRICING (NO FREEMIUM FOR NOW)
+# RELATIONSHIP CONTEXT OPTIONS
 # ============================================================================
 
-# Pricing to be determined based on user feedback
-# For now, everything is available to all users during testing phase
-
-PRICING = {
-    'testing_phase': True,  # Set to False when ready to charge
-    'target_price': None,   # Will be set based on feedback (likely $3-10/month)
-    'features': {
-        'all_platforms': True,
-        'unlimited_recommendations': True,
-        'monthly_updates': True
-    }
-}
+RELATIONSHIP_OPTIONS = [
+    'romantic_partner',
+    'close_friend',
+    'family_member',
+    'coworker',
+    'acquaintance',
+    'other'
+]
 
 # ============================================================================
 # DATABASE HELPERS
@@ -144,33 +134,230 @@ def get_session_user():
     return None
 
 # ============================================================================
+# APIFY SCRAPING FUNCTIONS
+# ============================================================================
+
+def scrape_instagram_profile(username, max_posts=50):
+    """
+    Scrape Instagram profile using Apify
+    Returns: dict with posts, captions, engagement data
+    """
+    if not APIFY_API_TOKEN:
+        print("No Apify token configured")
+        return None
+    
+    try:
+        print(f"Starting Instagram scrape for @{username}")
+        
+        # Start Apify actor
+        response = requests.post(
+            f'https://api.apify.com/v2/acts/{APIFY_INSTAGRAM_ACTOR}/runs?token={APIFY_API_TOKEN}',
+            json={
+                'usernames': [username],
+                'resultsLimit': max_posts
+            }
+        )
+        
+        if response.status_code != 201:
+            print(f"Apify Instagram actor start failed: {response.text}")
+            return None
+        
+        run_id = response.json()['data']['id']
+        print(f"Instagram scrape started, run ID: {run_id}")
+        
+        # Poll for completion (max 2 minutes)
+        for _ in range(24):  # 24 * 5 seconds = 2 minutes
+            time.sleep(5)
+            status_response = requests.get(
+                f'https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}'
+            )
+            status = status_response.json()['data']['status']
+            
+            if status == 'SUCCEEDED':
+                break
+            elif status in ['FAILED', 'ABORTED', 'TIMED-OUT']:
+                print(f"Instagram scrape failed with status: {status}")
+                return None
+        
+        # Get results
+        results_response = requests.get(
+            f'https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?token={APIFY_API_TOKEN}'
+        )
+        
+        if results_response.status_code != 200:
+            print(f"Failed to get Instagram results: {results_response.text}")
+            return None
+        
+        data = results_response.json()
+        print(f"Instagram scrape complete: {len(data)} items retrieved")
+        
+        # Parse and structure data
+        if not data:
+            return None
+            
+        profile = data[0] if data else {}
+        posts = profile.get('latestPosts', [])[:max_posts]
+        
+        return {
+            'username': username,
+            'full_name': profile.get('fullName', ''),
+            'bio': profile.get('biography', ''),
+            'followers': profile.get('followersCount', 0),
+            'posts': [
+                {
+                    'caption': post.get('caption', ''),
+                    'likes': post.get('likesCount', 0),
+                    'comments': post.get('commentsCount', 0),
+                    'timestamp': post.get('timestamp', ''),
+                    'type': post.get('type', 'image')
+                }
+                for post in posts
+            ],
+            'total_posts': len(posts),
+            'scraped_at': datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"Instagram scraping error: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+
+def scrape_tiktok_profile(username, max_videos=50):
+    """
+    Scrape TikTok profile using Apify with repost intelligence
+    Returns: dict with videos, reposts, creator patterns
+    """
+    if not APIFY_API_TOKEN:
+        print("No Apify token configured")
+        return None
+    
+    try:
+        print(f"Starting TikTok scrape for @{username}")
+        
+        # Start Apify actor
+        response = requests.post(
+            f'https://api.apify.com/v2/acts/{APIFY_TIKTOK_ACTOR}/runs?token={APIFY_API_TOKEN}',
+            json={
+                'profiles': [username],
+                'resultsPerPage': max_videos
+            }
+        )
+        
+        if response.status_code != 201:
+            print(f"Apify TikTok actor start failed: {response.text}")
+            return None
+        
+        run_id = response.json()['data']['id']
+        print(f"TikTok scrape started, run ID: {run_id}")
+        
+        # Poll for completion (max 2 minutes)
+        for _ in range(24):
+            time.sleep(5)
+            status_response = requests.get(
+                f'https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}'
+            )
+            status = status_response.json()['data']['status']
+            
+            if status == 'SUCCEEDED':
+                break
+            elif status in ['FAILED', 'ABORTED', 'TIMED-OUT']:
+                print(f"TikTok scrape failed with status: {status}")
+                return None
+        
+        # Get results
+        results_response = requests.get(
+            f'https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?token={APIFY_API_TOKEN}'
+        )
+        
+        if results_response.status_code != 200:
+            print(f"Failed to get TikTok results: {results_response.text}")
+            return None
+        
+        data = results_response.json()
+        print(f"TikTok scrape complete: {len(data)} items retrieved")
+        
+        if not data:
+            return None
+        
+        # Analyze videos for repost patterns
+        videos = data[:max_videos]
+        reposts = []
+        original_creators = {}
+        
+        for video in videos:
+            is_repost = video.get('isRepost', False) or video.get('duetInfo') or video.get('stitchInfo')
+            
+            if is_repost:
+                original_author = video.get('authorMeta', {}).get('name', 'unknown')
+                reposts.append({
+                    'description': video.get('text', ''),
+                    'original_author': original_author,
+                    'likes': video.get('diggCount', 0),
+                    'shares': video.get('shareCount', 0)
+                })
+                
+                # Track frequency of reposts from each creator
+                if original_author not in original_creators:
+                    original_creators[original_author] = {
+                        'count': 0,
+                        'total_engagement': 0
+                    }
+                original_creators[original_author]['count'] += 1
+                original_creators[original_author]['total_engagement'] += video.get('diggCount', 0)
+        
+        return {
+            'username': username,
+            'videos': [
+                {
+                    'description': v.get('text', ''),
+                    'likes': v.get('diggCount', 0),
+                    'shares': v.get('shareCount', 0),
+                    'plays': v.get('playCount', 0),
+                    'is_repost': v.get('isRepost', False),
+                    'hashtags': v.get('hashtags', [])
+                }
+                for v in videos
+            ],
+            'reposts': reposts,
+            'repost_patterns': {
+                'total_reposts': len(reposts),
+                'favorite_creators': sorted(
+                    original_creators.items(),
+                    key=lambda x: x[1]['count'],
+                    reverse=True
+                )[:10]  # Top 10 creators they repost from
+            },
+            'total_videos': len(videos),
+            'scraped_at': datetime.now().isoformat()
+        }
+        
+    except Exception as e:
+        print(f"TikTok scraping error: {e}")
+        import traceback
+        traceback.print_exc()
+        return None
+
+# ============================================================================
 # PINTEREST DATA FETCHING
 # ============================================================================
 
 def fetch_pinterest_data(pinterest_platform_data):
     """
     Fetch Pinterest boards and pins for a connected user
-    
-    Args:
-        pinterest_platform_data: Dict containing access_token and other Pinterest data
-    
-    Returns:
-        Dict with boards and pins data ready for recommendation engine
     """
     access_token = pinterest_platform_data.get('access_token')
     if not access_token:
         return {}
     
     try:
-        # Fetch boards
         boards = fetch_pinterest_boards(access_token)
-        
-        # Fetch pins (sample from different boards)
         pins = fetch_pinterest_pins(access_token)
         
         return {
-            'boards': boards[:20],  # Top 20 boards
-            'pins': pins[:100],     # Top 100 pins
+            'boards': boards[:20],
+            'pins': pins[:100],
             'board_count': len(boards),
             'pin_count': len(pins),
             'connected': True
@@ -186,8 +373,7 @@ def fetch_pinterest_boards(access_token):
         all_boards = []
         bookmark = None
         
-        # Pinterest uses cursor-based pagination
-        for _ in range(5):  # Limit to 5 pages max
+        for _ in range(5):
             params = {'page_size': 25}
             if bookmark:
                 params['bookmark'] = bookmark
@@ -210,7 +396,6 @@ def fetch_pinterest_boards(access_token):
                 
             all_boards.extend(boards)
             
-            # Check if there are more pages
             bookmark = data.get('bookmark')
             if not bookmark:
                 break
@@ -228,7 +413,6 @@ def fetch_pinterest_pins(access_token, max_pins=100):
         all_pins = []
         bookmark = None
         
-        # Fetch pins (Pinterest returns user's saved pins)
         while len(all_pins) < max_pins:
             params = {'page_size': 25}
             if bookmark:
@@ -252,7 +436,6 @@ def fetch_pinterest_pins(access_token, max_pins=100):
                 
             all_pins.extend(pins)
             
-            # Check if there are more pages
             bookmark = data.get('bookmark')
             if not bookmark:
                 break
@@ -301,31 +484,37 @@ def privacy_policy():
     return render_template('privacy.html')
 
 # ============================================================================
-# ROUTES - User Onboarding
+# ROUTES - User Onboarding WITH RECIPIENT SELECTION
 # ============================================================================
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
-    """User signup flow - simplified without tier selection"""
+    """User signup flow with recipient selection"""
     if request.method == 'POST':
         email = request.form.get('email')
-        referrer = request.form.get('referrer', '')
+        recipient_type = request.form.get('recipient_type')  # 'myself' or 'someone_else'
+        relationship = request.form.get('relationship', '')  # Only if someone_else
         
         # Create user in database
         user_id = email  # Simple user ID for MVP
-        save_user(user_id, {
+        user_data = {
             'email': email,
             'created_at': datetime.now().isoformat(),
-            'referrer': referrer,
+            'recipient_type': recipient_type,
             'platforms': {}
-        })
+        }
+        
+        if recipient_type == 'someone_else' and relationship:
+            user_data['relationship'] = relationship
+        
+        save_user(user_id, user_data)
         
         # Set session
         session['user_id'] = user_id
         
         return redirect('/connect-platforms')
     
-    return render_template('signup.html')
+    return render_template('signup.html', relationships=RELATIONSHIP_OPTIONS)
 
 # ============================================================================
 # ROUTES - Platform Connections
@@ -333,12 +522,11 @@ def signup():
 
 @app.route('/connect-platforms')
 def connect_platforms():
-    """Platform connection page - simplified without tier restrictions"""
+    """Platform connection page"""
     user = get_session_user()
     if not user:
         return redirect('/signup')
     
-    # Pass platform availability status to template
     return render_template('connect_platforms.html',
                          user=user,
                          platform_status=PLATFORM_STATUS)
@@ -354,7 +542,6 @@ def pinterest_oauth_start():
     if not user:
         return redirect('/signup')
     
-    # Pinterest OAuth parameters
     params = {
         'client_id': PINTEREST_CLIENT_ID,
         'redirect_uri': PINTEREST_REDIRECT_URI,
@@ -362,7 +549,6 @@ def pinterest_oauth_start():
         'scope': 'boards:read,pins:read,user_accounts:read'
     }
     
-    # Build authorization URL manually
     import urllib.parse
     query_string = urllib.parse.urlencode(params)
     authorization_url = f"{PINTEREST_AUTH_URL}?{query_string}"
@@ -390,18 +576,7 @@ def pinterest_oauth_callback():
         return redirect('/connect-platforms?error=pinterest_no_code')
     
     try:
-        # Exchange code for access token using Basic Auth (per Pinterest API docs)
         print(f"Attempting Pinterest token exchange...")
-        print(f"Using client_id: {PINTEREST_CLIENT_ID}")
-        print(f"Client secret (first 10 chars): {PINTEREST_CLIENT_SECRET[:10]}...")
-        print(f"Code received: {code}")
-        print(f"Redirect URI: {PINTEREST_REDIRECT_URI}")
-        
-        import base64
-        # Show what Basic Auth header will be
-        credentials = f"{PINTEREST_CLIENT_ID}:{PINTEREST_CLIENT_SECRET}"
-        encoded = base64.b64encode(credentials.encode()).decode()
-        print(f"Basic Auth header: Basic {encoded[:20]}...")
         
         response = requests.post(
             PINTEREST_TOKEN_URL, 
@@ -445,8 +620,8 @@ def pinterest_oauth_callback():
             'refresh_token': token_data.get('refresh_token'),
             'connected_at': datetime.now().isoformat(),
             'user_info': user_info,
-            'boards': boards[:10],  # Save first 10 boards
-            'pins': pins[:50],      # Save first 50 pins
+            'boards': boards[:10],
+            'pins': pins[:50],
             'total_boards': len(boards),
             'total_pins': len(pins)
         }
@@ -463,12 +638,12 @@ def pinterest_oauth_callback():
         return redirect('/connect-platforms?error=pinterest_exception')
 
 # ============================================================================
-# INSTAGRAM - PUBLIC SCRAPING (USERNAME INPUT)
+# INSTAGRAM - PUBLIC SCRAPING WITH APIFY
 # ============================================================================
 
 @app.route('/connect/instagram', methods=['POST'])
 def connect_instagram():
-    """Connect Instagram via username (public scraping)"""
+    """Connect Instagram via username and scrape with Apify"""
     user = get_session_user()
     if not user:
         return redirect('/signup')
@@ -479,29 +654,41 @@ def connect_instagram():
         return redirect('/connect-platforms?error=instagram_no_username')
     
     try:
-        # Save Instagram username (scraping happens during recommendation generation)
+        print(f"Scraping Instagram profile: @{username}")
+        
+        # Scrape Instagram data via Apify
+        instagram_data = scrape_instagram_profile(username, max_posts=50)
+        
+        if not instagram_data:
+            return redirect('/connect-platforms?error=instagram_scrape_failed')
+        
+        # Save to user platforms
         platforms = user.get('platforms', {})
         platforms['instagram'] = {
             'username': username,
             'connected_at': datetime.now().isoformat(),
-            'method': 'scraping'
+            'method': 'scraping',
+            'data': instagram_data
         }
         
         save_user(session['user_id'], {'platforms': platforms})
         
+        print(f"Instagram connected: {instagram_data['total_posts']} posts scraped")
         return redirect('/connect-platforms?success=instagram')
     
     except Exception as e:
         print(f"Instagram connection error: {e}")
+        import traceback
+        traceback.print_exc()
         return redirect('/connect-platforms?error=instagram_failed')
 
 # ============================================================================
-# TIKTOK - PUBLIC SCRAPING (USERNAME INPUT)
+# TIKTOK - PUBLIC SCRAPING WITH APIFY
 # ============================================================================
 
 @app.route('/connect/tiktok', methods=['POST'])
 def connect_tiktok():
-    """Connect TikTok via username (public scraping)"""
+    """Connect TikTok via username and scrape with Apify"""
     user = get_session_user()
     if not user:
         return redirect('/signup')
@@ -511,17 +698,34 @@ def connect_tiktok():
     if not username:
         return redirect('/connect-platforms?error=tiktok_no_username')
     
-    # Save TikTok username (scraping happens during recommendation generation)
-    platforms = user.get('platforms', {})
-    platforms['tiktok'] = {
-        'username': username,
-        'method': 'scraping',
-        'connected_at': datetime.now().isoformat()
-    }
+    try:
+        print(f"Scraping TikTok profile: @{username}")
+        
+        # Scrape TikTok data via Apify with repost analysis
+        tiktok_data = scrape_tiktok_profile(username, max_videos=50)
+        
+        if not tiktok_data:
+            return redirect('/connect-platforms?error=tiktok_scrape_failed')
+        
+        # Save to user platforms
+        platforms = user.get('platforms', {})
+        platforms['tiktok'] = {
+            'username': username,
+            'connected_at': datetime.now().isoformat(),
+            'method': 'scraping',
+            'data': tiktok_data
+        }
+        
+        save_user(session['user_id'], {'platforms': platforms})
+        
+        print(f"TikTok connected: {tiktok_data['total_videos']} videos scraped, {tiktok_data['repost_patterns']['total_reposts']} reposts identified")
+        return redirect('/connect-platforms?success=tiktok')
     
-    save_user(session['user_id'], {'platforms': platforms})
-    
-    return redirect('/connect-platforms?success=tiktok')
+    except Exception as e:
+        print(f"TikTok connection error: {e}")
+        import traceback
+        traceback.print_exc()
+        return redirect('/connect-platforms?error=tiktok_failed')
 
 # ============================================================================
 # DISCONNECT PLATFORMS
@@ -542,7 +746,7 @@ def disconnect_platform(platform):
     return redirect('/connect-platforms?disconnected=' + platform)
 
 # ============================================================================
-# GENERATE RECOMMENDATIONS
+# GENERATE RECOMMENDATIONS - ENHANCED WITH ALL PLATFORMS
 # ============================================================================
 
 @app.route('/generate-recommendations')
@@ -562,18 +766,20 @@ def generate_recommendations_route():
 
 @app.route('/api/generate-recommendations', methods=['POST'])
 def api_generate_recommendations():
-    """API endpoint to actually generate recommendations"""
+    """API endpoint to generate recommendations using all platform data"""
     user = get_session_user()
     if not user:
         return jsonify({'error': 'Not logged in'}), 401
     
     try:
         platforms = user.get('platforms', {})
+        recipient_type = user.get('recipient_type', 'myself')
+        relationship = user.get('relationship', '')
         
-        # Collect data from connected platforms
-        platform_data = []
+        # Build comprehensive platform data summary
+        platform_insights = []
         
-        # Pinterest data (already saved when they connected)
+        # Pinterest data
         if 'pinterest' in platforms:
             pinterest = platforms['pinterest']
             boards = pinterest.get('boards', [])
@@ -582,72 +788,120 @@ def api_generate_recommendations():
             board_names = [b.get('name', '') for b in boards if b.get('name')]
             pin_descriptions = [p.get('description', '')[:200] for p in pins[:30] if p.get('description')]
             
-            platform_data.append(f"""
-PINTEREST DATA:
-- Total Boards: {pinterest.get('total_boards', 0)}
-- Total Pins: {pinterest.get('total_pins', 0)}
+            platform_insights.append(f"""
+PINTEREST DATA ({pinterest.get('total_boards', 0)} boards, {pinterest.get('total_pins', 0)} pins):
 - Board Names: {', '.join(board_names[:20])}
-- Recent Pin Interests: {'; '.join(pin_descriptions[:15])}
+- Key Interests from Pins: {'; '.join(pin_descriptions[:15])}
 """)
         
-        # Instagram (username only for now - scraping not implemented yet)
+        # Instagram data
         if 'instagram' in platforms:
-            instagram = platforms['instagram']
-            platform_data.append(f"""
-INSTAGRAM DATA:
+            instagram = platforms['instagram'].get('data', {})
+            if instagram and instagram.get('posts'):
+                posts = instagram['posts']
+                captions = [p['caption'][:150] for p in posts[:20] if p.get('caption')]
+                
+                platform_insights.append(f"""
+INSTAGRAM DATA ({instagram.get('total_posts', 0)} posts analyzed):
 - Username: @{instagram.get('username', 'unknown')}
-- Note: Full scraping coming soon
+- Bio: {instagram.get('bio', '')}
+- Post Themes: {'; '.join(captions[:15])}
+- Engagement Style: {"High engagement" if instagram.get('followers', 0) > 1000 else "Personal account"}
+""")
+            else:
+                platform_insights.append(f"""
+INSTAGRAM DATA:
+- Username: @{platforms['instagram'].get('username', 'unknown')}
+- Data pending scrape
 """)
         
-        # TikTok (username only for now - scraping not implemented yet)
+        # TikTok data with repost intelligence
         if 'tiktok' in platforms:
-            tiktok = platforms['tiktok']
-            platform_data.append(f"""
-TIKTOK DATA:
+            tiktok = platforms['tiktok'].get('data', {})
+            if tiktok and tiktok.get('videos'):
+                videos = tiktok['videos']
+                descriptions = [v['description'][:150] for v in videos[:20] if v.get('description')]
+                reposts = tiktok.get('reposts', [])
+                repost_patterns = tiktok.get('repost_patterns', {})
+                favorite_creators = repost_patterns.get('favorite_creators', [])
+                
+                creator_insights = ""
+                if favorite_creators:
+                    creator_list = [f"@{creator[0]} ({creator[1]['count']} reposts)" for creator in favorite_creators[:5]]
+                    creator_insights = f"\n- Frequently Reposts From: {', '.join(creator_list)}"
+                    creator_insights += f"\n- This suggests affinity for: content styles, values, and product categories these creators represent"
+                
+                platform_insights.append(f"""
+TIKTOK DATA ({tiktok.get('total_videos', 0)} videos analyzed):
 - Username: @{tiktok.get('username', 'unknown')}
-- Note: Full scraping coming soon
+- Video Themes: {'; '.join(descriptions[:15])}
+- Repost Behavior: {repost_patterns.get('total_reposts', 0)} reposts out of {tiktok.get('total_videos', 0)} total videos{creator_insights}
+- Key Insight: Reposts reveal deeper interests - what they choose to amplify shows what resonates most
+""")
+            else:
+                platform_insights.append(f"""
+TIKTOK DATA:
+- Username: @{platforms['tiktok'].get('username', 'unknown')}
+- Data pending scrape
 """)
         
-        # Build prompt for Claude
-        prompt = f"""You are a personalized gift recommendation expert. Based on the following user data from their social media, generate 10 highly specific, thoughtful gift recommendations.
+        # Build relationship context
+        relationship_context = ""
+        if recipient_type == 'someone_else':
+            relationship_map = {
+                'romantic_partner': "This is for a romantic partner - focus on thoughtful, personal gifts that show deep understanding",
+                'close_friend': "This is for a close friend - prioritize fun, meaningful gifts that strengthen the friendship",
+                'family_member': "This is for a family member - consider practical yet heartfelt gifts",
+                'coworker': "This is for a coworker - keep it professional but thoughtful",
+                'acquaintance': "This is for an acquaintance - opt for tasteful, universally appealing gifts",
+                'other': "Consider the nature of the relationship when selecting gifts"
+            }
+            relationship_context = f"\n\nRELATIONSHIP CONTEXT:\n{relationship_map.get(relationship, '')}"
+        
+        # Build comprehensive prompt
+        prompt = f"""You are an expert gift curator. Based on the following social media data, generate 10 highly specific, actionable gift recommendations.
 
 USER DATA:
-{chr(10).join(platform_data)}
+{chr(10).join(platform_insights)}{relationship_context}
 
-INSTRUCTIONS:
-Generate exactly 10 gift recommendations. For each recommendation, provide:
-1. Gift name/title
-2. Brief description (2-3 sentences explaining what it is)
-3. Why it matches their interests (based on their social media data)
-4. Approximate price range
-5. Where to buy (be specific - actual store names or websites)
+CRITICAL INSTRUCTIONS:
+1. Prioritize UNIQUE, SPECIALTY items over generic mass-market products
+2. Focus on independent makers, artisan shops, and unique experiences
+3. Each recommendation MUST include a direct purchase link (actual URL)
+4. Prioritize affiliate-friendly sources (Etsy, UncommonGoods, specialty retailers, experience platforms)
+5. Balance quality with affiliate potential - NEVER recommend generic Amazon items just for easy commission
+6. Use TikTok repost patterns to identify deeper interests - what they choose to amplify reveals what truly resonates
+7. Look for the special, thoughtful items that show you really understand them
 
-Focus on gifts that are:
-- Specific and actionable (not generic categories)
-- Based on clear signals from their social media activity
-- Varied in price ($20 to $200 range)
-- Actually available to purchase
+PRICE DISTRIBUTION:
+- 3-4 items in $20-50 range
+- 3-4 items in $50-100 range
+- 2-3 items in $100-200 range
 
-Return ONLY a valid JSON array with this structure:
+Return EXACTLY 10 recommendations as a JSON array with this structure:
 [
   {{
-    "name": "Gift name",
-    "description": "What this gift is...",
-    "why_perfect": "Why it matches based on their Pinterest/social media...",
+    "name": "Specific product or experience name",
+    "description": "2-3 sentence description of what this is and why it's special",
+    "why_perfect": "Why this matches their interests based on specific social media signals",
     "price_range": "$XX-$XX",
-    "where_to_buy": "Specific store or website"
+    "where_to_buy": "Specific retailer name",
+    "purchase_link": "https://actual-direct-link-to-product.com",
+    "gift_type": "physical" or "experience",
+    "confidence_level": "safe_bet" or "adventurous"
   }}
 ]
 
-Return ONLY the JSON array, no other text."""
+IMPORTANT: Return ONLY the JSON array. No markdown, no backticks, no explanatory text."""
 
         print(f"Generating recommendations for user: {user.get('email', 'unknown')}")
         print(f"Using platforms: {list(platforms.keys())}")
+        print(f"Recipient type: {recipient_type}, Relationship: {relationship}")
         
         # Call Claude API
         message = claude_client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=4000,
+            max_tokens=6000,
             messages=[{"role": "user", "content": prompt}]
         )
         
@@ -656,8 +910,7 @@ Return ONLY the JSON array, no other text."""
         
         print(f"Claude response received, length: {len(response_text)}")
         
-        # Try to parse as JSON
-        import json
+        # Parse JSON response
         try:
             # Remove markdown code fences if present
             if response_text.startswith('```'):
@@ -671,13 +924,16 @@ Return ONLY the JSON array, no other text."""
             
         except json.JSONDecodeError as e:
             print(f"JSON parse error: {e}")
-            # If parsing fails, return raw text for now
+            # Fallback if parsing fails
             recommendations = [{
                 'name': 'Recommendations generated',
-                'description': response_text,
-                'why_perfect': 'See full response above',
+                'description': response_text[:500],
+                'why_perfect': 'See full response',
                 'price_range': 'Various',
-                'where_to_buy': 'Various retailers'
+                'where_to_buy': 'Various retailers',
+                'purchase_link': '',
+                'gift_type': 'physical',
+                'confidence_level': 'safe_bet'
             }]
         
         # Save recommendations to user
@@ -706,7 +962,7 @@ Return ONLY the JSON array, no other text."""
 
 @app.route('/recommendations')
 def view_recommendations():
-    """Display recommendations - simplified without tier checking"""
+    """Display recommendations with filters"""
     user = get_session_user()
     if not user:
         return redirect('/signup')
@@ -716,46 +972,9 @@ def view_recommendations():
     if not recommendations:
         return redirect('/connect-platforms?error=no_recommendations')
     
-    # All users get all recommendations (no tier limits)
     return render_template('recommendations.html', 
                          recommendations=recommendations,
                          user=user)
-
-# ============================================================================
-# PUBLIC SHAREABLE PROFILES (Keep for future)
-# ============================================================================
-
-@app.route('/u/<username>')
-def public_profile(username):
-    """Public shareable gift profile - anyone can view without login"""
-    # Find user by username
-    user_found = None
-    with shelve.open('giftwise_db') as db:
-        for key in db.keys():
-            if key.startswith('user_'):
-                user_data = db[key]
-                # Create username from email
-                import re
-                user_username = re.sub(r'[^a-z0-9]', '', user_data.get('email', '').split('@')[0].lower())
-                if user_username == username:
-                    user_found = user_data
-                    break
-    
-    if not user_found:
-        return render_template('profile_not_found.html', username=username)
-    
-    recommendations = user_found.get('recommendations', [])
-    if not recommendations:
-        return render_template('profile_no_recs.html', username=username)
-    
-    # Get user's first name (from email or set a default)
-    display_name = user_found.get('name') or user_found.get('email', '').split('@')[0].title()
-    
-    return render_template('public_profile.html',
-                         recommendations=recommendations,
-                         display_name=display_name,
-                         username=username,
-                         platforms=list(user_found.get('platforms', {}).keys()))
 
 # ============================================================================
 # FEEDBACK SYSTEM
@@ -763,11 +982,10 @@ def public_profile(username):
 
 @app.route('/feedback', methods=['GET', 'POST'])
 def feedback():
-    """Feedback survey page with session persistence"""
+    """Feedback survey page"""
     user = get_session_user()
     
     if request.method == 'POST':
-        # Get all form data
         feedback_data = {
             'landing_page': request.form.get('landing_page'),
             'connection_flow': request.form.get('connection_flow'),
@@ -778,14 +996,10 @@ def feedback():
             'submitted_at': datetime.now().isoformat()
         }
         
-        # Store in session for persistence
         session['feedback_draft'] = feedback_data
         
-        # Save to database if user is logged in
         if user:
             user_id = session.get('user_id')
-            
-            # Get existing feedback or create new
             existing_feedback = user.get('feedback_history', [])
             existing_feedback.append(feedback_data)
             
@@ -794,19 +1008,14 @@ def feedback():
                 'latest_feedback': feedback_data
             })
         
-        # Show success message
         return render_template('feedback.html', success=True)
     
-    # GET request - show form with any existing draft
     existing_feedback = session.get('feedback_draft', {})
-    
     return render_template('feedback.html', existing_feedback=existing_feedback)
-
 
 @app.route('/admin/feedback')
 def admin_feedback():
-    """View all feedback (admin only - add authentication later)"""
-    # For now, just require debug mode
+    """View all feedback (debug mode only)"""
     if not app.debug:
         return "Unauthorized", 403
     
@@ -824,25 +1033,9 @@ def admin_feedback():
                         'feedback': feedback
                     })
     
-    # Sort by most recent
     all_feedback.sort(key=lambda x: x['feedback'].get('submitted_at', ''), reverse=True)
     
     return jsonify(all_feedback)
-
-# ============================================================================
-# STRIPE WEBHOOK (Keep for future, but not used during testing)
-# ============================================================================
-
-@app.route('/stripe-webhook', methods=['POST'])
-def stripe_webhook():
-    """Handle Stripe webhook events - kept for future use"""
-    payload = request.data
-    sig_header = request.headers.get('Stripe-Signature')
-    
-    # Not implementing during testing phase
-    # Will activate when ready to charge
-    
-    return jsonify({'success': True}), 200
 
 # ============================================================================
 # ADMIN / UTILS

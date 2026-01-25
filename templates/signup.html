@@ -23,8 +23,8 @@
         
         .signup-container {
             background: white;
-            border-radius: 25px;
-            padding: 50px;
+            border-radius: 20px;
+            padding: 50px 40px;
             max-width: 500px;
             width: 100%;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
@@ -33,14 +33,14 @@
         .logo {
             text-align: center;
             font-size: 3em;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
         
         h1 {
             text-align: center;
-            font-size: 2.2em;
-            margin-bottom: 12px;
             color: #1f2937;
+            margin-bottom: 10px;
+            font-size: 2em;
         }
         
         .subtitle {
@@ -51,28 +51,110 @@
         }
         
         .form-group {
-            margin-bottom: 25px;
+            margin-bottom: 30px;
         }
         
         label {
             display: block;
-            margin-bottom: 10px;
-            color: #374151;
             font-weight: 600;
+            color: #374151;
+            margin-bottom: 10px;
+            font-size: 1.05em;
         }
         
         input[type="email"] {
             width: 100%;
-            padding: 16px;
+            padding: 15px 20px;
             border: 2px solid #e5e7eb;
             border-radius: 12px;
-            font-size: 1.1em;
-            transition: border-color 0.2s;
+            font-size: 1.05em;
+            transition: all 0.2s;
         }
         
         input[type="email"]:focus {
             outline: none;
             border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .recipient-selection {
+            display: grid;
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+        
+        .recipient-option {
+            position: relative;
+        }
+        
+        .recipient-option input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+        }
+        
+        .recipient-label {
+            display: block;
+            padding: 20px 25px;
+            border: 3px solid #e5e7eb;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #f9fafb;
+        }
+        
+        .recipient-label:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+        }
+        
+        .recipient-option input[type="radio"]:checked + .recipient-label {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #f0f4ff 0%, #e8eeff 100%);
+        }
+        
+        .recipient-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 5px;
+        }
+        
+        .recipient-description {
+            color: #6b7280;
+            font-size: 0.95em;
+        }
+        
+        .relationship-group {
+            margin-top: 20px;
+            padding: 20px;
+            background: #fef3c7;
+            border-radius: 12px;
+            border: 2px solid #fbbf24;
+            display: none;
+        }
+        
+        .relationship-group.visible {
+            display: block;
+        }
+        
+        .relationship-group label {
+            color: #92400e;
+            margin-bottom: 12px;
+        }
+        
+        select {
+            width: 100%;
+            padding: 12px 18px;
+            border: 2px solid #fbbf24;
+            border-radius: 10px;
+            font-size: 1em;
+            background: white;
+            cursor: pointer;
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: #f59e0b;
         }
         
         .submit-button {
@@ -85,7 +167,7 @@
             font-size: 1.2em;
             font-weight: 600;
             cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
+            transition: all 0.2s;
         }
         
         .submit-button:hover {
@@ -93,26 +175,8 @@
             box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
         }
         
-        .trial-notice {
-            text-align: center;
-            margin-top: 25px;
-            color: #6b7280;
-            font-size: 0.95em;
-        }
-        
-        .back-link {
-            text-align: center;
-            margin-top: 25px;
-        }
-        
-        .back-link a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        
-        .back-link a:hover {
-            text-decoration: underline;
+        .submit-button:active {
+            transform: translateY(0);
         }
         
         @media (max-width: 600px) {
@@ -121,7 +185,7 @@
             }
             
             h1 {
-                font-size: 1.8em;
+                font-size: 1.6em;
             }
         }
     </style>
@@ -130,34 +194,74 @@
     <div class="signup-container">
         <div class="logo">🎁</div>
         <h1>Welcome to Giftwise</h1>
-        <p class="subtitle">Start your 7-day free trial</p>
+        <p class="subtitle">AI-powered gift recommendations from social media</p>
         
-        <form action="/signup" method="POST">
+        <form method="POST" action="/signup">
             <div class="form-group">
-                <label for="email">Email Address</label>
-                <input type="email" id="email" name="email" placeholder="your@email.com" required>
+                <label for="email">Your Email</label>
+                <input type="email" id="email" name="email" required placeholder="you@example.com">
             </div>
             
-            <!-- Hidden referrer field -->
-            {% if referrer %}
-            <input type="hidden" name="referrer" value="{{ referrer }}">
-            <p style="color: #10b981; margin-bottom: 20px; font-size: 0.95em;">
-                🎁 Referred by @{{ referrer }}
-            </p>
-            {% endif %}
+            <div class="form-group">
+                <label>Who are these gift recommendations for?</label>
+                <div class="recipient-selection">
+                    <div class="recipient-option">
+                        <input type="radio" id="myself" name="recipient_type" value="myself" checked>
+                        <label for="myself" class="recipient-label">
+                            <div class="recipient-title">✨ For Myself</div>
+                            <div class="recipient-description">Find gifts based on my own interests</div>
+                        </label>
+                    </div>
+                    
+                    <div class="recipient-option">
+                        <input type="radio" id="someone_else" name="recipient_type" value="someone_else">
+                        <label for="someone_else" class="recipient-label">
+                            <div class="recipient-title">🎁 For Someone Else</div>
+                            <div class="recipient-description">Help me buy the perfect gift for someone I know</div>
+                        </label>
+                    </div>
+                </div>
+            </div>
             
-            <button type="submit" class="submit-button">
-                Continue to Platform Connection
-            </button>
+            <div id="relationship-container" class="relationship-group">
+                <label for="relationship">What's your relationship to this person?</label>
+                <select id="relationship" name="relationship">
+                    <option value="">Select relationship...</option>
+                    <option value="romantic_partner">Romantic Partner</option>
+                    <option value="close_friend">Close Friend</option>
+                    <option value="family_member">Family Member</option>
+                    <option value="coworker">Coworker</option>
+                    <option value="acquaintance">Acquaintance</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="submit-button">Get Started →</button>
         </form>
-        
-        <p class="trial-notice">
-            7-day free trial. No credit card required. Cancel anytime.
-        </p>
-        
-        <div class="back-link">
-            <a href="/">← Back to Home</a>
-        </div>
     </div>
+    
+    <script>
+        // Show/hide relationship selector based on recipient type
+        const myselfRadio = document.getElementById('myself');
+        const someoneElseRadio = document.getElementById('someone_else');
+        const relationshipContainer = document.getElementById('relationship-container');
+        const relationshipSelect = document.getElementById('relationship');
+        
+        function updateRelationshipVisibility() {
+            if (someoneElseRadio.checked) {
+                relationshipContainer.classList.add('visible');
+                relationshipSelect.required = true;
+            } else {
+                relationshipContainer.classList.remove('visible');
+                relationshipSelect.required = false;
+            }
+        }
+        
+        myselfRadio.addEventListener('change', updateRelationshipVisibility);
+        someoneElseRadio.addEventListener('change', updateRelationshipVisibility);
+        
+        // Initialize on page load
+        updateRelationshipVisibility();
+    </script>
 </body>
 </html>

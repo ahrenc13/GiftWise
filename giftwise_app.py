@@ -398,36 +398,80 @@ def pinterest_oauth_start():
 
 @app.route('/oauth/pinterest/callback')
 def pinterest_oauth_callback():
-    """Handle Pinterest OAuth callback"""
+    """Handle Pinterest OAuth callback and fetch data"""
     user = get_session_user()
     if not user:
         return redirect('/signup')
     
     code = request.args.get('code')
+    error = request.args.get('error')
     
-    response = requests.post(PINTEREST_TOKEN_URL, data={
-        'grant_type': 'authorization_code',
-        'code': code,
-        'redirect_uri': PINTEREST_REDIRECT_URI
-    }, auth=(PINTEREST_CLIENT_ID, PINTEREST_CLIENT_SECRET))
+    if error:
+        print(f"Pinterest OAuth error from Pinterest: {error}")
+        return redirect(f'/connect-platforms?error=pinterest_{error}')
     
-    if response.status_code == 200:
+    if not code:
+        print("Pinterest callback: No code provided")
+        return redirect('/connect-platforms?error=pinterest_no_code')
+    
+    try:
+        # Exchange code for access token
+        print(f"Attempting Pinterest token exchange...")
+        response = requests.post(
+            PINTEREST_TOKEN_URL, 
+            data={
+                'grant_type': 'authorization_code',
+                'code': code,
+                'redirect_uri': PINTEREST_REDIRECT_URI
+            }, 
+            auth=(PINTEREST_CLIENT_ID, PINTEREST_CLIENT_SECRET)
+        )
+        
+        print(f"Pinterest token response status: {response.status_code}")
+        print(f"Pinterest token response: {response.text}")
+        
+        if response.status_code != 200:
+            return redirect('/connect-platforms?error=pinterest_token_failed')
+        
         token_data = response.json()
+        access_token = token_data.get('access_token')
         
-        save_user(session['user_id'], {
-            'platforms': {
-                **user.get('platforms', {}),
-                'pinterest': {
-                    'access_token': token_data['access_token'],
-                    'refresh_token': token_data.get('refresh_token'),
-                    'connected_at': datetime.now().isoformat()
-                }
-            }
-        })
+        if not access_token:
+            print("Pinterest: No access token in response")
+            return redirect('/connect-platforms?error=pinterest_no_token')
         
+        print("Pinterest: Token received, fetching data...")
+        
+        # Fetch Pinterest data immediately
+        user_info = fetch_pinterest_user_info(access_token)
+        boards = fetch_pinterest_boards(access_token)
+        pins = fetch_pinterest_pins(access_token)
+        
+        print(f"Pinterest: Fetched {len(boards)} boards and {len(pins)} pins")
+        
+        # Save everything to database
+        platforms = user.get('platforms', {})
+        platforms['pinterest'] = {
+            'access_token': access_token,
+            'refresh_token': token_data.get('refresh_token'),
+            'connected_at': datetime.now().isoformat(),
+            'user_info': user_info,
+            'boards': boards[:10],
+            'pins': pins[:50],
+            'total_boards': len(boards),
+            'total_pins': len(pins)
+        }
+        
+        save_user(session['user_id'], {'platforms': platforms})
+        
+        print("Pinterest: Successfully connected!")
         return redirect('/connect-platforms?success=pinterest')
     
-    return redirect('/connect-platforms?error=pinterest')
+    except Exception as e:
+        print(f"Pinterest OAuth exception: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return redirect('/connect-platforms?error=pinterest_exception')
 
 # ============================================================================
 # TIKTOK - Public Scraping (No OAuth)

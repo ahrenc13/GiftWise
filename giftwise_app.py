@@ -393,7 +393,15 @@ def pinterest_oauth_callback():
         # Exchange code for access token using Basic Auth (per Pinterest API docs)
         print(f"Attempting Pinterest token exchange...")
         print(f"Using client_id: {PINTEREST_CLIENT_ID}")
+        print(f"Client secret (first 10 chars): {PINTEREST_CLIENT_SECRET[:10]}...")
+        print(f"Code received: {code}")
         print(f"Redirect URI: {PINTEREST_REDIRECT_URI}")
+        
+        import base64
+        # Show what Basic Auth header will be
+        credentials = f"{PINTEREST_CLIENT_ID}:{PINTEREST_CLIENT_SECRET}"
+        encoded = base64.b64encode(credentials.encode()).decode()
+        print(f"Basic Auth header: Basic {encoded[:20]}...")
         
         response = requests.post(
             PINTEREST_TOKEN_URL, 

@@ -390,8 +390,7 @@ def pinterest_oauth_start():
     )
     
     authorization_url, state = pinterest.authorization_url(
-        PINTEREST_AUTH_URL,
-        scope=scope
+    PINTEREST_AUTH_URL
     )
     
     session['oauth_state'] = state

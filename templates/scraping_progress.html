@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connecting {{ platform|capitalize }}... - Giftwise</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            padding: 20px;
+        }
+        
+        .progress-container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(10px);
+            padding: 50px;
+            border-radius: 25px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        
+        .platform-icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+        }
+        
+        .spinner {
+            border: 4px solid rgba(255,255,255,0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 30px auto;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .progress-bar-container {
+            width: 100%;
+            height: 30px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 15px;
+            overflow: hidden;
+            margin: 30px 0;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #059669);
+            border-radius: 15px;
+            transition: width 0.5s ease;
+            width: 0%;
+        }
+        
+        .status-message {
+            font-size: 1.2em;
+            margin: 20px 0;
+            min-height: 60px;
+            opacity: 0.95;
+        }
+        
+        .result-icon {
+            font-size: 5em;
+            margin: 20px 0;
+        }
+        
+        .success-icon {
+            color: #10b981;
+        }
+        
+        .error-icon {
+            color: #ef4444;
+        }
+        
+        .action-buttons {
+            margin-top: 30px;
+        }
+        
+        .btn {
+            display: inline-block;
+            padding: 16px 40px;
+            background: white;
+            color: #667eea;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 1.1em;
+            transition: all 0.2s;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+        
+        .error-details {
+            background: rgba(239, 68, 68, 0.2);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            border: 1px solid rgba(239, 68, 68, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-container">
+        <div class="platform-icon">
+            {% if platform == 'instagram' %}📷{% endif %}
+            {% if platform == 'tiktok' %}🎬{% endif %}
+            {% if platform == 'pinterest' %}📌{% endif %}
+        </div>
+        
+        <h1>Connecting {{ platform|capitalize }}</h1>
+        
+        <div id="spinner" class="spinner"></div>
+        
+        <div class="progress-bar-container">
+            <div id="progress-bar" class="progress-bar"></div>
+        </div>
+        
+        <div id="status-message" class="status-message">
+            Initializing...
+        </div>
+        
+        <div id="result-icon"></div>
+        
+        <div id="action-buttons" class="action-buttons" style="display: none;">
+            <a href="/connect-platforms" class="btn">Back to Platforms</a>
+        </div>
+        
+        <div id="error-details" class="error-details" style="display: none;"></div>
+    </div>
+    
+    <script>
+        const taskId = '{{ task_id }}';
+        const platform = '{{ platform }}';
+        
+        // Connect to progress stream via Server-Sent Events
+        const eventSource = new EventSource('/api/scrape-progress/' + taskId);
+        
+        eventSource.onmessage = function(event) {
+            const progress = JSON.parse(event.data);
+            
+            console.log('Progress update:', progress);
+            
+            // Update progress bar
+            document.getElementById('progress-bar').style.width = progress.percent + '%';
+            
+            // Update status message
+            document.getElementById('status-message').textContent = progress.message;
+            
+            // Handle completion
+            if (progress.status === 'success') {
+                document.getElementById('spinner').style.display = 'none';
+                document.getElementById('result-icon').innerHTML = 
+                    '<div class="result-icon success-icon">✓</div>';
+                document.getElementById('action-buttons').style.display = 'block';
+                eventSource.close();
+                
+                // Auto-redirect after 2 seconds
+                setTimeout(() => {
+                    window.location.href = '/connect-platforms?success=' + platform;
+                }, 2000);
+            }
+            else if (progress.status === 'error') {
+                document.getElementById('spinner').style.display = 'none';
+                document.getElementById('result-icon').innerHTML = 
+                    '<div class="result-icon error-icon">✗</div>';
+                document.getElementById('status-message').innerHTML = 
+                    '<strong>Connection Failed</strong>';
+                
+                // Show error details
+                const errorDetails = document.getElementById('error-details');
+                errorDetails.style.display = 'block';
+                errorDetails.innerHTML = `
+                    <strong>Error:</strong> ${progress.message}<br><br>
+                    <small>Possible reasons:</small><br>
+                    • Account may be private<br>
+                    • Username might be incorrect<br>
+                    • Platform may be experiencing issues
+                `;
+                
+                document.getElementById('action-buttons').style.display = 'block';
+                eventSource.close();
+            }
+        };
+        
+        eventSource.onerror = function(error) {
+            console.error('EventSource error:', error);
+            eventSource.close();
+            
+            document.getElementById('spinner').style.display = 'none';
+            document.getElementById('result-icon').innerHTML = 
+                '<div class="result-icon error-icon">⚠️</div>';
+            document.getElementById('status-message').textContent = 
+                'Connection lost - please try again';
+            document.getElementById('action-buttons').style.display = 'block';
+        };
+        
+        // Safety timeout: force error state after 3 minutes
+        setTimeout(() => {
+            if (eventSource.readyState !== EventSource.CLOSED) {
+                eventSource.close();
+                document.getElementById('spinner').style.display = 'none';
+                document.getElementById('result-icon').innerHTML = 
+                    '<div class="result-icon error-icon">⏱️</div>';
+                document.getElementById('status-message').textContent = 
+                    'Operation timed out - please try again';
+                document.getElementById('action-buttons').style.display = 'block';
+            }
+        }, 180000); // 3 minutes
+    </script>
+</body>
+</html>

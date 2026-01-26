@@ -213,66 +213,54 @@
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            border-radius: 10px;
+            border-radius: 12px;
             font-size: 1.05em;
             font-weight: 600;
             cursor: pointer;
-            transition: all 0.2s;
-            text-decoration: none;
-            display: block;
             text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.2s;
         }
         
-        .connect-button:hover {
-            transform: scale(1.03);
+        .connect-button:hover:not(:disabled) {
+            transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .connect-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
         }
         
         .disconnect-button {
             background: #ef4444;
-            margin-top: 12px;
         }
         
         .disconnect-button:hover {
-            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
-        }
-        
-        .tiktok-form {
-            display: flex;
-            gap: 12px;
-        }
-        
-        .tiktok-input {
-            flex: 1;
-            padding: 14px;
-            border: 2px solid #e5e7eb;
-            border-radius: 10px;
-            font-size: 1.05em;
-        }
-        
-        .tiktok-input:focus {
-            outline: none;
-            border-color: #667eea;
+            background: #dc2626;
         }
         
         .generate-section {
             background: white;
             border-radius: 20px;
             padding: 50px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             text-align: center;
+            border: 3px solid #667eea;
         }
         
         .generate-title {
-            font-size: 1.8em;
-            margin-bottom: 18px;
+            font-size: 2em;
+            margin-bottom: 20px;
             color: #1f2937;
         }
         
         .generate-description {
             color: #6b7280;
             margin-bottom: 35px;
-            font-size: 1.1em;
+            font-size: 1.15em;
+            line-height: 1.7;
         }
         
         .generate-button {
@@ -282,14 +270,14 @@
             border: none;
             border-radius: 50px;
             font-size: 1.3em;
-            font-weight: 600;
+            font-weight: 700;
             cursor: pointer;
-            transition: all 0.2s;
             text-decoration: none;
             display: inline-block;
+            transition: all 0.2s;
         }
         
-        .generate-button:hover {
+        .generate-button:hover:not(:disabled) {
             transform: translateY(-3px);
             box-shadow: 0 12px 30px rgba(16, 185, 129, 0.3);
         }
@@ -297,19 +285,18 @@
         .generate-button:disabled {
             background: #9ca3af;
             cursor: not-allowed;
-            transform: none;
-        }
-        
-        .platforms-required {
-            color: #ef4444;
-            font-size: 1em;
-            margin-top: 18px;
-            font-weight: 600;
         }
         
         .platforms-count {
-            margin-top: 18px;
+            margin-top: 20px;
             color: #10b981;
+            font-weight: 600;
+            font-size: 1.05em;
+        }
+        
+        .platforms-required {
+            margin-top: 20px;
+            color: #f59e0b;
             font-weight: 600;
             font-size: 1.05em;
         }
@@ -326,6 +313,56 @@
         .tiktok-input:focus {
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        /* NEW: Validation status styles */
+        .validation-status {
+            min-height: 32px;
+            margin-top: 12px;
+            margin-bottom: 12px;
+            transition: all 0.3s ease;
+        }
+        
+        .validation-status.success {
+            color: #059669;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .validation-status.error {
+            color: #dc2626;
+            font-weight: 600;
+        }
+        
+        .validation-status.error-details {
+            color: #6b7280;
+            font-size: 0.9em;
+            margin-top: 6px;
+            margin-left: 28px;
+        }
+        
+        .validation-status.checking {
+            color: #6b7280;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #e5e7eb;
+            border-top-color: #6b7280;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
         }
         
         @media (max-width: 768px) {
@@ -364,7 +401,7 @@
         <h1 class="page-title">Connect {% if recipient_type == 'someone_else' %}Their{% else %}Your{% endif %} Platforms</h1>
         <p class="page-subtitle">
             {% if recipient_type == 'someone_else' %}
-                Enter the recipient's Instagram and TikTok usernames below. We'll analyze their public profiles to find perfect gift ideas! (Note: Pinterest isn't available for others - only public profiles work)
+                Enter the recipient's Instagram and TikTok usernames below. We'll check if they're public profiles, then analyze to find perfect gift ideas!
             {% else %}
                 Connect at least 2 platforms for great recommendations. More platforms = even better results!
             {% endif %}
@@ -396,7 +433,7 @@
                 </div>
                 <div class="platform-description">
                     {% if recipient_type == 'someone_else' %}
-                        Enter their Instagram username to analyze their posts, interests, and style. Public profiles work best!
+                        Enter their Instagram username to analyze their posts, interests, and style. Public profiles only!
                     {% else %}
                         Full access to your posts, hashtags, and interests. Shows your lifestyle and aesthetic preferences.
                     {% endif %}
@@ -412,9 +449,27 @@
                     <span class="status-dot"></span>
                     <span>Not Connected</span>
                 </div>
-                <form action="/connect/instagram" method="POST" style="display: flex; gap: 10px;">
-                    <input type="text" name="username" placeholder="@{% if recipient_type == 'someone_else' %}their_username{% else %}yourusername{% endif %}" class="tiktok-input" required style="flex: 1;">
-                    <button type="submit" class="connect-button" style="width: auto; padding: 14px 24px; margin: 0;">Connect</button>
+                <form action="/connect/instagram" method="POST" id="instagram-form" style="display: flex; gap: 10px; flex-direction: column;">
+                    <div style="display: flex; gap: 10px;">
+                        <input 
+                            type="text" 
+                            name="username" 
+                            id="instagram-username"
+                            placeholder="@{% if recipient_type == 'someone_else' %}their_username{% else %}yourusername{% endif %}" 
+                            class="tiktok-input" 
+                            required 
+                            style="flex: 1;">
+                        <button 
+                            type="submit" 
+                            id="instagram-submit"
+                            class="connect-button" 
+                            style="width: auto; padding: 14px 24px; margin: 0;"
+                            disabled>
+                            Connect
+                        </button>
+                    </div>
+                    <!-- Validation status appears here -->
+                    <div id="instagram-status" class="validation-status"></div>
                 </form>
                 {% endif %}
             </div>
@@ -461,7 +516,7 @@
                 </div>
                 <div class="platform-description">
                     {% if recipient_type == 'someone_else' %}
-                        Enter their TikTok username to analyze their video content and trends. Shows current interests and what they engage with!
+                        Enter their TikTok username to analyze their video content and trends. Public profiles only!
                     {% else %}
                         Your public videos show current interests and trends. We analyze what you create and engage with!
                     {% endif %}
@@ -485,9 +540,27 @@
                     <span class="status-dot"></span>
                     <span>Not Connected</span>
                 </div>
-                <form action="/connect/tiktok" method="POST" style="display: flex; gap: 10px;">
-                    <input type="text" name="username" placeholder="@{% if recipient_type == 'someone_else' %}their_username{% else %}yourusername{% endif %}" class="tiktok-input" required style="flex: 1;">
-                    <button type="submit" class="connect-button" style="width: auto; padding: 14px 24px; margin: 0;">Connect</button>
+                <form action="/connect/tiktok" method="POST" id="tiktok-form" style="display: flex; gap: 10px; flex-direction: column;">
+                    <div style="display: flex; gap: 10px;">
+                        <input 
+                            type="text" 
+                            name="username" 
+                            id="tiktok-username"
+                            placeholder="@{% if recipient_type == 'someone_else' %}their_username{% else %}yourusername{% endif %}" 
+                            class="tiktok-input" 
+                            required 
+                            style="flex: 1;">
+                        <button 
+                            type="submit" 
+                            id="tiktok-submit"
+                            class="connect-button" 
+                            style="width: auto; padding: 14px 24px; margin: 0;"
+                            disabled>
+                            Connect
+                        </button>
+                    </div>
+                    <!-- Validation status appears here -->
+                    <div id="tiktok-status" class="validation-status"></div>
                 </form>
                 {% endif %}
             </div>
@@ -521,5 +594,155 @@
             {% endif %}
         </div>
     </div>
+    
+    <!-- Real-time username validation JavaScript -->
+    <script>
+        class UsernameValidator {
+            constructor(platform, inputElement, statusElement, submitButton) {
+                this.platform = platform;
+                this.inputElement = inputElement;
+                this.statusElement = statusElement;
+                this.submitButton = submitButton;
+                this.validationTimeout = null;
+                this.isValid = false;
+                
+                // Bind events
+                this.inputElement.addEventListener('input', () => this.handleInput());
+                this.inputElement.addEventListener('blur', () => this.validate());
+            }
+            
+            handleInput() {
+                // Clear previous timeout
+                if (this.validationTimeout) {
+                    clearTimeout(this.validationTimeout);
+                }
+                
+                // Reset status
+                this.statusElement.innerHTML = '';
+                this.isValid = false;
+                this.updateSubmitButton();
+                
+                const username = this.inputElement.value.trim();
+                
+                // Don't validate empty input
+                if (!username) {
+                    return;
+                }
+                
+                // Debounce: wait 800ms after user stops typing
+                this.validationTimeout = setTimeout(() => {
+                    this.validate();
+                }, 800);
+            }
+            
+            async validate() {
+                const username = this.inputElement.value.trim().replace('@', '');
+                
+                if (!username) {
+                    this.statusElement.innerHTML = '';
+                    this.isValid = false;
+                    this.updateSubmitButton();
+                    return;
+                }
+                
+                // Show loading state
+                this.statusElement.className = 'validation-status checking';
+                this.statusElement.innerHTML = `
+                    <span class="spinner"></span>
+                    <span>Checking account...</span>
+                `;
+                
+                try {
+                    const response = await fetch('/api/validate-username', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            platform: this.platform,
+                            username: username
+                        })
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.valid) {
+                        this.showSuccess(result);
+                        this.isValid = true;
+                    } else {
+                        this.showError(result);
+                        this.isValid = false;
+                    }
+                    
+                    this.updateSubmitButton();
+                    
+                } catch (error) {
+                    console.error('Validation error:', error);
+                    this.statusElement.className = 'validation-status error';
+                    this.statusElement.innerHTML = `
+                        <div>⚠️ Unable to validate - you can still try connecting</div>
+                    `;
+                    // Allow them to try anyway if validation fails
+                    this.isValid = true;
+                    this.updateSubmitButton();
+                }
+            }
+            
+            showSuccess(result) {
+                this.statusElement.className = 'validation-status success';
+                this.statusElement.innerHTML = `
+                    <span style="font-size: 1.2em;">✓</span>
+                    <span>${result.message}</span>
+                `;
+            }
+            
+            showError(result) {
+                this.statusElement.className = 'validation-status error';
+                let html = `
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.2em;">${result.icon || '✗'}</span>
+                        <span>${result.message}</span>
+                    </div>
+                `;
+                
+                if (result.help) {
+                    html += `
+                        <div class="validation-status error-details">
+                            ${result.help}
+                        </div>
+                    `;
+                }
+                
+                this.statusElement.innerHTML = html;
+            }
+            
+            updateSubmitButton() {
+                if (this.submitButton) {
+                    this.submitButton.disabled = !this.isValid;
+                }
+            }
+        }
+        
+        // Initialize validators when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            // Instagram validator
+            const igInput = document.getElementById('instagram-username');
+            const igStatus = document.getElementById('instagram-status');
+            const igSubmit = document.getElementById('instagram-submit');
+            
+            if (igInput && igStatus && igSubmit) {
+                new UsernameValidator('instagram', igInput, igStatus, igSubmit);
+            }
+            
+            // TikTok validator
+            const ttInput = document.getElementById('tiktok-username');
+            const ttStatus = document.getElementById('tiktok-status');
+            const ttSubmit = document.getElementById('tiktok-submit');
+            
+            if (ttInput && ttStatus && ttSubmit) {
+                new UsernameValidator('tiktok', ttInput, ttStatus, ttSubmit);
+            }
+        });
+    </script>
 </body>
 </html>

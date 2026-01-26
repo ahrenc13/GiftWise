@@ -139,22 +139,53 @@
         
         .relationship-group label {
             color: #92400e;
-            margin-bottom: 12px;
+            margin-bottom: 15px;
         }
         
-        select {
-            width: 100%;
-            padding: 12px 18px;
+        .relationship-options {
+            display: grid;
+            gap: 12px;
+        }
+        
+        .relationship-radio {
+            position: relative;
+        }
+        
+        .relationship-radio input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+        }
+        
+        .relationship-radio-label {
+            display: block;
+            padding: 14px 20px;
+            background: white;
             border: 2px solid #fbbf24;
             border-radius: 10px;
-            font-size: 1em;
-            background: white;
             cursor: pointer;
+            transition: all 0.2s;
         }
         
-        select:focus {
-            outline: none;
+        .relationship-radio-label:hover {
+            background: #fffbeb;
             border-color: #f59e0b;
+        }
+        
+        .relationship-radio input[type="radio"]:checked + .relationship-radio-label {
+            background: #fef3c7;
+            border-color: #d97706;
+            font-weight: 600;
+        }
+        
+        .relationship-label-title {
+            font-size: 1.05em;
+            color: #1f2937;
+            margin-bottom: 3px;
+        }
+        
+        .relationship-label-desc {
+            font-size: 0.9em;
+            color: #6b7280;
         }
         
         .submit-button {
@@ -224,16 +255,32 @@
             </div>
             
             <div id="relationship-container" class="relationship-group">
-                <label for="relationship">What's your relationship to this person?</label>
-                <select id="relationship" name="relationship">
-                    <option value="">Select relationship...</option>
-                    <option value="romantic_partner">Romantic Partner</option>
-                    <option value="close_friend">Close Friend</option>
-                    <option value="family_member">Family Member</option>
-                    <option value="coworker">Coworker</option>
-                    <option value="acquaintance">Acquaintance</option>
-                    <option value="other">Other</option>
-                </select>
+                <label>What's your relationship to this person?</label>
+                <div class="relationship-options">
+                    <div class="relationship-radio">
+                        <input type="radio" id="close" name="relationship" value="close">
+                        <label for="close" class="relationship-radio-label">
+                            <div class="relationship-label-title">❤️ Close relationship</div>
+                            <div class="relationship-label-desc">Partner, best friend, family</div>
+                        </label>
+                    </div>
+                    
+                    <div class="relationship-radio">
+                        <input type="radio" id="friendly" name="relationship" value="friendly">
+                        <label for="friendly" class="relationship-radio-label">
+                            <div class="relationship-label-title">😊 Friendly relationship</div>
+                            <div class="relationship-label-desc">Friend, extended family, favorite coworker</div>
+                        </label>
+                    </div>
+                    
+                    <div class="relationship-radio">
+                        <input type="radio" id="professional" name="relationship" value="professional">
+                        <label for="professional" class="relationship-radio-label">
+                            <div class="relationship-label-title">🤝 Professional relationship</div>
+                            <div class="relationship-label-desc">Colleague, client, acquaintance</div>
+                        </label>
+                    </div>
+                </div>
             </div>
             
             <button type="submit" class="submit-button">Get Started →</button>
@@ -245,15 +292,21 @@
         const myselfRadio = document.getElementById('myself');
         const someoneElseRadio = document.getElementById('someone_else');
         const relationshipContainer = document.getElementById('relationship-container');
-        const relationshipSelect = document.getElementById('relationship');
+        const relationshipRadios = document.querySelectorAll('input[name="relationship"]');
         
         function updateRelationshipVisibility() {
             if (someoneElseRadio.checked) {
                 relationshipContainer.classList.add('visible');
-                relationshipSelect.required = true;
+                // Make one of the relationship options required
+                relationshipRadios.forEach(radio => {
+                    radio.required = true;
+                });
             } else {
                 relationshipContainer.classList.remove('visible');
-                relationshipSelect.required = false;
+                // Remove required from relationship options
+                relationshipRadios.forEach(radio => {
+                    radio.required = false;
+                });
             }
         }
         

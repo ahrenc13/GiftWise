@@ -153,7 +153,7 @@ def scrape_instagram_profile(username, max_posts=50):
         response = requests.post(
             f'https://api.apify.com/v2/acts/{APIFY_INSTAGRAM_ACTOR}/runs?token={APIFY_API_TOKEN}',
             json={
-                'username': username,  # This actor expects singular username
+                'username': [username],  # Actor wants array format
                 'resultsLimit': max_posts
             }
         )
@@ -237,12 +237,15 @@ def scrape_tiktok_profile(username, max_videos=50):
         print(f"Starting TikTok scrape for @{username}")
         
         # Start Apify actor
+        request_payload = {
+            'profiles': [username],
+            'resultsPerPage': max_videos
+        }
+        print(f"DEBUG - TikTok request payload: {request_payload}")
+        
         response = requests.post(
             f'https://api.apify.com/v2/acts/{APIFY_TIKTOK_ACTOR}/runs?token={APIFY_API_TOKEN}',
-            json={
-                'profiles': [username],
-                'resultsPerPage': max_videos
-            }
+            json=request_payload
         )
         
         if response.status_code != 201:
@@ -277,6 +280,11 @@ def scrape_tiktok_profile(username, max_videos=50):
         
         data = results_response.json()
         print(f"TikTok scrape complete: {len(data)} items retrieved")
+        
+        # DEBUG: Print first video structure to see what fields we have
+        if data and len(data) > 0:
+            print(f"DEBUG - First TikTok video fields: {list(data[0].keys())}")
+            print(f"DEBUG - First video sample: {str(data[0])[:500]}")
         
         if not data:
             return None

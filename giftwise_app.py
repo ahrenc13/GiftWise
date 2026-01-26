@@ -48,8 +48,8 @@ PINTEREST_API_URL = 'https://api.pinterest.com/v5'
 
 # Apify Configuration
 APIFY_API_TOKEN = os.environ.get('APIFY_API_TOKEN')
-APIFY_INSTAGRAM_ACTOR = 'apify/instagram-profile-scraper'  # Official Apify Instagram scraper
-APIFY_TIKTOK_ACTOR = 'clockworks/tiktok-scraper'  # TikTok scraper
+APIFY_INSTAGRAM_ACTOR = 'apify/instagram-post-scraper'  # Tested and working
+APIFY_TIKTOK_ACTOR = 'clockworks/tiktok-profile-scraper'  # Tested and working
 
 # Spotify (keeping for future)
 SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID', '')

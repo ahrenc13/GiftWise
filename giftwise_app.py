@@ -153,7 +153,7 @@ def scrape_instagram_profile(username, max_posts=50):
         response = requests.post(
             f'https://api.apify.com/v2/acts/{APIFY_INSTAGRAM_ACTOR}/runs?token={APIFY_API_TOKEN}',
             json={
-                'usernames': [username],
+                'username': username,  # This actor expects singular username
                 'resultsLimit': max_posts
             }
         )

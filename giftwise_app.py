@@ -215,57 +215,44 @@ def scrape_instagram_profile(username, max_posts=50):
         # Parse and structure data
         if not data:
             return None
-            
-        # Try different field names based on what the actor returns
-        profile = data[0] if data else {}
         
-        # Try to extract posts from various possible field names
-        posts = []
-        for field in ['latestPosts', 'posts', 'items', 'edges']:
-            if field in profile and profile[field]:
-                posts = profile[field]
-                break
+        # CRITICAL: This actor returns array of POST OBJECTS, not a profile object
+        # Each item in data[] is a single post with fields: caption, likesCount, commentsCount, etc.
+        # NOT a profile object with nested posts
         
-        # If no posts found in nested structure, check if data itself is posts array
-        if not posts and len(data) > 1:
-            posts = data
+        # Extract username and profile info from first post (all posts have same owner)
+        first_post = data[0]
+        owner_username = first_post.get('ownerUsername', username)
+        owner_full_name = first_post.get('ownerFullName', '')
         
-        posts = posts[:max_posts]
+        # Data is already the posts array - limit to max_posts
+        posts = data[:max_posts]
         
-        # Try to extract highlights (stories saved to profile)
-        highlights = []
-        for field in ['highlights', 'highlightReels', 'storyHighlights', 'reels']:
-            if field in profile and profile[field]:
-                highlights = profile[field]
-                break
+        print(f"DEBUG - Instagram actor returns posts directly: {len(posts)} posts extracted")
         
-        print(f"DEBUG - Extracted {len(posts)} posts and {len(highlights)} highlights from Instagram data")
+        # This actor doesn't return highlights, bio, or follower count
+        # Just posts with owner info
         
         return {
-            'username': username,
-            'full_name': profile.get('fullName', profile.get('full_name', '')),
-            'bio': profile.get('biography', profile.get('bio', profile.get('description', ''))),
-            'followers': profile.get('followersCount', profile.get('followers', profile.get('followerCount', 0))),
+            'username': owner_username,
+            'full_name': owner_full_name,
+            'bio': '',  # Not available from this actor
+            'followers': 0,  # Not available from this actor
             'posts': [
                 {
-                    'caption': post.get('caption', post.get('text', post.get('description', ''))),
-                    'likes': post.get('likesCount', post.get('likes', post.get('likeCount', 0))),
-                    'comments': post.get('commentsCount', post.get('comments', post.get('commentCount', 0))),
-                    'timestamp': post.get('timestamp', post.get('createdAt', post.get('created_time', ''))),
-                    'type': post.get('type', post.get('mediaType', 'image'))
+                    'caption': post.get('caption', ''),
+                    'likes': post.get('likesCount', 0),
+                    'comments': post.get('commentsCount', 0),
+                    'timestamp': post.get('timestamp', ''),
+                    'type': post.get('type', 'image'),
+                    'url': post.get('url', ''),
+                    'hashtags': post.get('hashtags', [])
                 }
                 for post in posts
             ],
-            'highlights': [
-                {
-                    'title': highlight.get('title', highlight.get('name', '')),
-                    'cover': highlight.get('coverMediaUrl', highlight.get('cover', '')),
-                    'items_count': highlight.get('mediaCount', highlight.get('itemCount', len(highlight.get('items', [])))),
-                }
-                for highlight in highlights
-            ],
+            'highlights': [],  # Not available from this actor
             'total_posts': len(posts),
-            'total_highlights': len(highlights),
+            'total_highlights': 0,
             'scraped_at': datetime.now().isoformat()
         }
         

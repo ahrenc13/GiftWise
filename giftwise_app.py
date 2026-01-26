@@ -165,13 +165,29 @@ def scrape_instagram_profile(username, max_posts=50):
         run_id = response.json()['data']['id']
         print(f"Instagram scrape started, run ID: {run_id}")
         
-        # Poll for completion (max 2 minutes)
-        for _ in range(24):  # 24 * 5 seconds = 2 minutes
-            time.sleep(5)
+        # Poll for completion with adaptive intervals
+        max_wait = 120  # 2 minutes max
+        elapsed = 0
+        
+        while elapsed < max_wait:
+            if elapsed < 30:
+                wait_time = 2  # Check every 2 seconds for first 30 seconds
+            else:
+                wait_time = 5  # Then every 5 seconds
+            
+            time.sleep(wait_time)
+            elapsed += wait_time
+            
             status_response = requests.get(
                 f'https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}'
             )
+            
+            if status_response.status_code != 200:
+                print(f"Instagram status check failed: {status_response.text}")
+                continue
+                
             status = status_response.json()['data']['status']
+            print(f"Instagram scrape status after {elapsed}s: {status}")
             
             if status == 'SUCCEEDED':
                 break
@@ -191,29 +207,65 @@ def scrape_instagram_profile(username, max_posts=50):
         data = results_response.json()
         print(f"Instagram scrape complete: {len(data)} items retrieved")
         
+        # DEBUG: Print data structure
+        if data and len(data) > 0:
+            print(f"DEBUG - Instagram data keys: {list(data[0].keys())}")
+            print(f"DEBUG - Instagram first item sample: {str(data[0])[:500]}")
+        
         # Parse and structure data
         if not data:
             return None
             
+        # Try different field names based on what the actor returns
         profile = data[0] if data else {}
-        posts = profile.get('latestPosts', [])[:max_posts]
+        
+        # Try to extract posts from various possible field names
+        posts = []
+        for field in ['latestPosts', 'posts', 'items', 'edges']:
+            if field in profile and profile[field]:
+                posts = profile[field]
+                break
+        
+        # If no posts found in nested structure, check if data itself is posts array
+        if not posts and len(data) > 1:
+            posts = data
+        
+        posts = posts[:max_posts]
+        
+        # Try to extract highlights (stories saved to profile)
+        highlights = []
+        for field in ['highlights', 'highlightReels', 'storyHighlights', 'reels']:
+            if field in profile and profile[field]:
+                highlights = profile[field]
+                break
+        
+        print(f"DEBUG - Extracted {len(posts)} posts and {len(highlights)} highlights from Instagram data")
         
         return {
             'username': username,
-            'full_name': profile.get('fullName', ''),
-            'bio': profile.get('biography', ''),
-            'followers': profile.get('followersCount', 0),
+            'full_name': profile.get('fullName', profile.get('full_name', '')),
+            'bio': profile.get('biography', profile.get('bio', profile.get('description', ''))),
+            'followers': profile.get('followersCount', profile.get('followers', profile.get('followerCount', 0))),
             'posts': [
                 {
-                    'caption': post.get('caption', ''),
-                    'likes': post.get('likesCount', 0),
-                    'comments': post.get('commentsCount', 0),
-                    'timestamp': post.get('timestamp', ''),
-                    'type': post.get('type', 'image')
+                    'caption': post.get('caption', post.get('text', post.get('description', ''))),
+                    'likes': post.get('likesCount', post.get('likes', post.get('likeCount', 0))),
+                    'comments': post.get('commentsCount', post.get('comments', post.get('commentCount', 0))),
+                    'timestamp': post.get('timestamp', post.get('createdAt', post.get('created_time', ''))),
+                    'type': post.get('type', post.get('mediaType', 'image'))
                 }
                 for post in posts
             ],
+            'highlights': [
+                {
+                    'title': highlight.get('title', highlight.get('name', '')),
+                    'cover': highlight.get('coverMediaUrl', highlight.get('cover', '')),
+                    'items_count': highlight.get('mediaCount', highlight.get('itemCount', len(highlight.get('items', [])))),
+                }
+                for highlight in highlights
+            ],
             'total_posts': len(posts),
+            'total_highlights': len(highlights),
             'scraped_at': datetime.now().isoformat()
         }
         
@@ -255,13 +307,31 @@ def scrape_tiktok_profile(username, max_videos=50):
         run_id = response.json()['data']['id']
         print(f"TikTok scrape started, run ID: {run_id}")
         
-        # Poll for completion (max 2 minutes)
-        for _ in range(24):
-            time.sleep(5)
+        # Poll for completion with adaptive intervals (faster checks initially)
+        # Check every 2s for first 30s, then every 5s for remaining time
+        # Total: 15 checks * 2s = 30s, then 18 checks * 5s = 90s = 2 minutes total
+        max_wait = 120  # 2 minutes max
+        elapsed = 0
+        
+        while elapsed < max_wait:
+            if elapsed < 30:
+                wait_time = 2  # Check every 2 seconds for first 30 seconds
+            else:
+                wait_time = 5  # Then every 5 seconds
+            
+            time.sleep(wait_time)
+            elapsed += wait_time
+            
             status_response = requests.get(
                 f'https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}'
             )
+            
+            if status_response.status_code != 200:
+                print(f"TikTok status check failed: {status_response.text}")
+                continue
+                
             status = status_response.json()['data']['status']
+            print(f"TikTok scrape status after {elapsed}s: {status}")
             
             if status == 'SUCCEEDED':
                 break
@@ -809,10 +879,18 @@ PINTEREST DATA ({pinterest.get('total_boards', 0)} boards, {pinterest.get('total
                 posts = instagram['posts']
                 captions = [p['caption'][:150] for p in posts[:20] if p.get('caption')]
                 
+                # Add highlights if available
+                highlights_info = ""
+                if instagram.get('highlights') and len(instagram['highlights']) > 0:
+                    highlights = instagram['highlights']
+                    highlight_names = [h.get('title', '') for h in highlights if h.get('title')]
+                    highlights_info = f"\n- Story Highlights ({len(highlights)} categories): {', '.join(highlight_names)}"
+                    highlights_info += "\n- NOTE: Highlights reveal curated interests - hobbies, activities, sports, instruments, etc."
+                
                 platform_insights.append(f"""
 INSTAGRAM DATA ({instagram.get('total_posts', 0)} posts analyzed):
 - Username: @{instagram.get('username', 'unknown')}
-- Bio: {instagram.get('bio', '')}
+- Bio: {instagram.get('bio', '')}{highlights_info}
 - Post Themes: {'; '.join(captions[:15])}
 - Engagement Style: {"High engagement" if instagram.get('followers', 0) > 1000 else "Personal account"}
 """)

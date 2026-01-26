@@ -592,8 +592,11 @@ def connect_platforms():
     if not user:
         return redirect('/signup')
     
+    recipient_type = user.get('recipient_type', 'myself')
+    
     return render_template('connect_platforms.html',
                          user=user,
+                         recipient_type=recipient_type,
                          platform_status=PLATFORM_STATUS)
 
 # ============================================================================
@@ -940,11 +943,14 @@ USER DATA:
 CRITICAL INSTRUCTIONS:
 1. Prioritize UNIQUE, SPECIALTY items over generic mass-market products
 2. Focus on independent makers, artisan shops, and unique experiences
-3. Each recommendation MUST include a direct purchase link (actual URL)
-4. Prioritize affiliate-friendly sources (Etsy, UncommonGoods, specialty retailers, experience platforms)
-5. Balance quality with affiliate potential - NEVER recommend generic Amazon items just for easy commission
-6. Use TikTok repost patterns to identify deeper interests - what they choose to amplify reveals what truly resonates
-7. Look for the special, thoughtful items that show you really understand them
+3. Each recommendation MUST include a REAL, WORKING purchase link - DO NOT generate placeholder URLs
+4. For purchase links: Search for actual products on Etsy, UncommonGoods, or specialty retailers and provide their EXACT URLs
+5. If you cannot find a specific product URL, use a search URL format like: https://www.etsy.com/search?q=specific+product+name
+6. Balance quality with affiliate potential - NEVER recommend generic Amazon items just for easy commission
+7. Use TikTok repost patterns to identify deeper interests - what they choose to amplify reveals what truly resonates
+8. Look for the special, thoughtful items that show you really understand them
+9. BE SPECIFIC: Instead of "vintage record player", say "Crosley C6 Belt-Drive Turntable in Cherry" with exact URL
+10. VERIFY PRODUCTS EXIST: Only recommend items you can find real links for
 
 PRICE DISTRIBUTION:
 - 3-4 items in $20-50 range
@@ -954,12 +960,12 @@ PRICE DISTRIBUTION:
 Return EXACTLY 10 recommendations as a JSON array with this structure:
 [
   {{
-    "name": "Specific product or experience name",
+    "name": "SPECIFIC product or experience name with brand/model",
     "description": "2-3 sentence description of what this is and why it's special",
     "why_perfect": "Why this matches their interests based on specific social media signals",
     "price_range": "$XX-$XX",
-    "where_to_buy": "Specific retailer name",
-    "purchase_link": "https://actual-direct-link-to-product.com",
+    "where_to_buy": "Specific retailer name (Etsy shop name, UncommonGoods, etc)",
+    "purchase_link": "https://REAL-WORKING-URL.com (NOT a placeholder - must be actual product page or search URL)",
     "gift_type": "physical" or "experience",
     "confidence_level": "safe_bet" or "adventurous"
   }}

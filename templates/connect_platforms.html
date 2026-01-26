@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Connect Platforms - Giftwise</title>
     <style>
-        /* [Keep all your existing styles from original file] */
         * {
             margin: 0;
             padding: 0;
@@ -44,20 +43,27 @@
             padding: 0 20px;
         }
         
-        .info-banner {
-            background: #eff6ff;
-            border: 2px solid #3b82f6;
-            color: #1e40af;
-            padding: 20px 25px;
+        .success-banner {
+            background: #10b981;
+            color: white;
+            padding: 18px 25px;
             border-radius: 12px;
             margin-bottom: 35px;
-            line-height: 1.7;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            animation: slideDown 0.3s ease-out;
         }
         
-        .info-banner strong {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 1.1em;
+        @keyframes slideDown {
+            from {
+                transform: translateY(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
         
         .page-title {
@@ -108,7 +114,6 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             transition: all 0.3s;
             border: 2px solid transparent;
-            position: relative;
         }
         
         .platform-card:hover {
@@ -122,26 +127,14 @@
             background: linear-gradient(to bottom, #ffffff, #f0fdf4);
         }
         
-        .platform-card.coming-soon {
-            opacity: 0.6;
-            border-color: #d1d5db;
+        .platform-card.locked {
+            opacity: 0.7;
+            border-color: #f59e0b;
+            position: relative;
         }
         
-        .platform-card.coming-soon:hover {
-            transform: none;
-            border-color: #d1d5db;
-        }
-        
-        .coming-soon-badge {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            background: #f59e0b;
-            color: white;
-            padding: 6px 14px;
-            border-radius: 20px;
-            font-size: 0.85em;
-            font-weight: 700;
+        .platform-card.locked:hover {
+            border-color: #d97706;
         }
         
         .platform-header {
@@ -185,19 +178,9 @@
         
         .platform-description {
             color: #6b7280;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             line-height: 1.7;
             font-size: 1.05em;
-        }
-        
-        .platform-note {
-            background: #fef3c7;
-            color: #92400e;
-            padding: 12px 15px;
-            border-radius: 8px;
-            font-size: 0.9em;
-            margin-bottom: 18px;
-            line-height: 1.5;
         }
         
         .platform-status {
@@ -242,35 +225,29 @@
         
         .connect-button:hover {
             transform: scale(1.03);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
-        }
-        
-        .connect-button:disabled,
-        .connect-button.disabled {
-            background: #9ca3af;
-            cursor: not-allowed;
-            transform: none;
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
         }
         
         .disconnect-button {
             background: #ef4444;
+            margin-top: 12px;
         }
         
         .disconnect-button:hover {
-            background: #dc2626;
+            box-shadow: 0 8px 20px rgba(239, 68, 68, 0.3);
         }
         
         .tiktok-form {
             display: flex;
-            gap: 10px;
+            gap: 12px;
         }
         
         .tiktok-input {
             flex: 1;
-            padding: 12px 18px;
+            padding: 14px;
             border: 2px solid #e5e7eb;
             border-radius: 10px;
-            font-size: 1em;
+            font-size: 1.05em;
         }
         
         .tiktok-input:focus {
@@ -279,28 +256,27 @@
         }
         
         .generate-section {
-            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-            padding: 50px 40px;
+            background: white;
             border-radius: 20px;
+            padding: 50px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
             text-align: center;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
         
         .generate-title {
-            font-size: 2em;
-            margin-bottom: 15px;
+            font-size: 1.8em;
+            margin-bottom: 18px;
             color: #1f2937;
         }
         
         .generate-description {
             color: #6b7280;
             margin-bottom: 35px;
-            font-size: 1.15em;
-            line-height: 1.7;
+            font-size: 1.1em;
         }
         
         .generate-button {
-            padding: 20px 60px;
+            padding: 20px 50px;
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
             border: none;
@@ -338,6 +314,20 @@
             font-size: 1.05em;
         }
         
+        .tiktok-input {
+            padding: 14px 18px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 1em;
+            transition: all 0.2s;
+            outline: none;
+        }
+        
+        .tiktok-input:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
         @media (max-width: 768px) {
             .platforms-grid {
                 grid-template-columns: 1fr;
@@ -363,56 +353,41 @@
     
     <div class="container">
         {% if request.args.get('success') %}
-        <div class="info-banner" style="background: #d1fae5; border-color: #10b981; color: #065f46;">
-            <strong>✓ Success!</strong>
-            {{ request.args.get('success')|capitalize }} connected successfully.
+        <div class="success-banner">
+            <span style="font-size: 1.6em;">✓</span>
+            <div>
+                <strong>Success!</strong> {{ request.args.get('success')|capitalize }} connected successfully.
+            </div>
         </div>
         {% endif %}
         
-        <div class="info-banner">
-            <strong>📢 Early Access Version</strong>
-            We're testing Giftwise with real users like you! Some platforms are fully available now, others coming soon. Your feedback will directly shape what we build next.
-        </div>
+        <h1 class="page-title">Connect {% if recipient_type == 'someone_else' %}Their{% else %}Your{% endif %} Platforms</h1>
+        <p class="page-subtitle">
+            {% if recipient_type == 'someone_else' %}
+                Enter the recipient's Instagram and TikTok usernames below. We'll analyze their public profiles to find perfect gift ideas! (Note: Pinterest isn't available for others - only public profiles work)
+            {% else %}
+                Connect at least 2 platforms for great recommendations. More platforms = even better results!
+            {% endif %}
+        </p>
         
-        <h1 class="page-title">Connect Your Platforms</h1>
-        <p class="page-subtitle">Connect at least 2 platforms for personalized recommendations. More platforms = better results!</p>
-        
-        {% set pinterest_connected = user.platforms.pinterest is defined %}
         {% set instagram_connected = user.platforms.instagram is defined %}
+        {% set pinterest_connected = user.platforms.pinterest is defined %}
         {% set tiktok_connected = user.platforms.tiktok is defined %}
-        {% set connected_count = [pinterest_connected, instagram_connected, tiktok_connected]|select|list|length %}
-        {% set progress_percent = (connected_count / 3 * 100)|int %}
+        {% if recipient_type == 'someone_else' %}
+            {% set total_platforms = 2 %}
+            {% set connected_count = [instagram_connected, tiktok_connected]|select|list|length %}
+        {% else %}
+            {% set total_platforms = 3 %}
+            {% set connected_count = [instagram_connected, pinterest_connected, tiktok_connected]|select|list|length %}
+        {% endif %}
+        {% set progress_percent = (connected_count / total_platforms * 100)|int %}
         
         <div class="progress-bar">
             <div class="progress-fill" style="width: {{ progress_percent }}%"></div>
         </div>
-        <div class="progress-text">{{ connected_count }} of 3 platforms connected</div>
+        <div class="progress-text">{{ connected_count }} of {{ total_platforms }} platforms connected</div>
         
         <div class="platforms-grid">
-            <!-- Pinterest -->
-            <div class="platform-card {{ 'connected' if pinterest_connected }}">
-                <div class="platform-header">
-                    <div class="platform-icon pinterest">📌</div>
-                    <div class="platform-name">Pinterest</div>
-                </div>
-                <div class="platform-description">
-                    Your boards and pins show exactly what you're wishing for. The highest-intent gift data available!
-                </div>
-                {% if pinterest_connected %}
-                <div class="platform-status connected">
-                    <span class="status-dot"></span>
-                    <span>Connected • {{ user.platforms.pinterest.total_boards }} boards, {{ user.platforms.pinterest.total_pins }} pins</span>
-                </div>
-                <a href="/disconnect/pinterest" class="connect-button disconnect-button">Disconnect</a>
-                {% else %}
-                <div class="platform-status">
-                    <span class="status-dot"></span>
-                    <span>Ready to Connect • Full OAuth Access</span>
-                </div>
-                <a href="/oauth/pinterest/start" class="connect-button">Connect Pinterest</a>
-                {% endif %}
-            </div>
-            
             <!-- Instagram -->
             <div class="platform-card {{ 'connected' if instagram_connected }}">
                 <div class="platform-header">
@@ -420,10 +395,11 @@
                     <div class="platform-name">Instagram</div>
                 </div>
                 <div class="platform-description">
-                    Your posts and aesthetic show your lifestyle and interests. Great for fashion, home, and hobby gifts.
-                </div>
-                <div class="platform-note">
-                    ℹ️ Public profile data only - Instagram blocked OAuth for new apps
+                    {% if recipient_type == 'someone_else' %}
+                        Enter their Instagram username to analyze their posts, interests, and style. Public profiles work best!
+                    {% else %}
+                        Full access to your posts, hashtags, and interests. Shows your lifestyle and aesthetic preferences.
+                    {% endif %}
                 </div>
                 {% if instagram_connected %}
                 <div class="platform-status connected">
@@ -434,28 +410,71 @@
                 {% else %}
                 <div class="platform-status">
                     <span class="status-dot"></span>
-                    <span>Ready to Connect • Public Data</span>
+                    <span>Not Connected</span>
                 </div>
-                <form action="/connect/instagram" method="POST" class="tiktok-form">
-                    <input type="text" name="username" placeholder="@yourusername" class="tiktok-input" required>
-                    <button type="submit" class="connect-button" style="width: auto; padding: 14px 24px;">Add</button>
+                <form action="/connect/instagram" method="POST" style="display: flex; gap: 10px;">
+                    <input type="text" name="username" placeholder="@{% if recipient_type == 'someone_else' %}their_username{% else %}yourusername{% endif %}" class="tiktok-input" required style="flex: 1;">
+                    <button type="submit" class="connect-button" style="width: auto; padding: 14px 24px; margin: 0;">Connect</button>
                 </form>
                 {% endif %}
             </div>
             
-            <!-- TikTok -->
-            <div class="platform-card {{ 'connected' if tiktok_connected }}">
+            <!-- Pinterest (only for myself mode) -->
+            {% if recipient_type != 'someone_else' %}
+            <div class="platform-card {{ 'connected' if pinterest_connected }}{% if not platform_access.pinterest %} locked{% endif %}">
                 <div class="platform-header">
-                    <div class="platform-icon tiktok">🎬</div>
-                    <div class="platform-name">TikTok</div>
+                    <div class="platform-icon pinterest">📌</div>
+                    <div class="platform-name">Pinterest {% if not platform_access.pinterest %}🔒{% endif %}</div>
                 </div>
                 <div class="platform-description">
-                    Your videos show your current interests and trends. Perfect for discovering what's catching your attention right now.
+                    Your boards and pins show exactly what you're wishing for. The highest-intent gift data available!
                 </div>
-                <div class="platform-note">
-                    ℹ️ Public profile data only - No OAuth available yet
+                {% if not platform_access.pinterest %}
+                <div class="platform-status" style="background: #fef3c7; color: #92400e; font-weight: 600;">
+                    <span class="status-dot"></span>
+                    <span>Pro Feature</span>
                 </div>
-                {% if tiktok_connected %}
+                <a href="/upgrade" class="connect-button" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                    Upgrade to Connect
+                </a>
+                {% elif pinterest_connected %}
+                <div class="platform-status connected">
+                    <span class="status-dot"></span>
+                    <span>Connected • Full Access</span>
+                </div>
+                <a href="/disconnect/pinterest" class="connect-button disconnect-button">Disconnect</a>
+                {% else %}
+                <div class="platform-status">
+                    <span class="status-dot"></span>
+                    <span>Not Connected</span>
+                </div>
+                <a href="/oauth/pinterest/start" class="connect-button">Connect Pinterest</a>
+                {% endif %}
+            </div>
+            {% endif %}
+            
+            <!-- TikTok -->
+            <div class="platform-card {{ 'connected' if tiktok_connected }}{% if not platform_access.tiktok %} locked{% endif %}">
+                <div class="platform-header">
+                    <div class="platform-icon tiktok">🎬</div>
+                    <div class="platform-name">TikTok {% if not platform_access.tiktok %}🔒{% endif %}</div>
+                </div>
+                <div class="platform-description">
+                    {% if recipient_type == 'someone_else' %}
+                        Enter their TikTok username to analyze their video content and trends. Shows current interests and what they engage with!
+                    {% else %}
+                        Your public videos show current interests and trends. We analyze what you create and engage with!
+                    {% endif %}
+                </div>
+                {% if not platform_access.tiktok %}
+                <div class="platform-status" style="background: #fef3c7; color: #92400e; font-weight: 600;">
+                    <span class="status-dot"></span>
+                    <span>Pro Feature</span>
+                </div>
+                <a href="/upgrade" class="connect-button" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                    Upgrade to Connect
+                </a>
+                {% elif tiktok_connected %}
                 <div class="platform-status connected">
                     <span class="status-dot"></span>
                     <span>Connected • @{{ user.platforms.tiktok.username }}</span>
@@ -464,53 +483,37 @@
                 {% else %}
                 <div class="platform-status">
                     <span class="status-dot"></span>
-                    <span>Ready to Connect • Public Data</span>
+                    <span>Not Connected</span>
                 </div>
-                <form action="/connect/tiktok" method="POST" class="tiktok-form">
-                    <input type="text" name="username" placeholder="@yourusername" class="tiktok-input" required>
-                    <button type="submit" class="connect-button" style="width: auto; padding: 14px 24px;">Add</button>
+                <form action="/connect/tiktok" method="POST" style="display: flex; gap: 10px;">
+                    <input type="text" name="username" placeholder="@{% if recipient_type == 'someone_else' %}their_username{% else %}yourusername{% endif %}" class="tiktok-input" required style="flex: 1;">
+                    <button type="submit" class="connect-button" style="width: auto; padding: 14px 24px; margin: 0;">Connect</button>
                 </form>
                 {% endif %}
-            </div>
-            
-            <!-- Spotify - Coming Soon -->
-            <div class="platform-card coming-soon">
-                <div class="coming-soon-badge">Coming Soon</div>
-                <div class="platform-header">
-                    <div class="platform-icon spotify">🎵</div>
-                    <div class="platform-name">Spotify</div>
-                </div>
-                <div class="platform-description">
-                    Music taste reveals personality and interests. Perfect for concert tickets, vinyl, and music gear recommendations.
-                </div>
-                <div class="platform-note">
-                    🔒 Spotify currently not accepting new OAuth apps - we're working on access!
-                </div>
-                <div class="platform-status">
-                    <span class="status-dot"></span>
-                    <span>Coming Soon</span>
-                </div>
-                <button class="connect-button disabled" disabled>Not Available Yet</button>
             </div>
         </div>
         
         <!-- Generate Recommendations Section -->
         <div class="generate-section">
-            <h2 class="generate-title">Ready for Your Gift Recommendations?</h2>
+            <h2 class="generate-title">Ready for {% if recipient_type == 'someone_else' %}Their{% else %}Your{% endif %} Gift Recommendations?</h2>
             <p class="generate-description">
-                We'll analyze all your connected platforms to find ultra-specific gift ideas tailored just for you.
+                {% if recipient_type == 'someone_else' %}
+                    We'll analyze their connected social profiles to find ultra-specific gift ideas they'll absolutely love.
+                {% else %}
+                    We'll analyze all your connected platforms to find ultra-specific gift ideas tailored just for you.
+                {% endif %}
             </p>
             
             {% if connected_count >= 2 %}
             <a href="/generate-recommendations" class="generate-button">
-                🎁 Generate My Recommendations
+                🎁 Generate {% if recipient_type == 'someone_else' %}Their{% else %}My{% endif %} Recommendations
             </a>
             <p class="platforms-count">
                 ✓ {{ connected_count }} platforms connected - Ready to go!
             </p>
             {% else %}
             <button class="generate-button" disabled>
-                🎁 Generate My Recommendations
+                🎁 Generate {% if recipient_type == 'someone_else' %}Their{% else %}My{% endif %} Recommendations
             </button>
             <p class="platforms-required">
                 ⚠ Connect at least 2 platforms to generate recommendations

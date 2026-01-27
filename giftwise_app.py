@@ -298,16 +298,16 @@ def check_instagram_privacy(username):
 
 def check_tiktok_privacy(username):
     """
-    Check if TikTok account exists and is public
+    Check if TikTok account exists (privacy detection is unreliable due to JS rendering)
     Returns: dict with valid, private, message
     """
     try:
         url = f'https://www.tiktok.com/@{username}'
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
         
-        response = requests.get(url, headers=headers, timeout=5)
+        response = requests.get(url, headers=headers, timeout=10)
         
         # Account doesn't exist
         if response.status_code == 404:
@@ -327,26 +327,14 @@ def check_tiktok_privacy(username):
                 'icon': '⚠️'
             }
         
-        html = response.text
-        
-        # TikTok privacy indicators
-        is_private = 'This account is private' in html or '"privateAccount":true' in html
-        
-        if is_private:
-            return {
-                'valid': False,
-                'private': True,
-                'exists': True,
-                'message': '✗ Private account - we can only analyze public profiles',
-                'help': 'Ask them to make their account public temporarily, or try a different platform',
-                'icon': '🔒'
-            }
-        
+        # If we get a 200 response, the account exists
+        # We can't reliably detect privacy due to JavaScript rendering
+        # Let Apify handle the privacy check during actual scraping
         return {
             'valid': True,
             'private': False,
             'exists': True,
-            'message': '✓ Public profile found',
+            'message': '✓ Account found - we\'ll verify access when connecting',
             'icon': '✅'
         }
     
@@ -358,11 +346,12 @@ def check_tiktok_privacy(username):
             'icon': '⚠️'
         }
     except Exception as e:
-        print(f"TikTok privacy check error: {e}")
+        print(f"TikTok validation error for @{username}: {e}")
+        # If validation fails, let them try anyway
         return {
-            'valid': False,
+            'valid': True,
             'error': str(e),
-            'message': '⚠️ Unable to check account - you can still try connecting',
+            'message': '✓ Unable to verify - click Connect to try',
             'icon': '⚠️'
         }
 

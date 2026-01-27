@@ -1093,13 +1093,16 @@ def connect_instagram():
     # Generate unique task ID
     task_id = str(uuid.uuid4())
     
+    # Get user_id BEFORE starting thread (request context available here)
+    user_id = session['user_id']
+    
     # Start scraping in background thread
     def scrape_task():
         instagram_data = scrape_instagram_profile(username, max_posts=50, task_id=task_id)
         
         if instagram_data:
-            # Save to database
-            user = get_session_user()  # Get fresh user data
+            # Save to database using passed user_id (no session access needed)
+            user = get_user(user_id)
             platforms = user.get('platforms', {})
             platforms['instagram'] = {
                 'username': username,
@@ -1107,7 +1110,7 @@ def connect_instagram():
                 'method': 'scraping',
                 'data': instagram_data
             }
-            save_user(session['user_id'], {'platforms': platforms})
+            save_user(user_id, {'platforms': platforms})
     
     thread = threading.Thread(target=scrape_task)
     thread.daemon = True
@@ -1135,13 +1138,16 @@ def connect_tiktok():
     # Generate unique task ID
     task_id = str(uuid.uuid4())
     
+    # Get user_id BEFORE starting thread (request context available here)
+    user_id = session['user_id']
+    
     # Start scraping in background thread
     def scrape_task():
         tiktok_data = scrape_tiktok_profile(username, max_videos=50, task_id=task_id)
         
         if tiktok_data:
-            # Save to database
-            user = get_session_user()  # Get fresh user data
+            # Save to database using passed user_id (no session access needed)
+            user = get_user(user_id)
             platforms = user.get('platforms', {})
             platforms['tiktok'] = {
                 'username': username,

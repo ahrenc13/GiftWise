@@ -1155,7 +1155,7 @@ def connect_tiktok():
                 'method': 'scraping',
                 'data': tiktok_data
             }
-            save_user(session['user_id'], {'platforms': platforms})
+            save_user(user_id, {'platforms': platforms})
     
     thread = threading.Thread(target=scrape_task)
     thread.daemon = True

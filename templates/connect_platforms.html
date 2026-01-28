@@ -10,739 +10,517 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f9fafb;
-            color: #333;
-        }
-        
-        .header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 25px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            min-height: 100vh;
+            padding: 40px 20px;
         }
-        
-        .header-content {
-            max-width: 1200px;
-            margin: 0 auto;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        
-        .logo {
-            font-size: 1.6em;
-            font-weight: bold;
-        }
-        
+
         .container {
-            max-width: 1200px;
-            margin: 50px auto;
-            padding: 0 20px;
+            max-width: 800px;
+            margin: 0 auto;
         }
-        
-        .success-banner {
-            background: #10b981;
-            color: white;
-            padding: 18px 25px;
-            border-radius: 12px;
-            margin-bottom: 35px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            animation: slideDown 0.3s ease-out;
-        }
-        
-        @keyframes slideDown {
-            from {
-                transform: translateY(-20px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-        
-        .page-title {
-            font-size: 2.5em;
-            margin-bottom: 12px;
-            color: #1f2937;
-        }
-        
-        .page-subtitle {
-            color: #6b7280;
-            margin-bottom: 50px;
-            font-size: 1.15em;
-        }
-        
-        .progress-bar {
-            background: #e5e7eb;
-            height: 8px;
-            border-radius: 10px;
-            margin-bottom: 50px;
-            overflow: hidden;
-        }
-        
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(90deg, #10b981, #059669);
-            border-radius: 10px;
-            transition: width 0.5s ease-out;
-        }
-        
-        .progress-text {
+
+        .header {
             text-align: center;
-            margin-top: 10px;
-            color: #6b7280;
-            font-weight: 600;
+            color: white;
+            margin-bottom: 40px;
         }
-        
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .progress-bar {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 5px;
+            margin-bottom: 40px;
+        }
+
+        .progress-fill {
+            background: white;
+            height: 10px;
+            border-radius: 15px;
+            transition: width 0.3s ease;
+        }
+
         .platforms-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 30px;
-            margin-bottom: 50px;
+            gap: 25px;
+            margin-bottom: 30px;
         }
-        
+
         .platform-card {
             background: white;
-            border-radius: 18px;
-            padding: 35px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            transition: all 0.3s;
-            border: 2px solid transparent;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
         }
-        
+
         .platform-card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 12px 30px rgba(0,0,0,0.12);
-            border-color: #667eea;
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
         }
-        
+
         .platform-card.connected {
-            border-color: #10b981;
-            background: linear-gradient(to bottom, #ffffff, #f0fdf4);
+            border: 3px solid #10b981;
         }
-        
+
         .platform-card.locked {
-            opacity: 0.7;
-            border-color: #f59e0b;
-            position: relative;
+            opacity: 0.6;
+            pointer-events: none;
         }
-        
-        .platform-card.locked:hover {
-            border-color: #d97706;
-        }
-        
+
         .platform-header {
             display: flex;
             align-items: center;
-            gap: 18px;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
         }
-        
+
         .platform-icon {
-            width: 55px;
-            height: 55px;
-            border-radius: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.6em;
+            font-size: 2.5em;
+            margin-right: 15px;
         }
-        
-        .platform-icon.instagram {
-            background: linear-gradient(45deg, #f09433 0%, #e6683c 25%, #dc2743 50%, #cc2366 75%, #bc1888 100%);
-        }
-        
-        .platform-icon.spotify {
-            background: #1DB954;
-        }
-        
-        .platform-icon.pinterest {
-            background: #E60023;
-        }
-        
-        .platform-icon.tiktok {
-            background: linear-gradient(45deg, #00f2ea, #ff0050);
-        }
-        
-        .platform-name {
-            font-size: 1.4em;
-            font-weight: 600;
+
+        .platform-info h3 {
+            font-size: 1.5em;
             color: #1f2937;
+            margin-bottom: 5px;
         }
-        
-        .platform-description {
+
+        .platform-info p {
             color: #6b7280;
-            margin-bottom: 25px;
-            line-height: 1.7;
-            font-size: 1.05em;
+            font-size: 0.9em;
         }
-        
-        .platform-status {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 18px;
-            padding: 12px;
-            background: #f3f4f6;
+
+        .platform-form {
+            margin-top: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            color: #374151;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid #e5e7eb;
             border-radius: 10px;
-            font-size: 0.95em;
-            font-weight: 500;
+            font-size: 1em;
+            transition: border-color 0.2s;
         }
-        
-        .platform-status.connected {
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .validation-status {
+            margin-top: 8px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            display: none;
+            animation: fadeIn 0.3s;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        .validation-status.checking {
+            background: #f3f4f6;
+            color: #6b7280;
+            display: block;
+        }
+
+        .validation-status.success {
             background: #d1fae5;
             color: #065f46;
+            display: block;
         }
-        
-        .status-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: currentColor;
+
+        .validation-status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            display: block;
         }
-        
+
+        .validation-status.warning {
+            background: #fef3c7;
+            color: #92400e;
+            display: block;
+        }
+
+        .status-icon {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+
         .connect-button {
             width: 100%;
-            padding: 14px 28px;
+            padding: 14px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             border: none;
-            border-radius: 12px;
-            font-size: 1.05em;
+            border-radius: 10px;
+            font-size: 1.1em;
             font-weight: 600;
             cursor: pointer;
-            text-align: center;
-            text-decoration: none;
-            display: inline-block;
-            transition: all 0.2s;
+            transition: all 0.3s ease;
         }
-        
+
         .connect-button:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
-        
+
         .connect-button:disabled {
             opacity: 0.5;
             cursor: not-allowed;
         }
-        
-        .disconnect-button {
-            background: #ef4444;
-        }
-        
-        .disconnect-button:hover {
-            background: #dc2626;
-        }
-        
-        .generate-section {
-            background: white;
-            border-radius: 20px;
-            padding: 50px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            text-align: center;
-            border: 3px solid #667eea;
-        }
-        
-        .generate-title {
-            font-size: 2em;
-            margin-bottom: 20px;
-            color: #1f2937;
-        }
-        
-        .generate-description {
-            color: #6b7280;
-            margin-bottom: 35px;
-            font-size: 1.15em;
-            line-height: 1.7;
-        }
-        
-        .generate-button {
-            padding: 20px 50px;
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+
+        .connected-badge {
+            display: inline-block;
+            background: #10b981;
             color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+        }
+
+        .generate-section {
+            text-align: center;
+            margin-top: 40px;
+        }
+
+        .generate-button {
+            display: inline-block;
+            padding: 18px 50px;
+            background: white;
+            color: #667eea;
             border: none;
             border-radius: 50px;
             font-size: 1.3em;
             font-weight: 700;
             cursor: pointer;
+            transition: all 0.3s ease;
             text-decoration: none;
-            display: inline-block;
-            transition: all 0.2s;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
-        
-        .generate-button:hover:not(:disabled) {
+
+        .generate-button:hover {
             transform: translateY(-3px);
-            box-shadow: 0 12px 30px rgba(16, 185, 129, 0.3);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
         }
-        
+
         .generate-button:disabled {
-            background: #9ca3af;
+            opacity: 0.5;
             cursor: not-allowed;
         }
-        
-        .platforms-count {
-            margin-top: 20px;
-            color: #10b981;
-            font-weight: 600;
-            font-size: 1.05em;
+
+        .requirement-text {
+            color: white;
+            margin-top: 15px;
+            font-size: 0.95em;
+            opacity: 0.9;
         }
-        
-        .platforms-required {
-            margin-top: 20px;
-            color: #f59e0b;
-            font-weight: 600;
-            font-size: 1.05em;
-        }
-        
-        .tiktok-input {
-            padding: 14px 18px;
-            border: 2px solid #e5e7eb;
-            border-radius: 10px;
-            font-size: 1em;
-            transition: all 0.2s;
-            outline: none;
-        }
-        
-        .tiktok-input:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
-        
-        /* NEW: Validation status styles */
-        .validation-status {
-            min-height: 32px;
-            margin-top: 12px;
-            margin-bottom: 12px;
-            transition: all 0.3s ease;
-        }
-        
-        .validation-status.success {
-            color: #059669;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .validation-status.error {
-            color: #dc2626;
-            font-weight: 600;
-        }
-        
-        .validation-status.error-details {
-            color: #6b7280;
-            font-size: 0.9em;
-            margin-top: 6px;
-            margin-left: 28px;
-        }
-        
-        .validation-status.checking {
-            color: #6b7280;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
-        
-        .spinner {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid #e5e7eb;
-            border-top-color: #6b7280;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        
-        @media (max-width: 768px) {
-            .platforms-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .page-title {
-                font-size: 2em;
-            }
-            
-            .generate-section {
-                padding: 35px 25px;
-            }
+
+        .lock-icon {
+            font-size: 1.2em;
+            margin-left: 10px;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <div class="header-content">
-            <div class="logo">🎁 Giftwise</div>
-            <div style="opacity: 0.95;">Connect Your Platforms</div>
-        </div>
-    </div>
-    
     <div class="container">
-        {% if request.args.get('success') %}
-        <div class="success-banner">
-            <span style="font-size: 1.6em;">✓</span>
-            <div>
-                <strong>Success!</strong> {{ request.args.get('success')|capitalize }} connected successfully.
-            </div>
+        <div class="header">
+            <h1>Connect Your Platforms</h1>
+            <p>{% if recipient_type == 'someone_else' %}Connect their social media to analyze their interests{% else %}Connect your social media to find perfect gifts{% endif %}</p>
         </div>
-        {% endif %}
-        
-        <h1 class="page-title">Connect {% if recipient_type == 'someone_else' %}Their{% else %}Your{% endif %} Platforms</h1>
-        <p class="page-subtitle">
-            {% if recipient_type == 'someone_else' %}
-                Enter the recipient's Instagram and TikTok usernames below. We'll check if they're public profiles, then analyze to find perfect gift ideas!
-            {% else %}
-                Connect at least 2 platforms for great recommendations. More platforms = even better results!
-            {% endif %}
-        </p>
-        
-        {% set instagram_connected = user.platforms.instagram is defined %}
-        {% set pinterest_connected = user.platforms.pinterest is defined %}
-        {% set tiktok_connected = user.platforms.tiktok is defined %}
-        {% if recipient_type == 'someone_else' %}
-            {% set total_platforms = 2 %}
-            {% set connected_count = [instagram_connected, tiktok_connected]|select|list|length %}
-        {% else %}
-            {% set total_platforms = 3 %}
-            {% set connected_count = [instagram_connected, pinterest_connected, tiktok_connected]|select|list|length %}
-        {% endif %}
-        {% set progress_percent = (connected_count / total_platforms * 100)|int %}
-        
+
         <div class="progress-bar">
-            <div class="progress-fill" style="width: {{ progress_percent }}%"></div>
+            <div class="progress-fill" style="width: {{ (platforms|length / 3 * 100)|int }}%;"></div>
         </div>
-        <div class="progress-text">{{ connected_count }} of {{ total_platforms }} platforms connected</div>
-        
+
         <div class="platforms-grid">
             <!-- Instagram -->
-            <div class="platform-card {{ 'connected' if instagram_connected }}">
+            <div class="platform-card {% if platforms.instagram %}connected{% endif %}{% if not platform_access.instagram %} locked{% endif %}">
                 <div class="platform-header">
-                    <div class="platform-icon instagram">📷</div>
-                    <div class="platform-name">Instagram</div>
-                </div>
-                <div class="platform-description">
-                    {% if recipient_type == 'someone_else' %}
-                        Enter their Instagram username to analyze their posts, interests, and style. Public profiles only!
-                    {% else %}
-                        Full access to your posts, hashtags, and interests. Shows your lifestyle and aesthetic preferences.
-                    {% endif %}
-                </div>
-                {% if instagram_connected %}
-                <div class="platform-status connected">
-                    <span class="status-dot"></span>
-                    <span>Connected • @{{ user.platforms.instagram.username }}</span>
-                </div>
-                <a href="/disconnect/instagram" class="connect-button disconnect-button">Disconnect</a>
-                {% else %}
-                <div class="platform-status">
-                    <span class="status-dot"></span>
-                    <span>Not Connected</span>
-                </div>
-                <form action="/connect/instagram" method="POST" id="instagram-form" style="display: flex; gap: 10px; flex-direction: column;">
-                    <div style="display: flex; gap: 10px;">
-                        <input 
-                            type="text" 
-                            name="username" 
-                            id="instagram-username"
-                            placeholder="@{% if recipient_type == 'someone_else' %}their_username{% else %}yourusername{% endif %}" 
-                            class="tiktok-input" 
-                            required 
-                            style="flex: 1;">
-                        <button 
-                            type="submit" 
-                            id="instagram-submit"
-                            class="connect-button" 
-                            style="width: auto; padding: 14px 24px; margin: 0;"
-                            disabled>
-                            Connect
-                        </button>
+                    <div class="platform-icon">📷</div>
+                    <div class="platform-info">
+                        <h3>Instagram</h3>
+                        <p>Public profile analysis{% if not platform_access.instagram %} <span class="lock-icon">🔒 Pro</span>{% endif %}</p>
                     </div>
-                    <!-- Validation status appears here -->
-                    <div id="instagram-status" class="validation-status"></div>
-                </form>
-                {% endif %}
-            </div>
-            
-            <!-- Pinterest (only for myself mode) -->
-            {% if recipient_type != 'someone_else' %}
-            <div class="platform-card {{ 'connected' if pinterest_connected }}{% if not platform_access.pinterest %} locked{% endif %}">
-                <div class="platform-header">
-                    <div class="platform-icon pinterest">📌</div>
-                    <div class="platform-name">Pinterest {% if not platform_access.pinterest %}🔒{% endif %}</div>
                 </div>
-                <div class="platform-description">
-                    Your boards and pins show exactly what you're wishing for. The highest-intent gift data available!
-                </div>
-                {% if not platform_access.pinterest %}
-                <div class="platform-status" style="background: #fef3c7; color: #92400e; font-weight: 600;">
-                    <span class="status-dot"></span>
-                    <span>Pro Feature</span>
-                </div>
-                <a href="/upgrade" class="connect-button" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
-                    Upgrade to Connect
-                </a>
-                {% elif pinterest_connected %}
-                <div class="platform-status connected">
-                    <span class="status-dot"></span>
-                    <span>Connected • Full Access</span>
-                </div>
-                <a href="/disconnect/pinterest" class="connect-button disconnect-button">Disconnect</a>
+
+                {% if platforms.instagram %}
+                    <div class="connected-badge">✓ Connected: @{{ platforms.instagram.username }}</div>
                 {% else %}
-                <div class="platform-status">
-                    <span class="status-dot"></span>
-                    <span>Not Connected</span>
-                </div>
-                <a href="/oauth/pinterest/start" class="connect-button">Connect Pinterest</a>
+                    <form method="POST" action="/connect/instagram" class="platform-form">
+                        <div class="form-group">
+                            <label for="instagram-username">{% if recipient_type == 'someone_else' %}Their{% else %}Your{% endif %} Instagram Username</label>
+                            <input type="text" 
+                                   name="username" 
+                                   id="instagram-username" 
+                                   placeholder="username" 
+                                   required>
+                            <div id="instagram-username-status" class="validation-status"></div>
+                        </div>
+                        <button type="submit" id="instagram-submit" class="connect-button" disabled>
+                            Connect Instagram
+                        </button>
+                    </form>
                 {% endif %}
             </div>
-            {% endif %}
-            
+
             <!-- TikTok -->
-            <div class="platform-card {{ 'connected' if tiktok_connected }}{% if not platform_access.tiktok %} locked{% endif %}">
+            <div class="platform-card {% if platforms.tiktok %}connected{% endif %}{% if not platform_access.tiktok %} locked{% endif %}">
                 <div class="platform-header">
-                    <div class="platform-icon tiktok">🎬</div>
-                    <div class="platform-name">TikTok {% if not platform_access.tiktok %}🔒{% endif %}</div>
-                </div>
-                <div class="platform-description">
-                    {% if recipient_type == 'someone_else' %}
-                        Enter their TikTok username to analyze their video content and trends. Public profiles only!
-                    {% else %}
-                        Your public videos show current interests and trends. We analyze what you create and engage with!
-                    {% endif %}
-                </div>
-                {% if not platform_access.tiktok %}
-                <div class="platform-status" style="background: #fef3c7; color: #92400e; font-weight: 600;">
-                    <span class="status-dot"></span>
-                    <span>Pro Feature</span>
-                </div>
-                <a href="/upgrade" class="connect-button" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
-                    Upgrade to Connect
-                </a>
-                {% elif tiktok_connected %}
-                <div class="platform-status connected">
-                    <span class="status-dot"></span>
-                    <span>Connected • @{{ user.platforms.tiktok.username }}</span>
-                </div>
-                <a href="/disconnect/tiktok" class="connect-button disconnect-button">Disconnect</a>
-                {% else %}
-                <div class="platform-status">
-                    <span class="status-dot"></span>
-                    <span>Not Connected</span>
-                </div>
-                <form action="/connect/tiktok" method="POST" id="tiktok-form" style="display: flex; gap: 10px; flex-direction: column;">
-                    <div style="display: flex; gap: 10px;">
-                        <input 
-                            type="text" 
-                            name="username" 
-                            id="tiktok-username"
-                            placeholder="@{% if recipient_type == 'someone_else' %}their_username{% else %}yourusername{% endif %}" 
-                            class="tiktok-input" 
-                            required 
-                            style="flex: 1;">
-                        <button 
-                            type="submit" 
-                            id="tiktok-submit"
-                            class="connect-button" 
-                            style="width: auto; padding: 14px 24px; margin: 0;"
-                            disabled>
-                            Connect
-                        </button>
+                    <div class="platform-icon">🎬</div>
+                    <div class="platform-info">
+                        <h3>TikTok</h3>
+                        <p>Video content analysis{% if not platform_access.tiktok %} <span class="lock-icon">🔒 Pro</span>{% endif %}</p>
                     </div>
-                    <!-- Validation status appears here -->
-                    <div id="tiktok-status" class="validation-status"></div>
-                </form>
+                </div>
+
+                {% if platforms.tiktok %}
+                    <div class="connected-badge">✓ Connected: @{{ platforms.tiktok.username }}</div>
+                {% else %}
+                    <form method="POST" action="/connect/tiktok" class="platform-form">
+                        <div class="form-group">
+                            <label for="tiktok-username">{% if recipient_type == 'someone_else' %}Their{% else %}Your{% endif %} TikTok Username</label>
+                            <input type="text" 
+                                   name="username" 
+                                   id="tiktok-username" 
+                                   placeholder="username" 
+                                   required>
+                            <div id="tiktok-username-status" class="validation-status"></div>
+                        </div>
+                        <button type="submit" id="tiktok-submit" class="connect-button" disabled>
+                            Connect TikTok
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+
+            <!-- Pinterest -->
+            <div class="platform-card {% if platforms.pinterest %}connected{% endif %}{% if not platform_access.pinterest %} locked{% endif %}">
+                <div class="platform-header">
+                    <div class="platform-icon">📌</div>
+                    <div class="platform-info">
+                        <h3>Pinterest</h3>
+                        <p>Board and pin analysis{% if not platform_access.pinterest %} <span class="lock-icon">🔒 Pro</span>{% endif %}</p>
+                    </div>
+                </div>
+
+                {% if platforms.pinterest %}
+                    <div class="connected-badge">✓ Connected</div>
+                {% else %}
+                    {% if platform_access.pinterest %}
+                        <a href="/oauth/pinterest" class="connect-button" style="display: block; text-align: center; text-decoration: none; line-height: 1.4;">
+                            Connect Pinterest
+                        </a>
+                        <p style="margin-top: 10px; font-size: 0.85em; color: #6b7280; text-align: center;">
+                            You'll be redirected to Pinterest to authorize
+                        </p>
+                    {% else %}
+                        <p style="color: #6b7280; text-align: center; padding: 20px;">
+                            Upgrade to Pro to connect Pinterest
+                        </p>
+                    {% endif %}
                 {% endif %}
             </div>
         </div>
-        
-        <!-- Generate Recommendations Section -->
+
         <div class="generate-section">
-            <h2 class="generate-title">Ready for {% if recipient_type == 'someone_else' %}Their{% else %}Your{% endif %} Gift Recommendations?</h2>
-            <p class="generate-description">
-                {% if recipient_type == 'someone_else' %}
-                    We'll analyze their connected social profiles to find ultra-specific gift ideas they'll absolutely love.
-                {% else %}
-                    We'll analyze all your connected platforms to find ultra-specific gift ideas tailored just for you.
-                {% endif %}
-            </p>
-            
-            {% if connected_count >= 2 %}
-            <a href="/generate-recommendations" class="generate-button">
-                🎁 Generate {% if recipient_type == 'someone_else' %}Their{% else %}My{% endif %} Recommendations
-            </a>
-            <p class="platforms-count">
-                ✓ {{ connected_count }} platforms connected - Ready to go!
-            </p>
+            {% if platforms|length >= 1 %}
+                <a href="/generate-recommendations" class="generate-button">
+                    🎁 Generate Gift Ideas
+                </a>
+                <p class="requirement-text">
+                    ✓ Ready to generate! ({{ platforms|length }} platform{{ 's' if platforms|length != 1 else '' }} connected)
+                </p>
             {% else %}
-            <button class="generate-button" disabled>
-                🎁 Generate {% if recipient_type == 'someone_else' %}Their{% else %}My{% endif %} Recommendations
-            </button>
-            <p class="platforms-required">
-                ⚠ Connect at least 2 platforms to generate recommendations
-            </p>
+                <button class="generate-button" disabled>
+                    🎁 Generate Gift Ideas
+                </button>
+                <p class="requirement-text">
+                    Connect at least 1 platform to continue
+                </p>
             {% endif %}
         </div>
     </div>
-    
-    <!-- Real-time username validation JavaScript -->
+
     <script>
-        class UsernameValidator {
-            constructor(platform, inputElement, statusElement, submitButton) {
-                this.platform = platform;
-                this.inputElement = inputElement;
-                this.statusElement = statusElement;
-                this.submitButton = submitButton;
-                this.validationTimeout = null;
-                this.isValid = false;
-                
-                // Bind events
-                this.inputElement.addEventListener('input', () => this.handleInput());
-                this.inputElement.addEventListener('blur', () => this.validate());
-            }
+    // Username validation with debouncing
+    class UsernameValidator {
+        constructor(inputId, platform, buttonId) {
+            this.input = document.getElementById(inputId);
+            this.platform = platform;
+            this.button = document.getElementById(buttonId);
+            this.statusDiv = document.getElementById(`${inputId}-status`);
+            this.timeout = null;
             
-            handleInput() {
-                // Clear previous timeout
-                if (this.validationTimeout) {
-                    clearTimeout(this.validationTimeout);
-                }
-                
-                // Reset status
-                this.statusElement.innerHTML = '';
-                this.isValid = false;
-                this.updateSubmitButton();
-                
-                const username = this.inputElement.value.trim();
-                
-                // Don't validate empty input
-                if (!username) {
-                    return;
-                }
-                
-                // Debounce: wait 800ms after user stops typing
-                this.validationTimeout = setTimeout(() => {
-                    this.validate();
-                }, 800);
-            }
-            
-            async validate() {
-                const username = this.inputElement.value.trim().replace('@', '');
-                
-                if (!username) {
-                    this.statusElement.innerHTML = '';
-                    this.isValid = false;
-                    this.updateSubmitButton();
-                    return;
-                }
-                
-                // Show loading state
-                this.statusElement.className = 'validation-status checking';
-                this.statusElement.innerHTML = `
-                    <span class="spinner"></span>
-                    <span>Checking account...</span>
-                `;
-                
-                try {
-                    const response = await fetch('/api/validate-username', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({
-                            platform: this.platform,
-                            username: username
-                        })
-                    });
-                    
-                    const result = await response.json();
-                    
-                    if (result.valid) {
-                        this.showSuccess(result);
-                        this.isValid = true;
-                    } else {
-                        this.showError(result);
-                        this.isValid = false;
-                    }
-                    
-                    this.updateSubmitButton();
-                    
-                } catch (error) {
-                    console.error('Validation error:', error);
-                    this.statusElement.className = 'validation-status error';
-                    this.statusElement.innerHTML = `
-                        <div>⚠️ Unable to validate - you can still try connecting</div>
-                    `;
-                    // Allow them to try anyway if validation fails
-                    this.isValid = true;
-                    this.updateSubmitButton();
-                }
-            }
-            
-            showSuccess(result) {
-                this.statusElement.className = 'validation-status success';
-                this.statusElement.innerHTML = `
-                    <span style="font-size: 1.2em;">✓</span>
-                    <span>${result.message}</span>
-                `;
-            }
-            
-            showError(result) {
-                this.statusElement.className = 'validation-status error';
-                let html = `
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-size: 1.2em;">${result.icon || '✗'}</span>
-                        <span>${result.message}</span>
-                    </div>
-                `;
-                
-                if (result.help) {
-                    html += `
-                        <div class="validation-status error-details">
-                            ${result.help}
-                        </div>
-                    `;
-                }
-                
-                this.statusElement.innerHTML = html;
-            }
-            
-            updateSubmitButton() {
-                if (this.submitButton) {
-                    this.submitButton.disabled = !this.isValid;
-                }
+            if (this.input) {
+                this.input.addEventListener('input', () => this.handleInput());
+                // Disable button initially
+                if (this.button) this.button.disabled = true;
             }
         }
         
-        // Initialize validators when page loads
-        document.addEventListener('DOMContentLoaded', function() {
-            // Instagram validator
-            const igInput = document.getElementById('instagram-username');
-            const igStatus = document.getElementById('instagram-status');
-            const igSubmit = document.getElementById('instagram-submit');
+        handleInput() {
+            clearTimeout(this.timeout);
+            const username = this.input.value.trim().replace('@', '');
             
-            if (igInput && igStatus && igSubmit) {
-                new UsernameValidator('instagram', igInput, igStatus, igSubmit);
+            if (username.length < 2) {
+                this.showStatus('', '');
+                if (this.button) this.button.disabled = true;
+                return;
             }
             
-            // TikTok validator
-            const ttInput = document.getElementById('tiktok-username');
-            const ttStatus = document.getElementById('tiktok-status');
-            const ttSubmit = document.getElementById('tiktok-submit');
+            // Debounce - wait 800ms after user stops typing
+            this.timeout = setTimeout(() => {
+                this.validateUsername(username);
+            }, 800);
+        }
+        
+        async validateUsername(username) {
+            this.showStatus('⏳', 'Checking...', 'checking');
             
-            if (ttInput && ttStatus && ttSubmit) {
-                new UsernameValidator('tiktok', ttInput, ttStatus, ttSubmit);
+            try {
+                const response = await fetch('/api/validate-username', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        platform: this.platform,
+                        username: username
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.valid) {
+                    this.showStatus(result.icon || '✅', result.message || 'Valid account', 'success');
+                    if (this.button) this.button.disabled = false;
+                } else {
+                    this.showStatus(result.icon || '❌', result.message || 'Invalid account', 'error');
+                    if (this.button) this.button.disabled = true;
+                }
+            } catch (error) {
+                console.error('Validation error:', error);
+                this.showStatus('⚠️', 'Unable to verify - you can still try', 'warning');
+                if (this.button) this.button.disabled = false; // Allow them to try anyway
             }
-        });
+        }
+        
+        showStatus(icon, message, type) {
+            if (!this.statusDiv) return;
+            
+            if (!message) {
+                this.statusDiv.style.display = 'none';
+                this.statusDiv.className = 'validation-status';
+                return;
+            }
+            
+            this.statusDiv.innerHTML = `<span class="status-icon">${icon}</span> ${message}`;
+            this.statusDiv.className = `validation-status ${type}`;
+        }
+    }
+
+    // Username autocomplete from browser history
+    class UsernameAutocomplete {
+        constructor(inputId, platform) {
+            this.input = document.getElementById(inputId);
+            if (!this.input) return;
+            
+            this.platform = platform;
+            this.storageKey = `giftwise_${platform}_history`;
+            this.setupAutocomplete();
+        }
+        
+        setupAutocomplete() {
+            // Create datalist for native autocomplete
+            const datalistId = `${this.input.id}-suggestions`;
+            const datalist = document.createElement('datalist');
+            datalist.id = datalistId;
+            this.input.setAttribute('list', datalistId);
+            this.input.parentNode.insertBefore(datalist, this.input.nextSibling);
+            
+            // Load history
+            this.updateSuggestions();
+            
+            // Save on form submit
+            const form = this.input.closest('form');
+            if (form) {
+                form.addEventListener('submit', () => {
+                    this.saveUsername(this.input.value.trim().replace('@', ''));
+                });
+            }
+        }
+        
+        updateSuggestions() {
+            const history = this.getHistory();
+            const datalist = document.getElementById(`${this.input.id}-suggestions`);
+            if (!datalist) return;
+            
+            datalist.innerHTML = '';
+            history.forEach(username => {
+                const option = document.createElement('option');
+                option.value = username;
+                datalist.appendChild(option);
+            });
+        }
+        
+        getHistory() {
+            const stored = localStorage.getItem(this.storageKey);
+            return stored ? JSON.parse(stored) : [];
+        }
+        
+        saveUsername(username) {
+            if (!username) return;
+            
+            let history = this.getHistory();
+            
+            // Add to front, remove duplicates
+            history = [username, ...history.filter(u => u !== username)];
+            
+            // Keep last 10
+            history = history.slice(0, 10);
+            
+            localStorage.setItem(this.storageKey, JSON.stringify(history));
+        }
+    }
+
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize validators
+        new UsernameValidator('instagram-username', 'instagram', 'instagram-submit');
+        new UsernameValidator('tiktok-username', 'tiktok', 'tiktok-submit');
+        
+        // Initialize autocomplete
+        new UsernameAutocomplete('instagram-username', 'instagram');
+        new UsernameAutocomplete('tiktok-username', 'tiktok');
+    });
     </script>
 </body>
 </html>

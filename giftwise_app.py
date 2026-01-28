@@ -414,7 +414,7 @@ def check_tiktok_privacy(username):
 
 def scrape_instagram_profile(username, max_posts=50, task_id=None):
     """
-    Scrape Instagram with progress tracking
+    Scrape Instagram with progress tracking and error handling
     """
     if not APIFY_API_TOKEN:
         print("No Apify token configured")
@@ -431,10 +431,12 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
             json={
                 'username': [username],
                 'resultsLimit': max_posts
-            }
+            },
+            timeout=10  # Timeout for starting the actor
         )
         
         if response.status_code != 201:
+            print(f"Apify Instagram actor start failed: {response.text}")
             if task_id:
                 set_progress(task_id, 'error', 'Failed to start scraper', 0)
             return None
@@ -443,8 +445,8 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
         if task_id:
             set_progress(task_id, 'running', f'Finding @{username}...', 15)
         
-        # Poll for completion
-        max_wait = 120
+        # Poll for completion with timeout
+        max_wait = 120  # 2 minutes max
         elapsed = 0
         
         while elapsed < max_wait:
@@ -455,47 +457,61 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
             # Update progress
             if task_id:
                 progress_pct = min(15 + (elapsed / max_wait) * 75, 90)
-                messages = {
-                    10: 'Finding @{username}...',
-                    30: 'Analyzing profile...',
-                    50: 'Downloading posts...',
-                    70: 'Extracting interests...',
-                    85: 'Processing data...'
-                }
-                msg = messages.get(int(progress_pct // 10) * 10, 'Analyzing profile...')
-                set_progress(task_id, 'running', msg, progress_pct)
+                set_progress(task_id, 'running', 'Analyzing profile...', progress_pct)
             
-            status_response = requests.get(
-                f'https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}'
-            )
-            
-            if status_response.status_code != 200:
-                continue
+            try:
+                status_response = requests.get(
+                    f'https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}',
+                    timeout=10
+                )
                 
-            status = status_response.json()['data']['status']
-            
-            if status == 'SUCCEEDED':
-                break
-            elif status in ['FAILED', 'ABORTED', 'TIMED-OUT']:
-                if task_id:
-                    set_progress(task_id, 'error', 'Instagram scraping failed', 0)
-                return None
+                if status_response.status_code != 200:
+                    continue
+                    
+                status = status_response.json()['data']['status']
+                
+                if status == 'SUCCEEDED':
+                    break
+                elif status in ['FAILED', 'ABORTED', 'TIMED-OUT']:
+                    print(f"Instagram scrape failed with status: {status}")
+                    if task_id:
+                        set_progress(task_id, 'error', f'Scraping failed: {status}', 0)
+                    return None
+            except requests.Timeout:
+                print(f"Instagram status check timeout at {elapsed}s")
+                continue
+        
+        if elapsed >= max_wait:
+            print(f"Instagram scrape timeout after {max_wait}s")
+            if task_id:
+                set_progress(task_id, 'error', 'Scraping timed out', 0)
+            return None
         
         # Get results
-        results_response = requests.get(
-            f'https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?token={APIFY_API_TOKEN}'
-        )
-        
-        if results_response.status_code != 200:
+        try:
+            results_response = requests.get(
+                f'https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?token={APIFY_API_TOKEN}',
+                timeout=15
+            )
+            
+            if results_response.status_code != 200:
+                print(f"Failed to get Instagram results: {results_response.text}")
+                if task_id:
+                    set_progress(task_id, 'error', 'Failed to retrieve data', 0)
+                return None
+            
+            data = results_response.json()
+            
+        except requests.Timeout:
+            print("Instagram results retrieval timeout")
             if task_id:
                 set_progress(task_id, 'error', 'Failed to retrieve data', 0)
             return None
         
-        data = results_response.json()
-        
         if not data:
+            print("Instagram scrape returned no data")
             if task_id:
-                set_progress(task_id, 'error', 'No posts found', 0)
+                set_progress(task_id, 'error', 'No posts found - account may be private', 0)
             return None
         
         # Parse data
@@ -531,17 +547,21 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
         if task_id:
             set_progress(task_id, 'complete', f'✓ Connected! Found {len(posts)} posts', 100)
         
+        print(f"Instagram scrape successful: {len(posts)} posts")
         return result
         
     except Exception as e:
         print(f"Instagram scraping error: {e}")
+        import traceback
+        traceback.print_exc()
         if task_id:
             set_progress(task_id, 'error', f'Error: {str(e)}', 0)
         return None
 
+
 def scrape_tiktok_profile(username, max_videos=50, task_id=None):
     """
-    Scrape TikTok with progress tracking and repost analysis
+    Scrape TikTok with progress tracking and error handling
     """
     if not APIFY_API_TOKEN:
         print("No Apify token configured")
@@ -558,10 +578,12 @@ def scrape_tiktok_profile(username, max_videos=50, task_id=None):
             json={
                 'profiles': [username],
                 'resultsPerPage': max_videos
-            }
+            },
+            timeout=10
         )
         
         if response.status_code != 201:
+            print(f"Apify TikTok actor start failed: {response.text}")
             if task_id:
                 set_progress(task_id, 'error', 'Failed to start scraper', 0)
             return None
@@ -579,48 +601,61 @@ def scrape_tiktok_profile(username, max_videos=50, task_id=None):
             time.sleep(wait_time)
             elapsed += wait_time
             
-            # Update progress
             if task_id:
                 progress_pct = min(15 + (elapsed / max_wait) * 75, 90)
-                messages = {
-                    10: 'Finding @{username}...',
-                    30: 'Analyzing videos...',
-                    50: 'Detecting reposts...',
-                    70: 'Extracting interests...',
-                    85: 'Processing data...'
-                }
-                msg = messages.get(int(progress_pct // 10) * 10, 'Analyzing videos...')
-                set_progress(task_id, 'running', msg, progress_pct)
+                set_progress(task_id, 'running', 'Analyzing videos...', progress_pct)
             
-            status_response = requests.get(
-                f'https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}'
-            )
-            
-            if status_response.status_code != 200:
-                continue
+            try:
+                status_response = requests.get(
+                    f'https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}',
+                    timeout=10
+                )
                 
-            status = status_response.json()['data']['status']
-            
-            if status == 'SUCCEEDED':
-                break
-            elif status in ['FAILED', 'ABORTED', 'TIMED-OUT']:
-                if task_id:
-                    set_progress(task_id, 'error', 'TikTok scraping failed', 0)
-                return None
+                if status_response.status_code != 200:
+                    continue
+                    
+                status = status_response.json()['data']['status']
+                
+                if status == 'SUCCEEDED':
+                    break
+                elif status in ['FAILED', 'ABORTED', 'TIMED-OUT']:
+                    print(f"TikTok scrape failed with status: {status}")
+                    if task_id:
+                        set_progress(task_id, 'error', f'Scraping failed: {status}', 0)
+                    return None
+            except requests.Timeout:
+                print(f"TikTok status check timeout at {elapsed}s")
+                continue
+        
+        if elapsed >= max_wait:
+            print(f"TikTok scrape timeout after {max_wait}s")
+            if task_id:
+                set_progress(task_id, 'error', 'Scraping timed out', 0)
+            return None
         
         # Get results
-        results_response = requests.get(
-            f'https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?token={APIFY_API_TOKEN}'
-        )
-        
-        if results_response.status_code != 200:
+        try:
+            results_response = requests.get(
+                f'https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?token={APIFY_API_TOKEN}',
+                timeout=15
+            )
+            
+            if results_response.status_code != 200:
+                print(f"Failed to get TikTok results: {results_response.text}")
+                if task_id:
+                    set_progress(task_id, 'error', 'Failed to retrieve data', 0)
+                return None
+            
+            data = results_response.json()
+            
+        except requests.Timeout:
+            print("TikTok results retrieval timeout")
             if task_id:
                 set_progress(task_id, 'error', 'Failed to retrieve data', 0)
             return None
         
-        data = results_response.json()
-        
         if not data:
+            print("TikTok scrape returned no data")
             if task_id:
                 set_progress(task_id, 'error', 'No videos found', 0)
             return None
@@ -632,10 +667,13 @@ def scrape_tiktok_profile(username, max_videos=50, task_id=None):
             total_videos = parsed_data.get('total_videos', 0)
             set_progress(task_id, 'complete', f'✓ Connected! Found {total_videos} videos', 100)
         
+        print(f"TikTok scrape successful: {parsed_data.get('total_videos', 0)} videos")
         return parsed_data
         
     except Exception as e:
         print(f"TikTok scraping error: {e}")
+        import traceback
+        traceback.print_exc()
         if task_id:
             set_progress(task_id, 'error', f'Error: {str(e)}', 0)
         return None
@@ -905,7 +943,7 @@ def scrape_progress_stream(task_id):
 
 @app.route('/generate-recommendations')
 def generate_recommendations_route():
-    """Generate gift recommendations - start scraping if needed"""
+    """Generate gift recommendations - start scraping if needed with timeout detection"""
     user = get_session_user()
     if not user:
         return redirect('/signup')
@@ -917,11 +955,41 @@ def generate_recommendations_route():
     
     user_id = session['user_id']
     
-    # Check status and start scraping ONLY if ready
+    # Check for timed out scraping (status='scraping' for >3 minutes)
+    for platform, data in platforms.items():
+        if data.get('status') == 'scraping':
+            scraping_started = data.get('scraping_started_at')
+            if scraping_started:
+                start_time = datetime.fromisoformat(scraping_started)
+                elapsed = (datetime.now() - start_time).total_seconds()
+                
+                if elapsed > 180:  # 3 minutes
+                    print(f"{platform} scraping timed out after {elapsed}s - resetting to ready")
+                    platforms[platform]['status'] = 'failed'
+                    platforms[platform]['error'] = 'Scraping timed out - please try again'
+                    save_user(user_id, {'platforms': platforms})
+    
+    # Reload user data after timeout check
+    user = get_user(user_id)
+    platforms = user.get('platforms', {})
+    
+    # Check for failed platforms
+    failed_platforms = []
+    for platform, data in platforms.items():
+        if data.get('status') == 'failed':
+            failed_platforms.append(platform)
+    
+    if failed_platforms:
+        # Redirect back with error message
+        error_msg = f"scraping_failed_{','.join(failed_platforms)}"
+        return redirect(f'/connect-platforms?error={error_msg}')
+    
+    # Check if scraping is needed and START IT
     for platform, data in platforms.items():
         if data.get('status') == 'ready':
-            # IMMEDIATELY change status to prevent re-scraping
+            # Set status to 'scraping' with timestamp IMMEDIATELY
             platforms[platform]['status'] = 'scraping'
+            platforms[platform]['scraping_started_at'] = datetime.now().isoformat()
             save_user(user_id, {'platforms': platforms})
             
             username = data['username']
@@ -930,12 +998,17 @@ def generate_recommendations_route():
             if platform == 'instagram':
                 def scrape_ig():
                     ig_data = scrape_instagram_profile(username, max_posts=50, task_id=task_id)
+                    user = get_user(user_id)
+                    platforms = user.get('platforms', {})
+                    
                     if ig_data:
-                        user = get_user(user_id)
-                        platforms = user.get('platforms', {})
                         platforms['instagram']['data'] = ig_data
                         platforms['instagram']['status'] = 'complete'
-                        save_user(user_id, {'platforms': platforms})
+                    else:
+                        platforms['instagram']['status'] = 'failed'
+                        platforms['instagram']['error'] = 'Failed to scrape Instagram'
+                    
+                    save_user(user_id, {'platforms': platforms})
                 
                 thread = threading.Thread(target=scrape_ig)
                 thread.daemon = True
@@ -944,12 +1017,17 @@ def generate_recommendations_route():
             elif platform == 'tiktok':
                 def scrape_tt():
                     tt_data = scrape_tiktok_profile(username, max_videos=50, task_id=task_id)
+                    user = get_user(user_id)
+                    platforms = user.get('platforms', {})
+                    
                     if tt_data:
-                        user = get_user(user_id)
-                        platforms = user.get('platforms', {})
                         platforms['tiktok']['data'] = tt_data
                         platforms['tiktok']['status'] = 'complete'
-                        save_user(user_id, {'platforms': platforms})
+                    else:
+                        platforms['tiktok']['status'] = 'failed'
+                        platforms['tiktok']['error'] = 'Failed to scrape TikTok'
+                    
+                    save_user(user_id, {'platforms': platforms})
                 
                 thread = threading.Thread(target=scrape_tt)
                 thread.daemon = True
@@ -986,6 +1064,7 @@ def generate_recommendations_route():
     return render_template('generating.html', 
                          platforms=list(platforms.keys()),
                          recipient_type=recipient_type)
+
 
 @app.route('/recommendations')
 def view_recommendations():

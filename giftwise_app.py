@@ -756,10 +756,23 @@ def connect_platforms():
     if not user:
         return redirect('/signup')
     
+    # Check which platforms user's tier allows
+    tier = get_user_tier(user)
+    tier_config = SUBSCRIPTION_TIERS[tier]
+    allowed_platforms = tier_config['platforms']
+    
+    platform_access = {
+        'instagram': 'instagram' in allowed_platforms,
+        'tiktok': 'tiktok' in allowed_platforms,
+        'pinterest': 'pinterest' in allowed_platforms
+    }
+    
     return render_template('connect_platforms.html', 
-                         user=user,  # ADD THIS LINE
+                         user=user,
                          platforms=user.get('platforms', {}),
-                         recipient_type=user.get('recipient_type', 'myself'))
+                         recipient_type=user.get('recipient_type', 'myself'),
+                         platform_access=platform_access,
+                         user_tier=tier)
 
 @app.route('/api/validate-username', methods=['POST'])
 def validate_username():

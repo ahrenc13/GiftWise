@@ -824,12 +824,6 @@ def scrape_tiktok_profile(username, max_videos=50, task_id=None):
                 logger.warning(f"Failed to track Apify usage: {e}")
         
         return parsed_data
-            try:
-                track_apify_usage(1, 'tiktok')
-            except Exception as e:
-                logger.warning(f"Failed to track Apify usage: {e}")
-        
-        return parsed_data
         
     except Exception as e:
         logger.error(f"TikTok scraping error: {e}", exc_info=True)

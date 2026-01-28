@@ -973,7 +973,7 @@ def generate_recommendations_route():
                 thread.daemon = True
                 thread.start()
     
-if needs_scraping:
+    if needs_scraping:
         # Show a simple "analyzing platforms" message
         return render_template('generating.html', 
                              platforms=list(platforms.keys()),

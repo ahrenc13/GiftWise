@@ -931,14 +931,53 @@ def generate_recommendations_route():
     
     # Check if scraping is needed
     needs_scraping = False
+    scrape_tasks = {}
+    user_id = session['user_id']
+    
     for platform, data in platforms.items():
         if data.get('status') == 'ready':  # Has username but no data
             needs_scraping = True
-            break
+            
+            # Start scraping for this platform
+            task_id = str(uuid.uuid4())
+            scrape_tasks[platform] = task_id
+            username = data['username']
+            
+            if platform == 'instagram':
+                def scrape_ig():
+                    ig_data = scrape_instagram_profile(username, max_posts=50, task_id=task_id)
+                    if ig_data:
+                        user = get_user(user_id)
+                        platforms = user.get('platforms', {})
+                        platforms['instagram']['data'] = ig_data
+                        platforms['instagram']['status'] = 'complete'
+                        platforms['instagram']['connected_at'] = datetime.now().isoformat()
+                        save_user(user_id, {'platforms': platforms})
+                
+                thread = threading.Thread(target=scrape_ig)
+                thread.daemon = True
+                thread.start()
+            
+            elif platform == 'tiktok':
+                def scrape_tt():
+                    tt_data = scrape_tiktok_profile(username, max_videos=50, task_id=task_id)
+                    if tt_data:
+                        user = get_user(user_id)
+                        platforms = user.get('platforms', {})
+                        platforms['tiktok']['data'] = tt_data
+                        platforms['tiktok']['status'] = 'complete'
+                        platforms['tiktok']['connected_at'] = datetime.now().isoformat()
+                        save_user(user_id, {'platforms': platforms})
+                
+                thread = threading.Thread(target=scrape_tt)
+                thread.daemon = True
+                thread.start()
     
     if needs_scraping:
-        # Redirect to start parallel scraping
-        return redirect('/start-scraping', code=307)  # 307 preserves POST
+        # Show progress page while scraping
+        return render_template('multi_scraping_progress.html', 
+                             scrape_tasks=scrape_tasks,
+                             platforms=list(scrape_tasks.keys()))
     
     # All platforms have data - check quality and generate
     quality = check_data_quality(platforms)

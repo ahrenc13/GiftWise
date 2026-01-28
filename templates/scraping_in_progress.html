@@ -69,7 +69,7 @@
             height: 30px;
             border-radius: 50px;
             width: 0%;
-            transition: width 0.8s ease-out;
+            transition: width 1.5s ease-out;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -83,6 +83,7 @@
             margin-top: 15px;
             font-size: 1.1em;
             font-weight: 600;
+            transition: opacity 0.3s ease;
         }
 
         /* Stages */
@@ -121,7 +122,7 @@
             justify-content: center;
             margin: 0 auto 10px;
             font-size: 1.2em;
-            transition: all 0.3s ease;
+            transition: all 0.5s ease;
         }
 
         .stage.active .stage-icon {
@@ -137,6 +138,7 @@
         .stage-label {
             font-size: 0.85em;
             opacity: 0.8;
+            transition: all 0.3s ease;
         }
 
         .stage.active .stage-label {
@@ -304,11 +306,34 @@
     </div>
     
     <script>
-        // Use localStorage to track progress across page reloads
-        const startTime = localStorage.getItem('scraping_start_time') || Date.now();
-        localStorage.setItem('scraping_start_time', startTime);
+        // CRITICAL FIX: Use session-specific localStorage key to prevent stale timestamps
+        // This prevents the "90% immediately" bug from old scraping sessions
+        const platforms = {{ platforms|tojson }};
+        const sessionId = platforms.sort().join('_'); // Unique per platform combo
+        const storageKey = 'giftwise_scraping_' + sessionId;
+        
+        // Clear any old scraping sessions (cleanup)
+        const allKeys = Object.keys(localStorage);
+        for (let key of allKeys) {
+            if (key.startsWith('giftwise_scraping_') && key !== storageKey) {
+                localStorage.removeItem(key);
+                console.log('Cleared old session:', key);
+            }
+        }
+        
+        // Get or set start time for THIS session only
+        let startTime = localStorage.getItem(storageKey);
+        if (!startTime) {
+            startTime = Date.now();
+            localStorage.setItem(storageKey, startTime);
+            console.log('Started new scraping session:', sessionId);
+        } else {
+            startTime = parseInt(startTime);
+            console.log('Continuing scraping session:', sessionId);
+        }
         
         const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+        console.log('Elapsed time:', elapsedSeconds, 'seconds');
         
         const stages = [
             { time: 0, percent: 25, text: "Connecting to social platforms...", stage: 1 },
@@ -344,13 +369,15 @@
             }
         }
         
-        // Check if we've exceeded timeout (3 minutes)
+        // Check if we've exceeded timeout (3 minutes = 180 seconds)
         if (elapsedSeconds > 180) {
             progressText.innerHTML = '⚠️ Taking longer than expected. <a href="/connect-platforms" style="color: white; text-decoration: underline;">Try again?</a>';
-            localStorage.removeItem('scraping_start_time');
+            localStorage.removeItem(storageKey);
+            console.log('Timeout reached, cleared session');
         } else {
             // Reload after 3 seconds to check if scraping is complete
             setTimeout(function() {
+                console.log('Reloading to check status...');
                 window.location.reload();
             }, 3000);
         }

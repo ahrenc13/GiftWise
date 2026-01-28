@@ -757,6 +757,7 @@ def connect_platforms():
         return redirect('/signup')
     
     return render_template('connect_platforms.html', 
+                         user=user,  # ADD THIS LINE
                          platforms=user.get('platforms', {}),
                          recipient_type=user.get('recipient_type', 'myself'))
 

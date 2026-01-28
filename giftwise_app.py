@@ -973,11 +973,12 @@ def generate_recommendations_route():
                 thread.daemon = True
                 thread.start()
     
-    if needs_scraping:
-        # Show progress page while scraping
-        return render_template('multi_scraping_progress.html', 
-                             scrape_tasks=scrape_tasks,
-                             platforms=list(scrape_tasks.keys()))
+if needs_scraping:
+        # Show a simple "analyzing platforms" message
+        return render_template('generating.html', 
+                             platforms=list(platforms.keys()),
+                             recipient_type=user.get('recipient_type', 'myself'),
+                             scraping=True)
     
     # All platforms have data - check quality and generate
     quality = check_data_quality(platforms)

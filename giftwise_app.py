@@ -60,6 +60,20 @@ except ImportError:
     WISHLIST_INTEGRATIONS_AVAILABLE = False
     logger.warning("Wishlist integrations not available")
 
+# Import usage tracker
+try:
+    from usage_tracker import (
+        track_anthropic_usage,
+        track_apify_usage,
+        get_usage_summary,
+        get_daily_usage,
+        get_monthly_usage
+    )
+    USAGE_TRACKING_AVAILABLE = True
+except ImportError:
+    USAGE_TRACKING_AVAILABLE = False
+    logger.warning("Usage tracking not available")
+
 # OAuth libraries
 from requests_oauthlib import OAuth2Session
 import requests
@@ -684,6 +698,14 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
             set_progress(task_id, 'complete', f'✓ Connected! Found {len(posts)} posts', 100)
         
         logger.info(f"Successfully scraped {len(posts)} Instagram posts for @{username}")
+        
+        # Track Apify usage (typically 1 compute unit per run)
+        if USAGE_TRACKING_AVAILABLE:
+            try:
+                track_apify_usage(1, 'instagram')
+            except Exception as e:
+                logger.warning(f"Failed to track Apify usage: {e}")
+        
         return result
         
     except Exception as e:
@@ -793,6 +815,20 @@ def scrape_tiktok_profile(username, max_videos=50, task_id=None):
             set_progress(task_id, 'complete', f'✓ Connected! Found {total_videos} videos', 100)
         
         logger.info(f"Successfully scraped {parsed_data.get('total_videos', 0)} TikTok videos for @{username}")
+        
+        # Track Apify usage (typically 1 compute unit per run)
+        if USAGE_TRACKING_AVAILABLE:
+            try:
+                track_apify_usage(1, 'tiktok')
+            except Exception as e:
+                logger.warning(f"Failed to track Apify usage: {e}")
+        
+        return parsed_data
+            try:
+                track_apify_usage(1, 'tiktok')
+            except Exception as e:
+                logger.warning(f"Failed to track Apify usage: {e}")
+        
         return parsed_data
         
     except Exception as e:
@@ -1437,9 +1473,7 @@ TIKTOK DATA ({tt_data.get('total_videos', 0)} videos analyzed):
 - CRITICAL: Reposts reveal ASPIRATIONAL interests - prioritize these for gifts
 """)
         elif 'tiktok' in platforms:
-        
-        # TikTok data (basic fallback if enhanced not available)
-        if 'tiktok' in platforms and not (use_enhanced and all_extracted_signals.get('tiktok')):
+            # TikTok data (basic fallback if enhanced not available)
             tt_data = platforms['tiktok'].get('data', {})
             if tt_data:
                 videos = tt_data.get('videos', [])
@@ -1618,6 +1652,23 @@ IMPORTANT:
                 messages=[{"role": "user", "content": prompt}],
                 timeout=60.0
             )
+            
+            # Track API usage
+            if USAGE_TRACKING_AVAILABLE:
+                try:
+                    # Get actual token usage from response if available
+                    if hasattr(message, 'usage'):
+                        input_tokens = message.usage.input_tokens
+                        output_tokens = message.usage.output_tokens
+                        total_tokens = input_tokens + output_tokens
+                    else:
+                        # Estimate tokens (rough: 1 token ≈ 4 characters)
+                        input_tokens = len(prompt) // 4
+                        output_tokens = 2000  # Estimate for output
+                        total_tokens = input_tokens + output_tokens
+                    track_anthropic_usage(total_tokens, 'recommendation')
+                except Exception as e:
+                    logger.warning(f"Failed to track Anthropic usage: {e}")
         except anthropic.APIError as e:
             logger.error(f"Claude API error: {e}")
             return jsonify({
@@ -1747,11 +1798,70 @@ def view_recommendations():
                          connected_count=connected_count,
                          user=user)
 
+@app.route('/usage')
+def usage_dashboard():
+    """API usage dashboard - shows daily/monthly usage and remaining capacity"""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    
+    if not USAGE_TRACKING_AVAILABLE:
+        return render_template('usage.html', 
+                             error="Usage tracking not available",
+                             summary=None)
+    
+    try:
+        summary = get_usage_summary()
+        return render_template('usage.html', summary=summary, error=None)
+    except Exception as e:
+        logger.error(f"Error loading usage dashboard: {e}")
+        return render_template('usage.html', 
+                             error=f"Error loading usage: {str(e)}",
+                             summary=None)
+
+@app.route('/api/usage')
+def api_usage():
+    """API endpoint for usage data (JSON)"""
+    if not USAGE_TRACKING_AVAILABLE:
+        return jsonify({'error': 'Usage tracking not available'}), 503
+    
+    try:
+        summary = get_usage_summary()
+        return jsonify(summary)
+    except Exception as e:
+        logger.error(f"Error getting usage data: {e}")
+        return jsonify({'error': str(e)}), 500
+
 @app.route('/logout')
 def logout():
     """Logout user"""
     session.clear()
     return redirect('/')
 
+# Error handlers for better crash reporting
+@app.errorhandler(500)
+def internal_error(error):
+    logger.error(f"Internal server error: {error}", exc_info=True)
+    return render_template('error.html', 
+                         error="An internal error occurred. Please try again.",
+                         error_code=500), 500
+
+@app.errorhandler(404)
+def not_found(error):
+    return render_template('error.html', 
+                         error="Page not found.",
+                         error_code=404), 404
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    logger.error(f"Unhandled exception: {e}", exc_info=True)
+    return render_template('error.html', 
+                         error=f"An error occurred: {str(e)}",
+                         error_code=500), 500
+
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # Railway sets PORT env var automatically
+    port = int(os.environ.get('PORT', 5000))
+    # Don't use debug=True in production (Railway)
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() == 'true'
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)

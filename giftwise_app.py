@@ -33,6 +33,33 @@ import anthropic
 from dotenv import load_dotenv
 from collections import Counter, OrderedDict
 
+# Import enhanced recommendation engine
+try:
+    from enhanced_recommendation_engine import (
+        extract_deep_signals,
+        integrate_wishlist_data,
+        detect_duplicates,
+        build_enhanced_prompt,
+        validate_recommendations
+    )
+    from enhanced_data_extraction import combine_all_signals
+    ENHANCED_ENGINE_AVAILABLE = True
+except ImportError:
+    ENHANCED_ENGINE_AVAILABLE = False
+    logger.warning("Enhanced recommendation engine not available - using basic prompts")
+
+# Import wishlist integrations
+try:
+    from wishlist_integrations import (
+        fetch_etsy_favorites,
+        fetch_goodreads_shelves,
+        parse_wishlist_for_duplicates
+    )
+    WISHLIST_INTEGRATIONS_AVAILABLE = True
+except ImportError:
+    WISHLIST_INTEGRATIONS_AVAILABLE = False
+    logger.warning("Wishlist integrations not available")
+
 # OAuth libraries
 from requests_oauthlib import OAuth2Session
 import requests
@@ -88,7 +115,7 @@ else:
     logger.warning("ANTHROPIC_API_KEY not set - recommendation generation will fail")
 
 # ============================================================================
-# FREEMIUM TIER CONFIGURATION
+# FREEMIUM TIER CONFIGURATION + HYBRID PRICING
 # ============================================================================
 
 SUBSCRIPTION_TIERS = {
@@ -111,6 +138,31 @@ SUBSCRIPTION_TIERS = {
         'platforms': ['instagram', 'tiktok', 'pinterest'],
         'features': ['basic_recommendations', 'monthly_updates', 'gift_calendar', 
                     'shareable_profile', 'all_platforms', 'priority_support']
+    },
+    'pro_annual': {
+        'name': 'Pro Annual',
+        'price': 39.99,
+        'price_per_month': 3.33,
+        'stripe_price_id': os.environ.get('STRIPE_PRO_ANNUAL_PRICE_ID'),
+        'max_profiles': 5,
+        'recommendations_per_profile': 10,
+        'monthly_updates': True,
+        'platforms': ['instagram', 'tiktok', 'pinterest'],
+        'features': ['basic_recommendations', 'monthly_updates', 'gift_calendar',
+                    'shareable_profile', 'all_platforms', 'priority_support'],
+        'billing': 'annual',
+        'savings': 'Save $20/year'
+    },
+    'gift_emergency': {
+        'name': 'Gift Emergency',
+        'price': 2.99,
+        'type': 'one_time',
+        'max_profiles': 1,
+        'recommendations_per_profile': 10,
+        'monthly_updates': False,
+        'platforms': ['instagram', 'tiktok'],
+        'features': ['basic_recommendations'],
+        'description': 'One-time recommendations - no subscription needed'
     },
     'premium': {
         'name': 'Premium',
@@ -871,7 +923,8 @@ def connect_platforms():
                          platforms=user.get('platforms', {}),
                          recipient_type=user.get('recipient_type', 'myself'),
                          platform_access=platform_access,
-                         user_tier=tier)
+                         user_tier=tier,
+                         wishlists=user.get('wishlists', []))
 
 @app.route('/api/validate-username', methods=['POST'])
 def validate_username():
@@ -947,6 +1000,96 @@ def connect_tiktok():
     logger.info(f"User {user_id} connected TikTok: @{username}")
     
     return redirect('/connect-platforms?success=tiktok_ready')
+
+@app.route('/connect/etsy', methods=['POST'])
+def connect_etsy():
+    """Connect Etsy wishlist via OAuth"""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    
+    # Etsy OAuth flow (simplified - would need full OAuth implementation)
+    # For now, save that user wants to connect Etsy
+    user_id = session['user_id']
+    wishlists = user.get('wishlists', [])
+    
+    # Check if already connected
+    etsy_wishlist = next((w for w in wishlists if w.get('platform') == 'etsy'), None)
+    
+    if not etsy_wishlist:
+        # Initiate Etsy OAuth (would redirect to Etsy)
+        # For MVP: Just save intent, implement OAuth later
+        wishlists.append({
+            'platform': 'etsy',
+            'status': 'pending',
+            'connected_at': datetime.now().isoformat()
+        })
+        save_user(user_id, {'wishlists': wishlists})
+        logger.info(f"User {user_id} initiated Etsy connection")
+    
+    return redirect('/connect-platforms?success=etsy_pending')
+
+@app.route('/connect/goodreads', methods=['POST'])
+def connect_goodreads():
+    """Connect Goodreads (scraping public profile)"""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    
+    username = sanitize_username(request.form.get('username', ''))
+    
+    if not username:
+        return redirect('/connect-platforms?error=goodreads_no_username')
+    
+    user_id = session['user_id']
+    
+    # Save Goodreads username (will scrape "want to read" shelf)
+    wishlists = user.get('wishlists', [])
+    
+    # Check if already connected
+    goodreads_wishlist = next((w for w in wishlists if w.get('platform') == 'goodreads'), None)
+    
+    if goodreads_wishlist:
+        goodreads_wishlist['username'] = username
+        goodreads_wishlist['status'] = 'ready'
+    else:
+        wishlists.append({
+            'platform': 'goodreads',
+            'username': username,
+            'status': 'ready',
+            'method': 'scraping'
+        })
+    
+    save_user(user_id, {'wishlists': wishlists})
+    logger.info(f"User {user_id} connected Goodreads: {username}")
+    
+    return redirect('/connect-platforms?success=goodreads_ready')
+
+@app.route('/connect/youtube', methods=['POST'])
+def connect_youtube():
+    """Connect YouTube (channel subscriptions indicate interests)"""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    
+    channel_id_or_username = sanitize_username(request.form.get('channel_id', ''))
+    
+    if not channel_id_or_username:
+        return redirect('/connect-platforms?error=youtube_no_channel')
+    
+    user_id = session['user_id']
+    
+    # Save YouTube channel (will analyze subscriptions)
+    platforms = user.get('platforms', {})
+    platforms['youtube'] = {
+        'channel_id': channel_id_or_username,
+        'status': 'ready',
+        'method': 'api'  # YouTube Data API
+    }
+    save_user(user_id, {'platforms': platforms})
+    logger.info(f"User {user_id} connected YouTube: {channel_id_or_username}")
+    
+    return redirect('/connect-platforms?success=youtube_ready')
 
 @app.route('/start-scraping', methods=['POST'])
 def start_scraping():
@@ -1177,11 +1320,83 @@ def api_generate_recommendations():
         quality = check_data_quality(platforms)
         rec_count = min(quality['recommendation_count'], tier_config['recommendations_per_profile'])
         
-        # Build platform insights
+        # ENHANCED: Extract ALL possible signals from platforms
+        signals = {}
+        wishlist_data = {}
+        avoid_items = []
+        all_extracted_signals = {}
+        
+        if ENHANCED_ENGINE_AVAILABLE:
+            try:
+                # Extract deep signals (engagement, aspirational, brands)
+                signals = extract_deep_signals(platforms)
+                
+                # ENHANCED: Extract ALL signals from each platform (comprehensive mining)
+                try:
+                    all_extracted_signals = combine_all_signals(platforms)
+                    # Merge combined signals into main signals dict
+                    if all_extracted_signals.get('combined'):
+                        combined = all_extracted_signals['combined']
+                        # Merge hashtags, brands, activities, etc.
+                        if combined.get('all_hashtags'):
+                            signals.setdefault('high_engagement_topics', {}).update(combined['all_hashtags'])
+                        if combined.get('all_brands'):
+                            signals.setdefault('brand_preferences', {}).update(combined['all_brands'])
+                        if combined.get('aspirational_interests'):
+                            signals.setdefault('aspirational_interests', []).extend(combined['aspirational_interests'])
+                        if combined.get('current_interests'):
+                            signals.setdefault('current_interests', []).extend(combined['current_interests'])
+                        if combined.get('price_preferences'):
+                            signals['price_preferences'] = combined['price_preferences']
+                    
+                    logger.info(f"Extracted comprehensive signals: {len(all_extracted_signals)} platform signals")
+                except Exception as e:
+                    logger.warning(f"Enhanced data extraction not available: {e}")
+                
+                # Get wishlist data (if user has connected)
+                user_wishlists = user.get('wishlists', [])
+                if user_wishlists:
+                    wishlist_data = integrate_wishlist_data(user_wishlists, platforms)
+                    duplicates = detect_duplicates(platforms, user_wishlists)
+                    avoid_items = duplicates.get('avoid', [])
+                    logger.info(f"Found {len(avoid_items)} items to avoid from wishlists")
+            except Exception as e:
+                logger.error(f"Error in enhanced signal extraction: {e}", exc_info=True)
+                signals = {}
+                wishlist_data = {}
+                all_extracted_signals = {}
+        
+        # Build platform insights (ENHANCED with comprehensive data extraction)
         platform_insights = []
         
-        # Instagram data
-        if 'instagram' in platforms:
+        # Use enhanced extracted signals if available, otherwise fallback to basic
+        use_enhanced = all_extracted_signals and any(all_extracted_signals.values())
+        
+        if use_enhanced and all_extracted_signals.get('instagram'):
+            # Enhanced Instagram insights
+            ig_signals = all_extracted_signals['instagram']
+            ig_data = platforms['instagram'].get('data', {})
+            posts = ig_data.get('posts', [])
+            
+            high_engagement_count = len(ig_signals.get('high_engagement_content', []))
+            top_hashtags = list(ig_signals.get('hashtags', {}).keys())[:15]
+            top_brands = list(ig_signals.get('brand_mentions', {}).keys())[:10]
+            top_activities = list(ig_signals.get('activity_types', {}).keys())[:10]
+            aesthetics = list(ig_signals.get('aesthetic_keywords', {}).keys())[:10]
+            
+            platform_insights.append(f"""
+INSTAGRAM DATA ({len(posts)} posts analyzed):
+- Username: @{ig_data.get('username', 'unknown')}
+- High Engagement Posts: {high_engagement_count} posts with 50+ engagement (strongest interest signals)
+- Top Hashtags: {', '.join(top_hashtags)}
+- Brand Preferences: {', '.join(top_brands)}
+- Activity Types: {', '.join(top_activities)}
+- Aesthetic Style: {', '.join(aesthetics)}
+- Recent Interests: {', '.join(ig_signals.get('recent_interests', [])[:10])}
+- Locations Mentioned: {', '.join(list(ig_signals.get('locations', {}).keys())[:5])}
+""")
+        elif 'instagram' in platforms:
+            # Basic Instagram insights (fallback)
             ig_data = platforms['instagram'].get('data', {})
             if ig_data:
                 posts = ig_data.get('posts', [])
@@ -1201,8 +1416,30 @@ INSTAGRAM DATA ({len(posts)} posts analyzed):
 - Engagement: Average {avg_likes:.0f} likes per post
 """)
         
-        # TikTok data with repost intelligence
-        if 'tiktok' in platforms:
+        # TikTok data (enhanced if available, otherwise basic)
+        if use_enhanced and all_extracted_signals.get('tiktok'):
+            tt_signals = all_extracted_signals['tiktok']
+            tt_data = platforms['tiktok'].get('data', {})
+            
+            repost_count = len(tt_signals.get('aspirational_content', []))
+            top_hashtags = list(tt_signals.get('hashtags', {}).keys())[:10]
+            music_trends = list(tt_signals.get('music_trends', {}).keys())[:5]
+            creator_styles = [c['creator'] for c in tt_signals.get('creator_styles', [])[:5]]
+            
+            platform_insights.append(f"""
+TIKTOK DATA ({tt_data.get('total_videos', 0)} videos analyzed):
+- Username: @{tt_data.get('username', 'unknown')}
+- Aspirational Content: {repost_count} reposts analyzed (what they WANT but don't have)
+- Top Hashtags: {', '.join(top_hashtags)}
+- Music Trends: {', '.join(music_trends)}
+- Creator Styles: {', '.join(creator_styles)}
+- Trending Topics: {', '.join(tt_signals.get('trending_topics', [])[:10])}
+- CRITICAL: Reposts reveal ASPIRATIONAL interests - prioritize these for gifts
+""")
+        elif 'tiktok' in platforms:
+        
+        # TikTok data (basic fallback if enhanced not available)
+        if 'tiktok' in platforms and not (use_enhanced and all_extracted_signals.get('tiktok')):
             tt_data = platforms['tiktok'].get('data', {})
             if tt_data:
                 videos = tt_data.get('videos', [])
@@ -1212,35 +1449,51 @@ INSTAGRAM DATA ({len(posts)} posts analyzed):
                 top_hashtags = tt_data.get('top_hashtags', {})
                 top_music = tt_data.get('top_music', {})
                 
-                # Creator personality insights
                 creator_insights = ""
                 if favorite_creators:
                     creator_list = [f"@{creator[0]} ({creator[1]} reposts)" for creator in favorite_creators[:5]]
                     creator_insights = f"\n- Frequently Reposts From: {', '.join(creator_list)}"
-                    creator_insights += f"\n- CRITICAL: These creators represent their aspirations and aesthetic preferences"
-                    creator_insights += f"\n- What these creators embody is what resonates with them most"
+                    creator_insights += f"\n- CRITICAL: These creators represent their aspirations"
                 
-                # Music taste signals
                 music_insights = ""
                 if top_music:
                     music_list = list(top_music.keys())[:5]
                     music_insights = f"\n- Popular Sounds: {', '.join(music_list)}"
-                    music_insights += f"\n- Music indicates aesthetic preferences and subcultures"
                 
                 platform_insights.append(f"""
 TIKTOK DATA ({tt_data.get('total_videos', 0)} videos analyzed):
 - Username: @{tt_data.get('username', 'unknown')}
 - Original Content Themes: {'; '.join(descriptions[:15])}
-- Repost Behavior: {repost_patterns.get('total_reposts', 0)} reposts out of {tt_data.get('total_videos', 0)} total videos ({repost_patterns.get('repost_percentage', 0):.1f}%)
+- Repost Behavior: {repost_patterns.get('total_reposts', 0)} reposts ({repost_patterns.get('repost_percentage', 0):.1f}%)
 {creator_insights}
 {music_insights}
 - Top Hashtags: {', '.join(list(top_hashtags.keys())[:10])}
-
-KEY INSIGHT: Reposts are MORE revealing than original posts. What they amplify shows what resonates most.
 """)
         
-        # Pinterest data (if available)
-        if 'pinterest' in platforms:
+        # Pinterest data (enhanced if available)
+        if use_enhanced and all_extracted_signals.get('pinterest'):
+            pin_signals = all_extracted_signals['pinterest']
+            boards = platforms['pinterest'].get('boards', [])
+            
+            board_themes = list(pin_signals.get('board_themes', {}).keys())[:10]
+            pin_keywords = list(pin_signals.get('pin_keywords', {}).keys())[:20]
+            specific_wants = pin_signals.get('specific_wants', [])[:10]
+            price_prefs = pin_signals.get('price_preferences', {})
+            
+            price_info = ""
+            if price_prefs:
+                price_info = f"\n- Price Preferences: ${price_prefs.get('min', 0)}-${price_prefs.get('max', 0)} (avg ${price_prefs.get('avg', 0):.0f})"
+            
+            platform_insights.append(f"""
+PINTEREST DATA ({len(boards)} boards analyzed):
+- Board Themes: {', '.join(board_themes)}
+- Pin Keywords: {', '.join(pin_keywords)}
+- Specific Wants: {', '.join(specific_wants)}
+- Planning Mindset: {'Yes' if pin_signals.get('planning_mindset') else 'No'}{price_info}
+- CRITICAL: Pinterest = EXPLICIT WISHLIST - they're pinning what they want
+""")
+        elif 'pinterest' in platforms:
+            # Basic Pinterest insights (fallback)
             pinterest = platforms['pinterest']
             boards = pinterest.get('boards', [])
             if boards:
@@ -1256,10 +1509,31 @@ PINTEREST DATA ({len(boards)} boards):
         if recipient_type == 'someone_else' and relationship:
             relationship_context = RELATIONSHIP_PROMPTS.get(relationship, "")
         
-        # Build prompt with all enhancements
-        low_data_instructions = ""
-        if quality['quality'] in ['limited', 'insufficient']:
-            low_data_instructions = f"""
+        # ENHANCED: Use enhanced prompt if available, otherwise fallback to basic
+        if ENHANCED_ENGINE_AVAILABLE and signals:
+            try:
+                prompt = build_enhanced_prompt(
+                    platforms,
+                    wishlist_data,
+                    signals,
+                    relationship_context,
+                    recipient_type,
+                    quality,
+                    rec_count
+                )
+                logger.info("Using enhanced recommendation engine")
+            except Exception as e:
+                logger.error(f"Error building enhanced prompt: {e}", exc_info=True)
+                # Fallback to basic prompt below
+                prompt = None
+        else:
+            prompt = None
+        
+        # Build basic prompt (fallback or if enhanced not available)
+        if not prompt:
+            low_data_instructions = ""
+            if quality['quality'] in ['limited', 'insufficient']:
+                low_data_instructions = f"""
 NOTE: Limited data available ({quality['total_posts']} posts) - focus on SAFE, OBVIOUS choices based on clear signals.
 Generate ONLY {rec_count} recommendations (NOT 10 - we have limited data).
 With limited data, prioritize SAFE BETS - obvious choices that won't miss.
@@ -1267,8 +1541,8 @@ Each recommendation MUST cite specific posts/behaviors that justify it.
 If you only have evidence for {rec_count - 1} gifts, return {rec_count - 1} gifts, not {rec_count}.
 DO NOT make assumptions - only recommend what you have clear evidence for.
 """
-        
-        prompt = f"""You are an expert gift curator. Based on the following social media data, generate {rec_count} highly specific, actionable gift recommendations.
+            
+            prompt = f"""You are an expert gift curator. Based on the following social media data, generate {rec_count} highly specific, actionable gift recommendations.
 
 USER DATA:
 {chr(10).join(platform_insights)}{relationship_context}
@@ -1404,6 +1678,15 @@ IMPORTANT:
             
             if len(recommendations) == 0:
                 raise ValueError("No recommendations generated")
+            
+            # ENHANCED: Post-process validation if enhanced engine available
+            if ENHANCED_ENGINE_AVAILABLE and avoid_items:
+                try:
+                    recommendations = validate_recommendations(recommendations, avoid_items, signals)
+                    logger.info(f"Validated {len(recommendations)} recommendations (filtered duplicates)")
+                except Exception as e:
+                    logger.error(f"Error validating recommendations: {e}")
+                    # Continue with unvalidated recommendations
             
             logger.info(f"Successfully parsed {len(recommendations)} recommendations")
             

@@ -352,6 +352,96 @@
             </div>
         </div>
 
+        <!-- Optional Platforms Section (Collapsible to avoid paralysis) -->
+        <div style="margin-top: 30px;">
+            <button id="more-platforms-toggle" class="connect-button" style="width: 100%; background: rgba(255,255,255,0.2); color: white; border: 2px solid white;">
+                + Connect More Platforms (Optional)
+            </button>
+            
+            <div id="more-platforms" style="display: none; margin-top: 25px;">
+                <div class="platforms-grid">
+                    <!-- Etsy Wishlist -->
+                    <div class="platform-card {% if user.wishlists and user.wishlists|selectattr('platform', 'equalto', 'etsy')|list %}connected{% endif %}">
+                        <div class="platform-header">
+                            <div class="platform-icon">🛍️</div>
+                            <div class="platform-info">
+                                <h3>Etsy Wishlist</h3>
+                                <p>See what they've favorited</p>
+                            </div>
+                        </div>
+                        {% if user.wishlists and user.wishlists|selectattr('platform', 'equalto', 'etsy')|list %}
+                            <div class="connected-badge">✓ Connected</div>
+                        {% else %}
+                            <form method="POST" action="/connect/etsy" class="platform-form">
+                                <p style="font-size: 0.9em; color: #6b7280; margin-bottom: 15px; text-align: center;">
+                                    Connect your Etsy account to see favorited items
+                                </p>
+                                <button type="submit" class="connect-button">
+                                    Connect Etsy
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+
+                    <!-- Goodreads -->
+                    <div class="platform-card {% if user.wishlists and user.wishlists|selectattr('platform', 'equalto', 'goodreads')|list %}connected{% endif %}">
+                        <div class="platform-header">
+                            <div class="platform-icon">📚</div>
+                            <div class="platform-info">
+                                <h3>Goodreads</h3>
+                                <p>"Want to Read" shelf analysis</p>
+                            </div>
+                        </div>
+                        {% if user.wishlists and user.wishlists|selectattr('platform', 'equalto', 'goodreads')|list %}
+                            <div class="connected-badge">✓ Connected</div>
+                        {% else %}
+                            <form method="POST" action="/connect/goodreads" class="platform-form">
+                                <div class="form-group">
+                                    <label for="goodreads-username">Goodreads Username</label>
+                                    <input type="text" 
+                                           name="username" 
+                                           id="goodreads-username" 
+                                           placeholder="username" 
+                                           required>
+                                </div>
+                                <button type="submit" class="connect-button">
+                                    Connect Goodreads
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+
+                    <!-- YouTube -->
+                    <div class="platform-card {% if platforms.youtube %}connected{% endif %}">
+                        <div class="platform-header">
+                            <div class="platform-icon">📺</div>
+                            <div class="platform-info">
+                                <h3>YouTube</h3>
+                                <p>Channel subscriptions = interests</p>
+                            </div>
+                        </div>
+                        {% if platforms.youtube %}
+                            <div class="connected-badge">✓ Connected</div>
+                        {% else %}
+                            <form method="POST" action="/connect/youtube" class="platform-form">
+                                <div class="form-group">
+                                    <label for="youtube-channel">Channel ID or Username</label>
+                                    <input type="text" 
+                                           name="channel_id" 
+                                           id="youtube-channel" 
+                                           placeholder="@channel or channel_id" 
+                                           required>
+                                </div>
+                                <button type="submit" class="connect-button">
+                                    Connect YouTube
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="generate-section">
             {% if platforms|length >= 1 %}
                 <a href="/generate-recommendations" class="generate-button">
@@ -509,6 +599,22 @@
             
             localStorage.setItem(this.storageKey, JSON.stringify(history));
         }
+    }
+
+    // Toggle more platforms section
+    const morePlatformsToggle = document.getElementById('more-platforms-toggle');
+    const morePlatforms = document.getElementById('more-platforms');
+    
+    if (morePlatformsToggle && morePlatforms) {
+        morePlatformsToggle.addEventListener('click', function() {
+            if (morePlatforms.style.display === 'none') {
+                morePlatforms.style.display = 'block';
+                morePlatformsToggle.textContent = '− Hide Optional Platforms';
+            } else {
+                morePlatforms.style.display = 'none';
+                morePlatformsToggle.textContent = '+ Connect More Platforms (Optional)';
+            }
+        });
     }
 
     // Initialize when page loads

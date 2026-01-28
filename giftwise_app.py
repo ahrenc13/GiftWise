@@ -1118,12 +1118,13 @@ USER DATA:
 
 {low_data_instructions}
 
+
 CRITICAL INSTRUCTIONS:
-1. You have WEB SEARCH available - use it to find REAL product pages
-2. For each recommendation, use web_search to find the ACTUAL product page:
-   - Search for: "[Brand] [Product Name] [Model] buy online"
-   - Prioritize: Direct brand website → Specialty retailers (Etsy, UncommonGoods) → Amazon
-   - Return the REAL URL you found via search
+1. For each recommendation, provide the most specific product URL you can construct:
+   - Direct brand URLs: https://brandname.com/products/specific-item
+   - Specialty retailers: https://www.etsy.com/search?q=specific+product+name
+   - Amazon search: https://www.amazon.com/s?k=specific+product+name
+2. Be as specific as possible with product names and model numbers
    - If you cannot find a real URL, use: https://www.etsy.com/search?q=specific+product+name
 3. VERIFY products exist before recommending them via search
 4. Get real current prices via search
@@ -1175,17 +1176,12 @@ IMPORTANT: Return ONLY the JSON array. No markdown, no backticks, no explanatory
         print(f"Data quality: {quality['quality']} ({quality['total_posts']} posts)")
         
         # Call Claude API with web search enabled
-        message = claude_client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=8000,
-            tools=[
-                {
-                    "type": "web_search_20250305",
-                    "name": "web_search"
-                }
-            ],
-            messages=[{"role": "user", "content": prompt}]
-        )
+        # Call Claude API
+   message = claude_client.messages.create(
+       model="claude-sonnet-4-20250514",
+       max_tokens=8000,
+       messages=[{"role": "user", "content": prompt}]
+   )
         
         # Extract response (handle tool use)
         response_text = ""

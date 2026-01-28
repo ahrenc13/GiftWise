@@ -795,7 +795,7 @@ def validate_username():
 
 @app.route('/connect/instagram', methods=['POST'])
 def connect_instagram():
-    """Connect Instagram with progress tracking"""
+    """Save Instagram username (scraping happens on generate)"""
     user = get_session_user()
     if not user:
         return redirect('/signup')
@@ -805,38 +805,20 @@ def connect_instagram():
     if not username:
         return redirect('/connect-platforms?error=instagram_no_username')
     
-    # Generate unique task ID
-    task_id = str(uuid.uuid4())
+    # Just save the username - don't scrape yet
+    platforms = user.get('platforms', {})
+    platforms['instagram'] = {
+        'username': username,
+        'status': 'ready',  # Ready to scrape
+        'method': 'scraping'
+    }
+    save_user(session['user_id'], {'platforms': platforms})
     
-    # Get user_id BEFORE starting thread
-    user_id = session['user_id']
-    
-    # Start scraping in background thread
-    def scrape_task():
-        instagram_data = scrape_instagram_profile(username, max_posts=50, task_id=task_id)
-        
-        if instagram_data:
-            # Save to database using passed user_id
-            user = get_user(user_id)
-            platforms = user.get('platforms', {})
-            platforms['instagram'] = {
-                'username': username,
-                'connected_at': datetime.now().isoformat(),
-                'method': 'scraping',
-                'data': instagram_data
-            }
-            save_user(user_id, {'platforms': platforms})
-    
-    thread = threading.Thread(target=scrape_task)
-    thread.daemon = True
-    thread.start()
-    
-    # Redirect to progress page
-    return redirect(f'/connect-progress/instagram/{task_id}')
+    return redirect('/connect-platforms?success=instagram_ready')
 
 @app.route('/connect/tiktok', methods=['POST'])
 def connect_tiktok():
-    """Connect TikTok with progress tracking"""
+    """Save TikTok username (scraping happens on generate)"""
     user = get_session_user()
     if not user:
         return redirect('/signup')
@@ -846,34 +828,71 @@ def connect_tiktok():
     if not username:
         return redirect('/connect-platforms?error=tiktok_no_username')
     
-    # Generate unique task ID
-    task_id = str(uuid.uuid4())
+    # Just save the username - don't scrape yet
+    platforms = user.get('platforms', {})
+    platforms['tiktok'] = {
+        'username': username,
+        'status': 'ready',  # Ready to scrape
+        'method': 'scraping'
+    }
+    save_user(session['user_id'], {'platforms': platforms})
     
-    # Get user_id BEFORE starting thread
+    return redirect('/connect-platforms?success=tiktok_ready')
+
+@app.route('/start-scraping', methods=['POST'])
+def start_scraping():
+    """Start parallel scraping for all connected platforms"""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    
+    platforms = user.get('platforms', {})
     user_id = session['user_id']
     
-    # Start scraping in background thread
-    def scrape_task():
-        tiktok_data = scrape_tiktok_profile(username, max_videos=50, task_id=task_id)
+    # Generate task IDs for tracking
+    scrape_tasks = {}
+    
+    # Start scraping threads for all platforms in parallel
+    if 'instagram' in platforms and platforms['instagram'].get('status') == 'ready':
+        task_id = str(uuid.uuid4())
+        scrape_tasks['instagram'] = task_id
+        username = platforms['instagram']['username']
         
-        if tiktok_data:
-            # Save to database using passed user_id
-            user = get_user(user_id)
-            platforms = user.get('platforms', {})
-            platforms['tiktok'] = {
-                'username': username,
-                'connected_at': datetime.now().isoformat(),
-                'method': 'scraping',
-                'data': tiktok_data
-            }
-            save_user(user_id, {'platforms': platforms})
+        def scrape_ig():
+            data = scrape_instagram_profile(username, max_posts=50, task_id=task_id)
+            if data:
+                user = get_user(user_id)
+                platforms = user.get('platforms', {})
+                platforms['instagram']['data'] = data
+                platforms['instagram']['status'] = 'complete'
+                platforms['instagram']['connected_at'] = datetime.now().isoformat()
+                save_user(user_id, {'platforms': platforms})
+        
+        thread = threading.Thread(target=scrape_ig)
+        thread.daemon = True
+        thread.start()
     
-    thread = threading.Thread(target=scrape_task)
-    thread.daemon = True
-    thread.start()
+    if 'tiktok' in platforms and platforms['tiktok'].get('status') == 'ready':
+        task_id = str(uuid.uuid4())
+        scrape_tasks['tiktok'] = task_id
+        username = platforms['tiktok']['username']
+        
+        def scrape_tt():
+            data = scrape_tiktok_profile(username, max_videos=50, task_id=task_id)
+            if data:
+                user = get_user(user_id)
+                platforms = user.get('platforms', {})
+                platforms['tiktok']['data'] = data
+                platforms['tiktok']['status'] = 'complete'
+                platforms['tiktok']['connected_at'] = datetime.now().isoformat()
+                save_user(user_id, {'platforms': platforms})
+        
+        thread = threading.Thread(target=scrape_tt)
+        thread.daemon = True
+        thread.start()
     
-    # Redirect to progress page
-    return redirect(f'/connect-progress/tiktok/{task_id}')
+    # Redirect to multi-platform progress page
+    return redirect(f"/scraping-progress?tasks={','.join([f'{k}:{v}' for k, v in scrape_tasks.items()])}")
 
 @app.route('/connect-progress/<platform>/<task_id>')
 def connect_progress(platform, task_id):
@@ -900,7 +919,7 @@ def scrape_progress_stream(task_id):
 
 @app.route('/generate-recommendations')
 def generate_recommendations_route():
-    """Generate gift recommendations with data quality check"""
+    """Generate gift recommendations - start scraping if needed"""
     user = get_session_user()
     if not user:
         return redirect('/signup')
@@ -910,10 +929,20 @@ def generate_recommendations_route():
     if len(platforms) < 1:
         return redirect('/connect-platforms?error=need_platforms')
     
-    # Check data quality
+    # Check if scraping is needed
+    needs_scraping = False
+    for platform, data in platforms.items():
+        if data.get('status') == 'ready':  # Has username but no data
+            needs_scraping = True
+            break
+    
+    if needs_scraping:
+        # Redirect to start parallel scraping
+        return redirect('/start-scraping', code=307)  # 307 preserves POST
+    
+    # All platforms have data - check quality and generate
     quality = check_data_quality(platforms)
     
-    # If insufficient data, show warning page
     if quality['quality'] == 'insufficient' and not request.args.get('force'):
         return render_template('low_data_warning.html', 
                              quality=quality,
@@ -922,7 +951,6 @@ def generate_recommendations_route():
                              total_count=quality['total_posts'],
                              rec_count=quality['recommendation_count'])
     
-    # Show loading page
     recipient_type = user.get('recipient_type', 'myself')
     return render_template('generating.html', 
                          platforms=list(platforms.keys()),

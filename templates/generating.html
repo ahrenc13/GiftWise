@@ -120,32 +120,91 @@
         </div>
         
         <div class="spinner"></div>
+        <div class="progress-bar-container">
+            <div class="progress-bar" id="progressBar"></div>
+        </div>
         <p class="status-message">Generating ultra-specific recommendations...</p>
     </div>
     
     <script>
+        let startTime = Date.now();
+        let progressInterval;
+        let currentProgress = 0;
+        
+        // Simulate progress (since we can't track real progress easily)
+        function updateProgress() {
+            const elapsed = (Date.now() - startTime) / 1000; // seconds
+            const maxTime = 120; // 2 minutes max
+            
+            // Gradually increase progress, but cap at 90% until complete
+            if (elapsed < 10) {
+                currentProgress = Math.min(20 + (elapsed / 10) * 30, 50);
+            } else if (elapsed < 30) {
+                currentProgress = Math.min(50 + ((elapsed - 10) / 20) * 30, 80);
+            } else {
+                currentProgress = Math.min(80 + ((elapsed - 30) / 90) * 10, 90);
+            }
+            
+            // Update UI if progress bar exists
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.querySelector('.status-message');
+            
+            if (progressBar) {
+                progressBar.style.width = currentProgress + '%';
+            }
+            
+            // Show timeout warning after 90 seconds
+            if (elapsed > 90 && progressText) {
+                progressText.innerHTML = '⚠️ This is taking longer than usual. Please wait...';
+            }
+        }
+        
+        // Start progress simulation
+        progressInterval = setInterval(updateProgress, 1000);
+        
         // Auto-generate recommendations when page loads
         window.addEventListener('load', async function() {
             try {
+                // Create AbortController for timeout
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minute timeout
+                
                 const response = await fetch('/api/generate-recommendations', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
-                    }
+                    },
+                    signal: controller.signal
                 });
+                
+                clearTimeout(timeoutId);
+                clearInterval(progressInterval);
                 
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Redirect to recommendations page
-                    window.location.href = '/recommendations';
+                    // Show 100% briefly before redirect
+                    const progressBar = document.getElementById('progressBar');
+                    if (progressBar) {
+                        progressBar.style.width = '100%';
+                    }
+                    setTimeout(() => {
+                        window.location.href = '/recommendations';
+                    }, 500);
                 } else {
+                    clearInterval(progressInterval);
                     alert('Error generating recommendations: ' + (data.error || 'Unknown error'));
                     window.location.href = '/connect-platforms';
                 }
             } catch (error) {
+                clearInterval(progressInterval);
                 console.error('Error:', error);
-                alert('Error generating recommendations. Please try again.');
+                
+                if (error.name === 'AbortError') {
+                    alert('Request timed out. The AI is taking longer than expected. Please try again.');
+                } else {
+                    alert('Error generating recommendations. Please try again.');
+                }
                 window.location.href = '/connect-platforms';
             }
         });

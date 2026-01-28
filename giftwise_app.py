@@ -1644,7 +1644,7 @@ IMPORTANT:
                 model="claude-sonnet-4-20250514",
                 max_tokens=8000,
                 messages=[{"role": "user", "content": prompt}],
-                timeout=60.0
+                timeout=120.0  # Increased to 2 minutes for complex prompts
             )
             
             # Track API usage

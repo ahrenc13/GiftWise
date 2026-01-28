@@ -13,6 +13,7 @@ UPDATES IN THIS VERSION:
 ✅ Freemium tier structure
 ✅ Your/Their pronoun handling
 ✅ TikTok repost intelligence
+✅ CRITICAL BUG FIXES (Jan 28, 2026)
 
 Author: Chad + Claude
 Date: January 2026
@@ -23,12 +24,14 @@ import json
 import time
 import uuid
 import threading
+import re
+import logging
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, session, jsonify, url_for, Response
 import stripe
 import anthropic
 from dotenv import load_dotenv
-from collections import Counter
+from collections import Counter, OrderedDict
 
 # OAuth libraries
 from requests_oauthlib import OAuth2Session
@@ -39,8 +42,20 @@ import shelve
 
 load_dotenv()
 
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger('giftwise')
+
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'your-secret-key-change-in-production')
+
+# SECURITY FIX: Fail fast if SECRET_KEY not set
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    raise ValueError("SECRET_KEY environment variable is required. Set it in your .env file.")
+app.secret_key = SECRET_KEY
 
 # API Keys from environment variables
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
@@ -65,8 +80,12 @@ SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID', '')
 SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET', '')
 
 # Initialize clients
-stripe.api_key = STRIPE_SECRET_KEY
-claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+if STRIPE_SECRET_KEY:
+    stripe.api_key = STRIPE_SECRET_KEY
+if ANTHROPIC_API_KEY:
+    claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+else:
+    logger.warning("ANTHROPIC_API_KEY not set - recommendation generation will fail")
 
 # ============================================================================
 # FREEMIUM TIER CONFIGURATION
@@ -155,19 +174,27 @@ RELATIONSHIP: Professional Contact
 }
 
 # ============================================================================
-# PROGRESS TRACKING (In-memory for MVP, upgrade to Redis for production)
+# PROGRESS TRACKING (Fixed: Memory leak prevention)
 # ============================================================================
 
-scraping_progress = {}
+scraping_progress = OrderedDict()
+MAX_PROGRESS_ENTRIES = 1000
 
 def set_progress(task_id, status, message, percent=0):
-    """Update scraping progress"""
+    """Update scraping progress with automatic cleanup"""
     scraping_progress[task_id] = {
         'status': status,
         'message': message,
         'percent': percent,
         'timestamp': datetime.now().isoformat()
     }
+    
+    # Clean up old entries to prevent memory leak
+    if len(scraping_progress) > MAX_PROGRESS_ENTRIES:
+        # Remove oldest 100 entries
+        for _ in range(100):
+            if scraping_progress:
+                scraping_progress.popitem(last=False)
 
 def get_progress(task_id):
     """Get scraping progress"""
@@ -178,20 +205,48 @@ def get_progress(task_id):
     })
 
 # ============================================================================
-# DATABASE HELPERS
+# DATABASE HELPERS (Fixed: Thread-safe operations)
 # ============================================================================
+
+# Thread locks for database operations
+db_locks = {}
+lock_lock = threading.Lock()
+
+def get_db_lock(user_id):
+    """Get or create a lock for a specific user"""
+    with lock_lock:
+        if user_id not in db_locks:
+            db_locks[user_id] = threading.Lock()
+        return db_locks[user_id]
 
 def get_user(user_id):
     """Get user data from database"""
-    with shelve.open('giftwise_db') as db:
-        return db.get(f'user_{user_id}')
+    if not user_id:
+        return None
+    try:
+        with shelve.open('giftwise_db') as db:
+            return db.get(f'user_{user_id}')
+    except Exception as e:
+        logger.error(f"Error getting user {user_id}: {e}")
+        return None
 
 def save_user(user_id, data):
-    """Save user data to database"""
-    with shelve.open('giftwise_db') as db:
-        existing = db.get(f'user_{user_id}', {})
-        existing.update(data)
-        db[f'user_{user_id}'] = existing
+    """Save user data to database (thread-safe)"""
+    if not user_id:
+        logger.error("Attempted to save user with no user_id")
+        return False
+    
+    lock = get_db_lock(user_id)
+    try:
+        with lock:
+            with shelve.open('giftwise_db') as db:
+                existing = db.get(f'user_{user_id}', {})
+                existing.update(data)
+                db[f'user_{user_id}'] = existing
+        return True
+    except Exception as e:
+        logger.error(f"Error saving user {user_id}: {e}")
+        return False
 
 def get_session_user():
     """Get current user from session"""
@@ -202,6 +257,8 @@ def get_session_user():
 
 def get_user_tier(user):
     """Get user's subscription tier"""
+    if not user:
+        return 'free'
     return user.get('subscription_tier', 'free')
 
 def check_tier_limit(user, feature):
@@ -217,6 +274,21 @@ def check_tier_limit(user, feature):
     elif feature in tier_config['features']:
         return True
     return False
+
+# ============================================================================
+# INPUT SANITIZATION
+# ============================================================================
+
+def sanitize_username(username):
+    """Sanitize username input - remove dangerous characters"""
+    if not username:
+        return ''
+    # Remove @ symbols, whitespace, special chars
+    username = username.strip().replace('@', '').replace(' ', '')
+    # Only allow alphanumeric, underscore, dot
+    username = re.sub(r'[^a-zA-Z0-9_.]', '', username)
+    # Limit length
+    return username[:30]
 
 # ============================================================================
 # DATA QUALITY ASSESSMENT
@@ -355,7 +427,7 @@ def check_instagram_privacy(username):
             'icon': '⚠️'
         }
     except Exception as e:
-        print(f"Instagram privacy check error: {e}")
+        logger.error(f"Instagram privacy check error: {e}")
         return {
             'valid': True,  # Allow them to try anyway
             'error': str(e),
@@ -413,7 +485,7 @@ def check_tiktok_privacy(username):
             'icon': '⚠️'
         }
     except Exception as e:
-        print(f"TikTok validation error for @{username}: {e}")
+        logger.error(f"TikTok validation error for @{username}: {e}")
         # If validation fails, let them try anyway
         return {
             'valid': True,
@@ -431,26 +503,28 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
     Scrape Instagram with progress tracking
     """
     if not APIFY_API_TOKEN:
-        print("No Apify token configured")
+        logger.warning("No Apify token configured")
         return None
     
     try:
         if task_id:
             set_progress(task_id, 'running', 'Starting Instagram scraper...', 5)
         
-        print(f"Starting Instagram scrape for @{username}")
+        logger.info(f"Starting Instagram scrape for @{username}")
         
         response = requests.post(
             f'https://api.apify.com/v2/acts/{APIFY_INSTAGRAM_ACTOR}/runs?token={APIFY_API_TOKEN}',
             json={
                 'username': [username],
                 'resultsLimit': max_posts
-            }
+            },
+            timeout=30
         )
         
         if response.status_code != 201:
             if task_id:
                 set_progress(task_id, 'error', 'Failed to start scraper', 0)
+            logger.error(f"Failed to start Instagram scraper: {response.status_code}")
             return None
         
         run_id = response.json()['data']['id']
@@ -470,7 +544,7 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
             if task_id:
                 progress_pct = min(15 + (elapsed / max_wait) * 75, 90)
                 messages = {
-                    10: 'Finding @{username}...',
+                    10: f'Finding @{username}...',
                     30: 'Analyzing profile...',
                     50: 'Downloading posts...',
                     70: 'Extracting interests...',
@@ -480,7 +554,8 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
                 set_progress(task_id, 'running', msg, progress_pct)
             
             status_response = requests.get(
-                f'https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}'
+                f'https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}',
+                timeout=10
             )
             
             if status_response.status_code != 200:
@@ -493,23 +568,26 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
             elif status in ['FAILED', 'ABORTED', 'TIMED-OUT']:
                 if task_id:
                     set_progress(task_id, 'error', 'Instagram scraping failed', 0)
+                logger.error(f"Instagram scraping failed with status: {status}")
                 return None
-        
         
         # Check if we timed out
         if elapsed >= max_wait:
-            print(f"Instagram scrape timeout after {max_wait}s")
+            logger.warning(f"Instagram scrape timeout after {max_wait}s")
             if task_id:
                 set_progress(task_id, 'error', 'Scraping timed out', 0)
             return None
+        
         # Get results
         results_response = requests.get(
-            f'https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?token={APIFY_API_TOKEN}'
+            f'https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?token={APIFY_API_TOKEN}',
+            timeout=30
         )
         
         if results_response.status_code != 200:
             if task_id:
                 set_progress(task_id, 'error', 'Failed to retrieve data', 0)
+            logger.error(f"Failed to retrieve Instagram data: {results_response.status_code}")
             return None
         
         data = results_response.json()
@@ -517,6 +595,7 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
         if not data:
             if task_id:
                 set_progress(task_id, 'error', 'No posts found', 0)
+            logger.warning(f"No posts found for Instagram user @{username}")
             return None
         
         # Parse data
@@ -552,12 +631,11 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
         if task_id:
             set_progress(task_id, 'complete', f'✓ Connected! Found {len(posts)} posts', 100)
         
+        logger.info(f"Successfully scraped {len(posts)} Instagram posts for @{username}")
         return result
         
     except Exception as e:
-        print(f"Instagram scraping error: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Instagram scraping error: {e}", exc_info=True)
         if task_id:
             set_progress(task_id, 'error', f'Error: {str(e)}', 0)
         return None
@@ -567,26 +645,28 @@ def scrape_tiktok_profile(username, max_videos=50, task_id=None):
     Scrape TikTok with progress tracking and repost analysis
     """
     if not APIFY_API_TOKEN:
-        print("No Apify token configured")
+        logger.warning("No Apify token configured")
         return None
     
     try:
         if task_id:
             set_progress(task_id, 'running', 'Starting TikTok scraper...', 5)
         
-        print(f"Starting TikTok scrape for @{username}")
+        logger.info(f"Starting TikTok scrape for @{username}")
         
         response = requests.post(
             f'https://api.apify.com/v2/acts/{APIFY_TIKTOK_ACTOR}/runs?token={APIFY_API_TOKEN}',
             json={
                 'profiles': [username],
                 'resultsPerPage': max_videos
-            }
+            },
+            timeout=30
         )
         
         if response.status_code != 201:
             if task_id:
                 set_progress(task_id, 'error', 'Failed to start scraper', 0)
+            logger.error(f"Failed to start TikTok scraper: {response.status_code}")
             return None
         
         run_id = response.json()['data']['id']
@@ -606,7 +686,7 @@ def scrape_tiktok_profile(username, max_videos=50, task_id=None):
             if task_id:
                 progress_pct = min(15 + (elapsed / max_wait) * 75, 90)
                 messages = {
-                    10: 'Finding @{username}...',
+                    10: f'Finding @{username}...',
                     30: 'Analyzing videos...',
                     50: 'Detecting reposts...',
                     70: 'Extracting interests...',
@@ -616,7 +696,8 @@ def scrape_tiktok_profile(username, max_videos=50, task_id=None):
                 set_progress(task_id, 'running', msg, progress_pct)
             
             status_response = requests.get(
-                f'https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}'
+                f'https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}',
+                timeout=10
             )
             
             if status_response.status_code != 200:
@@ -629,16 +710,19 @@ def scrape_tiktok_profile(username, max_videos=50, task_id=None):
             elif status in ['FAILED', 'ABORTED', 'TIMED-OUT']:
                 if task_id:
                     set_progress(task_id, 'error', 'TikTok scraping failed', 0)
+                logger.error(f"TikTok scraping failed with status: {status}")
                 return None
         
         # Get results
         results_response = requests.get(
-            f'https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?token={APIFY_API_TOKEN}'
+            f'https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?token={APIFY_API_TOKEN}',
+            timeout=30
         )
         
         if results_response.status_code != 200:
             if task_id:
                 set_progress(task_id, 'error', 'Failed to retrieve data', 0)
+            logger.error(f"Failed to retrieve TikTok data: {results_response.status_code}")
             return None
         
         data = results_response.json()
@@ -646,6 +730,7 @@ def scrape_tiktok_profile(username, max_videos=50, task_id=None):
         if not data:
             if task_id:
                 set_progress(task_id, 'error', 'No videos found', 0)
+            logger.warning(f"No videos found for TikTok user @{username}")
             return None
         
         # Parse with repost intelligence
@@ -655,10 +740,11 @@ def scrape_tiktok_profile(username, max_videos=50, task_id=None):
             total_videos = parsed_data.get('total_videos', 0)
             set_progress(task_id, 'complete', f'✓ Connected! Found {total_videos} videos', 100)
         
+        logger.info(f"Successfully scraped {parsed_data.get('total_videos', 0)} TikTok videos for @{username}")
         return parsed_data
         
     except Exception as e:
-        print(f"TikTok scraping error: {e}")
+        logger.error(f"TikTok scraping error: {e}", exc_info=True)
         if task_id:
             set_progress(task_id, 'error', f'Error: {str(e)}', 0)
         return None
@@ -667,8 +753,6 @@ def parse_tiktok_data(data, username):
     """
     Parse TikTok data with repost analysis
     """
-    from collections import Counter
-    
     videos = []
     reposts = []
     original_creators = []
@@ -738,9 +822,14 @@ def index():
 def signup():
     """Signup page with 4-tier relationship selection"""
     if request.method == 'POST':
-        email = request.form.get('email')
+        email = request.form.get('email', '').strip()
         recipient_type = request.form.get('recipient_type')
         relationship = request.form.get('relationship', '')
+        
+        if not email:
+            return render_template('signup.html', 
+                                 relationship_options=RELATIONSHIP_OPTIONS,
+                                 error='Email is required')
         
         # Create user
         user_id = email
@@ -753,6 +842,7 @@ def signup():
         })
         
         session['user_id'] = user_id
+        logger.info(f"New user signed up: {email}")
         
         return redirect('/connect-platforms')
     
@@ -786,21 +876,25 @@ def connect_platforms():
 @app.route('/api/validate-username', methods=['POST'])
 def validate_username():
     """Instant username validation endpoint"""
-    data = request.get_json()
-    platform = data.get('platform')
-    username = data.get('username', '').strip().replace('@', '')
-    
-    if not username:
-        return jsonify({'valid': False, 'message': 'Username required'})
-    
-    if platform == 'instagram':
-        result = check_instagram_privacy(username)
-    elif platform == 'tiktok':
-        result = check_tiktok_privacy(username)
-    else:
-        return jsonify({'valid': False, 'message': 'Invalid platform'})
-    
-    return jsonify(result)
+    try:
+        data = request.get_json()
+        platform = data.get('platform')
+        username = sanitize_username(data.get('username', ''))
+        
+        if not username:
+            return jsonify({'valid': False, 'message': 'Username required'})
+        
+        if platform == 'instagram':
+            result = check_instagram_privacy(username)
+        elif platform == 'tiktok':
+            result = check_tiktok_privacy(username)
+        else:
+            return jsonify({'valid': False, 'message': 'Invalid platform'})
+        
+        return jsonify(result)
+    except Exception as e:
+        logger.error(f"Username validation error: {e}")
+        return jsonify({'valid': False, 'message': 'Validation error occurred'}), 500
 
 @app.route('/connect/instagram', methods=['POST'])
 def connect_instagram():
@@ -809,10 +903,12 @@ def connect_instagram():
     if not user:
         return redirect('/signup')
     
-    username = request.form.get('username', '').strip().replace('@', '')
+    username = sanitize_username(request.form.get('username', ''))
     
     if not username:
         return redirect('/connect-platforms?error=instagram_no_username')
+    
+    user_id = session['user_id']
     
     # Just save the username - don't scrape yet
     platforms = user.get('platforms', {})
@@ -821,7 +917,8 @@ def connect_instagram():
         'status': 'ready',  # Ready to scrape
         'method': 'scraping'
     }
-    save_user(session['user_id'], {'platforms': platforms})
+    save_user(user_id, {'platforms': platforms})
+    logger.info(f"User {user_id} connected Instagram: @{username}")
     
     return redirect('/connect-platforms?success=instagram_ready')
 
@@ -832,10 +929,12 @@ def connect_tiktok():
     if not user:
         return redirect('/signup')
     
-    username = request.form.get('username', '').strip().lstrip('@')
+    username = sanitize_username(request.form.get('username', ''))
     
     if not username:
         return redirect('/connect-platforms?error=tiktok_no_username')
+    
+    user_id = session['user_id']
     
     # Just save the username - don't scrape yet
     platforms = user.get('platforms', {})
@@ -844,7 +943,8 @@ def connect_tiktok():
         'status': 'ready',  # Ready to scrape
         'method': 'scraping'
     }
-    save_user(session['user_id'], {'platforms': platforms})
+    save_user(user_id, {'platforms': platforms})
+    logger.info(f"User {user_id} connected TikTok: @{username}")
     
     return redirect('/connect-platforms?success=tiktok_ready')
 
@@ -871,11 +971,12 @@ def start_scraping():
             data = scrape_instagram_profile(username, max_posts=50, task_id=task_id)
             if data:
                 user = get_user(user_id)
-                platforms = user.get('platforms', {})
-                platforms['instagram']['data'] = data
-                platforms['instagram']['status'] = 'complete'
-                platforms['instagram']['connected_at'] = datetime.now().isoformat()
-                save_user(user_id, {'platforms': platforms})
+                if user:
+                    platforms = user.get('platforms', {})
+                    platforms['instagram']['data'] = data
+                    platforms['instagram']['status'] = 'complete'
+                    platforms['instagram']['connected_at'] = datetime.now().isoformat()
+                    save_user(user_id, {'platforms': platforms})
         
         thread = threading.Thread(target=scrape_ig)
         thread.daemon = True
@@ -890,11 +991,12 @@ def start_scraping():
             data = scrape_tiktok_profile(username, max_videos=50, task_id=task_id)
             if data:
                 user = get_user(user_id)
-                platforms = user.get('platforms', {})
-                platforms['tiktok']['data'] = data
-                platforms['tiktok']['status'] = 'complete'
-                platforms['tiktok']['connected_at'] = datetime.now().isoformat()
-                save_user(user_id, {'platforms': platforms})
+                if user:
+                    platforms = user.get('platforms', {})
+                    platforms['tiktok']['data'] = data
+                    platforms['tiktok']['status'] = 'complete'
+                    platforms['tiktok']['connected_at'] = datetime.now().isoformat()
+                    save_user(user_id, {'platforms': platforms})
         
         thread = threading.Thread(target=scrape_tt)
         thread.daemon = True
@@ -933,8 +1035,12 @@ def generate_recommendations_route():
     if not user:
         return redirect('/signup')
     
-    platforms = user.get('platforms', {})
+    # FIXED: Get user_id from session FIRST
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect('/signup')
     
+    platforms = user.get('platforms', {})
     
     # Check for timed out scraping (status='scraping' for >3 minutes)
     for platform, data in platforms.items():
@@ -946,21 +1052,22 @@ def generate_recommendations_route():
                     elapsed = (datetime.now() - start_time).total_seconds()
                     
                     if elapsed > 180:  # 3 minutes
-                        print(f"{platform} scraping timed out after {elapsed}s - marking as failed")
+                        logger.warning(f"{platform} scraping timed out after {elapsed}s - marking as failed")
                         platforms[platform]['status'] = 'failed'
                         platforms[platform]['error'] = 'Scraping timed out - please try again'
                         save_user(user_id, {'platforms': platforms})
-                except:
-                    pass  # Invalid timestamp format
+                except Exception as e:
+                    logger.error(f"Error checking timeout for {platform}: {e}")
     
     # Reload user data after timeout check
     user = get_user(user_id)
+    if not user:
+        return redirect('/signup')
+    
     platforms = user.get('platforms', {})
     
     if len(platforms) < 1:
         return redirect('/connect-platforms?error=need_platforms')
-    
-    user_id = session['user_id']
     
     # Check status and start scraping ONLY if ready
     for platform, data in platforms.items():
@@ -978,10 +1085,11 @@ def generate_recommendations_route():
                     ig_data = scrape_instagram_profile(username, max_posts=50, task_id=task_id)
                     if ig_data:
                         user = get_user(user_id)
-                        platforms = user.get('platforms', {})
-                        platforms['instagram']['data'] = ig_data
-                        platforms['instagram']['status'] = 'complete'
-                        save_user(user_id, {'platforms': platforms})
+                        if user:
+                            platforms = user.get('platforms', {})
+                            platforms['instagram']['data'] = ig_data
+                            platforms['instagram']['status'] = 'complete'
+                            save_user(user_id, {'platforms': platforms})
                 
                 thread = threading.Thread(target=scrape_ig)
                 thread.daemon = True
@@ -992,10 +1100,11 @@ def generate_recommendations_route():
                     tt_data = scrape_tiktok_profile(username, max_videos=50, task_id=task_id)
                     if tt_data:
                         user = get_user(user_id)
-                        platforms = user.get('platforms', {})
-                        platforms['tiktok']['data'] = tt_data
-                        platforms['tiktok']['status'] = 'complete'
-                        save_user(user_id, {'platforms': platforms})
+                        if user:
+                            platforms = user.get('platforms', {})
+                            platforms['tiktok']['data'] = tt_data
+                            platforms['tiktok']['status'] = 'complete'
+                            save_user(user_id, {'platforms': platforms})
                 
                 thread = threading.Thread(target=scrape_tt)
                 thread.daemon = True
@@ -1003,6 +1112,9 @@ def generate_recommendations_route():
     
     # Reload fresh data after saving
     user = get_user(user_id)
+    if not user:
+        return redirect('/signup')
+    
     platforms = user.get('platforms', {})
     
     # Check if scraping is in progress
@@ -1033,8 +1145,6 @@ def generate_recommendations_route():
                          platforms=list(platforms.keys()),
                          recipient_type=recipient_type)
 
-# INSERT THIS AFTER LINE 1002 (after the /generate-recommendations route, before /recommendations route)
-
 @app.route('/api/generate-recommendations', methods=['POST'])
 def api_generate_recommendations():
     """
@@ -1042,10 +1152,17 @@ def api_generate_recommendations():
     - Dynamic rec count based on data quality
     - Collectible series intelligence
     - Relationship-specific prompts
+    - FIXED: Comprehensive error handling
     """
     user = get_session_user()
     if not user:
         return jsonify({'success': False, 'error': 'Not logged in'}), 401
+    
+    if not ANTHROPIC_API_KEY or not claude_client:
+        return jsonify({
+            'success': False,
+            'error': 'AI service not configured. Please contact support.'
+        }), 503
     
     try:
         platforms = user.get('platforms', {})
@@ -1074,12 +1191,14 @@ def api_generate_recommendations():
                     hashtags_all.extend(p.get('hashtags', []))
                 top_hashtags = Counter(hashtags_all).most_common(15)
                 
+                avg_likes = sum(p.get('likes', 0) for p in posts) / len(posts) if posts else 0
+                
                 platform_insights.append(f"""
 INSTAGRAM DATA ({len(posts)} posts analyzed):
 - Username: @{ig_data.get('username', 'unknown')}
 - Recent Post Themes: {'; '.join(captions[:15])}
 - Top Hashtags: {', '.join([tag[0] for tag in top_hashtags])}
-- Engagement: Average {sum(p.get('likes', 0) for p in posts) / len(posts):.0f} likes per post
+- Engagement: Average {avg_likes:.0f} likes per post
 """)
         
         # TikTok data with repost intelligence
@@ -1213,26 +1332,61 @@ IMPORTANT:
 - URLs should be as specific as possible (not just homepage links)
 - For collectibles, research the series and suggest thoughtful alternatives"""
 
-        print(f"Generating {rec_count} recommendations for user: {user.get('email', 'unknown')}")
-        print(f"Data quality: {quality['quality']} ({quality['total_posts']} posts)")
-        print(f"Platforms: {list(platforms.keys())}")
+        logger.info(f"Generating {rec_count} recommendations for user: {user.get('email', 'unknown')}")
+        logger.info(f"Data quality: {quality['quality']} ({quality['total_posts']} posts)")
+        logger.info(f"Platforms: {list(platforms.keys())}")
         
-        # Call Claude API (no web search for now - we removed it earlier)
-        message = claude_client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=8000,
-            messages=[{"role": "user", "content": prompt}]
-        )
+        # FIXED: Comprehensive error handling for Claude API
+        try:
+            message = claude_client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=8000,
+                messages=[{"role": "user", "content": prompt}],
+                timeout=60.0
+            )
+        except anthropic.APIError as e:
+            logger.error(f"Claude API error: {e}")
+            return jsonify({
+                'success': False,
+                'error': 'AI service temporarily unavailable. Please try again in a moment.',
+                'retry_after': 60
+            }), 503
+        except anthropic.APIConnectionError as e:
+            logger.error(f"Claude connection error: {e}")
+            return jsonify({
+                'success': False,
+                'error': 'Unable to connect to AI service. Please check your internet connection and try again.'
+            }), 503
+        except anthropic.RateLimitError as e:
+            logger.error(f"Claude rate limit error: {e}")
+            return jsonify({
+                'success': False,
+                'error': 'Service is busy. Please try again in a few minutes.',
+                'retry_after': 300
+            }), 429
+        except Exception as e:
+            logger.error(f"Unexpected Claude API error: {e}", exc_info=True)
+            return jsonify({
+                'success': False,
+                'error': 'An unexpected error occurred. Please contact support if this persists.'
+            }), 500
         
         # Extract response
         response_text = ""
-        for block in message.content:
-            if block.type == "text":
-                response_text += block.text
+        try:
+            for block in message.content:
+                if block.type == "text":
+                    response_text += block.text
+        except Exception as e:
+            logger.error(f"Error extracting Claude response: {e}")
+            return jsonify({
+                'success': False,
+                'error': 'Error processing AI response. Please try again.'
+            }), 500
         
         response_text = response_text.strip()
         
-        print(f"Claude response received, length: {len(response_text)}")
+        logger.info(f"Claude response received, length: {len(response_text)}")
         
         # Parse JSON
         try:
@@ -1243,24 +1397,34 @@ IMPORTANT:
                 response_text = response_text.strip()
             
             recommendations = json.loads(response_text)
-            print(f"Successfully parsed {len(recommendations)} recommendations")
+            
+            # Validate recommendations structure
+            if not isinstance(recommendations, list):
+                raise ValueError("Recommendations must be a list")
+            
+            if len(recommendations) == 0:
+                raise ValueError("No recommendations generated")
+            
+            logger.info(f"Successfully parsed {len(recommendations)} recommendations")
             
         except json.JSONDecodeError as e:
-            print(f"JSON parse error: {e}")
-            print(f"Response text: {response_text[:500]}")
-            recommendations = [{
-                'name': 'Recommendations generated',
-                'description': response_text[:500],
-                'why_perfect': 'See full response',
-                'price_range': 'Various',
-                'where_to_buy': 'Various retailers',
-                'product_url': '',
-                'gift_type': 'physical',
-                'confidence_level': 'safe_bet'
-            }]
+            logger.error(f"JSON parse error: {e}")
+            logger.error(f"Response text (first 500 chars): {response_text[:500]}")
+            return jsonify({
+                'success': False,
+                'error': 'AI returned invalid response format. Please try again.',
+                'debug': response_text[:200] if len(response_text) < 200 else response_text[:200] + '...'
+            }), 500
+        except Exception as e:
+            logger.error(f"Error parsing recommendations: {e}")
+            return jsonify({
+                'success': False,
+                'error': 'Error processing recommendations. Please try again.'
+            }), 500
         
         # Save recommendations
-        save_user(session['user_id'], {
+        user_id = session['user_id']
+        save_user(user_id, {
             'recommendations': recommendations,
             'data_quality': quality,
             'last_generated': datetime.now().isoformat()
@@ -1273,13 +1437,12 @@ IMPORTANT:
         })
         
     except Exception as e:
-        print(f"Recommendation generation error: {e}")
-        import traceback
-        traceback.print_exc()
+        logger.error(f"Recommendation generation error: {e}", exc_info=True)
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': 'An unexpected error occurred. Please try again or contact support.'
         }), 500
+
 @app.route('/recommendations')
 def view_recommendations():
     """Display recommendations with fix link buttons"""

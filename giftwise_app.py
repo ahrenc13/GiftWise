@@ -1,19 +1,18 @@
 """
-GIFTWISE MAIN APPLICATION - UPDATED WITH ACTIVATION ENERGY IMPROVEMENTS
+GIFTWISE MAIN APPLICATION - COMPREHENSIVE UPDATE v2
 AI-Powered Gift Recommendations from Social Media
 
-UPDATES (January 26, 2026):
-✅ Real-time privacy validation for Instagram/TikTok
-✅ Progress indicators during scraping operations
-✅ Simplified relationship selector
-✅ Error state preservation
-✅ Clear platform requirements
-
-CURRENT PLATFORM STATUS:
-✅ Pinterest - OAuth available (full data access)
-✅ Instagram - Public scraping via Apify (50 posts)
-✅ TikTok - Public scraping via Apify (50 videos with repost analysis)
-⏳ Spotify - OAuth blocked (not accepting new apps)
+UPDATES IN THIS VERSION:
+✅ Data quality assessment
+✅ Dynamic recommendation counts
+✅ 4-tier relationship system
+✅ Web search for real product URLs
+✅ Link fixing functionality
+✅ Username autocomplete support
+✅ Collectible series intelligence
+✅ Freemium tier structure
+✅ Your/Their pronoun handling
+✅ TikTok repost intelligence
 
 Author: Chad + Claude
 Date: January 2026
@@ -29,6 +28,7 @@ from flask import Flask, render_template, request, redirect, session, jsonify, u
 import stripe
 import anthropic
 from dotenv import load_dotenv
+from collections import Counter
 
 # OAuth libraries
 from requests_oauthlib import OAuth2Session
@@ -47,7 +47,7 @@ ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
 STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID')
 
-# Pinterest OAuth Configuration (AVAILABLE NOW)
+# Pinterest OAuth Configuration
 PINTEREST_CLIENT_ID = os.environ.get('PINTEREST_CLIENT_ID')
 PINTEREST_CLIENT_SECRET = os.environ.get('PINTEREST_CLIENT_SECRET')
 PINTEREST_REDIRECT_URI = os.environ.get('PINTEREST_REDIRECT_URI', 'http://localhost:5000/oauth/pinterest/callback')
@@ -57,8 +57,8 @@ PINTEREST_API_URL = 'https://api.pinterest.com/v5'
 
 # Apify Configuration
 APIFY_API_TOKEN = os.environ.get('APIFY_API_TOKEN')
-APIFY_INSTAGRAM_ACTOR = 'nH2AHrwxeTRJoN5hX'  # Tested and working actor ID
-APIFY_TIKTOK_ACTOR = '0FXVyOXXEmdGcV88a'  # Tested and working actor ID
+APIFY_INSTAGRAM_ACTOR = 'nH2AHrwxeTRJoN5hX'
+APIFY_TIKTOK_ACTOR = '0FXVyOXXEmdGcV88a'
 
 # Spotify (keeping for future)
 SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID', '')
@@ -69,82 +69,113 @@ stripe.api_key = STRIPE_SECRET_KEY
 claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 # ============================================================================
-# PROGRESS TRACKING (In-memory for MVP - use Redis in production)
+# FREEMIUM TIER CONFIGURATION
+# ============================================================================
+
+SUBSCRIPTION_TIERS = {
+    'free': {
+        'name': 'Free',
+        'price': 0,
+        'max_profiles': 1,
+        'recommendations_per_profile': 5,
+        'monthly_updates': False,
+        'platforms': ['instagram', 'tiktok'],  # No Pinterest
+        'features': ['basic_recommendations', 'shareable_profile']
+    },
+    'pro': {
+        'name': 'Pro',
+        'price': 4.99,
+        'stripe_price_id': os.environ.get('STRIPE_PRO_PRICE_ID'),
+        'max_profiles': 5,
+        'recommendations_per_profile': 10,
+        'monthly_updates': True,
+        'platforms': ['instagram', 'tiktok', 'pinterest'],
+        'features': ['basic_recommendations', 'monthly_updates', 'gift_calendar', 
+                    'shareable_profile', 'all_platforms', 'priority_support']
+    },
+    'premium': {
+        'name': 'Premium',
+        'price': 24.99,
+        'stripe_price_id': os.environ.get('STRIPE_PREMIUM_PRICE_ID'),
+        'max_profiles': 999,  # Unlimited
+        'recommendations_per_profile': 10,
+        'monthly_updates': True,
+        'platforms': ['instagram', 'tiktok', 'pinterest'],
+        'features': ['basic_recommendations', 'monthly_updates', 'gift_calendar',
+                    'shareable_profile', 'all_platforms', 'priority_support',
+                    'concierge_service', 'manual_link_fixes', 'gift_purchase_assistance']
+    }
+}
+
+# ============================================================================
+# RELATIONSHIP CONTEXT - 4 TIERS
+# ============================================================================
+
+RELATIONSHIP_OPTIONS = [
+    ('romantic', '❤️ Romantic Partner', 'Spouse, boyfriend/girlfriend, partner'),
+    ('close_personal', '👥 Close Personal', 'Best friend, sibling, parent, child'),
+    ('friendly', '😊 Friendly', 'Friend, cousin, favorite coworker'),
+    ('professional', '🤝 Professional', 'Colleague, client, boss, acquaintance')
+]
+
+RELATIONSHIP_PROMPTS = {
+    'romantic': """
+RELATIONSHIP: Romantic Partner
+- Can be intimate and sentimental
+- Romantic gestures appropriate
+- Higher price point acceptable ($75-200 items okay)
+- Reference shared memories/inside jokes
+- Jewelry, clothing, personal items are good
+- Think: "What would make them feel loved and understood?"
+""",
+    'close_personal': """
+RELATIONSHIP: Close Friend/Family
+- Thoughtful and personal, but NOT romantic
+- Fun, meaningful, shows you "get them"
+- Mid-range pricing ($30-100 sweet spot)
+- Avoid anything too intimate (no jewelry, perfume)
+- Think: "What would make them excited and feel seen?"
+""",
+    'friendly': """
+RELATIONSHIP: Friendly Connection
+- Thoughtful but not too personal
+- Safe, universally appealing
+- Lower-mid pricing ($20-75)
+- Avoid anything intimate or too specific
+- Think: "What would they appreciate without feeling awkward?"
+""",
+    'professional': """
+RELATIONSHIP: Professional Contact
+- Tasteful and appropriate for work context
+- Quality over sentimentality
+- Mid-range pricing ($40-100)
+- Nothing too personal or casual
+- Think: "What shows respect and good taste?"
+"""
+}
+
+# ============================================================================
+# PROGRESS TRACKING (In-memory for MVP, upgrade to Redis for production)
 # ============================================================================
 
 scraping_progress = {}
 
 def set_progress(task_id, status, message, percent=0):
-    """Update progress for a scraping task"""
+    """Update scraping progress"""
     scraping_progress[task_id] = {
-        'status': status,  # 'running', 'success', 'error'
+        'status': status,
         'message': message,
         'percent': percent,
-        'timestamp': time.time()
+        'timestamp': datetime.now().isoformat()
     }
 
 def get_progress(task_id):
-    """Get current progress for a task"""
+    """Get scraping progress"""
     return scraping_progress.get(task_id, {
         'status': 'unknown',
-        'message': 'Unknown task',
+        'message': 'Unknown status',
         'percent': 0
     })
-
-# ============================================================================
-# PLATFORM AVAILABILITY STATUS
-# ============================================================================
-
-PLATFORM_STATUS = {
-    'pinterest': {
-        'available': True,
-        'method': 'oauth',
-        'status': 'Full data access via OAuth',
-        'icon': '📌',
-        'color': '#E60023'
-    },
-    'instagram': {
-        'available': True,
-        'method': 'scraping',
-        'status': 'Public profile data (50 posts)',
-        'icon': '📷',
-        'color': '#E1306C',
-        'note': 'OAuth blocked by Meta - using public data via Apify'
-    },
-    'tiktok': {
-        'available': True,
-        'method': 'scraping',
-        'status': 'Public profile data (50 videos)',
-        'icon': '🎬',
-        'color': '#000000',
-        'note': 'No OAuth available - using public data via Apify'
-    },
-    'spotify': {
-        'available': False,
-        'method': 'oauth',
-        'status': 'Coming soon',
-        'icon': '🎵',
-        'color': '#1DB954',
-        'note': 'OAuth currently blocked - working on access'
-    }
-}
-
-# ============================================================================
-# SIMPLIFIED RELATIONSHIP CONTEXT OPTIONS
-# ============================================================================
-
-RELATIONSHIP_OPTIONS = [
-    ('close', 'Close relationship (partner, best friend, family)'),
-    ('friendly', 'Friendly relationship (friend, extended family, favorite coworker)'),
-    ('professional', 'Professional relationship (colleague, client, acquaintance)')
-]
-
-# Mapping to old categories for backend compatibility
-RELATIONSHIP_MAPPING = {
-    'close': 'romantic_partner',
-    'friendly': 'close_friend',
-    'professional': 'coworker'
-}
 
 # ============================================================================
 # DATABASE HELPERS
@@ -169,142 +200,106 @@ def get_session_user():
         return get_user(user_id)
     return None
 
+def get_user_tier(user):
+    """Get user's subscription tier"""
+    return user.get('subscription_tier', 'free')
+
+def check_tier_limit(user, feature):
+    """Check if user's tier allows a feature"""
+    tier = get_user_tier(user)
+    tier_config = SUBSCRIPTION_TIERS.get(tier, SUBSCRIPTION_TIERS['free'])
+    
+    if feature == 'profiles':
+        current_profiles = len(user.get('saved_profiles', []))
+        return current_profiles < tier_config['max_profiles']
+    elif feature == 'monthly_updates':
+        return tier_config['monthly_updates']
+    elif feature in tier_config['features']:
+        return True
+    return False
+
 # ============================================================================
-# REAL-TIME USERNAME VALIDATION
+# DATA QUALITY ASSESSMENT
 # ============================================================================
 
-@app.route('/api/validate-username', methods=['POST'])
-def validate_username():
+def check_data_quality(platforms):
     """
-    Instant validation of Instagram/TikTok username
-    Returns whether account exists and is public
-    
-    This prevents users from submitting private accounts and waiting 
-    30-120 seconds only to get an error.
+    Assess data quality based on post counts
+    Returns: dict with quality level, message, recommended rec count
     """
-    data = request.get_json()
-    platform = data.get('platform')
-    username = data.get('username', '').strip().replace('@', '')
+    total_posts = 0
+    platform_counts = {}
     
-    if not username:
-        return jsonify({
-            'valid': False,
-            'error': 'Username required'
-        })
+    if 'instagram' in platforms:
+        ig_data = platforms['instagram'].get('data', {})
+        ig_posts = ig_data.get('total_posts', 0)
+        platform_counts['instagram'] = ig_posts
+        total_posts += ig_posts
     
-    try:
-        if platform == 'instagram':
-            result = check_instagram_privacy(username)
-        elif platform == 'tiktok':
-            result = check_tiktok_privacy(username)
-        else:
-            return jsonify({'valid': False, 'error': 'Invalid platform'})
-        
-        return jsonify(result)
+    if 'tiktok' in platforms:
+        tt_data = platforms['tiktok'].get('data', {})
+        tt_videos = tt_data.get('total_videos', 0)
+        platform_counts['tiktok'] = tt_videos
+        total_posts += tt_videos
     
-    except Exception as e:
-        print(f"Validation error for {platform}/{username}: {e}")
-        return jsonify({
-            'valid': False,
-            'error': 'Validation failed - please try again'
-        })
+    if 'pinterest' in platforms:
+        pinterest_pins = platforms['pinterest'].get('total_pins', 0)
+        platform_counts['pinterest'] = pinterest_pins
+        total_posts += pinterest_pins
+    
+    # Quality thresholds
+    if total_posts >= 30:
+        return {
+            'quality': 'excellent',
+            'message': f'Great! Found {total_posts} posts across platforms.',
+            'recommendation_count': 10,
+            'confidence': 'high',
+            'total_posts': total_posts,
+            'platform_counts': platform_counts
+        }
+    elif total_posts >= 15:
+        return {
+            'quality': 'good',
+            'message': f'Found {total_posts} posts. Recommendations will be solid.',
+            'recommendation_count': 8,
+            'confidence': 'medium',
+            'total_posts': total_posts,
+            'platform_counts': platform_counts
+        }
+    elif total_posts >= 5:
+        return {
+            'quality': 'limited',
+            'message': f'Only found {total_posts} posts. Recommendations will be more general.',
+            'recommendation_count': 5,
+            'confidence': 'low',
+            'warning': 'Limited data - consider connecting more platforms for better results',
+            'total_posts': total_posts,
+            'platform_counts': platform_counts
+        }
+    else:
+        return {
+            'quality': 'insufficient',
+            'message': f'Only found {total_posts} posts. Not enough data for quality recommendations.',
+            'recommendation_count': 3,
+            'confidence': 'very_low',
+            'warning': 'Very limited data - recommendations may not be accurate',
+            'total_posts': total_posts,
+            'platform_counts': platform_counts
+        }
 
+# ============================================================================
+# USERNAME VALIDATION (Privacy Check)
+# ============================================================================
 
 def check_instagram_privacy(username):
     """
     Check if Instagram account exists and is public
-    Returns: dict with valid, private, message
+    Returns: dict with valid, private, exists, message
     """
     try:
         url = f'https://www.instagram.com/{username}/'
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-        
-        response = requests.get(url, headers=headers, timeout=5)
-        
-        # Account doesn't exist
-        if response.status_code == 404:
-            return {
-                'valid': False,
-                'private': False,
-                'exists': False,
-                'message': '✗ Account not found - please check the username',
-                'icon': '❌'
-            }
-        
-        if response.status_code != 200:
-            return {
-                'valid': False,
-                'error': 'Unable to check account',
-                'message': '⚠️ Unable to verify account - try again',
-                'icon': '⚠️'
-            }
-        
-        # Parse embedded JSON data
-        html = response.text
-        
-        # Instagram embeds data in script tags that include "is_private"
-        is_private = '"is_private":true' in html or '"isPrivate":true' in html
-        
-        if is_private:
-            return {
-                'valid': False,
-                'private': True,
-                'exists': True,
-                'message': '✗ Private account - we can only analyze public profiles',
-                'help': 'Ask them to make their profile public temporarily, or try a different platform',
-                'icon': '🔒'
-            }
-        
-        # Extract follower count for additional context (optional)
-        follower_count = None
-        if '"edge_followed_by":{"count":' in html:
-            try:
-                count_str = html.split('"edge_followed_by":{"count":')[1].split('}')[0]
-                follower_count = int(count_str)
-            except:
-                pass
-        
-        message = f'✓ Public profile found'
-        if follower_count:
-            message += f' ({follower_count:,} followers)'
-        
-        return {
-            'valid': True,
-            'private': False,
-            'exists': True,
-            'message': message,
-            'icon': '✅',
-            'follower_count': follower_count
-        }
-    
-    except requests.Timeout:
-        return {
-            'valid': False,
-            'error': 'Request timed out',
-            'message': '⚠️ Instagram is slow to respond - try again',
-            'icon': '⚠️'
-        }
-    except Exception as e:
-        print(f"Instagram privacy check error: {e}")
-        return {
-            'valid': False,
-            'error': str(e),
-            'message': '⚠️ Unable to check account - you can still try connecting',
-            'icon': '⚠️'
-        }
-
-
-def check_tiktok_privacy(username):
-    """
-    Check if TikTok account exists (privacy detection is unreliable due to JS rendering)
-    Returns: dict with valid, private, message
-    """
-    try:
-        url = f'https://www.tiktok.com/@{username}'
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         }
         
         response = requests.get(url, headers=headers, timeout=10)
@@ -327,9 +322,81 @@ def check_tiktok_privacy(username):
                 'icon': '⚠️'
             }
         
-        # If we get a 200 response, the account exists
-        # We can't reliably detect privacy due to JavaScript rendering
-        # Let Apify handle the privacy check during actual scraping
+        html = response.text
+        
+        # Check for privacy indicators
+        # Instagram embeds JSON-LD data with is_private field
+        is_private = '"is_private":true' in html or '"is_private": true' in html
+        
+        if is_private:
+            return {
+                'valid': False,
+                'private': True,
+                'exists': True,
+                'message': '✗ Private account - we can only analyze public profiles',
+                'help': 'Ask them to make their account public temporarily, or try a different platform',
+                'icon': '🔒'
+            }
+        
+        # Public account found
+        return {
+            'valid': True,
+            'private': False,
+            'exists': True,
+            'message': '✓ Public profile found',
+            'icon': '✅'
+        }
+    
+    except requests.Timeout:
+        return {
+            'valid': False,
+            'error': 'Request timed out',
+            'message': '⚠️ Instagram is slow to respond - try again',
+            'icon': '⚠️'
+        }
+    except Exception as e:
+        print(f"Instagram privacy check error: {e}")
+        return {
+            'valid': True,  # Allow them to try anyway
+            'error': str(e),
+            'message': '⚠️ Unable to verify - click Connect to try',
+            'icon': '⚠️'
+        }
+
+def check_tiktok_privacy(username):
+    """
+    Check if TikTok account exists
+    (Privacy detection is unreliable due to JS rendering, so we just check existence)
+    """
+    try:
+        url = f'https://www.tiktok.com/@{username}'
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+        
+        response = requests.get(url, headers=headers, timeout=10)
+        
+        # Account doesn't exist
+        if response.status_code == 404:
+            return {
+                'valid': False,
+                'private': False,
+                'exists': False,
+                'message': '✗ Account not found - please check the username',
+                'icon': '❌'
+            }
+        
+        if response.status_code != 200:
+            return {
+                'valid': False,
+                'error': 'Unable to check account',
+                'message': '⚠️ Unable to verify account - try again',
+                'icon': '⚠️'
+            }
+        
+        # If we get 200, account exists
+        # Privacy detection via HTML is unreliable for TikTok (JS-rendered)
+        # Let Apify handle it during actual scraping
         return {
             'valid': True,
             'private': False,
@@ -356,67 +423,14 @@ def check_tiktok_privacy(username):
         }
 
 # ============================================================================
-# PROGRESS STREAMING ENDPOINT (Server-Sent Events)
-# ============================================================================
-
-@app.route('/api/scrape-progress/<task_id>')
-def stream_scrape_progress(task_id):
-    """
-    Server-Sent Events endpoint for real-time progress updates
-    
-    Usage from frontend:
-    const eventSource = new EventSource('/api/scrape-progress/' + taskId);
-    eventSource.onmessage = (event) => {
-        const progress = JSON.parse(event.data);
-        updateUI(progress);
-    };
-    """
-    def generate():
-        """Generator function for SSE"""
-        last_status = None
-        max_iterations = 120  # 2 minutes max
-        iteration = 0
-        
-        while iteration < max_iterations:
-            progress = get_progress(task_id)
-            
-            # Send update if status changed
-            if progress != last_status:
-                yield f"data: {json.dumps(progress)}\n\n"
-                last_status = progress
-            
-            # Stop if completed or errored
-            if progress.get('status') in ['success', 'error']:
-                break
-            
-            time.sleep(1)  # Check every second
-            iteration += 1
-        
-        # Timeout safety
-        if iteration >= max_iterations:
-            yield f"data: {json.dumps({'status': 'error', 'message': 'Operation timed out', 'percent': 0})}\n\n"
-    
-    return Response(
-        generate(),
-        mimetype='text/event-stream',
-        headers={
-            'Cache-Control': 'no-cache',
-            'X-Accel-Buffering': 'no'  # Disable nginx buffering
-        }
-    )
-
-# ============================================================================
-# INSTAGRAM SCRAPING WITH PROGRESS
+# SCRAPING FUNCTIONS (with progress tracking)
 # ============================================================================
 
 def scrape_instagram_profile(username, max_posts=50, task_id=None):
     """
-    Scrape Instagram profile using Apify with progress tracking
-    Returns: dict with posts, captions, engagement data
+    Scrape Instagram with progress tracking
     """
     if not APIFY_API_TOKEN:
-        if task_id:
-            set_progress(task_id, 'error', 'Apify not configured', 0)
         print("No Apify token configured")
         return None
     
@@ -426,11 +440,10 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
         
         print(f"Starting Instagram scrape for @{username}")
         
-        # Start Apify actor
         response = requests.post(
             f'https://api.apify.com/v2/acts/{APIFY_INSTAGRAM_ACTOR}/runs?token={APIFY_API_TOKEN}',
             json={
-                'username': [username],  # Actor wants array format
+                'username': [username],
                 'resultsLimit': max_posts
             }
         )
@@ -438,16 +451,14 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
         if response.status_code != 201:
             if task_id:
                 set_progress(task_id, 'error', 'Failed to start scraper', 0)
-            print(f"Apify Instagram actor start failed: {response.text}")
             return None
         
         run_id = response.json()['data']['id']
         if task_id:
-            set_progress(task_id, 'running', f'Finding @{username} profile...', 15)
-        print(f"Instagram scrape started, run ID: {run_id}")
+            set_progress(task_id, 'running', f'Finding @{username}...', 15)
         
-        # Poll for completion with adaptive intervals and progress updates
-        max_wait = 120  # 2 minutes max
+        # Poll for completion
+        max_wait = 120
         elapsed = 0
         
         while elapsed < max_wait:
@@ -455,40 +466,33 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
             time.sleep(wait_time)
             elapsed += wait_time
             
-            # Update progress based on elapsed time
+            # Update progress
             if task_id:
-                percent = min(15 + (elapsed / max_wait * 70), 85)
-                
-                if elapsed < 20:
-                    message = f'Analyzing @{username} profile...'
-                elif elapsed < 40:
-                    message = f'Downloading recent posts...'
-                elif elapsed < 60:
-                    message = f'Extracting interests and hashtags...'
-                else:
-                    message = f'Almost done - processing data...'
-                
-                set_progress(task_id, 'running', message, percent)
+                progress_pct = min(15 + (elapsed / max_wait) * 75, 90)
+                messages = {
+                    10: 'Finding @{username}...',
+                    30: 'Analyzing profile...',
+                    50: 'Downloading posts...',
+                    70: 'Extracting interests...',
+                    85: 'Processing data...'
+                }
+                msg = messages.get(int(progress_pct // 10) * 10, 'Analyzing profile...')
+                set_progress(task_id, 'running', msg, progress_pct)
             
             status_response = requests.get(
                 f'https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}'
             )
             
             if status_response.status_code != 200:
-                print(f"Instagram status check failed: {status_response.text}")
                 continue
                 
             status = status_response.json()['data']['status']
-            print(f"Instagram scrape status after {elapsed}s: {status}")
             
             if status == 'SUCCEEDED':
-                if task_id:
-                    set_progress(task_id, 'running', 'Processing results...', 90)
                 break
             elif status in ['FAILED', 'ABORTED', 'TIMED-OUT']:
                 if task_id:
-                    set_progress(task_id, 'error', f'Scraping failed: {status}', 0)
-                print(f"Instagram scrape failed with status: {status}")
+                    set_progress(task_id, 'error', 'Instagram scraping failed', 0)
                 return None
         
         # Get results
@@ -498,87 +502,62 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
         
         if results_response.status_code != 200:
             if task_id:
-                set_progress(task_id, 'error', 'Failed to retrieve results', 0)
-            print(f"Failed to get Instagram results: {results_response.text}")
+                set_progress(task_id, 'error', 'Failed to retrieve data', 0)
             return None
         
         data = results_response.json()
-        print(f"Instagram scrape complete: {len(data)} items retrieved")
         
-        if not data or len(data) == 0:
+        if not data:
             if task_id:
-                set_progress(task_id, 'error', 'No data found - account may be private', 0)
+                set_progress(task_id, 'error', 'No posts found', 0)
             return None
         
-        # DEBUG: Print data structure
-        if data and len(data) > 0:
-            print(f"DEBUG - Instagram data keys: {list(data[0].keys())}")
+        # Parse data
+        first_post = data[0]
+        owner_username = first_post.get('ownerUsername', username)
+        owner_full_name = first_post.get('ownerFullName', '')
         
-        # Parse and structure data (keeping your existing parsing logic)
-        parsed_data = parse_instagram_data(data, username)
+        posts = data[:max_posts]
+        
+        result = {
+            'username': owner_username,
+            'full_name': owner_full_name,
+            'bio': '',
+            'followers': 0,
+            'posts': [
+                {
+                    'caption': post.get('caption', ''),
+                    'likes': post.get('likesCount', 0),
+                    'comments': post.get('commentsCount', 0),
+                    'timestamp': post.get('timestamp', ''),
+                    'type': post.get('type', 'image'),
+                    'url': post.get('url', ''),
+                    'hashtags': post.get('hashtags', [])
+                }
+                for post in posts
+            ],
+            'highlights': [],
+            'total_posts': len(posts),
+            'total_highlights': 0,
+            'scraped_at': datetime.now().isoformat()
+        }
         
         if task_id:
-            set_progress(task_id, 'success', f'✓ Connected! Found {len(data)} posts', 100)
+            set_progress(task_id, 'complete', f'✓ Connected! Found {len(posts)} posts', 100)
         
-        return parsed_data
+        return result
         
     except Exception as e:
+        print(f"Instagram scraping error: {e}")
         if task_id:
             set_progress(task_id, 'error', f'Error: {str(e)}', 0)
-        print(f"Instagram scraping error: {e}")
-        import traceback
-        traceback.print_exc()
         return None
-
-
-def parse_instagram_data(data, username):
-    """Parse Instagram data from Apify response"""
-    from collections import Counter
-    
-    posts = []
-    all_hashtags = []
-    all_captions = []
-    
-    for item in data:
-        caption = item.get('caption', '')
-        likes = item.get('likesCount', 0)
-        comments = item.get('commentsCount', 0)
-        
-        posts.append({
-            'caption': caption,
-            'likes': likes,
-            'comments': comments,
-            'engagement': likes + comments
-        })
-        
-        if caption:
-            all_captions.append(caption)
-            # Extract hashtags
-            words = caption.split()
-            hashtags = [w for w in words if w.startswith('#')]
-            all_hashtags.extend(hashtags)
-    
-    hashtag_counts = Counter(all_hashtags)
-    
-    return {
-        'username': username,
-        'total_posts': len(posts),
-        'posts': posts,
-        'top_hashtags': dict(hashtag_counts.most_common(30)),
-        'captions': all_captions[:50]
-    }
-
-# ============================================================================
-# TIKTOK SCRAPING WITH PROGRESS
-# ============================================================================
 
 def scrape_tiktok_profile(username, max_videos=50, task_id=None):
     """
-    Scrape TikTok profile using Apify with progress tracking and repost analysis
+    Scrape TikTok with progress tracking and repost analysis
     """
     if not APIFY_API_TOKEN:
-        if task_id:
-            set_progress(task_id, 'error', 'Apify not configured', 0)
         print("No Apify token configured")
         return None
     
@@ -588,7 +567,6 @@ def scrape_tiktok_profile(username, max_videos=50, task_id=None):
         
         print(f"Starting TikTok scrape for @{username}")
         
-        # Start Apify actor
         response = requests.post(
             f'https://api.apify.com/v2/acts/{APIFY_TIKTOK_ACTOR}/runs?token={APIFY_API_TOKEN}',
             json={
@@ -600,17 +578,13 @@ def scrape_tiktok_profile(username, max_videos=50, task_id=None):
         if response.status_code != 201:
             if task_id:
                 set_progress(task_id, 'error', 'Failed to start scraper', 0)
-            print(f"Apify TikTok actor start failed: {response.text}")
             return None
         
-        run_data = response.json()['data']
-        run_id = run_data['id']
-        
+        run_id = response.json()['data']['id']
         if task_id:
-            set_progress(task_id, 'running', f'Finding @{username} profile...', 15)
-        print(f"TikTok scrape started, run ID: {run_id}")
+            set_progress(task_id, 'running', f'Finding @{username}...', 15)
         
-        # Poll for completion with progress updates
+        # Poll for completion
         max_wait = 120
         elapsed = 0
         
@@ -621,18 +595,16 @@ def scrape_tiktok_profile(username, max_videos=50, task_id=None):
             
             # Update progress
             if task_id:
-                percent = min(15 + (elapsed / max_wait * 70), 85)
-                
-                if elapsed < 20:
-                    message = f'Analyzing @{username} profile...'
-                elif elapsed < 40:
-                    message = f'Downloading recent videos...'
-                elif elapsed < 60:
-                    message = f'Identifying reposts and interests...'
-                else:
-                    message = f'Almost done - processing data...'
-                
-                set_progress(task_id, 'running', message, percent)
+                progress_pct = min(15 + (elapsed / max_wait) * 75, 90)
+                messages = {
+                    10: 'Finding @{username}...',
+                    30: 'Analyzing videos...',
+                    50: 'Detecting reposts...',
+                    70: 'Extracting interests...',
+                    85: 'Processing data...'
+                }
+                msg = messages.get(int(progress_pct // 10) * 10, 'Analyzing videos...')
+                set_progress(task_id, 'running', msg, progress_pct)
             
             status_response = requests.get(
                 f'https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}'
@@ -640,18 +612,14 @@ def scrape_tiktok_profile(username, max_videos=50, task_id=None):
             
             if status_response.status_code != 200:
                 continue
-            
+                
             status = status_response.json()['data']['status']
-            print(f"TikTok scrape status after {elapsed}s: {status}")
             
             if status == 'SUCCEEDED':
-                if task_id:
-                    set_progress(task_id, 'running', 'Processing results...', 90)
                 break
             elif status in ['FAILED', 'ABORTED', 'TIMED-OUT']:
                 if task_id:
-                    set_progress(task_id, 'error', f'Scraping failed: {status}', 0)
-                print(f"TikTok scrape failed: {status}")
+                    set_progress(task_id, 'error', 'TikTok scraping failed', 0)
                 return None
         
         # Get results
@@ -661,221 +629,95 @@ def scrape_tiktok_profile(username, max_videos=50, task_id=None):
         
         if results_response.status_code != 200:
             if task_id:
-                set_progress(task_id, 'error', 'Failed to retrieve results', 0)
+                set_progress(task_id, 'error', 'Failed to retrieve data', 0)
             return None
         
         data = results_response.json()
-        print(f"TikTok scrape complete: {len(data)} items retrieved")
         
-        if not data or len(data) == 0:
+        if not data:
             if task_id:
-                set_progress(task_id, 'error', 'No data found - account may be private', 0)
+                set_progress(task_id, 'error', 'No videos found', 0)
             return None
         
-        # Parse data
+        # Parse with repost intelligence
         parsed_data = parse_tiktok_data(data, username)
         
         if task_id:
-            repost_count = parsed_data.get('repost_patterns', {}).get('total_reposts', 0)
-            set_progress(task_id, 'success', f'✓ Connected! Found {len(data)} videos, {repost_count} reposts', 100)
+            total_videos = parsed_data.get('total_videos', 0)
+            set_progress(task_id, 'complete', f'✓ Connected! Found {total_videos} videos', 100)
         
         return parsed_data
         
     except Exception as e:
+        print(f"TikTok scraping error: {e}")
         if task_id:
             set_progress(task_id, 'error', f'Error: {str(e)}', 0)
-        print(f"TikTok scraping error: {e}")
-        import traceback
-        traceback.print_exc()
         return None
 
-
 def parse_tiktok_data(data, username):
-    """Parse TikTok data with repost analysis"""
+    """
+    Parse TikTok data with repost analysis
+    """
     from collections import Counter
     
     videos = []
-    all_hashtags = []
-    all_music = []
     reposts = []
-    creators = []
+    original_creators = []
+    hashtags_all = []
+    music_all = []
     
     for item in data:
-        description = item.get('text', '')
-        likes = item.get('diggCount', 0)
-        is_repost = item.get('diversificationId', 0) > 0
-        author_username = item.get('authorMeta', {}).get('name', '')
-        
-        video_data = {
-            'description': description,
-            'likes': likes,
-            'is_repost': is_repost
+        video_info = {
+            'description': item.get('text', ''),
+            'likes': item.get('diggCount', 0),
+            'comments': item.get('commentCount', 0),
+            'shares': item.get('shareCount', 0),
+            'plays': item.get('playCount', 0),
+            'timestamp': item.get('createTime', ''),
+            'url': item.get('webVideoUrl', ''),
+            'hashtags': [tag.get('name', '') for tag in item.get('hashtags', [])],
+            'music': item.get('musicMeta', {}).get('musicName', '')
         }
         
-        videos.append(video_data)
+        # Check if this is a repost (diversificationId indicates repost)
+        is_repost = item.get('diversificationId') is not None
         
         if is_repost:
-            reposts.append(video_data)
-            creators.append(author_username)
+            # This is a repost - track original creator
+            original_author = item.get('authorMeta', {}).get('name', 'unknown')
+            reposts.append(video_info)
+            original_creators.append(original_author)
         
-        # Extract hashtags
-        hashtags = item.get('hashtags', [])
-        for tag in hashtags:
-            if isinstance(tag, dict):
-                all_hashtags.append(tag.get('name', ''))
-            else:
-                all_hashtags.append(str(tag))
-        
-        # Extract music
-        music = item.get('musicMeta', {})
-        if music:
-            all_music.append(music.get('musicName', ''))
+        videos.append(video_info)
+        hashtags_all.extend(video_info['hashtags'])
+        if video_info['music']:
+            music_all.append(video_info['music'])
     
-    hashtag_counts = Counter([h for h in all_hashtags if h])
-    music_counts = Counter([m for m in all_music if m])
-    creator_counts = Counter([c for c in creators if c])
+    # Analyze repost patterns
+    creator_frequency = Counter(original_creators)
+    hashtag_frequency = Counter(hashtags_all)
+    music_frequency = Counter(music_all)
     
     return {
         'username': username,
-        'total_videos': len(videos),
         'videos': videos,
-        'top_hashtags': dict(hashtag_counts.most_common(30)),
-        'top_music': dict(music_counts.most_common(20)),
         'reposts': reposts,
+        'total_videos': len(videos),
+        'total_reposts': len(reposts),
+        'repost_percentage': (len(reposts) / len(videos) * 100) if videos else 0,
+        'favorite_creators': creator_frequency.most_common(10),
+        'top_hashtags': dict(hashtag_frequency.most_common(15)),
+        'top_music': dict(music_frequency.most_common(10)),
         'repost_patterns': {
             'total_reposts': len(reposts),
-            'repost_percentage': (len(reposts) / len(videos) * 100) if videos else 0,
-            'favorite_creators': list(creator_counts.most_common(10))
-        }
+            'favorite_creators': creator_frequency.most_common(5),
+            'repost_percentage': (len(reposts) / len(videos) * 100) if videos else 0
+        },
+        'scraped_at': datetime.now().isoformat()
     }
 
 # ============================================================================
-# PINTEREST DATA FETCHING (Unchanged)
-# ============================================================================
-
-def fetch_pinterest_data(pinterest_platform_data):
-    """
-    Fetch Pinterest boards and pins for a connected user
-    """
-    access_token = pinterest_platform_data.get('access_token')
-    if not access_token:
-        return {}
-    
-    try:
-        boards = fetch_pinterest_boards(access_token)
-        pins = fetch_pinterest_pins(access_token)
-        
-        return {
-            'boards': boards[:20],
-            'pins': pins[:100],
-            'board_count': len(boards),
-            'pin_count': len(pins),
-            'connected': True
-        }
-    except Exception as e:
-        print(f"Error fetching Pinterest data: {e}")
-        return {'connected': True, 'error': str(e)}
-
-
-def fetch_pinterest_boards(access_token):
-    """Fetch user's Pinterest boards"""
-    try:
-        all_boards = []
-        bookmark = None
-        
-        for _ in range(5):
-            params = {'page_size': 25}
-            if bookmark:
-                params['bookmark'] = bookmark
-            
-            response = requests.get(
-                f"{PINTEREST_API_URL}/boards",
-                headers={'Authorization': f'Bearer {access_token}'},
-                params=params
-            )
-            
-            if response.status_code != 200:
-                print(f"Pinterest boards error: {response.text}")
-                break
-            
-            data = response.json()
-            boards = data.get('items', [])
-            
-            if not boards:
-                break
-                
-            all_boards.extend(boards)
-            
-            bookmark = data.get('bookmark')
-            if not bookmark:
-                break
-        
-        return all_boards
-    
-    except Exception as e:
-        print(f"Error fetching Pinterest boards: {e}")
-        return []
-
-
-def fetch_pinterest_pins(access_token, max_pins=100):
-    """Fetch user's Pinterest pins"""
-    try:
-        all_pins = []
-        bookmark = None
-        
-        while len(all_pins) < max_pins:
-            params = {'page_size': 25}
-            if bookmark:
-                params['bookmark'] = bookmark
-            
-            response = requests.get(
-                f"{PINTEREST_API_URL}/pins",
-                headers={'Authorization': f'Bearer {access_token}'},
-                params=params
-            )
-            
-            if response.status_code != 200:
-                print(f"Pinterest pins error: {response.text}")
-                break
-            
-            data = response.json()
-            pins = data.get('items', [])
-            
-            if not pins:
-                break
-                
-            all_pins.extend(pins)
-            
-            bookmark = data.get('bookmark')
-            if not bookmark:
-                break
-        
-        return all_pins[:max_pins]
-    
-    except Exception as e:
-        print(f"Error fetching Pinterest pins: {e}")
-        return []
-
-
-def fetch_pinterest_user_info(access_token):
-    """Fetch user's basic Pinterest profile info"""
-    try:
-        response = requests.get(
-            f"{PINTEREST_API_URL}/user_account",
-            headers={'Authorization': f'Bearer {access_token}'}
-        )
-        
-        if response.status_code == 200:
-            return response.json()
-        else:
-            print(f"Pinterest user info error: {response.text}")
-            return {}
-    except Exception as e:
-        print(f"Error fetching Pinterest user info: {e}")
-        return {}
-
-# ============================================================================
-# ROUTES - Landing Page & Marketing
+# API ROUTES
 # ============================================================================
 
 @app.route('/')
@@ -883,56 +725,29 @@ def index():
     """Landing page"""
     return render_template('index.html')
 
-@app.route('/how-it-works')
-def how_it_works():
-    """Detailed explanation page"""
-    return render_template('how_it_works.html')
-
-@app.route('/privacy')
-def privacy_policy():
-    """Privacy policy page"""
-    return render_template('privacy.html')
-
-# ============================================================================
-# ROUTES - User Onboarding WITH SIMPLIFIED RECIPIENT SELECTION
-# ============================================================================
-
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
-    """User signup flow with simplified recipient selection"""
+    """Signup page with 4-tier relationship selection"""
     if request.method == 'POST':
         email = request.form.get('email')
-        recipient_type = request.form.get('recipient_type')  # 'myself' or 'someone_else'
-        relationship = request.form.get('relationship', '')  # Only if someone_else
+        recipient_type = request.form.get('recipient_type')
+        relationship = request.form.get('relationship', '')
         
-        # Map simplified relationship to backend category
-        if relationship in RELATIONSHIP_MAPPING:
-            relationship = RELATIONSHIP_MAPPING[relationship]
-        
-        # Create user in database
-        user_id = email  # Simple user ID for MVP
-        user_data = {
+        # Create user
+        user_id = email
+        save_user(user_id, {
             'email': email,
-            'created_at': datetime.now().isoformat(),
             'recipient_type': recipient_type,
-            'platforms': {}
-        }
+            'relationship': relationship,
+            'subscription_tier': 'free',  # Default to free tier
+            'created_at': datetime.now().isoformat()
+        })
         
-        if recipient_type == 'someone_else' and relationship:
-            user_data['relationship'] = relationship
-        
-        save_user(user_id, user_data)
-        
-        # Set session
         session['user_id'] = user_id
         
         return redirect('/connect-platforms')
     
-    return render_template('signup.html', relationships=RELATIONSHIP_OPTIONS)
-
-# ============================================================================
-# ROUTES - Platform Connections WITH PROGRESS TRACKING
-# ============================================================================
+    return render_template('signup.html', relationship_options=RELATIONSHIP_OPTIONS)
 
 @app.route('/connect-platforms')
 def connect_platforms():
@@ -941,135 +756,32 @@ def connect_platforms():
     if not user:
         return redirect('/signup')
     
-    recipient_type = user.get('recipient_type', 'myself')
-    
-    # Determine platform access (for pro features)
-    platform_access = {
-        'instagram': True,
-        'pinterest': True,  # Set to False if pro-only
-        'tiktok': True,     # Set to False if pro-only
-        'spotify': False
-    }
-    
-    return render_template('connect_platforms.html',
-                         user=user,
-                         recipient_type=recipient_type,
-                         platform_status=PLATFORM_STATUS,
-                         platform_access=platform_access)
+    return render_template('connect_platforms.html', 
+                         platforms=user.get('platforms', {}),
+                         recipient_type=user.get('recipient_type', 'myself'))
 
-# ============================================================================
-# PINTEREST OAUTH (Unchanged)
-# ============================================================================
-
-@app.route('/oauth/pinterest/start')
-def pinterest_oauth_start():
-    """Initiate Pinterest OAuth flow"""
-    user = get_session_user()
-    if not user:
-        return redirect('/signup')
+@app.route('/api/validate-username', methods=['POST'])
+def validate_username():
+    """Instant username validation endpoint"""
+    data = request.get_json()
+    platform = data.get('platform')
+    username = data.get('username', '').strip().replace('@', '')
     
-    params = {
-        'client_id': PINTEREST_CLIENT_ID,
-        'redirect_uri': PINTEREST_REDIRECT_URI,
-        'response_type': 'code',
-        'scope': 'boards:read,pins:read,user_accounts:read'
-    }
+    if not username:
+        return jsonify({'valid': False, 'message': 'Username required'})
     
-    import urllib.parse
-    query_string = urllib.parse.urlencode(params)
-    authorization_url = f"{PINTEREST_AUTH_URL}?{query_string}"
+    if platform == 'instagram':
+        result = check_instagram_privacy(username)
+    elif platform == 'tiktok':
+        result = check_tiktok_privacy(username)
+    else:
+        return jsonify({'valid': False, 'message': 'Invalid platform'})
     
-    print(f"Pinterest OAuth start - redirecting to: {authorization_url}")
-    
-    return redirect(authorization_url)
-
-@app.route('/oauth/pinterest/callback')
-def pinterest_oauth_callback():
-    """Handle Pinterest OAuth callback and fetch data"""
-    user = get_session_user()
-    if not user:
-        return redirect('/signup')
-    
-    code = request.args.get('code')
-    error = request.args.get('error')
-    
-    if error:
-        print(f"Pinterest OAuth error from Pinterest: {error}")
-        return redirect(f'/connect-platforms?error=pinterest_{error}')
-    
-    if not code:
-        print("Pinterest callback: No code provided")
-        return redirect('/connect-platforms?error=pinterest_no_code')
-    
-    try:
-        print(f"Attempting Pinterest token exchange...")
-        
-        response = requests.post(
-            PINTEREST_TOKEN_URL, 
-            data={
-                'grant_type': 'authorization_code',
-                'code': code,
-                'redirect_uri': PINTEREST_REDIRECT_URI
-            },
-            auth=(PINTEREST_CLIENT_ID, PINTEREST_CLIENT_SECRET),
-            headers={
-                'Content-Type': 'application/x-www-form-urlencoded'
-            }
-        )
-        
-        print(f"Pinterest token response status: {response.status_code}")
-        
-        if response.status_code != 200:
-            print(f"Pinterest token error: {response.text}")
-            return redirect('/connect-platforms?error=pinterest_token_failed')
-        
-        token_data = response.json()
-        access_token = token_data.get('access_token')
-        
-        if not access_token:
-            print("Pinterest: No access token in response")
-            return redirect('/connect-platforms?error=pinterest_no_token')
-        
-        print("Pinterest: Token received, fetching data...")
-        
-        # Fetch Pinterest data immediately
-        user_info = fetch_pinterest_user_info(access_token)
-        boards = fetch_pinterest_boards(access_token)
-        pins = fetch_pinterest_pins(access_token)
-        
-        print(f"Pinterest: Fetched {len(boards)} boards and {len(pins)} pins")
-        
-        # Save everything to database
-        platforms = user.get('platforms', {})
-        platforms['pinterest'] = {
-            'access_token': access_token,
-            'refresh_token': token_data.get('refresh_token'),
-            'connected_at': datetime.now().isoformat(),
-            'user_info': user_info,
-            'boards': boards[:10],
-            'pins': pins[:50],
-            'total_boards': len(boards),
-            'total_pins': len(pins)
-        }
-        
-        save_user(session['user_id'], {'platforms': platforms})
-        
-        print("Pinterest: Successfully connected!")
-        return redirect('/connect-platforms?success=pinterest')
-    
-    except Exception as e:
-        print(f"Pinterest OAuth exception: {str(e)}")
-        import traceback
-        traceback.print_exc()
-        return redirect('/connect-platforms?error=pinterest_exception')
-
-# ============================================================================
-# INSTAGRAM - PUBLIC SCRAPING WITH PROGRESS
-# ============================================================================
+    return jsonify(result)
 
 @app.route('/connect/instagram', methods=['POST'])
 def connect_instagram():
-    """Connect Instagram via username and scrape with Apify - WITH PROGRESS"""
+    """Connect Instagram with progress tracking"""
     user = get_session_user()
     if not user:
         return redirect('/signup')
@@ -1082,7 +794,7 @@ def connect_instagram():
     # Generate unique task ID
     task_id = str(uuid.uuid4())
     
-    # Get user_id BEFORE starting thread (request context available here)
+    # Get user_id BEFORE starting thread
     user_id = session['user_id']
     
     # Start scraping in background thread
@@ -1090,7 +802,7 @@ def connect_instagram():
         instagram_data = scrape_instagram_profile(username, max_posts=50, task_id=task_id)
         
         if instagram_data:
-            # Save to database using passed user_id (no session access needed)
+            # Save to database using passed user_id
             user = get_user(user_id)
             platforms = user.get('platforms', {})
             platforms['instagram'] = {
@@ -1108,13 +820,9 @@ def connect_instagram():
     # Redirect to progress page
     return redirect(f'/connect-progress/instagram/{task_id}')
 
-# ============================================================================
-# TIKTOK - PUBLIC SCRAPING WITH PROGRESS
-# ============================================================================
-
 @app.route('/connect/tiktok', methods=['POST'])
 def connect_tiktok():
-    """Connect TikTok via username and scrape with Apify - WITH PROGRESS"""
+    """Connect TikTok with progress tracking"""
     user = get_session_user()
     if not user:
         return redirect('/signup')
@@ -1127,7 +835,7 @@ def connect_tiktok():
     # Generate unique task ID
     task_id = str(uuid.uuid4())
     
-    # Get user_id BEFORE starting thread (request context available here)
+    # Get user_id BEFORE starting thread
     user_id = session['user_id']
     
     # Start scraping in background thread
@@ -1135,7 +843,7 @@ def connect_tiktok():
         tiktok_data = scrape_tiktok_profile(username, max_videos=50, task_id=task_id)
         
         if tiktok_data:
-            # Save to database using passed user_id (no session access needed)
+            # Save to database using passed user_id
             user = get_user(user_id)
             platforms = user.get('platforms', {})
             platforms['tiktok'] = {
@@ -1153,194 +861,262 @@ def connect_tiktok():
     # Redirect to progress page
     return redirect(f'/connect-progress/tiktok/{task_id}')
 
-# ============================================================================
-# PROGRESS PAGE
-# ============================================================================
-
 @app.route('/connect-progress/<platform>/<task_id>')
-def show_progress(platform, task_id):
-    """Show progress page while scraping"""
-    return render_template('scraping_progress.html', 
-                         platform=platform,
-                         task_id=task_id)
+def connect_progress(platform, task_id):
+    """Progress page for scraping"""
+    return render_template('scraping_progress.html', platform=platform, task_id=task_id)
 
-# ============================================================================
-# DISCONNECT PLATFORMS
-# ============================================================================
-
-@app.route('/disconnect/<platform>')
-def disconnect_platform(platform):
-    """Disconnect a platform"""
-    user = get_session_user()
-    if not user:
-        return redirect('/signup')
+@app.route('/api/scrape-progress/<task_id>')
+def scrape_progress_stream(task_id):
+    """Server-Sent Events endpoint for progress updates"""
+    def generate():
+        timeout = 180  # 3 minutes
+        start = time.time()
+        
+        while time.time() - start < timeout:
+            progress = get_progress(task_id)
+            yield f"data: {json.dumps(progress)}\n\n"
+            
+            if progress.get('status') in ['complete', 'error']:
+                break
+            
+            time.sleep(1)
     
-    platforms = user.get('platforms', {})
-    if platform in platforms:
-        del platforms[platform]
-        save_user(session['user_id'], {'platforms': platforms})
-    
-    return redirect('/connect-platforms?disconnected=' + platform)
-
-# ============================================================================
-# GENERATE RECOMMENDATIONS - WITH MINIMUM PLATFORM CHECK
-# ============================================================================
+    return Response(generate(), mimetype='text/event-stream')
 
 @app.route('/generate-recommendations')
 def generate_recommendations_route():
-    """Generate gift recommendations from connected platforms"""
+    """Generate gift recommendations with data quality check"""
     user = get_session_user()
     if not user:
         return redirect('/signup')
     
     platforms = user.get('platforms', {})
     
-    # Require at least 1 platform (updated from 2 - lower barrier)
     if len(platforms) < 1:
         return redirect('/connect-platforms?error=need_platforms')
     
+    # Check data quality
+    quality = check_data_quality(platforms)
+    
+    # If insufficient data, show warning page
+    if quality['quality'] == 'insufficient' and not request.args.get('force'):
+        return render_template('low_data_warning.html', 
+                             quality=quality,
+                             ig_count=quality['platform_counts'].get('instagram', 0),
+                             tt_count=quality['platform_counts'].get('tiktok', 0),
+                             total_count=quality['total_posts'],
+                             rec_count=quality['recommendation_count'])
+    
     # Show loading page
-    return render_template('generating.html', platforms=list(platforms.keys()))
+    recipient_type = user.get('recipient_type', 'myself')
+    return render_template('generating.html', 
+                         platforms=list(platforms.keys()),
+                         recipient_type=recipient_type)
 
 @app.route('/api/generate-recommendations', methods=['POST'])
 def api_generate_recommendations():
-    """API endpoint to generate recommendations using all platform data"""
+    """
+    Generate recommendations with:
+    - Web search for real URLs
+    - Dynamic rec count based on data quality
+    - Collectible series intelligence
+    - Relationship-specific prompts
+    """
     user = get_session_user()
     if not user:
-        return jsonify({'error': 'Not logged in'}), 401
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
     
     try:
         platforms = user.get('platforms', {})
         recipient_type = user.get('recipient_type', 'myself')
         relationship = user.get('relationship', '')
         
-        # Build comprehensive platform data summary (keeping your existing logic)
-        platform_insights = []
+        # Check tier limits
+        tier = get_user_tier(user)
+        tier_config = SUBSCRIPTION_TIERS[tier]
         
-        # Pinterest data
-        if 'pinterest' in platforms:
-            pinterest = platforms['pinterest']
-            boards = pinterest.get('boards', [])
-            pins = pinterest.get('pins', [])
-            
-            board_names = [b.get('name', '') for b in boards if b.get('name')]
-            pin_descriptions = [p.get('description', '')[:200] for p in pins[:30] if p.get('description')]
-            
-            platform_insights.append(f"""
-PINTEREST DATA ({pinterest.get('total_boards', 0)} boards, {pinterest.get('total_pins', 0)} pins):
-- Board Names: {', '.join(board_names[:20])}
-- Key Interests from Pins: {'; '.join(pin_descriptions[:15])}
-""")
+        # Check data quality
+        quality = check_data_quality(platforms)
+        rec_count = min(quality['recommendation_count'], tier_config['recommendations_per_profile'])
+        
+        # Build platform insights
+        platform_insights = []
         
         # Instagram data
         if 'instagram' in platforms:
-            instagram = platforms['instagram'].get('data', {})
-            if instagram and instagram.get('posts'):
-                posts = instagram['posts']
-                captions = [p['caption'][:150] for p in posts[:20] if p.get('caption')]
+            ig_data = platforms['instagram'].get('data', {})
+            if ig_data:
+                posts = ig_data.get('posts', [])
+                captions = [p['caption'][:200] for p in posts if p.get('caption')]
+                hashtags_all = []
+                for p in posts:
+                    hashtags_all.extend(p.get('hashtags', []))
+                top_hashtags = Counter(hashtags_all).most_common(15)
                 
                 platform_insights.append(f"""
-INSTAGRAM DATA ({instagram.get('total_posts', 0)} posts analyzed):
-- Username: @{instagram.get('username', 'unknown')}
-- Post Themes: {'; '.join(captions[:15])}
-- Engagement Style: {"High engagement" if instagram.get('followers', 0) > 1000 else "Personal account"}
+INSTAGRAM DATA ({len(posts)} posts analyzed):
+- Username: @{ig_data.get('username', 'unknown')}
+- Recent Post Themes: {'; '.join(captions[:15])}
+- Top Hashtags: {', '.join([tag[0] for tag in top_hashtags])}
+- Engagement: Average {sum(p.get('likes', 0) for p in posts) / len(posts):.0f} likes per post
 """)
         
         # TikTok data with repost intelligence
         if 'tiktok' in platforms:
-            tiktok = platforms['tiktok'].get('data', {})
-            if tiktok and tiktok.get('videos'):
-                videos = tiktok['videos']
+            tt_data = platforms['tiktok'].get('data', {})
+            if tt_data:
+                videos = tt_data.get('videos', [])
                 descriptions = [v['description'][:150] for v in videos[:20] if v.get('description')]
-                reposts = tiktok.get('reposts', [])
-                repost_patterns = tiktok.get('repost_patterns', {})
-                favorite_creators = repost_patterns.get('favorite_creators', [])
+                favorite_creators = tt_data.get('favorite_creators', [])
+                repost_patterns = tt_data.get('repost_patterns', {})
+                top_hashtags = tt_data.get('top_hashtags', {})
+                top_music = tt_data.get('top_music', {})
                 
+                # Creator personality insights
                 creator_insights = ""
                 if favorite_creators:
                     creator_list = [f"@{creator[0]} ({creator[1]} reposts)" for creator in favorite_creators[:5]]
                     creator_insights = f"\n- Frequently Reposts From: {', '.join(creator_list)}"
-                    creator_insights += f"\n- This suggests affinity for: content styles, values, and product categories these creators represent"
+                    creator_insights += f"\n- CRITICAL: Research these creators' content themes, aesthetics, and product recommendations"
+                    creator_insights += f"\n- What these creators represent is what the user aspires to or identifies with"
+                
+                # Music taste signals
+                music_insights = ""
+                if top_music:
+                    music_list = list(top_music.keys())[:5]
+                    music_insights = f"\n- Popular Sounds: {', '.join(music_list)}"
+                    music_insights += f"\n- Music taste can indicate aesthetic preferences and subcultures"
                 
                 platform_insights.append(f"""
-TIKTOK DATA ({tiktok.get('total_videos', 0)} videos analyzed):
-- Username: @{tiktok.get('username', 'unknown')}
-- Video Themes: {'; '.join(descriptions[:15])}
-- Repost Behavior: {repost_patterns.get('total_reposts', 0)} reposts out of {tiktok.get('total_videos', 0)} total videos{creator_insights}
-- Key Insight: Reposts reveal deeper interests - what they choose to amplify shows what resonates most
+TIKTOK DATA ({tt_data.get('total_videos', 0)} videos analyzed):
+- Username: @{tt_data.get('username', 'unknown')}
+- Original Content Themes: {'; '.join(descriptions[:15])}
+- Repost Behavior: {repost_patterns.get('total_reposts', 0)} reposts out of {tt_data.get('total_videos', 0)} total videos ({repost_patterns.get('repost_percentage', 0):.1f}%)
+{creator_insights}
+{music_insights}
+- Top Hashtags: {', '.join(list(top_hashtags.keys())[:10])}
+
+KEY INSIGHT: Their reposts are MORE revealing than original posts. What they choose to amplify shows what resonates most.
+TASK: For each favorite creator, consider what aesthetic/lifestyle/values that creator represents.
 """)
         
-        # Build relationship context
-        relationship_context = ""
-        if recipient_type == 'someone_else':
-            relationship_map = {
-                'romantic_partner': "This is for a romantic partner - focus on thoughtful, personal gifts that show deep understanding",
-                'close_friend': "This is for a close friend - prioritize fun, meaningful gifts that strengthen the friendship",
-                'family_member': "This is for a family member - consider practical yet heartfelt gifts",
-                'coworker': "This is for a coworker - keep it professional but thoughtful",
-                'acquaintance': "This is for an acquaintance - opt for tasteful, universally appealing gifts",
-                'other': "Consider the nature of the relationship when selecting gifts"
-            }
-            relationship_context = f"\n\nRELATIONSHIP CONTEXT:\n{relationship_map.get(relationship, '')}"
+        # Pinterest data (if available)
+        if 'pinterest' in platforms:
+            pinterest = platforms['pinterest']
+            boards = pinterest.get('boards', [])
+            if boards:
+                board_names = [b['name'] for b in boards[:10]]
+                platform_insights.append(f"""
+PINTEREST DATA ({len(boards)} boards):
+- Board Names: {', '.join(board_names)}
+- Saved Interests: Visual preferences, aspirations, planning
+""")
         
-        # Build comprehensive prompt (keeping your existing prompt)
-        prompt = f"""You are an expert gift curator. Based on the following social media data, generate 10 highly specific, actionable gift recommendations.
+        # Relationship context
+        relationship_context = ""
+        if recipient_type == 'someone_else' and relationship:
+            relationship_context = RELATIONSHIP_PROMPTS.get(relationship, "")
+        
+        # Build prompt with all enhancements
+        low_data_instructions = ""
+        if quality['quality'] in ['limited', 'insufficient']:
+            low_data_instructions = f"""
+NOTE: Limited data available ({quality['total_posts']} posts) - focus on SAFE, OBVIOUS choices based on clear signals.
+Generate ONLY {rec_count} recommendations (NOT 10 - we have limited data).
+With limited data, prioritize SAFE BETS - obvious choices that won't miss.
+Each recommendation MUST cite specific posts/behaviors that justify it.
+If you only have evidence for {rec_count - 1} gifts, return {rec_count - 1} gifts, not {rec_count}.
+"""
+        
+        prompt = f"""You are an expert gift curator with access to web search. Based on the following social media data, generate {rec_count} highly specific, actionable gift recommendations.
 
 USER DATA:
 {chr(10).join(platform_insights)}{relationship_context}
 
+{low_data_instructions}
+
 CRITICAL INSTRUCTIONS:
-1. Prioritize UNIQUE, SPECIALTY items over generic mass-market products
-2. Focus on independent makers, artisan shops, and unique experiences
-3. Each recommendation MUST include a REAL, WORKING purchase link - DO NOT generate placeholder URLs
-4. For purchase links: Search for actual products on Etsy, UncommonGoods, or specialty retailers and provide their EXACT URLs
-5. If you cannot find a specific product URL, use a search URL format like: https://www.etsy.com/search?q=specific+product+name
-6. Balance quality with affiliate potential - NEVER recommend generic Amazon items just for easy commission
-7. Use TikTok repost patterns to identify deeper interests - what they choose to amplify reveals what truly resonates
-8. Look for the special, thoughtful items that show you really understand them
-9. BE SPECIFIC: Instead of "vintage record player", say "Crosley C6 Belt-Drive Turntable in Cherry" with exact URL
-10. VERIFY PRODUCTS EXIST: Only recommend items you can find real links for
+1. You have WEB SEARCH available - use it to find REAL product pages
+2. For each recommendation, use web_search to find the ACTUAL product page:
+   - Search for: "[Brand] [Product Name] [Model] buy online"
+   - Prioritize: Direct brand website → Specialty retailers (Etsy, UncommonGoods) → Amazon
+   - Return the REAL URL you found via search
+   - If you cannot find a real URL, use: https://www.etsy.com/search?q=specific+product+name
+3. VERIFY products exist before recommending them via search
+4. Get real current prices via search
+5. Prioritize UNIQUE, SPECIALTY items over generic mass-market products
+6. Focus on independent makers, artisan shops, unique experiences
+
+COLLECTIBLE SERIES INTELLIGENCE:
+- If someone collects something (LEGO sets, Funko Pops, vinyl variants, sneakers, trading cards, etc.):
+  * Identify the series/collection
+  * Note what they already have (from posts)
+  * Suggest the BEST next item considering:
+    - Recency (new releases they might not know about)
+    - Rarity (hard-to-find items)
+    - Completion (missing pieces in their collection)
+    - Personal relevance (e.g., Tokyo LEGO for someone who posts about Tokyo)
+  * Include "collectible_series" field with alternatives
 
 PRICE DISTRIBUTION:
-- 3-4 items in $20-50 range
-- 3-4 items in $50-100 range
-- 2-3 items in $100-200 range
+{f"- {rec_count // 2} items in $15-50 range" if rec_count >= 5 else "- Most items in $15-50 range"}
+{f"- {rec_count // 3} items in $50-100 range" if rec_count >= 6 else "- Some items in $50-100 range"}
+{f"- {rec_count // 5} items in $100-200 range" if rec_count >= 8 else "- 1-2 items in $100-200 range"}
 
-Return EXACTLY 10 recommendations as a JSON array with this structure:
+Return EXACTLY {rec_count} recommendations as a JSON array with this structure:
 [
   {{
-    "name": "SPECIFIC product or experience name with brand/model",
+    "name": "SPECIFIC product name with brand/model (e.g., 'LEGO Architecture: Tokyo Skyline Set (21051)')",
     "description": "2-3 sentence description of what this is and why it's special",
-    "why_perfect": "Why this matches their interests based on specific social media signals",
+    "why_perfect": "Why this matches their interests with SPECIFIC evidence from their posts/reposts",
     "price_range": "$XX-$XX",
-    "where_to_buy": "Specific retailer name (Etsy shop name, UncommonGoods, etc)",
-    "purchase_link": "https://REAL-WORKING-URL.com (NOT a placeholder - must be actual product page or search URL)",
+    "where_to_buy": "Specific retailer name",
+    "product_url": "https://REAL-URL-FROM-WEB-SEARCH.com",
     "gift_type": "physical" or "experience",
-    "confidence_level": "safe_bet" or "adventurous"
+    "confidence_level": "safe_bet" or "adventurous",
+    "collectible_series": {{  // OPTIONAL - only if this is part of a collectible series
+      "series_name": "LEGO Architecture",
+      "current_suggestion": "Tokyo Skyline (newest release)",
+      "alternatives": [
+        "Dubai Skyline - More intricate (740 pieces, $60)",
+        "New York City - Iconic (598 pieces, $50)"
+      ],
+      "why_these": "Based on their travel posts and architecture interest"
+    }}
   }}
 ]
 
 IMPORTANT: Return ONLY the JSON array. No markdown, no backticks, no explanatory text."""
 
-        print(f"Generating recommendations for user: {user.get('email', 'unknown')}")
-        print(f"Using platforms: {list(platforms.keys())}")
-        print(f"Recipient type: {recipient_type}, Relationship: {relationship}")
+        print(f"Generating {rec_count} recommendations for user: {user.get('email', 'unknown')}")
+        print(f"Data quality: {quality['quality']} ({quality['total_posts']} posts)")
         
-        # Call Claude API
+        # Call Claude API with web search enabled
         message = claude_client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=6000,
+            max_tokens=8000,
+            tools=[
+                {
+                    "type": "web_search_20250305",
+                    "name": "web_search"
+                }
+            ],
             messages=[{"role": "user", "content": prompt}]
         )
         
-        # Get response text
-        response_text = message.content[0].text.strip()
+        # Extract response (handle tool use)
+        response_text = ""
+        for block in message.content:
+            if block.type == "text":
+                response_text += block.text
+        
+        response_text = response_text.strip()
         
         print(f"Claude response received, length: {len(response_text)}")
         
-        # Parse JSON response
+        # Parse JSON
         try:
-            # Remove markdown code fences if present
             if response_text.startswith('```'):
                 response_text = response_text.split('```')[1]
                 if response_text.startswith('json'):
@@ -1352,27 +1128,28 @@ IMPORTANT: Return ONLY the JSON array. No markdown, no backticks, no explanatory
             
         except json.JSONDecodeError as e:
             print(f"JSON parse error: {e}")
-            # Fallback if parsing fails
             recommendations = [{
                 'name': 'Recommendations generated',
                 'description': response_text[:500],
                 'why_perfect': 'See full response',
                 'price_range': 'Various',
                 'where_to_buy': 'Various retailers',
-                'purchase_link': '',
+                'product_url': '',
                 'gift_type': 'physical',
                 'confidence_level': 'safe_bet'
             }]
         
-        # Save recommendations to user
+        # Save recommendations
         save_user(session['user_id'], {
             'recommendations': recommendations,
+            'data_quality': quality,
             'last_generated': datetime.now().isoformat()
         })
         
         return jsonify({
             'success': True,
-            'recommendations': recommendations
+            'recommendations': recommendations,
+            'data_quality': quality
         })
         
     except Exception as e:
@@ -1384,13 +1161,91 @@ IMPORTANT: Return ONLY the JSON array. No markdown, no backticks, no explanatory
             'error': str(e)
         }), 500
 
-# ============================================================================
-# VIEW RECOMMENDATIONS
-# ============================================================================
+@app.route('/api/fix-recommendation-link', methods=['POST'])
+def fix_recommendation_link():
+    """
+    Use Claude with web search to find a working link for a recommendation
+    """
+    data = request.get_json()
+    product_name = data.get('product_name')
+    description = data.get('description', '')
+    
+    if not product_name:
+        return jsonify({'success': False, 'error': 'Product name required'})
+    
+    try:
+        prompt = f"""Find a working purchase link for this product:
+
+Product: {product_name}
+Description: {description}
+
+Instructions:
+1. Use web_search to find where this product can be purchased online
+2. Prioritize: Brand website → Specialty retailers (Etsy, UncommonGoods) → Amazon
+3. Return the REAL URL you found
+4. Verify the link actually leads to this product or very similar
+
+Return ONLY a JSON object with this structure:
+{{
+  "url": "https://actual-working-url.com/product",
+  "retailer": "Name of retailer",
+  "confidence": "high" or "medium",
+  "note": "Brief note about what you found"
+}}
+"""
+        
+        message = claude_client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=1000,
+            tools=[
+                {
+                    "type": "web_search_20250305",
+                    "name": "web_search"
+                }
+            ],
+            messages=[{"role": "user", "content": prompt}]
+        )
+        
+        # Extract response
+        response_text = ""
+        for block in message.content:
+            if block.type == "text":
+                response_text += block.text
+        
+        # Parse JSON
+        response_text = response_text.strip()
+        if response_text.startswith('```'):
+            response_text = response_text.split('```')[1]
+            if response_text.startswith('json'):
+                response_text = response_text[4:]
+            response_text = response_text.strip()
+        
+        result = json.loads(response_text)
+        
+        print(f"Fixed link for '{product_name}': {result.get('url')} ({result.get('retailer')})")
+        
+        return jsonify({
+            'success': True,
+            'new_url': result.get('url'),
+            'button_text': f"View on {result.get('retailer', 'Retailer')} →",
+            'note': result.get('note')
+        })
+    
+    except Exception as e:
+        print(f"Link fix error for '{product_name}': {e}")
+        
+        # Fallback to search
+        search_query = product_name.replace(' ', '+')
+        return jsonify({
+            'success': True,
+            'new_url': f'https://www.amazon.com/s?k={search_query}',
+            'button_text': 'Search on Amazon →',
+            'note': 'Fallback to Amazon search'
+        })
 
 @app.route('/recommendations')
 def view_recommendations():
-    """Display recommendations with filters"""
+    """Display recommendations with fix link buttons"""
     user = get_session_user()
     if not user:
         return redirect('/signup')
@@ -1400,93 +1255,20 @@ def view_recommendations():
     if not recommendations:
         return redirect('/connect-platforms?error=no_recommendations')
     
+    data_quality = user.get('data_quality', {})
+    connected_count = len(user.get('platforms', {}))
+    
     return render_template('recommendations.html', 
                          recommendations=recommendations,
+                         data_quality=data_quality,
+                         connected_count=connected_count,
                          user=user)
-
-# ============================================================================
-# FEEDBACK SYSTEM (Unchanged)
-# ============================================================================
-
-@app.route('/feedback', methods=['GET', 'POST'])
-def feedback():
-    """Feedback survey page"""
-    user = get_session_user()
-    
-    if request.method == 'POST':
-        feedback_data = {
-            'landing_page': request.form.get('landing_page'),
-            'connection_flow': request.form.get('connection_flow'),
-            'recommendation_quality': request.form.get('recommendation_quality'),
-            'would_pay': request.form.get('would_pay'),
-            'price_point': request.form.get('price_point'),
-            'free_response': request.form.get('free_response'),
-            'submitted_at': datetime.now().isoformat()
-        }
-        
-        session['feedback_draft'] = feedback_data
-        
-        if user:
-            user_id = session.get('user_id')
-            existing_feedback = user.get('feedback_history', [])
-            existing_feedback.append(feedback_data)
-            
-            save_user(user_id, {
-                'feedback_history': existing_feedback,
-                'latest_feedback': feedback_data
-            })
-        
-        return render_template('feedback.html', success=True)
-    
-    existing_feedback = session.get('feedback_draft', {})
-    return render_template('feedback.html', existing_feedback=existing_feedback)
-
-@app.route('/admin/feedback')
-def admin_feedback():
-    """View all feedback (debug mode only)"""
-    if not app.debug:
-        return "Unauthorized", 403
-    
-    all_feedback = []
-    
-    with shelve.open('giftwise_db') as db:
-        for key in db.keys():
-            if key.startswith('user_'):
-                user_data = db[key]
-                feedback_history = user_data.get('feedback_history', [])
-                
-                for feedback in feedback_history:
-                    all_feedback.append({
-                        'user_email': user_data.get('email', 'Anonymous'),
-                        'feedback': feedback
-                    })
-    
-    all_feedback.sort(key=lambda x: x['feedback'].get('submitted_at', ''), reverse=True)
-    
-    return jsonify(all_feedback)
-
-# ============================================================================
-# ADMIN / UTILS
-# ============================================================================
 
 @app.route('/logout')
 def logout():
     """Logout user"""
     session.clear()
     return redirect('/')
-
-@app.route('/debug/user')
-def debug_user():
-    """Debug: View current user data"""
-    if not app.debug:
-        return "Debug mode only", 403
-    
-    user = get_session_user()
-    return jsonify(user) if user else jsonify({'error': 'No user in session'})
-
-# ============================================================================
-# RUN APPLICATION
-# ============================================================================
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)

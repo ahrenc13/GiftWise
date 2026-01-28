@@ -919,7 +919,7 @@ def scrape_progress_stream(task_id):
 
 @app.route('/generate-recommendations')
 def generate_recommendations_route():
-    """Generate gift recommendations - wait for scraping if needed"""
+    """Generate gift recommendations - start scraping if needed"""
     user = get_session_user()
     if not user:
         return redirect('/signup')
@@ -929,15 +929,52 @@ def generate_recommendations_route():
     if len(platforms) < 1:
         return redirect('/connect-platforms?error=need_platforms')
     
-    # Check if ANY platform needs scraping
+    # Check if scraping is needed and START IT
     needs_scraping = False
+    scrape_tasks = {}
+    user_id = session['user_id']
+    
     for platform, data in platforms.items():
         if data.get('status') == 'ready':  # Has username but no data
             needs_scraping = True
-            break
+            
+            # Start scraping for this platform
+            task_id = str(uuid.uuid4())
+            scrape_tasks[platform] = task_id
+            username = data['username']
+            
+            if platform == 'instagram':
+                def scrape_ig():
+                    ig_data = scrape_instagram_profile(username, max_posts=50, task_id=task_id)
+                    if ig_data:
+                        user = get_user(user_id)
+                        platforms = user.get('platforms', {})
+                        platforms['instagram']['data'] = ig_data
+                        platforms['instagram']['status'] = 'complete'
+                        platforms['instagram']['connected_at'] = datetime.now().isoformat()
+                        save_user(user_id, {'platforms': platforms})
+                
+                thread = threading.Thread(target=scrape_ig)
+                thread.daemon = True
+                thread.start()
+            
+            elif platform == 'tiktok':
+                def scrape_tt():
+                    tt_data = scrape_tiktok_profile(username, max_videos=50, task_id=task_id)
+                    if tt_data:
+                        user = get_user(user_id)
+                        platforms = user.get('platforms', {})
+                        platforms['tiktok']['data'] = tt_data
+                        platforms['tiktok']['status'] = 'complete'
+                        platforms['tiktok']['connected_at'] = datetime.now().isoformat()
+                        save_user(user_id, {'platforms': platforms})
+                
+                thread = threading.Thread(target=scrape_tt)
+                thread.daemon = True
+                thread.start()
     
     if needs_scraping:
-        # Show a message that scraping is happening
+        # Threads are now running - show progress page
         return render_template('scraping_in_progress.html',
                              platforms=list(platforms.keys()),
                              recipient_type=user.get('recipient_type', 'myself'))

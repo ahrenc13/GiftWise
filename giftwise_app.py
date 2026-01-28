@@ -1000,7 +1000,6 @@ def generate_recommendations_route():
 def api_generate_recommendations():
     """
     Generate recommendations with:
-    - Web search for real URLs
     - Dynamic rec count based on data quality
     - Collectible series intelligence
     - Relationship-specific prompts
@@ -1061,38 +1060,21 @@ INSTAGRAM DATA ({len(posts)} posts analyzed):
                     creator_list = [f"@{creator[0]} ({creator[1]} reposts)" for creator in favorite_creators[:5]]
                     creator_insights = f"\n- Frequently Reposts From: {', '.join(creator_list)}"
                     creator_insights += f"\n- CRITICAL: Research these creators' content themes, aesthetics, and product recommendations"
-                    creator_insights += f"\n- What these creators represent is what the user aspires to or identifies with"
                 
                 # Music taste signals
                 music_insights = ""
                 if top_music:
                     music_list = list(top_music.keys())[:5]
                     music_insights = f"\n- Popular Sounds: {', '.join(music_list)}"
-                    music_insights += f"\n- Music taste can indicate aesthetic preferences and subcultures"
                 
                 platform_insights.append(f"""
 TIKTOK DATA ({tt_data.get('total_videos', 0)} videos analyzed):
 - Username: @{tt_data.get('username', 'unknown')}
 - Original Content Themes: {'; '.join(descriptions[:15])}
-- Repost Behavior: {repost_patterns.get('total_reposts', 0)} reposts out of {tt_data.get('total_videos', 0)} total videos ({repost_patterns.get('repost_percentage', 0):.1f}%)
+- Repost Behavior: {repost_patterns.get('total_reposts', 0)} reposts out of {tt_data.get('total_videos', 0)} total videos
 {creator_insights}
 {music_insights}
 - Top Hashtags: {', '.join(list(top_hashtags.keys())[:10])}
-
-KEY INSIGHT: Their reposts are MORE revealing than original posts. What they choose to amplify shows what resonates most.
-TASK: For each favorite creator, consider what aesthetic/lifestyle/values that creator represents.
-""")
-        
-        # Pinterest data (if available)
-        if 'pinterest' in platforms:
-            pinterest = platforms['pinterest']
-            boards = pinterest.get('boards', [])
-            if boards:
-                board_names = [b['name'] for b in boards[:10]]
-                platform_insights.append(f"""
-PINTEREST DATA ({len(boards)} boards):
-- Board Names: {', '.join(board_names)}
-- Saved Interests: Visual preferences, aspirations, planning
 """)
         
         # Relationship context
@@ -1100,98 +1082,78 @@ PINTEREST DATA ({len(boards)} boards):
         if recipient_type == 'someone_else' and relationship:
             relationship_context = RELATIONSHIP_PROMPTS.get(relationship, "")
         
-        # Build prompt with all enhancements
+        # Build prompt
         low_data_instructions = ""
         if quality['quality'] in ['limited', 'insufficient']:
             low_data_instructions = f"""
-NOTE: Limited data available ({quality['total_posts']} posts) - focus on SAFE, OBVIOUS choices based on clear signals.
+NOTE: Limited data available ({quality['total_posts']} posts) - focus on SAFE, OBVIOUS choices.
 Generate ONLY {rec_count} recommendations (NOT 10 - we have limited data).
-With limited data, prioritize SAFE BETS - obvious choices that won't miss.
-Each recommendation MUST cite specific posts/behaviors that justify it.
-If you only have evidence for {rec_count - 1} gifts, return {rec_count - 1} gifts, not {rec_count}.
+Each recommendation MUST cite specific posts that justify it.
 """
         
-        prompt = f"""You are an expert gift curator with access to web search. Based on the following social media data, generate {rec_count} highly specific, actionable gift recommendations.
+        prompt = f"""You are an expert gift curator. Based on the following social media data, generate {rec_count} highly specific, actionable gift recommendations.
 
 USER DATA:
 {chr(10).join(platform_insights)}{relationship_context}
 
 {low_data_instructions}
 
-
 CRITICAL INSTRUCTIONS:
-1. For each recommendation, provide the most specific product URL you can construct:
+1. For each recommendation, provide specific product URLs:
    - Direct brand URLs: https://brandname.com/products/specific-item
    - Specialty retailers: https://www.etsy.com/search?q=specific+product+name
    - Amazon search: https://www.amazon.com/s?k=specific+product+name
 2. Be as specific as possible with product names and model numbers
-   - If you cannot find a real URL, use: https://www.etsy.com/search?q=specific+product+name
-3. VERIFY products exist before recommending them via search
-4. Get real current prices via search
-5. Prioritize UNIQUE, SPECIALTY items over generic mass-market products
-6. Focus on independent makers, artisan shops, unique experiences
+3. Prioritize UNIQUE, SPECIALTY items over generic mass-market products
 
 COLLECTIBLE SERIES INTELLIGENCE:
-- If someone collects something (LEGO sets, Funko Pops, vinyl variants, sneakers, trading cards, etc.):
+- If someone collects something (LEGO sets, Funko Pops, vinyl variants, sneakers):
   * Identify the series/collection
-  * Note what they already have (from posts)
-  * Suggest the BEST next item considering:
-    - Recency (new releases they might not know about)
-    - Rarity (hard-to-find items)
-    - Completion (missing pieces in their collection)
-    - Personal relevance (e.g., Tokyo LEGO for someone who posts about Tokyo)
+  * Suggest the BEST next item considering recency, rarity, personal relevance
   * Include "collectible_series" field with alternatives
 
 PRICE DISTRIBUTION:
 {f"- {rec_count // 2} items in $15-50 range" if rec_count >= 5 else "- Most items in $15-50 range"}
 {f"- {rec_count // 3} items in $50-100 range" if rec_count >= 6 else "- Some items in $50-100 range"}
-{f"- {rec_count // 5} items in $100-200 range" if rec_count >= 8 else "- 1-2 items in $100-200 range"}
 
 Return EXACTLY {rec_count} recommendations as a JSON array with this structure:
 [
   {{
-    "name": "SPECIFIC product name with brand/model (e.g., 'LEGO Architecture: Tokyo Skyline Set (21051)')",
-    "description": "2-3 sentence description of what this is and why it's special",
-    "why_perfect": "Why this matches their interests with SPECIFIC evidence from their posts/reposts",
+    "name": "SPECIFIC product name with brand/model",
+    "description": "2-3 sentence description",
+    "why_perfect": "Why this matches their interests with SPECIFIC evidence",
     "price_range": "$XX-$XX",
     "where_to_buy": "Specific retailer name",
-    "product_url": "https://REAL-URL-FROM-WEB-SEARCH.com",
+    "product_url": "https://REAL-URL.com",
     "gift_type": "physical" or "experience",
     "confidence_level": "safe_bet" or "adventurous",
-    "collectible_series": {{  // OPTIONAL - only if this is part of a collectible series
-      "series_name": "LEGO Architecture",
-      "current_suggestion": "Tokyo Skyline (newest release)",
-      "alternatives": [
-        "Dubai Skyline - More intricate (740 pieces, $60)",
-        "New York City - Iconic (598 pieces, $50)"
-      ],
-      "why_these": "Based on their travel posts and architecture interest"
+    "collectible_series": {{
+      "series_name": "Series Name",
+      "current_suggestion": "This item",
+      "alternatives": ["Alternative 1", "Alternative 2"],
+      "why_these": "Reasoning"
     }}
   }}
 ]
 
-IMPORTANT: Return ONLY the JSON array. No markdown, no backticks, no explanatory text."""
+Return ONLY the JSON array."""
 
         print(f"Generating {rec_count} recommendations for user: {user.get('email', 'unknown')}")
-        print(f"Data quality: {quality['quality']} ({quality['total_posts']} posts)")
         
-        # Call Claude API with web search enabled
-        # Call Claude API
-   message = claude_client.messages.create(
-       model="claude-sonnet-4-20250514",
-       max_tokens=8000,
-       messages=[{"role": "user", "content": prompt}]
-   )
+        # Call Claude API (no web search)
+        message = claude_client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=8000,
+            messages=[{"role": "user", "content": prompt}]
+        )
         
-        # Extract response (handle tool use)
+        # Extract response
         response_text = ""
         for block in message.content:
             if block.type == "text":
                 response_text += block.text
         
         response_text = response_text.strip()
-        
-        print(f"Claude response received, length: {len(response_text)}")
         
         # Parse JSON
         try:
@@ -1238,7 +1200,6 @@ IMPORTANT: Return ONLY the JSON array. No markdown, no backticks, no explanatory
             'success': False,
             'error': str(e)
         }), 500
-
 @app.route('/api/fix-recommendation-link', methods=['POST'])
 def fix_recommendation_link():
     """

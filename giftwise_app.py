@@ -929,19 +929,17 @@ def generate_recommendations_route():
     if len(platforms) < 1:
         return redirect('/connect-platforms?error=need_platforms')
     
-    # Check if scraping is needed and START IT
-    needs_scraping = False
-    scrape_tasks = {}
     user_id = session['user_id']
     
+    # Check status and start scraping ONLY if ready
     for platform, data in platforms.items():
-        if data.get('status') == 'ready':  # Has username but no data
-            needs_scraping = True
+        if data.get('status') == 'ready':
+            # IMMEDIATELY change status to prevent re-scraping
+            platforms[platform]['status'] = 'scraping'
+            save_user(user_id, {'platforms': platforms})
             
-            # Start scraping for this platform
-            task_id = str(uuid.uuid4())
-            scrape_tasks[platform] = task_id
             username = data['username']
+            task_id = str(uuid.uuid4())
             
             if platform == 'instagram':
                 def scrape_ig():
@@ -951,7 +949,6 @@ def generate_recommendations_route():
                         platforms = user.get('platforms', {})
                         platforms['instagram']['data'] = ig_data
                         platforms['instagram']['status'] = 'complete'
-                        platforms['instagram']['connected_at'] = datetime.now().isoformat()
                         save_user(user_id, {'platforms': platforms})
                 
                 thread = threading.Thread(target=scrape_ig)
@@ -966,32 +963,29 @@ def generate_recommendations_route():
                         platforms = user.get('platforms', {})
                         platforms['tiktok']['data'] = tt_data
                         platforms['tiktok']['status'] = 'complete'
-                        platforms['tiktok']['connected_at'] = datetime.now().isoformat()
                         save_user(user_id, {'platforms': platforms})
                 
                 thread = threading.Thread(target=scrape_tt)
                 thread.daemon = True
                 thread.start()
     
-    if needs_scraping:
-        # Threads are now running - show progress page
-        return render_template('scraping_in_progress.html',
-                             platforms=list(platforms.keys()),
-                             recipient_type=user.get('recipient_type', 'myself'))
+    # Reload fresh data after saving
+    user = get_user(user_id)
+    platforms = user.get('platforms', {})
     
-    # Check if scraping is in progress (status not 'complete')
-    scraping_incomplete = False
+    # Check if scraping is in progress
+    scraping_in_progress = False
     for platform, data in platforms.items():
-        if data.get('status') not in ['complete', None]:
-            scraping_incomplete = True
+        if data.get('status') == 'scraping':
+            scraping_in_progress = True
             break
     
-    if scraping_incomplete:
+    if scraping_in_progress:
         return render_template('scraping_in_progress.html',
                              platforms=list(platforms.keys()),
                              recipient_type=user.get('recipient_type', 'myself'))
     
-    # All platforms have data - check quality
+    # Check if all have data
     quality = check_data_quality(platforms)
     
     if quality['quality'] == 'insufficient' and not request.args.get('force'):
@@ -1002,54 +996,199 @@ def generate_recommendations_route():
                              total_count=quality['total_posts'],
                              rec_count=quality['recommendation_count'])
     
-    # All good - show generating page
     recipient_type = user.get('recipient_type', 'myself')
     return render_template('generating.html', 
                          platforms=list(platforms.keys()),
                          recipient_type=recipient_type)
 
-@app.route('/api/fix-recommendation-link', methods=['POST'])
-def fix_recommendation_link():
+# INSERT THIS AFTER LINE 1002 (after the /generate-recommendations route, before /recommendations route)
+
+@app.route('/api/generate-recommendations', methods=['POST'])
+def api_generate_recommendations():
     """
-    Use Claude with web search to find a working link for a recommendation
+    Generate recommendations with:
+    - Dynamic rec count based on data quality
+    - Collectible series intelligence
+    - Relationship-specific prompts
     """
-    data = request.get_json()
-    product_name = data.get('product_name')
-    description = data.get('description', '')
-    
-    if not product_name:
-        return jsonify({'success': False, 'error': 'Product name required'})
+    user = get_session_user()
+    if not user:
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
     
     try:
-        prompt = f"""Find a working purchase link for this product:
+        platforms = user.get('platforms', {})
+        recipient_type = user.get('recipient_type', 'myself')
+        relationship = user.get('relationship', '')
+        
+        # Check tier limits
+        tier = get_user_tier(user)
+        tier_config = SUBSCRIPTION_TIERS[tier]
+        
+        # Check data quality
+        quality = check_data_quality(platforms)
+        rec_count = min(quality['recommendation_count'], tier_config['recommendations_per_profile'])
+        
+        # Build platform insights
+        platform_insights = []
+        
+        # Instagram data
+        if 'instagram' in platforms:
+            ig_data = platforms['instagram'].get('data', {})
+            if ig_data:
+                posts = ig_data.get('posts', [])
+                captions = [p['caption'][:200] for p in posts if p.get('caption')]
+                hashtags_all = []
+                for p in posts:
+                    hashtags_all.extend(p.get('hashtags', []))
+                top_hashtags = Counter(hashtags_all).most_common(15)
+                
+                platform_insights.append(f"""
+INSTAGRAM DATA ({len(posts)} posts analyzed):
+- Username: @{ig_data.get('username', 'unknown')}
+- Recent Post Themes: {'; '.join(captions[:15])}
+- Top Hashtags: {', '.join([tag[0] for tag in top_hashtags])}
+- Engagement: Average {sum(p.get('likes', 0) for p in posts) / len(posts):.0f} likes per post
+""")
+        
+        # TikTok data with repost intelligence
+        if 'tiktok' in platforms:
+            tt_data = platforms['tiktok'].get('data', {})
+            if tt_data:
+                videos = tt_data.get('videos', [])
+                descriptions = [v['description'][:150] for v in videos[:20] if v.get('description')]
+                favorite_creators = tt_data.get('favorite_creators', [])
+                repost_patterns = tt_data.get('repost_patterns', {})
+                top_hashtags = tt_data.get('top_hashtags', {})
+                top_music = tt_data.get('top_music', {})
+                
+                # Creator personality insights
+                creator_insights = ""
+                if favorite_creators:
+                    creator_list = [f"@{creator[0]} ({creator[1]} reposts)" for creator in favorite_creators[:5]]
+                    creator_insights = f"\n- Frequently Reposts From: {', '.join(creator_list)}"
+                    creator_insights += f"\n- CRITICAL: These creators represent their aspirations and aesthetic preferences"
+                    creator_insights += f"\n- What these creators embody is what resonates with them most"
+                
+                # Music taste signals
+                music_insights = ""
+                if top_music:
+                    music_list = list(top_music.keys())[:5]
+                    music_insights = f"\n- Popular Sounds: {', '.join(music_list)}"
+                    music_insights += f"\n- Music indicates aesthetic preferences and subcultures"
+                
+                platform_insights.append(f"""
+TIKTOK DATA ({tt_data.get('total_videos', 0)} videos analyzed):
+- Username: @{tt_data.get('username', 'unknown')}
+- Original Content Themes: {'; '.join(descriptions[:15])}
+- Repost Behavior: {repost_patterns.get('total_reposts', 0)} reposts out of {tt_data.get('total_videos', 0)} total videos ({repost_patterns.get('repost_percentage', 0):.1f}%)
+{creator_insights}
+{music_insights}
+- Top Hashtags: {', '.join(list(top_hashtags.keys())[:10])}
 
-Product: {product_name}
-Description: {description}
-
-Instructions:
-1. Use web_search to find where this product can be purchased online
-2. Prioritize: Brand website → Specialty retailers (Etsy, UncommonGoods) → Amazon
-3. Return the REAL URL you found
-4. Verify the link actually leads to this product or very similar
-
-Return ONLY a JSON object with this structure:
-{{
-  "url": "https://actual-working-url.com/product",
-  "retailer": "Name of retailer",
-  "confidence": "high" or "medium",
-  "note": "Brief note about what you found"
-}}
+KEY INSIGHT: Reposts are MORE revealing than original posts. What they amplify shows what resonates most.
+""")
+        
+        # Pinterest data (if available)
+        if 'pinterest' in platforms:
+            pinterest = platforms['pinterest']
+            boards = pinterest.get('boards', [])
+            if boards:
+                board_names = [b['name'] for b in boards[:10]]
+                platform_insights.append(f"""
+PINTEREST DATA ({len(boards)} boards):
+- Board Names: {', '.join(board_names)}
+- Saved Interests: Visual preferences, aspirations, planning mindset
+""")
+        
+        # Relationship context
+        relationship_context = ""
+        if recipient_type == 'someone_else' and relationship:
+            relationship_context = RELATIONSHIP_PROMPTS.get(relationship, "")
+        
+        # Build prompt with all enhancements
+        low_data_instructions = ""
+        if quality['quality'] in ['limited', 'insufficient']:
+            low_data_instructions = f"""
+NOTE: Limited data available ({quality['total_posts']} posts) - focus on SAFE, OBVIOUS choices based on clear signals.
+Generate ONLY {rec_count} recommendations (NOT 10 - we have limited data).
+With limited data, prioritize SAFE BETS - obvious choices that won't miss.
+Each recommendation MUST cite specific posts/behaviors that justify it.
+If you only have evidence for {rec_count - 1} gifts, return {rec_count - 1} gifts, not {rec_count}.
+DO NOT make assumptions - only recommend what you have clear evidence for.
 """
         
+        prompt = f"""You are an expert gift curator. Based on the following social media data, generate {rec_count} highly specific, actionable gift recommendations.
+
+USER DATA:
+{chr(10).join(platform_insights)}{relationship_context}
+
+{low_data_instructions}
+
+CRITICAL INSTRUCTIONS:
+1. For each recommendation, provide specific product URLs:
+   - Direct brand URLs when possible: https://brandname.com/products/specific-item
+   - Specialty retailers: https://www.etsy.com/search?q=specific+product+name
+   - Amazon search as fallback: https://www.amazon.com/s?k=specific+product+name
+2. Be as specific as possible with product names, brands, and model numbers
+3. Prioritize UNIQUE, SPECIALTY items over generic mass-market products
+4. Focus on independent makers, artisan shops, unique items that show thoughtfulness
+5. Use evidence from their actual posts - cite specific captions, hashtags, or creators they follow
+
+COLLECTIBLE SERIES INTELLIGENCE:
+- If someone collects something (LEGO sets, Funko Pops, vinyl variants, sneakers, trading cards, action figures, etc.):
+  * Identify the series/collection they're building
+  * Note what they already have based on posts
+  * Suggest the BEST next item considering:
+    - Recency (new releases they might not know about)
+    - Rarity (hard-to-find items that are valuable)
+    - Completion (missing pieces in their collection)
+    - Personal relevance (e.g., Tokyo LEGO set for someone who posts about Tokyo)
+  * Include "collectible_series" field with 2-3 alternatives and reasoning
+  * Example: If they collect LEGO Architecture, suggest specific sets with alternatives
+
+PRICE DISTRIBUTION:
+{f"- {rec_count // 2} items in $15-50 range" if rec_count >= 5 else "- Most items in $15-50 range"}
+{f"- {rec_count // 3} items in $50-100 range" if rec_count >= 6 else "- Some items in $50-100 range"}
+{f"- {rec_count // 5} items in $100-200 range" if rec_count >= 8 else "- 1-2 items in $100-200 range"}
+
+Return EXACTLY {rec_count} recommendations as a JSON array with this structure:
+[
+  {{
+    "name": "SPECIFIC product name with brand/model (e.g., 'LEGO Architecture: Tokyo Skyline Set 21051')",
+    "description": "2-3 sentence description of what this is and why it's special",
+    "why_perfect": "Why this matches their interests with SPECIFIC evidence from their posts/reposts/hashtags",
+    "price_range": "$XX-$XX",
+    "where_to_buy": "Specific retailer name (Etsy shop name, UncommonGoods, brand site, Amazon)",
+    "product_url": "https://REAL-URL.com (construct the most specific URL possible)",
+    "gift_type": "physical" or "experience",
+    "confidence_level": "safe_bet" or "adventurous",
+    "collectible_series": {{  // OPTIONAL - only if this is part of a collectible series
+      "series_name": "LEGO Architecture",
+      "current_suggestion": "Tokyo Skyline (newest 2024 release)",
+      "alternatives": [
+        "Dubai Skyline - More intricate, 740 pieces ($60)",
+        "New York City - Iconic skyline, 598 pieces ($50)",
+        "The White House - Historic architecture, 1,483 pieces ($100)"
+      ],
+      "why_these": "Based on their travel posts (Tokyo tagged 3x) and architecture interest shown in hashtags"
+    }}
+  }}
+]
+
+IMPORTANT: 
+- Return ONLY the JSON array, no markdown, no backticks, no explanatory text
+- Each recommendation must have clear evidence from their social media
+- URLs should be as specific as possible (not just homepage links)
+- For collectibles, research the series and suggest thoughtful alternatives"""
+
+        print(f"Generating {rec_count} recommendations for user: {user.get('email', 'unknown')}")
+        print(f"Data quality: {quality['quality']} ({quality['total_posts']} posts)")
+        print(f"Platforms: {list(platforms.keys())}")
+        
+        # Call Claude API (no web search for now - we removed it earlier)
         message = claude_client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=1000,
-            tools=[
-                {
-                    "type": "web_search_20250305",
-                    "name": "web_search"
-                }
-            ],
+            max_tokens=8000,
             messages=[{"role": "user", "content": prompt}]
         )
         
@@ -1059,37 +1198,56 @@ Return ONLY a JSON object with this structure:
             if block.type == "text":
                 response_text += block.text
         
-        # Parse JSON
         response_text = response_text.strip()
-        if response_text.startswith('```'):
-            response_text = response_text.split('```')[1]
-            if response_text.startswith('json'):
-                response_text = response_text[4:]
-            response_text = response_text.strip()
         
-        result = json.loads(response_text)
+        print(f"Claude response received, length: {len(response_text)}")
         
-        print(f"Fixed link for '{product_name}': {result.get('url')} ({result.get('retailer')})")
+        # Parse JSON
+        try:
+            if response_text.startswith('```'):
+                response_text = response_text.split('```')[1]
+                if response_text.startswith('json'):
+                    response_text = response_text[4:]
+                response_text = response_text.strip()
+            
+            recommendations = json.loads(response_text)
+            print(f"Successfully parsed {len(recommendations)} recommendations")
+            
+        except json.JSONDecodeError as e:
+            print(f"JSON parse error: {e}")
+            print(f"Response text: {response_text[:500]}")
+            recommendations = [{
+                'name': 'Recommendations generated',
+                'description': response_text[:500],
+                'why_perfect': 'See full response',
+                'price_range': 'Various',
+                'where_to_buy': 'Various retailers',
+                'product_url': '',
+                'gift_type': 'physical',
+                'confidence_level': 'safe_bet'
+            }]
+        
+        # Save recommendations
+        save_user(session['user_id'], {
+            'recommendations': recommendations,
+            'data_quality': quality,
+            'last_generated': datetime.now().isoformat()
+        })
         
         return jsonify({
             'success': True,
-            'new_url': result.get('url'),
-            'button_text': f"View on {result.get('retailer', 'Retailer')} →",
-            'note': result.get('note')
+            'recommendations': recommendations,
+            'data_quality': quality
         })
-    
+        
     except Exception as e:
-        print(f"Link fix error for '{product_name}': {e}")
-        
-        # Fallback to search
-        search_query = product_name.replace(' ', '+')
+        print(f"Recommendation generation error: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({
-            'success': True,
-            'new_url': f'https://www.amazon.com/s?k={search_query}',
-            'button_text': 'Search on Amazon →',
-            'note': 'Fallback to Amazon search'
-        })
-
+            'success': False,
+            'error': str(e)
+        }), 500
 @app.route('/recommendations')
 def view_recommendations():
     """Display recommendations with fix link buttons"""

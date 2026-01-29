@@ -360,6 +360,32 @@
                     {% endif %}
                 {% endif %}
             </div>
+            
+            <!-- Spotify -->
+            <div class="platform-card {% if platforms.spotify %}connected{% endif %}">
+                <div class="platform-header">
+                    <div class="platform-icon">🎵</div>
+                    <div class="platform-info">
+                        <h3>Spotify</h3>
+                        <p>Music taste analysis</p>
+                    </div>
+                </div>
+                {% if platforms.spotify %}
+                    <div class="connected-badge">✓ Connected</div>
+                    <form method="POST" action="/disconnect/spotify" style="margin-top: 10px;">
+                        <button type="submit" class="connect-button" style="background: #ef4444; font-size: 0.9em;">
+                            Disconnect
+                        </button>
+                    </form>
+                {% else %}
+                    <a href="/oauth/spotify" class="connect-button" style="display: block; text-align: center; text-decoration: none; line-height: 1.4;">
+                        Connect Spotify
+                    </a>
+                    <p style="margin-top: 10px; font-size: 0.85em; color: #6b7280; text-align: center;">
+                        You'll be redirected to Spotify to authorize
+                    </p>
+                {% endif %}
+            </div>
         </div>
 
         <!-- Optional Platforms Section (Collapsible to avoid paralysis) -->

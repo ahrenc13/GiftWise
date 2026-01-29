@@ -33,6 +33,9 @@ import anthropic
 from dotenv import load_dotenv
 from collections import Counter, OrderedDict
 
+# Load environment variables FIRST (before any code that uses them)
+load_dotenv()
+
 # Import enhanced recommendation engine
 try:
     from enhanced_recommendation_engine import (
@@ -46,7 +49,8 @@ try:
     ENHANCED_ENGINE_AVAILABLE = True
 except ImportError:
     ENHANCED_ENGINE_AVAILABLE = False
-    logger.warning("Enhanced recommendation engine not available - using basic prompts")
+    # logger not defined yet, will log later if needed
+    pass
 
 # Import wishlist integrations
 try:
@@ -58,7 +62,8 @@ try:
     WISHLIST_INTEGRATIONS_AVAILABLE = True
 except ImportError:
     WISHLIST_INTEGRATIONS_AVAILABLE = False
-    logger.warning("Wishlist integrations not available")
+    # logger not defined yet, will log later if needed
+    pass
 
 # Import usage tracker
 try:
@@ -80,23 +85,30 @@ try:
     LINK_VALIDATION_AVAILABLE = True
 except ImportError:
     LINK_VALIDATION_AVAILABLE = False
-    logger.warning("Link validation not available")
+    # logger not defined yet, will log later if needed
+    pass
 
 # Import image fetcher
 try:
     from image_fetcher import process_recommendation_images
     # Set API keys for image fetching
     import image_fetcher
-    if GOOGLE_CUSTOM_SEARCH_API_KEY:
-        image_fetcher.GOOGLE_CUSTOM_SEARCH_API_KEY = GOOGLE_CUSTOM_SEARCH_API_KEY
-    if GOOGLE_CUSTOM_SEARCH_ENGINE_ID:
-        image_fetcher.GOOGLE_CUSTOM_SEARCH_ENGINE_ID = GOOGLE_CUSTOM_SEARCH_ENGINE_ID
-    if UNSPLASH_ACCESS_KEY:
-        image_fetcher.UNSPLASH_ACCESS_KEY = UNSPLASH_ACCESS_KEY
+    # Get image API keys from environment (load_dotenv() already called above)
+    google_key = os.environ.get('GOOGLE_CUSTOM_SEARCH_API_KEY', '')
+    google_engine = os.environ.get('GOOGLE_CUSTOM_SEARCH_ENGINE_ID', '')
+    unsplash_key = os.environ.get('UNSPLASH_ACCESS_KEY', '')
+    
+    if google_key:
+        image_fetcher.GOOGLE_CUSTOM_SEARCH_API_KEY = google_key
+    if google_engine:
+        image_fetcher.GOOGLE_CUSTOM_SEARCH_ENGINE_ID = google_engine
+    if unsplash_key:
+        image_fetcher.UNSPLASH_ACCESS_KEY = unsplash_key
     IMAGE_FETCHING_AVAILABLE = True
 except ImportError:
     IMAGE_FETCHING_AVAILABLE = False
-    logger.warning("Image fetching not available")
+    # logger not defined yet, use print or skip
+    pass
 
 # Import favorites and share managers
 try:
@@ -111,10 +123,50 @@ except ImportError:
 from requests_oauthlib import OAuth2Session
 import requests
 
+# Import OAuth integrations
+try:
+    from oauth_integrations import (
+        get_pinterest_authorization_url,
+        exchange_pinterest_code,
+        fetch_pinterest_data as oauth_fetch_pinterest_data,
+        get_spotify_authorization_url,
+        exchange_spotify_code,
+        fetch_spotify_data as oauth_fetch_spotify_data,
+        get_etsy_authorization_url,
+        exchange_etsy_code,
+        fetch_etsy_favorites as oauth_fetch_etsy_favorites,
+        get_google_authorization_url,
+        exchange_google_code,
+        fetch_youtube_subscriptions
+    )
+    OAUTH_INTEGRATIONS_AVAILABLE = True
+except ImportError as e:
+    OAUTH_INTEGRATIONS_AVAILABLE = False
+    logger.warning(f"OAuth integrations not available: {e}")
+
+# Import OAuth integrations
+try:
+    from oauth_integrations import (
+        get_pinterest_authorization_url,
+        exchange_pinterest_code,
+        fetch_pinterest_data as oauth_fetch_pinterest_data,
+        get_spotify_authorization_url,
+        exchange_spotify_code,
+        fetch_spotify_data as oauth_fetch_spotify_data,
+        get_etsy_authorization_url,
+        exchange_etsy_code,
+        fetch_etsy_favorites as oauth_fetch_etsy_favorites,
+        get_google_authorization_url,
+        exchange_google_code,
+        fetch_youtube_subscriptions
+    )
+    OAUTH_INTEGRATIONS_AVAILABLE = True
+except ImportError as e:
+    OAUTH_INTEGRATIONS_AVAILABLE = False
+    logger.warning(f"OAuth integrations not available: {e}")
+
 # Database (using simple JSON for MVP - upgrade to PostgreSQL later)
 import shelve
-
-load_dotenv()
 
 # Configure logging
 logging.basicConfig(
@@ -155,9 +207,21 @@ APIFY_API_TOKEN = os.environ.get('APIFY_API_TOKEN')
 APIFY_INSTAGRAM_ACTOR = 'nH2AHrwxeTRJoN5hX'
 APIFY_TIKTOK_ACTOR = '0FXVyOXXEmdGcV88a'
 
-# Spotify (keeping for future)
+# Spotify OAuth Configuration
 SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID', '')
 SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET', '')
+SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI', 'http://localhost:5000/oauth/spotify/callback')
+
+# Etsy OAuth Configuration
+ETSY_CLIENT_ID = os.environ.get('ETSY_CLIENT_ID', '')
+ETSY_CLIENT_SECRET = os.environ.get('ETSY_CLIENT_SECRET', '')
+ETSY_REDIRECT_URI = os.environ.get('ETSY_REDIRECT_URI', 'http://localhost:5000/oauth/etsy/callback')
+
+# Google OAuth Configuration (for YouTube)
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
+GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:5000/oauth/google/callback')
+GOOGLE_YOUTUBE_API_KEY = os.environ.get('GOOGLE_YOUTUBE_API_KEY', '')
 
 # Initialize clients
 if STRIPE_SECRET_KEY:
@@ -1077,26 +1141,76 @@ def connect_etsy():
     if not user:
         return redirect('/signup')
     
-    # Etsy OAuth flow (simplified - would need full OAuth implementation)
-    # For now, save that user wants to connect Etsy
+    if not OAUTH_INTEGRATIONS_AVAILABLE:
+        return redirect('/connect-platforms?error=oauth_not_available')
+    
+    auth_url = get_etsy_authorization_url()
+    
+    if not auth_url:
+        return redirect('/connect-platforms?error=etsy_not_configured')
+    
+    # Store state for CSRF protection
+    session['etsy_oauth_state'] = 'etsy_auth'
+    
+    return redirect(auth_url)
+
+@app.route('/oauth/etsy/callback')
+def etsy_oauth_callback():
+    """Handle Etsy OAuth callback"""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    
+    code = request.args.get('code')
+    state = request.args.get('state')
+    
+    # Verify state
+    if state != session.get('etsy_oauth_state'):
+        return redirect('/connect-platforms?error=oauth_state_mismatch')
+    
+    if not code:
+        return redirect('/connect-platforms?error=etsy_auth_failed')
+    
+    # Exchange code for token
+    token_data = exchange_etsy_code(code)
+    
+    if not token_data:
+        return redirect('/connect-platforms?error=etsy_token_failed')
+    
+    # Fetch favorites
+    favorites_data = oauth_fetch_etsy_favorites(token_data['access_token'])
+    
+    if not favorites_data:
+        return redirect('/connect-platforms?error=etsy_fetch_failed')
+    
+    # Save to user
     user_id = session['user_id']
     wishlists = user.get('wishlists', [])
     
-    # Check if already connected
+    # Update or add Etsy wishlist
     etsy_wishlist = next((w for w in wishlists if w.get('platform') == 'etsy'), None)
-    
-    if not etsy_wishlist:
-        # Initiate Etsy OAuth (would redirect to Etsy)
-        # For MVP: Just save intent, implement OAuth later
-        wishlists.append({
-            'platform': 'etsy',
-            'status': 'pending',
+    if etsy_wishlist:
+        etsy_wishlist.update({
+            'status': 'complete',
+            'data': favorites_data,
+            'access_token': token_data['access_token'],
+            'refresh_token': token_data.get('refresh_token'),
             'connected_at': datetime.now().isoformat()
         })
-        save_user(user_id, {'wishlists': wishlists})
-        logger.info(f"User {user_id} initiated Etsy connection")
+    else:
+        wishlists.append({
+            'platform': 'etsy',
+            'status': 'complete',
+            'data': favorites_data,
+            'access_token': token_data['access_token'],
+            'refresh_token': token_data.get('refresh_token'),
+            'connected_at': datetime.now().isoformat()
+        })
     
-    return redirect('/connect-platforms?success=etsy_pending')
+    save_user(user_id, {'wishlists': wishlists})
+    logger.info(f"User {user_id} connected Etsy via OAuth")
+    
+    return redirect('/connect-platforms?success=etsy_connected')
 
 @app.route('/disconnect/<platform>', methods=['POST'])
 def disconnect_platform(platform):
@@ -1159,7 +1273,7 @@ def connect_goodreads():
 
 @app.route('/connect/youtube', methods=['POST'])
 def connect_youtube():
-    """Connect YouTube (channel subscriptions indicate interests)"""
+    """Connect YouTube via API key (alternative to OAuth)"""
     user = get_session_user()
     if not user:
         return redirect('/signup')
@@ -1171,15 +1285,38 @@ def connect_youtube():
     
     user_id = session['user_id']
     
-    # Save YouTube channel (will analyze subscriptions)
+    # Try to fetch subscriptions using API key method
+    if GOOGLE_YOUTUBE_API_KEY and OAUTH_INTEGRATIONS_AVAILABLE:
+        try:
+            youtube_data = fetch_youtube_subscriptions(
+                api_key=GOOGLE_YOUTUBE_API_KEY,
+                channel_id=channel_id_or_username
+            )
+            
+            if youtube_data:
+                platforms = user.get('platforms', {})
+                platforms['youtube'] = {
+                    'channel_id': channel_id_or_username,
+                    'data': youtube_data,
+                    'status': 'complete',
+                    'method': 'api_key',
+                    'connected_at': datetime.now().isoformat()
+                }
+                save_user(user_id, {'platforms': platforms})
+                logger.info(f"User {user_id} connected YouTube via API key: {channel_id_or_username}")
+                return redirect('/connect-platforms?success=youtube_connected')
+        except Exception as e:
+            logger.error(f"YouTube API key fetch error: {e}")
+    
+    # Fallback: just save channel ID for later
     platforms = user.get('platforms', {})
     platforms['youtube'] = {
         'channel_id': channel_id_or_username,
         'status': 'ready',
-        'method': 'api'  # YouTube Data API
+        'method': 'api'
     }
     save_user(user_id, {'platforms': platforms})
-    logger.info(f"User {user_id} connected YouTube: {channel_id_or_username}")
+    logger.info(f"User {user_id} saved YouTube channel ID: {channel_id_or_username}")
     
     return redirect('/connect-platforms?success=youtube_ready')
 
@@ -2046,6 +2183,202 @@ def api_usage():
     except Exception as e:
         logger.error(f"Error getting usage data: {e}")
         return jsonify({'error': str(e)}), 500
+
+# ============================================================================
+# OAUTH ROUTES
+# ============================================================================
+
+@app.route('/oauth/pinterest')
+def pinterest_oauth():
+    """Initiate Pinterest OAuth"""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    
+    if not OAUTH_INTEGRATIONS_AVAILABLE:
+        return redirect('/connect-platforms?error=oauth_not_available')
+    
+    auth_url = get_pinterest_authorization_url()
+    
+    if not auth_url:
+        return redirect('/connect-platforms?error=pinterest_not_configured')
+    
+    # Store state
+    session['pinterest_oauth_state'] = 'pinterest_auth'
+    
+    return redirect(auth_url)
+
+@app.route('/oauth/pinterest/callback')
+def pinterest_oauth_callback():
+    """Handle Pinterest OAuth callback"""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    
+    code = request.args.get('code')
+    state = request.args.get('state')
+    
+    # Verify state
+    if state != session.get('pinterest_oauth_state'):
+        return redirect('/connect-platforms?error=pinterest_invalid_state')
+    
+    if not code:
+        return redirect('/connect-platforms?error=pinterest_no_code')
+    
+    # Exchange code for token
+    token_data = exchange_pinterest_code(code)
+    
+    if not token_data:
+        return redirect('/connect-platforms?error=pinterest_token_failed')
+    
+    user_id = session['user_id']
+    
+    # Fetch Pinterest data
+    pinterest_data = oauth_fetch_pinterest_data(token_data['access_token'])
+    
+    if pinterest_data:
+        platforms = user.get('platforms', {})
+        platforms['pinterest'] = {
+            'access_token': token_data['access_token'],
+            'refresh_token': token_data.get('refresh_token'),
+            'data': pinterest_data,
+            'status': 'complete',
+            'method': 'oauth',
+            'connected_at': datetime.now().isoformat()
+        }
+        
+        save_user(user_id, {'platforms': platforms})
+        logger.info(f"User {user_id} connected Pinterest OAuth")
+        
+        return redirect('/connect-platforms?success=pinterest_connected')
+    else:
+        return redirect('/connect-platforms?error=pinterest_fetch_failed')
+
+@app.route('/oauth/spotify')
+def spotify_oauth():
+    """Initiate Spotify OAuth"""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    
+    if not OAUTH_INTEGRATIONS_AVAILABLE:
+        return redirect('/connect-platforms?error=oauth_not_available')
+    
+    auth_url = get_spotify_authorization_url()
+    
+    if not auth_url:
+        return redirect('/connect-platforms?error=spotify_not_configured')
+    
+    session['spotify_oauth_state'] = 'spotify_auth'
+    
+    return redirect(auth_url)
+
+@app.route('/oauth/spotify/callback')
+def spotify_oauth_callback():
+    """Handle Spotify OAuth callback"""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    
+    code = request.args.get('code')
+    state = request.args.get('state')
+    
+    if state != session.get('spotify_oauth_state'):
+        return redirect('/connect-platforms?error=spotify_invalid_state')
+    
+    if not code:
+        return redirect('/connect-platforms?error=spotify_no_code')
+    
+    token_data = exchange_spotify_code(code)
+    
+    if not token_data:
+        return redirect('/connect-platforms?error=spotify_token_failed')
+    
+    user_id = session['user_id']
+    
+    # Fetch Spotify data
+    spotify_data = oauth_fetch_spotify_data(token_data['access_token'])
+    
+    if spotify_data:
+        platforms = user.get('platforms', {})
+        platforms['spotify'] = {
+            'access_token': token_data['access_token'],
+            'refresh_token': token_data.get('refresh_token'),
+            'data': spotify_data,
+            'status': 'complete',
+            'method': 'oauth',
+            'connected_at': datetime.now().isoformat()
+        }
+        
+        save_user(user_id, {'platforms': platforms})
+        logger.info(f"User {user_id} connected Spotify OAuth")
+        
+        return redirect('/connect-platforms?success=spotify_connected')
+    else:
+        return redirect('/connect-platforms?error=spotify_fetch_failed')
+
+@app.route('/oauth/google')
+def google_oauth():
+    """Initiate Google OAuth (for YouTube)"""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    
+    if not OAUTH_INTEGRATIONS_AVAILABLE:
+        return redirect('/connect-platforms?error=oauth_not_available')
+    
+    auth_url = get_google_authorization_url()
+    
+    if not auth_url:
+        return redirect('/connect-platforms?error=google_not_configured')
+    
+    session['google_oauth_state'] = 'google_auth'
+    
+    return redirect(auth_url)
+
+@app.route('/oauth/google/callback')
+def google_oauth_callback():
+    """Handle Google OAuth callback"""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    
+    code = request.args.get('code')
+    state = request.args.get('state')
+    
+    if state != session.get('google_oauth_state'):
+        return redirect('/connect-platforms?error=google_invalid_state')
+    
+    if not code:
+        return redirect('/connect-platforms?error=google_no_code')
+    
+    token_data = exchange_google_code(code)
+    
+    if not token_data:
+        return redirect('/connect-platforms?error=google_token_failed')
+    
+    user_id = session['user_id']
+    
+    # Fetch YouTube subscriptions
+    youtube_data = fetch_youtube_subscriptions(access_token=token_data['access_token'])
+    
+    if youtube_data:
+        platforms = user.get('platforms', {})
+        platforms['youtube'] = {
+            'access_token': token_data['access_token'],
+            'refresh_token': token_data.get('refresh_token'),
+            'data': youtube_data,
+            'status': 'complete',
+            'method': 'oauth',
+            'connected_at': datetime.now().isoformat()
+        }
+        
+        save_user(user_id, {'platforms': platforms})
+        logger.info(f"User {user_id} connected YouTube OAuth")
+        
+        return redirect('/connect-platforms?success=youtube_connected')
+    else:
+        return redirect('/connect-platforms?error=youtube_fetch_failed')
 
 @app.route('/logout')
 def logout():

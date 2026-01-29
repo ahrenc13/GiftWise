@@ -369,18 +369,107 @@
             }
         }
         
-        // Check if we've exceeded timeout (3 minutes = 180 seconds)
-        if (elapsedSeconds > 180) {
-            progressText.innerHTML = '⚠️ Taking longer than expected. <a href="/connect-platforms" style="color: white; text-decoration: underline;">Try again?</a>';
-            localStorage.removeItem(storageKey);
-            console.log('Timeout reached, cleared session');
-        } else {
-            // Reload after 3 seconds to check if scraping is complete
-            setTimeout(function() {
-                console.log('Reloading to check status...');
-                window.location.reload();
-            }, 3000);
+        // Smooth progress updates without page reload
+        let progressUpdateInterval;
+        let checkStatusInterval;
+        
+        function updateProgressSmoothly() {
+            const elapsed = (Date.now() - startTime) / 1000;
+            
+            // Find current stage
+            let currentStage = stages[0];
+            for (let stage of stages) {
+                if (elapsed >= stage.time) {
+                    currentStage = stage;
+                }
+            }
+            
+            // Smoothly animate progress bar
+            const targetPercent = currentStage.percent;
+            const currentPercent = parseInt(progressBar.style.width) || 0;
+            
+            if (Math.abs(targetPercent - currentPercent) > 1) {
+                const newPercent = currentPercent + (targetPercent - currentPercent) * 0.1;
+                progressBar.style.width = newPercent + '%';
+                progressPercent.textContent = Math.round(newPercent) + '%';
+            } else {
+                progressBar.style.width = targetPercent + '%';
+                progressPercent.textContent = targetPercent + '%';
+            }
+            
+            // Update text smoothly
+            if (progressText.textContent !== currentStage.text) {
+                progressText.style.opacity = '0';
+                setTimeout(() => {
+                    progressText.textContent = currentStage.text;
+                    progressText.style.opacity = '1';
+                }, 200);
+            }
+            
+            // Update stage indicators
+            for (let i = 1; i <= 4; i++) {
+                const stageEl = document.getElementById('stage' + i);
+                if (i < currentStage.stage) {
+                    stageEl.classList.add('completed');
+                    stageEl.classList.remove('active');
+                } else if (i === currentStage.stage) {
+                    stageEl.classList.add('active');
+                } else {
+                    stageEl.classList.remove('active', 'completed');
+                }
+            }
+            
+            // Check timeout
+            if (elapsed > 180) {
+                progressText.innerHTML = '⚠️ Taking longer than expected. <a href="/connect-platforms" style="color: white; text-decoration: underline;">Try again?</a>';
+                clearInterval(progressUpdateInterval);
+                clearInterval(checkStatusInterval);
+            }
         }
+        
+        // Check scraping status via API (no page reload!)
+        async function checkScrapingStatus() {
+            try {
+                const response = await fetch('/api/check-scraping-status');
+                const data = await response.json();
+                
+                if (data.complete) {
+                    // All scraping done - redirect smoothly
+                    clearInterval(progressUpdateInterval);
+                    clearInterval(checkStatusInterval);
+                    
+                    // Show completion
+                    progressBar.style.width = '100%';
+                    progressPercent.textContent = '100%';
+                    progressText.textContent = '✓ Analysis complete! Redirecting...';
+                    
+                    // Mark all stages complete
+                    for (let i = 1; i <= 4; i++) {
+                        document.getElementById('stage' + i).classList.add('completed');
+                    }
+                    
+                    // Smooth redirect after brief delay
+                    setTimeout(() => {
+                        window.location.href = '/generate-recommendations';
+                    }, 1000);
+                } else if (data.error) {
+                    // Error occurred
+                    clearInterval(progressUpdateInterval);
+                    clearInterval(checkStatusInterval);
+                    progressText.innerHTML = '❌ ' + data.error + ' <a href="/connect-platforms" style="color: white; text-decoration: underline;">Try again?</a>';
+                }
+            } catch (error) {
+                console.error('Error checking status:', error);
+                // Don't stop - keep checking
+            }
+        }
+        
+        // Start smooth updates
+        progressUpdateInterval = setInterval(updateProgressSmoothly, 100); // Smooth animation
+        checkStatusInterval = setInterval(checkScrapingStatus, 2000); // Check status every 2 seconds
+        
+        // Initial update
+        updateProgressSmoothly();
     </script>
 </body>
 </html>

@@ -74,6 +74,39 @@ except ImportError:
     USAGE_TRACKING_AVAILABLE = False
     logger.warning("Usage tracking not available")
 
+# Import link validation
+try:
+    from link_validation import process_recommendation_links
+    LINK_VALIDATION_AVAILABLE = True
+except ImportError:
+    LINK_VALIDATION_AVAILABLE = False
+    logger.warning("Link validation not available")
+
+# Import image fetcher
+try:
+    from image_fetcher import process_recommendation_images
+    # Set API keys for image fetching
+    import image_fetcher
+    if GOOGLE_CUSTOM_SEARCH_API_KEY:
+        image_fetcher.GOOGLE_CUSTOM_SEARCH_API_KEY = GOOGLE_CUSTOM_SEARCH_API_KEY
+    if GOOGLE_CUSTOM_SEARCH_ENGINE_ID:
+        image_fetcher.GOOGLE_CUSTOM_SEARCH_ENGINE_ID = GOOGLE_CUSTOM_SEARCH_ENGINE_ID
+    if UNSPLASH_ACCESS_KEY:
+        image_fetcher.UNSPLASH_ACCESS_KEY = UNSPLASH_ACCESS_KEY
+    IMAGE_FETCHING_AVAILABLE = True
+except ImportError:
+    IMAGE_FETCHING_AVAILABLE = False
+    logger.warning("Image fetching not available")
+
+# Import favorites and share managers
+try:
+    from favorites_manager import add_favorite, remove_favorite, is_favorite, get_favorites
+    from share_manager import generate_share_id, save_share, get_share
+    FAVORITES_AVAILABLE = True
+except ImportError:
+    FAVORITES_AVAILABLE = False
+    logger.warning("Favorites/share features not available")
+
 # OAuth libraries
 from requests_oauthlib import OAuth2Session
 import requests
@@ -102,6 +135,12 @@ app.secret_key = SECRET_KEY
 ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
 STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID')
+AMAZON_AFFILIATE_TAG = os.environ.get('AMAZON_AFFILIATE_TAG', '')  # Optional: for affiliate links
+
+# Image fetching APIs (optional)
+GOOGLE_CUSTOM_SEARCH_API_KEY = os.environ.get('GOOGLE_CUSTOM_SEARCH_API_KEY', '')
+GOOGLE_CUSTOM_SEARCH_ENGINE_ID = os.environ.get('GOOGLE_CUSTOM_SEARCH_ENGINE_ID', '')
+UNSPLASH_ACCESS_KEY = os.environ.get('UNSPLASH_ACCESS_KEY', '')
 
 # Pinterest OAuth Configuration
 PINTEREST_CLIENT_ID = os.environ.get('PINTEREST_CLIENT_ID')
@@ -1059,6 +1098,29 @@ def connect_etsy():
     
     return redirect('/connect-platforms?success=etsy_pending')
 
+@app.route('/disconnect/<platform>', methods=['POST'])
+def disconnect_platform(platform):
+    """Disconnect a platform"""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    
+    user_id = session['user_id']
+    platforms = user.get('platforms', {})
+    wishlists = user.get('wishlists', [])
+    
+    # Remove from platforms
+    if platform in platforms:
+        del platforms[platform]
+        logger.info(f"User {user_id} disconnected {platform}")
+    
+    # Remove from wishlists if it's a wishlist platform
+    wishlists = [w for w in wishlists if w.get('platform') != platform]
+    
+    save_user(user_id, {'platforms': platforms, 'wishlists': wishlists})
+    
+    return redirect('/connect-platforms?success=disconnected')
+
 @app.route('/connect/goodreads', methods=['POST'])
 def connect_goodreads():
     """Connect Goodreads (scraping public profile)"""
@@ -1733,6 +1795,22 @@ IMPORTANT:
                     logger.error(f"Error validating recommendations: {e}")
                     # Continue with unvalidated recommendations
             
+            # ENHANCED: Ensure reliable links for all recommendations
+            if LINK_VALIDATION_AVAILABLE:
+                try:
+                    recommendations = process_recommendation_links(recommendations, AMAZON_AFFILIATE_TAG)
+                    logger.info(f"Processed links for {len(recommendations)} recommendations")
+                except Exception as e:
+                    logger.warning(f"Link processing failed: {e}")
+            
+            # ENHANCED: Add images to all recommendations
+            if IMAGE_FETCHING_AVAILABLE:
+                try:
+                    recommendations = process_recommendation_images(recommendations)
+                    logger.info(f"Added images to {len(recommendations)} recommendations")
+                except Exception as e:
+                    logger.warning(f"Image fetching failed: {e}")
+            
             logger.info(f"Successfully parsed {len(recommendations)} recommendations")
             
         except json.JSONDecodeError as e:
@@ -1786,11 +1864,154 @@ def view_recommendations():
     data_quality = user.get('data_quality', {})
     connected_count = len(user.get('platforms', {}))
     
+    # Mark favorites
+    favorites = user.get('favorites', [])
+    
     return render_template('recommendations.html', 
                          recommendations=recommendations,
                          data_quality=data_quality,
                          connected_count=connected_count,
-                         user=user)
+                         user=user,
+                         favorites=favorites)
+
+@app.route('/api/favorite/<int:rec_index>', methods=['POST'])
+def toggle_favorite(rec_index):
+    """Add or remove favorite"""
+    user = get_session_user()
+    if not user:
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+    
+    if not FAVORITES_AVAILABLE:
+        return jsonify({'success': False, 'error': 'Favorites not available'}), 503
+    
+    user_id = session['user_id']
+    recommendations = user.get('recommendations', [])
+    
+    if rec_index < 0 or rec_index >= len(recommendations):
+        return jsonify({'success': False, 'error': 'Invalid recommendation index'}), 400
+    
+    favorites = user.get('favorites', [])
+    
+    if rec_index in favorites:
+        # Remove favorite
+        favorites.remove(rec_index)
+        action = 'removed'
+    else:
+        # Add favorite
+        favorites.append(rec_index)
+        action = 'added'
+    
+    user['favorites'] = favorites
+    save_user(user_id, {'favorites': favorites})
+    
+    return jsonify({'success': True, 'action': action, 'favorited': rec_index in favorites})
+
+@app.route('/api/share', methods=['POST'])
+def create_share():
+    """Create shareable link"""
+    user = get_session_user()
+    if not user:
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+    
+    if not FAVORITES_AVAILABLE:
+        return jsonify({'success': False, 'error': 'Sharing not available'}), 503
+    
+    user_id = session['user_id']
+    recommendations = user.get('recommendations', [])
+    
+    if not recommendations:
+        return jsonify({'success': False, 'error': 'No recommendations to share'}), 400
+    
+    share_id = generate_share_id(recommendations, user_id)
+    save_share(share_id, recommendations, user_id)
+    
+    share_url = request.url_root.rstrip('/') + f'/share/{share_id}'
+    
+    return jsonify({'success': True, 'share_url': share_url, 'share_id': share_id})
+
+@app.route('/share/<share_id>')
+def view_shared_recommendations(share_id):
+    """View shared recommendations"""
+    share_data = get_share(share_id)
+    
+    if not share_data:
+        return render_template('error.html', 
+                             error="This share link has expired or doesn't exist.",
+                             error_code=404)
+    
+    recommendations = share_data['recommendations']
+    
+    return render_template('shared_recommendations.html',
+                         recommendations=recommendations,
+                         share_id=share_id)
+
+@app.route('/favorites')
+def view_favorites():
+    """View favorited recommendations"""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    
+    if not FAVORITES_AVAILABLE:
+        return redirect('/recommendations')
+    
+    recommendations = user.get('recommendations', [])
+    favorites = user.get('favorites', [])
+    
+    favorited_recs = [recommendations[i] for i in favorites if i < len(recommendations)]
+    
+    if not favorited_recs:
+        return render_template('recommendations.html',
+                             recommendations=[],
+                             data_quality={},
+                             connected_count=len(user.get('platforms', {})),
+                             user=user,
+                             favorites=favorites,
+                             message="No favorites yet. Click the ❤️ icon on recommendations to save them!")
+    
+    return render_template('recommendations.html',
+                         recommendations=favorited_recs,
+                         data_quality={},
+                         connected_count=len(user.get('platforms', {})),
+                         user=user,
+                         favorites=favorites,
+                         is_favorites_page=True)
+
+@app.route('/api/check-scraping-status')
+def check_scraping_status():
+    """Check if scraping is complete (for AJAX polling, no page reload)"""
+    user = get_session_user()
+    if not user:
+        return jsonify({'complete': False, 'error': 'Not logged in'}), 401
+    
+    platforms = user.get('platforms', {})
+    
+    # Check if any scraping is still in progress
+    scraping_in_progress = False
+    for platform, data in platforms.items():
+        if data.get('status') == 'scraping':
+            scraping_in_progress = True
+            break
+    
+    if scraping_in_progress:
+        return jsonify({'complete': False, 'in_progress': True})
+    
+    # Check if we have data
+    quality = check_data_quality(platforms)
+    
+    if quality['quality'] == 'insufficient':
+        return jsonify({
+            'complete': False, 
+            'error': 'Insufficient data',
+            'quality': quality
+        })
+    
+    # All done!
+    return jsonify({
+        'complete': True,
+        'platforms': list(platforms.keys()),
+        'quality': quality
+    })
 
 @app.route('/usage')
 def usage_dashboard():

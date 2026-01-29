@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shared Gift Recommendations - GiftWise</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f9fafb;
+            color: #333;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 50px auto;
+            padding: 0 20px;
+        }
+        
+        .recommendations-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+        }
+        
+        .recommendation-card {
+            background: white;
+            border-radius: 18px;
+            padding: 35px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        
+        .rec-image-container {
+            width: 100%;
+            height: 250px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #f3f4f6;
+        }
+        
+        .rec-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .rec-name {
+            font-size: 1.5em;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 15px;
+        }
+        
+        .rec-description {
+            color: #4b5563;
+            line-height: 1.7;
+            margin-bottom: 15px;
+        }
+        
+        .rec-price {
+            font-size: 1.3em;
+            font-weight: 600;
+            color: #10b981;
+            margin-bottom: 10px;
+        }
+        
+        .rec-link {
+            display: inline-block;
+            padding: 12px 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            margin-top: 15px;
+        }
+        
+        .cta-section {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            text-align: center;
+            margin-top: 50px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+        }
+        
+        .cta-button {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1.1em;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎁 Gift Recommendations</h1>
+        <p>Shared with you from GiftWise</p>
+    </div>
+    
+    <div class="container">
+        <div class="recommendations-grid">
+            {% for rec in recommendations %}
+            <div class="recommendation-card">
+                {% if rec.image_url %}
+                <div class="rec-image-container">
+                    <img src="{{ rec.image_url }}" alt="{{ rec.name }}" class="rec-image" loading="lazy">
+                </div>
+                {% endif %}
+                
+                <h2 class="rec-name">{{ rec.name }}</h2>
+                <p class="rec-description">{{ rec.description }}</p>
+                
+                {% if rec.why_perfect %}
+                <div style="background: #f0fdf4; padding: 15px; border-radius: 10px; margin-bottom: 15px; color: #065f46; font-size: 0.95em;">
+                    <strong>Why it's perfect:</strong> {{ rec.why_perfect }}
+                </div>
+                {% endif %}
+                
+                <div class="rec-price">{{ rec.price_range }}</div>
+                <div style="color: #6b7280; font-size: 0.9em; margin-bottom: 15px;">
+                    Available at: {{ rec.where_to_buy }}
+                </div>
+                
+                {% if rec.purchase_link %}
+                <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link">
+                    View Product →
+                </a>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+        
+        <div class="cta-section">
+            <h2>Want personalized recommendations?</h2>
+            <p>Get your own gift recommendations based on your social media interests!</p>
+            <a href="/" class="cta-button">Try GiftWise Free</a>
+        </div>
+    </div>
+</body>
+</html>

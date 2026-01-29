@@ -275,6 +275,11 @@
 
                 {% if platforms.instagram %}
                     <div class="connected-badge">✓ Connected: @{{ platforms.instagram.username }}</div>
+                    <form method="POST" action="/disconnect/instagram" style="margin-top: 10px;">
+                        <button type="submit" class="connect-button" style="background: #ef4444; font-size: 0.9em;">
+                            Disconnect
+                        </button>
+                    </form>
                 {% else %}
                     <form method="POST" action="/connect/instagram" class="platform-form">
                         <div class="form-group">
@@ -335,6 +340,11 @@
 
                 {% if platforms.pinterest %}
                     <div class="connected-badge">✓ Connected</div>
+                    <form method="POST" action="/disconnect/pinterest" style="margin-top: 10px;">
+                        <button type="submit" class="connect-button" style="background: #ef4444; font-size: 0.9em;">
+                            Disconnect
+                        </button>
+                    </form>
                 {% else %}
                     {% if platform_access.pinterest %}
                         <a href="/oauth/pinterest" class="connect-button" style="display: block; text-align: center; text-decoration: none; line-height: 1.4;">
@@ -394,6 +404,11 @@
                         </div>
                         {% if user.wishlists and user.wishlists|selectattr('platform', 'equalto', 'goodreads')|list %}
                             <div class="connected-badge">✓ Connected</div>
+                            <form method="POST" action="/disconnect/goodreads" style="margin-top: 10px;">
+                                <button type="submit" class="connect-button" style="background: #ef4444; font-size: 0.9em;">
+                                    Disconnect
+                                </button>
+                            </form>
                         {% else %}
                             <form method="POST" action="/connect/goodreads" class="platform-form">
                                 <div class="form-group">

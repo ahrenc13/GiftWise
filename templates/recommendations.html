@@ -213,6 +213,50 @@
             color: #9f1239;
         }
         
+        .rec-image-container {
+            width: 100%;
+            height: 250px;
+            margin-bottom: 20px;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #f3f4f6;
+            position: relative;
+        }
+        
+        .rec-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.3s ease;
+        }
+        
+        .recommendation-card:hover .rec-image {
+            transform: scale(1.05);
+        }
+        
+        .rec-image-placeholder {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 3em;
+        }
+        
+        .rec-image-fallback-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.75em;
+            font-weight: 600;
+        }
+        
         .rec-name {
             font-size: 1.5em;
             font-weight: 600;
@@ -432,15 +476,40 @@
                  data-confidence="{{ rec.confidence_level }}">
                 <div class="rec-header">
                     <div class="rec-number">{{ loop.index }}</div>
-                    <div class="rec-badges">
-                        <span class="badge {{ rec.confidence_level|replace('_', '-') }}">
-                            {{ 'Safe Bet' if rec.confidence_level == 'safe_bet' else 'Adventurous' }}
-                        </span>
-                        <span class="badge {{ rec.gift_type }}">
-                            {{ rec.gift_type|capitalize }}
-                        </span>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <div class="rec-badges">
+                            <span class="badge {{ rec.confidence_level|replace('_', '-') }}">
+                                {{ 'Safe Bet' if rec.confidence_level == 'safe_bet' else 'Adventurous' }}
+                            </span>
+                            <span class="badge {{ rec.gift_type }}">
+                                {{ rec.gift_type|capitalize }}
+                            </span>
+                        </div>
+                        <button onclick="toggleFavorite({{ loop.index0 }}, this)" 
+                                class="favorite-btn {% if loop.index0 in favorites %}favorited{% endif %}"
+                                title="Save to favorites">
+                            ❤️
+                        </button>
                     </div>
                 </div>
+                
+                <!-- Product Image -->
+                <div class="rec-image-container">
+                    {% if rec.image_url %}
+                    <img src="{{ rec.image_url }}" 
+                         alt="{{ rec.name }}" 
+                         class="rec-image"
+                         loading="lazy"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div class="rec-image-placeholder" style="display: none;">🎁</div>
+                    {% if rec.image_is_fallback %}
+                    <div class="rec-image-fallback-badge">Evocative</div>
+                    {% endif %}
+                    {% else %}
+                    <div class="rec-image-placeholder">🎁</div>
+                    {% endif %}
+                </div>
+                
                 <h2 class="rec-name">{{ rec.name }}</h2>
                 <p class="rec-description">{{ rec.description }}</p>
                 <div class="rec-why">
@@ -449,13 +518,18 @@
                 <div class="rec-footer">
                     <div class="rec-price">{{ rec.price_range }}</div>
                     <div class="rec-where">Available at: {{ rec.where_to_buy }}</div>
-                    {% if rec.purchase_link %}
-                    <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link">
-                        View Product →
-                    </a>
-                    {% else %}
-                    <span class="rec-link disabled">Link Coming Soon</span>
-                    {% endif %}
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        {% if rec.purchase_link %}
+                        <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link">
+                            View Product →
+                        </a>
+                        <button onclick="copyLink('{{ rec.purchase_link }}', this)" class="rec-link" style="background: #6b7280; cursor: pointer; border: none;">
+                            📋 Copy Link
+                        </button>
+                        {% else %}
+                        <span class="rec-link disabled">Link Coming Soon</span>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
             {% endfor %}
@@ -473,9 +547,50 @@
                 <a href="/feedback" class="action-button primary">Give Feedback</a>
                 <a href="/connect-platforms" class="action-button secondary">Update Platforms</a>
                 <a href="/generate-recommendations" class="action-button secondary">Regenerate</a>
+                <button onclick="copyAllLinks()" class="action-button secondary" style="border: none; cursor: pointer;">
+                    📋 Copy All Links
+                </button>
             </div>
         </div>
     </div>
+    
+    <script>
+        // Copy link to clipboard
+        function copyLink(url, button) {
+            navigator.clipboard.writeText(url).then(() => {
+                const originalText = button.textContent;
+                button.textContent = '✓ Copied!';
+                button.style.background = '#10b981';
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = '#6b7280';
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy link. Please copy manually: ' + url);
+            });
+        }
+        
+        // Copy all links
+        function copyAllLinks() {
+            const links = Array.from(document.querySelectorAll('.rec-link[href]'))
+                .map(link => link.href)
+                .filter(href => href && !href.includes('javascript:'));
+            
+            if (links.length === 0) {
+                alert('No links available to copy');
+                return;
+            }
+            
+            const linksText = links.join('\n');
+            navigator.clipboard.writeText(linksText).then(() => {
+                alert(`Copied ${links.length} links to clipboard!`);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                alert('Failed to copy links');
+            });
+        }
+    </script>
     
     <script>
         // Filtering Logic

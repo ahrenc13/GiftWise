@@ -145,17 +145,22 @@
                 currentProgress = Math.min(80 + ((elapsed - 30) / 90) * 10, 90);
             }
             
-            // Update UI if progress bar exists
+            // Update UI if progress bar exists (smooth animation)
             const progressBar = document.getElementById('progressBar');
             const progressText = document.querySelector('.status-message');
             
             if (progressBar) {
+                // Smooth transition - CSS handles the animation
                 progressBar.style.width = currentProgress + '%';
             }
             
-            // Show timeout warning after 90 seconds
-            if (elapsed > 90 && progressText) {
-                progressText.innerHTML = '⚠️ This is taking longer than usual. Please wait...';
+            // Show timeout warning after 90 seconds (fade in smoothly)
+            if (elapsed > 90 && progressText && !progressText.innerHTML.includes('⚠️')) {
+                progressText.style.opacity = '0';
+                setTimeout(() => {
+                    progressText.innerHTML = '⚠️ This is taking longer than usual. Please wait...';
+                    progressText.style.opacity = '1';
+                }, 300);
             }
         }
         

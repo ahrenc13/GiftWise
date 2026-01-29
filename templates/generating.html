@@ -150,20 +150,63 @@
     </div>
     
     <script>
-        // Initialize progress bar to 0%
+        // CRITICAL SAFEGUARDS: Prevent progress bar bugs from recurring
+        // Use sessionStorage to prevent stale state from page refreshes
+        const SESSION_KEY = 'giftwise_generating_' + Date.now();
+        sessionStorage.setItem('giftwise_generating_session', SESSION_KEY);
+        
+        // Initialize progress bar to 0% IMMEDIATELY with multiple safeguards
         const progressBar = document.getElementById('progressBar');
         if (progressBar) {
+            // Force reset with multiple methods
             progressBar.style.width = '0%';
+            progressBar.style.setProperty('width', '0%', 'important');
+            progressBar.setAttribute('data-progress', '0');
         }
         
-        let startTime = Date.now();
-        let progressInterval;
+        // Initialize ALL variables BEFORE any functions
+        let startTime = null;
+        let progressInterval = null;
         let currentProgress = 0;
         let warningShown = false;
+        let isInitialized = false;
+        
+        // SAFEGUARD: Validate progress value before setting
+        function setProgressSafely(percent) {
+            // Ensure progress is always between 0 and 100
+            percent = Math.max(0, Math.min(100, percent));
+            
+            // Never allow progress above 75% until API completes (unless explicitly 100%)
+            if (percent > 75 && percent < 100) {
+                percent = 75;
+            }
+            
+            const progressBarEl = document.getElementById('progressBar');
+            if (progressBarEl) {
+                progressBarEl.style.width = percent + '%';
+                progressBarEl.setAttribute('data-progress', percent.toString());
+            }
+            currentProgress = percent;
+            return percent;
+        }
         
         // Simulate progress (gradual, realistic progression)
         function updateProgress() {
+            // SAFEGUARD: Ensure startTime is initialized
+            if (!startTime || startTime === null) {
+                startTime = Date.now();
+                setProgressSafely(0);
+                return;
+            }
+            
             const elapsed = (Date.now() - startTime) / 1000; // seconds
+            
+            // SAFEGUARD: Prevent negative elapsed time
+            if (elapsed < 0) {
+                startTime = Date.now();
+                setProgressSafely(0);
+                return;
+            }
             
             // Very gradual progress - starts slow, accelerates slightly
             // 0-20s: 0% to 25%
@@ -171,23 +214,26 @@
             // 50-90s: 50% to 75%
             // 90+: stays at 75% until complete
             
+            let newProgress = 0;
             if (elapsed < 20) {
-                currentProgress = Math.min((elapsed / 20) * 25, 25);
+                newProgress = Math.min((elapsed / 20) * 25, 25);
             } else if (elapsed < 50) {
-                currentProgress = Math.min(25 + ((elapsed - 20) / 30) * 25, 50);
+                newProgress = Math.min(25 + ((elapsed - 20) / 30) * 25, 50);
             } else if (elapsed < 90) {
-                currentProgress = Math.min(50 + ((elapsed - 50) / 40) * 25, 75);
+                newProgress = Math.min(50 + ((elapsed - 50) / 40) * 25, 75);
             } else {
-                currentProgress = 75; // Cap at 75% until API call completes
+                newProgress = 75; // Cap at 75% until API call completes
             }
             
-            // Update UI
-            const progressBarEl = document.getElementById('progressBar');
+            // SAFEGUARD: Never allow progress to decrease (prevents jumps)
+            if (newProgress < currentProgress) {
+                newProgress = currentProgress;
+            }
+            
+            // Update UI with safeguards
+            setProgressSafely(newProgress);
+            
             const progressText = document.querySelector('.status-message');
-            
-            if (progressBarEl) {
-                progressBarEl.style.width = currentProgress + '%';
-            }
             
             // Show timeout warning after 90 seconds (only once)
             if (elapsed > 90 && progressText && !warningShown) {
@@ -201,10 +247,36 @@
             }
         }
         
-        // Start progress simulation immediately but reset startTime
-        startTime = Date.now();
-        progressInterval = setInterval(updateProgress, 1000);
-        updateProgress(); // Initial call to set to 0%
+        // SAFEGUARD: Initialize only once, with proper timing
+        function initializeProgress() {
+            if (isInitialized) {
+                return; // Prevent double initialization
+            }
+            
+            // Clear any existing intervals
+            if (progressInterval) {
+                clearInterval(progressInterval);
+            }
+            
+            // Reset everything
+            startTime = Date.now();
+            currentProgress = 0;
+            warningShown = false;
+            isInitialized = true;
+            
+            // Set initial progress to 0% with safeguards
+            setProgressSafely(0);
+            
+            // Start interval immediately
+            progressInterval = setInterval(updateProgress, 1000);
+            
+            // Initial call immediately (no delay - DOM is ready)
+            updateProgress();
+        }
+        
+        // Initialize immediately - no delay for UX
+        // Script runs at end of body, so DOM is already ready
+        initializeProgress();
         
         // Auto-generate recommendations when page loads
         window.addEventListener('load', async function() {
@@ -222,7 +294,9 @@
                 });
                 
                 clearTimeout(timeoutId);
-                clearInterval(progressInterval);
+                if (window.clearProgressInterval) {
+                    window.clearProgressInterval();
+                }
                 
                 const data = await response.json();
                 

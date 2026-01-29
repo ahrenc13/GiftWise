@@ -454,8 +454,8 @@ def sanitize_username(username):
         return ''
     # Remove @ symbols, whitespace, special chars
     username = username.strip().replace('@', '').replace(' ', '')
-    # Only allow alphanumeric, underscore, dot
-    username = re.sub(r'[^a-zA-Z0-9_.]', '', username)
+    # Only allow alphanumeric, underscore, dot, hyphen (for Pinterest)
+    username = re.sub(r'[^a-zA-Z0-9_.-]', '', username)
     # Limit length
     return username[:30]
 
@@ -1248,6 +1248,8 @@ def validate_username():
             result = check_instagram_privacy(username)
         elif platform == 'tiktok':
             result = check_tiktok_privacy(username)
+        elif platform == 'pinterest':
+            result = check_pinterest_profile(username)
         else:
             return jsonify({'valid': False, 'message': 'Invalid platform'})
         
@@ -2394,10 +2396,24 @@ def connect_pinterest():
     if not user:
         return redirect('/signup')
     
-    username = sanitize_username(request.form.get('username', ''))
+    username_input = request.form.get('username', '').strip()
     
+    # Pinterest usernames can have dots, hyphens, underscores
+    # Remove @ if present, but keep dots and hyphens
+    username = username_input.replace('@', '').replace(' ', '')
+    
+    # Basic validation - Pinterest usernames are usually 3-30 chars, alphanumeric + dots/hyphens/underscores
     if not username:
         return redirect('/connect-platforms?error=pinterest_no_username')
+    
+    if len(username) < 3:
+        return redirect('/connect-platforms?error=pinterest_username_too_short')
+    
+    # Clean but preserve valid Pinterest characters
+    username = re.sub(r'[^a-zA-Z0-9_.-]', '', username)
+    
+    if not username:
+        return redirect('/connect-platforms?error=pinterest_invalid_username')
     
     user_id = session['user_id']
     

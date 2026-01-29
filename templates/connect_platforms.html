@@ -372,6 +372,13 @@
                                 <button type="submit" id="pinterest-submit" class="connect-button" style="background: #6b7280;">
                                     Connect via Scraping
                                 </button>
+                                {% if request.args.get('error') == 'pinterest_no_username' %}
+                                <p style="color: #ef4444; font-size: 0.85em; margin-top: 10px;">Please enter a Pinterest username</p>
+                                {% elif request.args.get('error') == 'pinterest_username_too_short' %}
+                                <p style="color: #ef4444; font-size: 0.85em; margin-top: 10px;">Username must be at least 3 characters</p>
+                                {% elif request.args.get('error') == 'pinterest_invalid_username' %}
+                                <p style="color: #ef4444; font-size: 0.85em; margin-top: 10px;">Invalid username format</p>
+                                {% endif %}
                             </form>
                         </div>
                     {% else %}

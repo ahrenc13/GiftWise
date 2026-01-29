@@ -273,13 +273,27 @@ def process_recommendation_images(recommendations):
     """
     processed = []
     
-    for rec in recommendations:
-        image_info = get_product_image(rec)
-        
-        rec['image_url'] = image_info['image_url']
-        rec['image_source'] = image_info['image_source']
-        rec['image_is_fallback'] = image_info['fallback']
+    for i, rec in enumerate(recommendations):
+        try:
+            product_name = rec.get('name', 'Unknown')
+            logger.info(f"Fetching image for recommendation {i+1}/{len(recommendations)}: {product_name}")
+            
+            image_info = get_product_image(rec)
+            
+            rec['image_url'] = image_info['image_url']
+            rec['image_source'] = image_info['image_source']
+            rec['image_is_fallback'] = image_info['fallback']
+            
+            logger.info(f"Image fetched for '{product_name}': {image_info['image_source']}")
+        except Exception as e:
+            logger.error(f"Error fetching image for '{rec.get('name', 'Unknown')}': {e}")
+            # Always provide a fallback image
+            product_name = rec.get('name', 'Gift')[:30].replace(' ', '+')
+            rec['image_url'] = f'https://via.placeholder.com/400x400/667eea/ffffff?text={product_name}'
+            rec['image_source'] = 'error_fallback'
+            rec['image_is_fallback'] = True
         
         processed.append(rec)
     
+    logger.info(f"Processed images for {len(processed)} recommendations")
     return processed

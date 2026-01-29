@@ -1809,7 +1809,8 @@ def api_generate_recommendations():
         
         # Check data quality
         quality = check_data_quality(platforms)
-        rec_count = min(quality['recommendation_count'], tier_config['recommendations_per_profile'])
+        # Always generate 10 recommendations (user requested)
+        rec_count = 10
         
         # ENHANCED: Extract ALL possible signals from platforms
         signals = {}
@@ -2071,15 +2072,26 @@ USER DATA:
 
 {low_data_instructions}
 
-CRITICAL INSTRUCTIONS:
-1. For each recommendation, provide specific product URLs:
-   - Direct brand URLs when possible: https://brandname.com/products/specific-item
-   - Specialty retailers: https://www.etsy.com/search?q=specific+product+name
-   - Amazon search as fallback: https://www.amazon.com/s?k=specific+product+name
-2. Be as specific as possible with product names, brands, and model numbers
-3. Prioritize UNIQUE, SPECIALTY items over generic mass-market products
-4. Focus on independent makers, artisan shops, unique items that show thoughtfulness
-5. Use evidence from their actual posts - cite specific captions, hashtags, or creators they follow
+CRITICAL INSTRUCTIONS - REAL PRODUCTS ONLY:
+1. ONLY recommend products that ACTUALLY EXIST and can be purchased RIGHT NOW
+   - Each product MUST have a DIRECT product page URL (not search results, not homepage)
+   - Example: https://www.lego.com/en-us/product/tokyo-skyline-21051 (NOT https://www.lego.com or search URL)
+   - If you cannot find a real, buyable product URL, DO NOT include that recommendation
+   - Search URLs are NOT acceptable - only direct product pages
+   
+2. VERIFY products exist before recommending:
+   - Use specific product names with brand/model numbers (e.g., "LEGO Architecture Tokyo Skyline Set 21051")
+   - Include exact retailer where it's sold (e.g., "LEGO.com", "Etsy shop: CraftyGifts", "Amazon seller: BrandName")
+   - Provide the EXACT product page URL where someone can click and buy immediately
+   
+3. If a product doesn't have a direct purchase URL available, DO NOT recommend it
+   - Better to return fewer recommendations than fake/unbuyable ones
+   - Only include products you can verify exist with real purchase links
+   
+4. Be as specific as possible with product names, brands, and model numbers
+5. Prioritize UNIQUE, SPECIALTY items over generic mass-market products
+6. Focus on independent makers, artisan shops, unique items that show thoughtfulness
+7. Use evidence from their actual posts - cite specific captions, hashtags, or creators they follow
 
 COLLECTIBLE SERIES INTELLIGENCE:
 - If someone collects something (LEGO sets, Funko Pops, vinyl variants, sneakers, trading cards, action figures, etc.):
@@ -2106,7 +2118,7 @@ Return EXACTLY {rec_count} recommendations as a JSON array with this structure:
     "why_perfect": "Why this matches their interests with SPECIFIC evidence from their posts/reposts/hashtags",
     "price_range": "$XX-$XX",
     "where_to_buy": "Specific retailer name (Etsy shop name, UncommonGoods, brand site, Amazon)",
-    "product_url": "https://REAL-URL.com (construct the most specific URL possible)",
+    "product_url": "https://REAL-DIRECT-PRODUCT-PAGE.com/products/item-name (MUST be a direct product page URL where someone can purchase - NOT a search URL, NOT a homepage)",
     "gift_type": "physical" or "experience",
     "confidence_level": "safe_bet" or "adventurous",
     "collectible_series": {{  // OPTIONAL - only if this is part of a collectible series
@@ -2122,11 +2134,15 @@ Return EXACTLY {rec_count} recommendations as a JSON array with this structure:
   }}
 ]
 
-IMPORTANT: 
+CRITICAL REQUIREMENTS:
 - Return ONLY the JSON array, no markdown, no backticks, no explanatory text
+- Each recommendation MUST be a REAL, BUYABLE product with a DIRECT product page URL
+- If you cannot find a real product with a direct purchase URL, DO NOT include it
+- Better to return fewer recommendations than include fake/unbuyable products
 - Each recommendation must have clear evidence from their social media
-- URLs should be as specific as possible (not just homepage links)
-- For collectibles, research the series and suggest thoughtful alternatives"""
+- URLs MUST be direct product pages (e.g., /products/item-name or /p/item-name), NOT search URLs
+- For collectibles, research the series and suggest thoughtful alternatives
+- Verify products exist before recommending - only include products you can confirm are real and purchasable"""
 
         logger.info(f"Generating {rec_count} recommendations for user: {user.get('email', 'unknown')}")
         logger.info(f"Data quality: {quality['quality']} ({quality['total_posts']} posts)")
@@ -2253,6 +2269,45 @@ IMPORTANT:
                 if LINK_VALIDATION_AVAILABLE:
                     recommendations = process_links(recommendations)
                     logger.info(f"Processed links for {len(recommendations)} recommendations")
+                    
+                    # CRITICAL: Filter out recommendations without ANY purchase link
+                    # Direct URLs are preferred, but search fallbacks are acceptable if product seems real
+                    verified_recommendations = []
+                    unverified_count = 0
+                    direct_link_count = 0
+                    search_fallback_count = 0
+                    
+                    for rec in recommendations:
+                        purchase_link = rec.get('purchase_link')
+                        is_direct = rec.get('is_direct_link', False)
+                        link_source = rec.get('link_source', '')
+                        
+                        # Must have some purchase link
+                        if not purchase_link:
+                            unverified_count += 1
+                            logger.warning(f"Filtering out product without purchase link: {rec.get('name')}")
+                            continue
+                        
+                        # Track link types
+                        if is_direct:
+                            direct_link_count += 1
+                        elif 'fallback' in link_source:
+                            search_fallback_count += 1
+                            # Mark search fallbacks clearly
+                            rec['link_warning'] = 'Search link - product existence not verified'
+                        
+                        verified_recommendations.append(rec)
+                    
+                    if unverified_count > 0:
+                        logger.warning(f"Filtered out {unverified_count} recommendations without purchase links")
+                    
+                    logger.info(f"Link breakdown: {direct_link_count} direct, {search_fallback_count} search fallbacks")
+                    
+                    recommendations = verified_recommendations
+                    
+                    # If we filtered out too many, log warning
+                    if len(recommendations) < rec_count * 0.7:  # Less than 70% of requested
+                        logger.warning(f"Only {len(recommendations)}/{rec_count} recommendations have purchase links - AI may have suggested non-existent products")
                 
                 # Images can be fetched in parallel per recommendation (handled internally by image_fetcher)
                 if IMAGE_FETCHING_AVAILABLE:

@@ -89,7 +89,7 @@
             left: 60px;
             height: 4px;
             background: linear-gradient(90deg, #10b981, #059669);
-            z-index: 1;
+            z-index: 1; /* Behind icons */
             border-radius: 2px;
             transition: width 1s ease-out;
             width: 0%;
@@ -397,10 +397,12 @@
         for (let i = 1; i <= 4; i++) {
             const stageEl = document.getElementById('stage' + i);
             stageEl.classList.remove('active', 'completed');
+            // Only mark as completed if we've moved past it (not just active)
             if (i < currentStage.stage) {
                 stageEl.classList.add('completed');
             } else if (i === currentStage.stage) {
                 stageEl.classList.add('active');
+                // Don't add completed class to active stage
             }
         }
         

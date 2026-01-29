@@ -159,19 +159,60 @@ def get_reliable_link(recommendation, amazon_affiliate_tag=None):
                     'is_direct': True
                 }
     
-    # Strategy 3: If retailer is specified but no direct URL, we can't generate one
-    # Don't fall back to search - that's what the user complained about
-    # Instead, return None or a note that direct URL is needed
-    logger.warning(f"No direct product URL available for {product_name}. AI must provide direct product URL.")
+    # Strategy 3: Generate fallback search links ONLY if product seems real
+    # WARNING: Search links mean we couldn't verify the product exists
+    # Only provide fallback if we have strong evidence the product is real (specific name, brand, etc.)
+    product_name = recommendation.get('name', '')
+    has_specific_details = any([
+        len(product_name.split()) >= 3,  # Has brand/model details
+        'set' in product_name.lower() or 'model' in product_name.lower(),
+        retailer_type,  # Has retailer specified
+        recommendation.get('price_range')  # Has price info
+    ])
     
-    # Return a placeholder that indicates URL is needed
-    return {
-        'url': None,  # No valid direct URL
-        'source': 'needs_direct_url',
-        'reliable': False,
-        'is_direct': False,
-        'message': 'Direct product URL required - search results not acceptable'
-    }
+    if not has_specific_details:
+        # Product name too generic - might not be real
+        logger.warning(f"Product '{product_name}' lacks specific details - may not be real product")
+        return {
+            'url': None,
+            'source': 'insufficient_details',
+            'reliable': False,
+            'is_direct': False,
+            'message': 'Product details insufficient to verify it exists'
+        }
+    
+    # Only provide search fallback if product seems real
+    if retailer_type == 'amazon' or 'amazon' in where_to_buy:
+        fallback_url = generate_amazon_link(product_name, amazon_affiliate_tag)
+        logger.warning(f"Using Amazon search fallback for '{product_name}' - direct URL not available")
+        return {
+            'url': fallback_url,
+            'source': 'amazon_search_fallback',
+            'reliable': False,  # Search links are NOT reliable - product may not exist
+            'is_direct': False,
+            'message': 'Amazon search link - product existence not verified'
+        }
+    elif retailer_type == 'etsy' or 'etsy' in where_to_buy:
+        fallback_url = generate_etsy_link(product_name)
+        logger.warning(f"Using Etsy search fallback for '{product_name}' - direct URL not available")
+        return {
+            'url': fallback_url,
+            'source': 'etsy_search_fallback',
+            'reliable': False,
+            'is_direct': False,
+            'message': 'Etsy search link - product existence not verified'
+        }
+    else:
+        # Generic Google Shopping fallback
+        fallback_url = generate_google_shopping_link(product_name)
+        logger.warning(f"Using Google Shopping fallback for '{product_name}' - direct URL not available")
+        return {
+            'url': fallback_url,
+            'source': 'google_shopping_fallback',
+            'reliable': False,
+            'is_direct': False,
+            'message': 'Google Shopping link - product existence not verified'
+        }
 
 def process_recommendation_links(recommendations, amazon_affiliate_tag=None):
     """
@@ -192,18 +233,21 @@ def process_recommendation_links(recommendations, amazon_affiliate_tag=None):
     for rec in recommendations:
         link_info = get_reliable_link(rec, amazon_affiliate_tag)
         
-        # Only add purchase_link if we have a valid direct URL
-        if link_info.get('is_direct') and link_info.get('url'):
+        # Add purchase_link if we have any URL (direct or fallback)
+        if link_info.get('url'):
             rec['purchase_link'] = link_info['url']
             rec['link_source'] = link_info['source']
             rec['link_reliable'] = link_info['reliable']
+            rec['is_direct_link'] = link_info.get('is_direct', False)
+            if not link_info.get('is_direct'):
+                logger.info(f"Using fallback search link for '{rec.get('name')}': {link_info.get('source')}")
         else:
-            # No valid direct URL - mark as needing URL
+            # No URL at all - this shouldn't happen with fallbacks, but handle it
             rec['purchase_link'] = None
-            rec['link_source'] = 'needs_direct_url'
+            rec['link_source'] = 'needs_url'
             rec['link_reliable'] = False
-            rec['link_error'] = link_info.get('message', 'Direct product URL required')
-            logger.warning(f"Recommendation '{rec.get('name')}' has no valid direct product URL")
+            rec['link_error'] = link_info.get('message', 'Unable to generate product link')
+            logger.warning(f"Recommendation '{rec.get('name')}' has no URL available")
         
         processed.append(rec)
     

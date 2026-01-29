@@ -130,7 +130,7 @@
         <p class="subtitle">This usually takes 30-60 seconds</p>
         
         <div class="platforms-analyzing">
-            <h3 style="margin-bottom: 20px;">Platforms Being Analyzed:</h3>
+            <h3 style="margin-bottom: 20px;">Getting to know them from:</h3>
             {% for platform in platforms %}
             <div class="platform-item">
                 {% if platform == 'instagram' %}📷 Instagram{% endif %}
@@ -211,7 +211,7 @@
             try {
                 // Create AbortController for timeout
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minute timeout
+                const timeoutId = setTimeout(() => controller.abort(), 240000); // 4 minute timeout (reduced from 6)
                 
                 const response = await fetch('/api/generate-recommendations', {
                     method: 'POST',

@@ -31,7 +31,7 @@ from flask import Flask, render_template, request, redirect, session, jsonify, u
 import stripe
 import anthropic
 from dotenv import load_dotenv
-from collections import Counter, OrderedDict
+from collections import Counter, defaultdict, OrderedDict
 
 # Load environment variables FIRST (before any code that uses them)
 load_dotenv()
@@ -1830,20 +1830,30 @@ INSTAGRAM DATA ({len(posts)} posts analyzed):
             ig_data = platforms['instagram'].get('data', {})
             if ig_data:
                 posts = ig_data.get('posts', [])
-                captions = [p['caption'][:200] for p in posts if p.get('caption')]
-                hashtags_all = []
-                for p in posts:
-                    hashtags_all.extend(p.get('hashtags', []))
-                top_hashtags = Counter(hashtags_all).most_common(15)
+                # OPTIMIZED: Prioritize high-engagement posts (quality signals)
+                # Sort posts by engagement (likes + comments*2)
+                sorted_posts = sorted(posts, key=lambda p: (p.get('likes', 0) + p.get('comments', 0) * 2), reverse=True)
+                high_engagement = [p for p in sorted_posts if (p.get('likes', 0) + p.get('comments', 0) * 2) > 50]
                 
-                avg_likes = sum(p.get('likes', 0) for p in posts) / len(posts) if posts else 0
+                # Use high-engagement posts if available, otherwise top posts
+                priority_posts = high_engagement[:12] if high_engagement else sorted_posts[:12]
+                captions = [p['caption'][:150] for p in priority_posts if p.get('caption')]
+                
+                # Extract hashtags from priority posts
+                hashtags_all = []
+                for p in priority_posts:
+                    hashtags_all.extend(p.get('hashtags', []))
+                top_hashtags = Counter(hashtags_all).most_common(15)  # Restore to 15
+                
+                avg_likes = sum(p.get('likes', 0) for p in priority_posts) / len(priority_posts) if priority_posts else 0
                 
                 platform_insights.append(f"""
-INSTAGRAM DATA ({len(posts)} posts analyzed):
+INSTAGRAM DATA ({len(posts)} posts):
 - Username: @{ig_data.get('username', 'unknown')}
-- Recent Post Themes: {'; '.join(captions[:15])}
+- High-Engagement Posts: {len(high_engagement)} posts with 50+ engagement
+- Key Themes: {'; '.join(captions[:10])}
 - Top Hashtags: {', '.join([tag[0] for tag in top_hashtags])}
-- Engagement: Average {avg_likes:.0f} likes per post
+- Engagement: Avg {avg_likes:.0f} likes
 """)
         
         # TikTok data (enhanced if available, otherwise basic)
@@ -1851,19 +1861,32 @@ INSTAGRAM DATA ({len(posts)} posts analyzed):
             tt_signals = all_extracted_signals['tiktok']
             tt_data = platforms['tiktok'].get('data', {})
             
-            repost_count = len(tt_signals.get('aspirational_content', []))
-            top_hashtags = list(tt_signals.get('hashtags', {}).keys())[:10]
-            music_trends = list(tt_signals.get('music_trends', {}).keys())[:5]
-            creator_styles = [c['creator'] for c in tt_signals.get('creator_styles', [])[:5]]
+            # CRITICAL: Keep ALL aspirational content (reposts = what they WANT)
+            aspirational_content = tt_signals.get('aspirational_content', [])
+            repost_count = len(aspirational_content)
+            
+            # Extract hashtags from REPOSTS only (aspirational signals)
+            repost_hashtags = []
+            reposts_data = tt_data.get('reposts', [])
+            for repost in reposts_data[:30]:  # All reposts are valuable
+                repost_hashtags.extend(repost.get('hashtags', []))
+            top_hashtags = list(Counter(repost_hashtags).most_common(15))[:15]  # Restore to 15
+            
+            # Keep all creator styles (aspirational aesthetics)
+            creator_styles = [c['creator'] for c in tt_signals.get('creator_styles', [])[:8]]  # Restore to 8
+            music_trends = list(tt_signals.get('music_trends', {}).keys())[:6]  # Restore to 6
+            
+            # Sample repost descriptions (the gold mine)
+            sample_reposts = [r.get('description', '')[:120] for r in reposts_data[:10]]
             
             platform_insights.append(f"""
-TIKTOK DATA ({tt_data.get('total_videos', 0)} videos analyzed):
+TIKTOK DATA ({tt_data.get('total_videos', 0)} videos):
 - Username: @{tt_data.get('username', 'unknown')}
-- Aspirational Content: {repost_count} reposts analyzed (what they WANT but don't have)
-- Top Hashtags: {', '.join(top_hashtags)}
+- Aspirational Content: {repost_count} reposts (what they WANT but don't have)
+- Repost Themes: {'; '.join(sample_reposts)}
+- Hashtags (from reposts): {', '.join([tag[0] for tag in top_hashtags])}
+- Creator Styles: {', '.join(creator_styles)} (aspirational aesthetics)
 - Music Trends: {', '.join(music_trends)}
-- Creator Styles: {', '.join(creator_styles)}
-- Trending Topics: {', '.join(tt_signals.get('trending_topics', [])[:10])}
 - CRITICAL: Reposts reveal ASPIRATIONAL interests - prioritize these for gifts
 """)
         elif 'tiktok' in platforms:
@@ -1871,31 +1894,40 @@ TIKTOK DATA ({tt_data.get('total_videos', 0)} videos analyzed):
             tt_data = platforms['tiktok'].get('data', {})
             if tt_data:
                 videos = tt_data.get('videos', [])
-                descriptions = [v['description'][:150] for v in videos[:20] if v.get('description')]
-                favorite_creators = tt_data.get('favorite_creators', [])
+                # CRITICAL: Prioritize REPOSTS (aspirational content)
+                reposts = tt_data.get('reposts', [])
                 repost_patterns = tt_data.get('repost_patterns', {})
+                favorite_creators = tt_data.get('favorite_creators', [])
                 top_hashtags = tt_data.get('top_hashtags', {})
                 top_music = tt_data.get('top_music', {})
                 
+                # Use repost descriptions if available (aspirational signals)
+                if reposts:
+                    descriptions = [r.get('description', '')[:120] for r in reposts[:15] if r.get('description')]
+                else:
+                    videos = tt_data.get('videos', [])
+                    descriptions = [v['description'][:120] for v in videos[:12] if v.get('description')]
+                
                 creator_insights = ""
                 if favorite_creators:
-                    creator_list = [f"@{creator[0]} ({creator[1]} reposts)" for creator in favorite_creators[:5]]
+                    creator_list = [f"@{creator[0]} ({creator[1]} reposts)" for creator in favorite_creators[:8]]  # Restore to 8
                     creator_insights = f"\n- Frequently Reposts From: {', '.join(creator_list)}"
                     creator_insights += f"\n- CRITICAL: These creators represent their aspirations"
                 
                 music_insights = ""
                 if top_music:
-                    music_list = list(top_music.keys())[:5]
+                    music_list = list(top_music.keys())[:6]  # Restore to 6
                     music_insights = f"\n- Popular Sounds: {', '.join(music_list)}"
                 
                 platform_insights.append(f"""
-TIKTOK DATA ({tt_data.get('total_videos', 0)} videos analyzed):
+TIKTOK DATA ({tt_data.get('total_videos', 0)} videos):
 - Username: @{tt_data.get('username', 'unknown')}
-- Original Content Themes: {'; '.join(descriptions[:15])}
 - Repost Behavior: {repost_patterns.get('total_reposts', 0)} reposts ({repost_patterns.get('repost_percentage', 0):.1f}%)
+- Aspirational Themes: {'; '.join(descriptions[:12])}
 {creator_insights}
 {music_insights}
-- Top Hashtags: {', '.join(list(top_hashtags.keys())[:10])}
+- Top Hashtags: {', '.join(list(top_hashtags.keys())[:12])}
+- CRITICAL: Reposts reveal ASPIRATIONAL interests - prioritize these for gifts
 """)
         
         # Pinterest data (enhanced if available)
@@ -1903,9 +1935,10 @@ TIKTOK DATA ({tt_data.get('total_videos', 0)} videos analyzed):
             pin_signals = all_extracted_signals['pinterest']
             boards = platforms['pinterest'].get('boards', [])
             
-            board_themes = list(pin_signals.get('board_themes', {}).keys())[:10]
-            pin_keywords = list(pin_signals.get('pin_keywords', {}).keys())[:20]
-            specific_wants = pin_signals.get('specific_wants', [])[:10]
+            # CRITICAL: Keep ALL Pinterest data (explicit wishlist = highest value)
+            board_themes = list(pin_signals.get('board_themes', {}).keys())[:12]  # Restore to 12
+            pin_keywords = list(pin_signals.get('pin_keywords', {}).keys())[:20]  # Restore to 20 (explicit wants)
+            specific_wants = pin_signals.get('specific_wants', [])[:15]  # Restore to 15 (explicit wishlist items)
             price_prefs = pin_signals.get('price_preferences', {})
             
             price_info = ""
@@ -1913,7 +1946,7 @@ TIKTOK DATA ({tt_data.get('total_videos', 0)} videos analyzed):
                 price_info = f"\n- Price Preferences: ${price_prefs.get('min', 0)}-${price_prefs.get('max', 0)} (avg ${price_prefs.get('avg', 0):.0f})"
             
             platform_insights.append(f"""
-PINTEREST DATA ({len(boards)} boards analyzed):
+PINTEREST DATA ({len(boards)} boards):
 - Board Themes: {', '.join(board_themes)}
 - Pin Keywords: {', '.join(pin_keywords)}
 - Specific Wants: {', '.join(specific_wants)}
@@ -2042,9 +2075,9 @@ IMPORTANT:
         try:
             message = claude_client.messages.create(
                 model="claude-sonnet-4-20250514",
-                max_tokens=8000,
+                max_tokens=7000,  # Slightly reduced but keep quality high
                 messages=[{"role": "user", "content": prompt}],
-                timeout=120.0  # Increased to 2 minutes for complex prompts
+                timeout=180.0  # 3 minutes (reduced from 5) - prompt optimization should make this sufficient
             )
             
             # Track API usage
@@ -2133,21 +2166,37 @@ IMPORTANT:
                     logger.error(f"Error validating recommendations: {e}")
                     # Continue with unvalidated recommendations
             
-            # ENHANCED: Ensure reliable links for all recommendations
-            if LINK_VALIDATION_AVAILABLE:
-                try:
-                    recommendations = process_recommendation_links(recommendations, AMAZON_AFFILIATE_TAG)
-                    logger.info(f"Processed links for {len(recommendations)} recommendations")
-                except Exception as e:
-                    logger.warning(f"Link processing failed: {e}")
+            # OPTIMIZED: Process links and images in parallel for faster response
+            import concurrent.futures
             
-            # ENHANCED: Add images to all recommendations
-            if IMAGE_FETCHING_AVAILABLE:
-                try:
-                    recommendations = process_recommendation_images(recommendations)
+            if LINK_VALIDATION_AVAILABLE or IMAGE_FETCHING_AVAILABLE:
+                def process_links(recs):
+                    if LINK_VALIDATION_AVAILABLE:
+                        try:
+                            return process_recommendation_links(recs, AMAZON_AFFILIATE_TAG)
+                        except Exception as e:
+                            logger.warning(f"Link processing failed: {e}")
+                            return recs
+                    return recs
+                
+                def process_images(recs):
+                    if IMAGE_FETCHING_AVAILABLE:
+                        try:
+                            return process_recommendation_images(recs)
+                        except Exception as e:
+                            logger.warning(f"Image fetching failed: {e}")
+                            return recs
+                    return recs
+                
+                # Process links first (needed for image fetching), then images in parallel
+                if LINK_VALIDATION_AVAILABLE:
+                    recommendations = process_links(recommendations)
+                    logger.info(f"Processed links for {len(recommendations)} recommendations")
+                
+                # Images can be fetched in parallel per recommendation (handled internally by image_fetcher)
+                if IMAGE_FETCHING_AVAILABLE:
+                    recommendations = process_images(recommendations)
                     logger.info(f"Added images to {len(recommendations)} recommendations")
-                except Exception as e:
-                    logger.warning(f"Image fetching failed: {e}")
             
             logger.info(f"Successfully parsed {len(recommendations)} recommendations")
             

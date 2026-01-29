@@ -633,22 +633,19 @@ def check_instagram_privacy(username):
                 'icon': '❌'
             }
         
-        # If redirected to login, might be private or doesn't exist
-        if 'login' in response.url.lower() or response.status_code == 302:
-            return {
-                'valid': False,
-                'error': 'Account may be private or not found',
-                'message': '⚠️ Unable to verify - account may be private',
-                'icon': '⚠️'
-            }
+        # Don't fail on redirects - Instagram often redirects even public accounts
+        # Instead, check the HTML content for actual indicators
         
         if response.status_code != 200:
-            return {
-                'valid': False,
-                'error': 'Unable to check account',
-                'message': '⚠️ Unable to verify account - try again',
-                'icon': '⚠️'
-            }
+            # Even if not 200, check if we got any HTML content
+            if not response.text or len(response.text) < 100:
+                return {
+                    'valid': False,
+                    'error': 'Unable to check account',
+                    'message': '⚠️ Unable to verify account - try again',
+                    'icon': '⚠️'
+                }
+            # Continue checking HTML even if status isn't 200
         
         html = response.text
         html_lower = html.lower()
@@ -664,6 +661,8 @@ def check_instagram_privacy(username):
             'thumbnail_src',  # Post thumbnails
             'taken_at_timestamp',  # Post timestamps
             'edge_media_to_caption',  # Post captions
+            'edge_media_preview_like',  # Post likes
+            'edge_media_to_comment',  # Post comments
         ]
         
         has_post_data = any(indicator in html for indicator in post_indicators)
@@ -678,17 +677,18 @@ def check_instagram_privacy(username):
                 'icon': '✅'
             }
         
-        # Check for explicit privacy indicators
-        is_private = (
-            '"is_private":true' in html or 
-            '"is_private": true' in html or
-            '"isprivate":true' in html_lower or
-            'this account is private' in html_lower or
-            'account is private' in html_lower or
-            'private account' in html_lower
-        )
+        # Check for explicit privacy indicators (must be VERY clear - Instagram HTML is unreliable)
+        # Only mark as private if we see JSON indicator (most reliable)
+        explicit_private_indicators = [
+            '"is_private":true',
+            '"is_private": true',
+        ]
         
-        if is_private:
+        has_json_private = any(indicator in html for indicator in explicit_private_indicators)
+        
+        # Only mark as private if we have JSON indicator (most reliable)
+        # Don't rely on text indicators - Instagram HTML changes too frequently
+        if has_json_private:
             return {
                 'valid': False,
                 'private': True,
@@ -705,15 +705,21 @@ def check_instagram_privacy(username):
             'graphql',
             'window._shareddata',
             f'/{username}/',
+            f'@{username}',
             'biography',
-            'full_name'
+            'full_name',
+            'username',
+            'edge_follow',
+            'instagram.com',  # Basic check - if we got Instagram HTML, account likely exists
         ]
         
         has_profile_data = any(indicator in html for indicator in profile_indicators)
         url_contains_username = username.lower() in response.url.lower()
         
-        # If we have profile data and correct URL, likely public (but couldn't confirm posts)
-        if has_profile_data and url_contains_username:
+        # Be VERY lenient - if we got any HTML content from Instagram, allow connection
+        # Scraping will confirm if it's actually public or private
+        # This prevents false negatives from Instagram's changing HTML structure
+        if has_profile_data or url_contains_username or len(html) > 500:
             # Allow them to try - scraping will confirm if it's actually public
             return {
                 'valid': True,
@@ -723,7 +729,8 @@ def check_instagram_privacy(username):
                 'icon': '✅'
             }
         else:
-            # Can't determine - allow them to try anyway
+            # Can't determine - but be lenient, allow them to try anyway
+            # Instagram's HTML structure changes frequently
             return {
                 'valid': True,  # Allow them to try anyway
                 'error': 'Could not verify privacy status',

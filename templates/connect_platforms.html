@@ -583,6 +583,11 @@
         }
         
         async validateUsername(username) {
+            if (!this.statusDiv) {
+                console.error('Status div not found, cannot show validation');
+                return;
+            }
+            
             this.showStatus('⏳', 'Checking...', 'checking');
             
             try {
@@ -594,6 +599,10 @@
                         username: username
                     })
                 });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
                 
                 const result = await response.json();
                 
@@ -612,16 +621,22 @@
         }
         
         showStatus(icon, message, type) {
-            if (!this.statusDiv) return;
-            
-            if (!message) {
-                this.statusDiv.style.display = 'none';
-                this.statusDiv.className = 'validation-status';
+            if (!this.statusDiv) {
+                console.error('Status div not available');
                 return;
             }
             
-            this.statusDiv.innerHTML = `<span class="status-icon">${icon}</span> ${message}`;
+            if (!message || message === '') {
+                this.statusDiv.innerHTML = '';
+                this.statusDiv.className = 'validation-status';
+                this.statusDiv.style.display = 'none';
+                return;
+            }
+            
+            this.statusDiv.innerHTML = `${icon ? icon + ' ' : ''}${message}`;
             this.statusDiv.className = `validation-status ${type}`;
+            this.statusDiv.style.display = 'block';
+            this.statusDiv.style.visibility = 'visible';
         }
     }
 

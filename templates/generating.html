@@ -112,7 +112,7 @@
         .progress-bar {
             height: 100%;
             background: white;
-            width: 0%;
+            width: 0% !important;
             transition: width 0.5s ease;
             border-radius: 10px;
         }
@@ -150,6 +150,12 @@
     </div>
     
     <script>
+        // Initialize progress bar to 0%
+        const progressBar = document.getElementById('progressBar');
+        if (progressBar) {
+            progressBar.style.width = '0%';
+        }
+        
         let startTime = Date.now();
         let progressInterval;
         let currentProgress = 0;
@@ -160,27 +166,27 @@
             const elapsed = (Date.now() - startTime) / 1000; // seconds
             
             // Very gradual progress - starts slow, accelerates slightly
-            // 0-15s: 0% to 30%
-            // 15-45s: 30% to 60%
-            // 45-90s: 60% to 85%
-            // 90+: stays at 85% until complete
+            // 0-20s: 0% to 25%
+            // 20-50s: 25% to 50%
+            // 50-90s: 50% to 75%
+            // 90+: stays at 75% until complete
             
-            if (elapsed < 15) {
-                currentProgress = Math.min((elapsed / 15) * 30, 30);
-            } else if (elapsed < 45) {
-                currentProgress = Math.min(30 + ((elapsed - 15) / 30) * 30, 60);
+            if (elapsed < 20) {
+                currentProgress = Math.min((elapsed / 20) * 25, 25);
+            } else if (elapsed < 50) {
+                currentProgress = Math.min(25 + ((elapsed - 20) / 30) * 25, 50);
             } else if (elapsed < 90) {
-                currentProgress = Math.min(60 + ((elapsed - 45) / 45) * 25, 85);
+                currentProgress = Math.min(50 + ((elapsed - 50) / 40) * 25, 75);
             } else {
-                currentProgress = 85; // Cap at 85% until API call completes
+                currentProgress = 75; // Cap at 75% until API call completes
             }
             
             // Update UI
-            const progressBar = document.getElementById('progressBar');
+            const progressBarEl = document.getElementById('progressBar');
             const progressText = document.querySelector('.status-message');
             
-            if (progressBar) {
-                progressBar.style.width = currentProgress + '%';
+            if (progressBarEl) {
+                progressBarEl.style.width = currentProgress + '%';
             }
             
             // Show timeout warning after 90 seconds (only once)
@@ -195,11 +201,10 @@
             }
         }
         
-        // Start progress simulation after a small delay to ensure smooth start
-        setTimeout(() => {
-            progressInterval = setInterval(updateProgress, 1000);
-            updateProgress(); // Initial call
-        }, 500);
+        // Start progress simulation immediately but reset startTime
+        startTime = Date.now();
+        progressInterval = setInterval(updateProgress, 1000);
+        updateProgress(); // Initial call to set to 0%
         
         // Auto-generate recommendations when page loads
         window.addEventListener('load', async function() {

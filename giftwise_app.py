@@ -535,9 +535,82 @@ def check_data_quality(platforms):
 def check_instagram_privacy(username):
     """
     Check if Instagram account exists and is public
+    Uses multiple methods for reliability:
+    1. Instagram API endpoint (most reliable)
+    2. HTML parsing with post detection (if we see posts, it's public)
+    3. Fallback to basic checks
+    
     Returns: dict with valid, private, exists, message
     """
     try:
+        # Method 1: Try Instagram's API endpoint (most reliable)
+        api_url = f'https://www.instagram.com/api/v1/users/web_profile_info/?username={username}'
+        api_headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'application/json',
+            'Accept-Language': 'en-US,en;q=0.9',
+            'X-Requested-With': 'XMLHttpRequest',
+            'Referer': f'https://www.instagram.com/{username}/',
+            'Origin': 'https://www.instagram.com'
+        }
+        
+        try:
+            api_response = requests.get(api_url, headers=api_headers, timeout=10, allow_redirects=False)
+            
+            if api_response.status_code == 200:
+                try:
+                    data = api_response.json()
+                    # Navigate through response structure
+                    user_data = data.get('data', {}).get('user', {})
+                    
+                    if user_data:
+                        is_private = user_data.get('is_private', True)
+                        exists = user_data.get('id') is not None
+                        
+                        if not exists:
+                            return {
+                                'valid': False,
+                                'private': False,
+                                'exists': False,
+                                'message': '✗ Account not found - please check the username',
+                                'icon': '❌'
+                            }
+                        
+                        if is_private:
+                            return {
+                                'valid': False,
+                                'private': True,
+                                'exists': True,
+                                'message': '✗ Private account - we can only analyze public profiles',
+                                'help': 'Ask them to make their account public temporarily, or try a different platform',
+                                'icon': '🔒'
+                            }
+                        else:
+                            # Public account confirmed via API
+                            return {
+                                'valid': True,
+                                'private': False,
+                                'exists': True,
+                                'message': '✓ Public profile found',
+                                'icon': '✅'
+                            }
+                except (ValueError, KeyError) as e:
+                    logger.debug(f"API response parsing failed: {e}, falling back to HTML check")
+                    # Fall through to HTML method
+            elif api_response.status_code == 404:
+                return {
+                    'valid': False,
+                    'private': False,
+                    'exists': False,
+                    'message': '✗ Account not found - please check the username',
+                    'icon': '❌'
+                }
+        except requests.Timeout:
+            logger.debug("API endpoint timed out, falling back to HTML check")
+        except Exception as e:
+            logger.debug(f"API check failed: {e}, falling back to HTML check")
+        
+        # Method 2: HTML parsing with post detection (fallback)
         url = f'https://www.instagram.com/{username}/'
         headers = {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
@@ -577,38 +650,43 @@ def check_instagram_privacy(username):
                 'icon': '⚠️'
             }
         
-        html = response.text.lower()
+        html = response.text
+        html_lower = html.lower()
         
-        # Check for privacy indicators - multiple methods (more robust)
-        # Method 1: JSON-LD data
+        # CRITICAL CHECK: If we can see POST DATA, account is definitely public
+        # Look for post URLs, post images, or post metadata
+        post_indicators = [
+            '/p/',  # Post URLs
+            '/reel/',  # Reel URLs
+            'edge_owner_to_timeline_media',  # Post data in JSON
+            'shortcode',  # Post shortcodes
+            'display_url',  # Post image URLs
+            'thumbnail_src',  # Post thumbnails
+            'taken_at_timestamp',  # Post timestamps
+            'edge_media_to_caption',  # Post captions
+        ]
+        
+        has_post_data = any(indicator in html for indicator in post_indicators)
+        
+        # If we see post data, account is definitely public
+        if has_post_data:
+            return {
+                'valid': True,
+                'private': False,
+                'exists': True,
+                'message': '✓ Public profile found',
+                'icon': '✅'
+            }
+        
+        # Check for explicit privacy indicators
         is_private = (
             '"is_private":true' in html or 
             '"is_private": true' in html or
-            '"isprivate":true' in html
+            '"isprivate":true' in html_lower or
+            'this account is private' in html_lower or
+            'account is private' in html_lower or
+            'private account' in html_lower
         )
-        
-        # Method 2: Check for "This Account is Private" text (various formats)
-        if not is_private:
-            private_indicators = [
-                'this account is private',
-                'account is private',
-                'private account',
-                'posts are private',
-                'this profile is private'
-            ]
-            is_private = any(indicator in html for indicator in private_indicators)
-        
-        # Method 3: Check for login redirect indicators
-        if not is_private:
-            login_indicators = (
-                ('log in' in html or 'login' in html) and 
-                ('see photos' in html or 'see posts' in html or 'follow' in html)
-            )
-            is_private = login_indicators
-        
-        # Method 4: Check if we're redirected to login page
-        if not is_private:
-            is_private = 'accounts/login' in response.url.lower()
         
         if is_private:
             return {
@@ -620,38 +698,32 @@ def check_instagram_privacy(username):
                 'icon': '🔒'
             }
         
-        # Check if account exists (has profile data) - more comprehensive checks
-        # Look for common Instagram profile indicators
+        # Check if account exists (has profile data)
         profile_indicators = [
             'profile_pic_url',
             'edge_followed_by',
-            'edge_owner_to_timeline_media',
-            'edge_felix_video_timeline',
             'graphql',
             'window._shareddata',
-            'userinfo',
             f'/{username}/',
-            f'@{username}',
             'biography',
             'full_name'
         ]
         
         has_profile_data = any(indicator in html for indicator in profile_indicators)
-        
-        # Also check if we got a 200 response and URL contains the username
         url_contains_username = username.lower() in response.url.lower()
         
-        if has_profile_data or (response.status_code == 200 and url_contains_username):
-            # Public account found
+        # If we have profile data and correct URL, likely public (but couldn't confirm posts)
+        if has_profile_data and url_contains_username:
+            # Allow them to try - scraping will confirm if it's actually public
             return {
                 'valid': True,
                 'private': False,
                 'exists': True,
-                'message': '✓ Public profile found',
+                'message': '✓ Profile found - we\'ll verify access when connecting',
                 'icon': '✅'
             }
         else:
-            # Can't determine - allow them to try
+            # Can't determine - allow them to try anyway
             return {
                 'valid': True,  # Allow them to try anyway
                 'error': 'Could not verify privacy status',

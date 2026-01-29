@@ -540,10 +540,15 @@ def check_instagram_privacy(username):
     try:
         url = f'https://www.instagram.com/{username}/'
         headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1'
         }
         
-        response = requests.get(url, headers=headers, timeout=10)
+        response = requests.get(url, headers=headers, timeout=15, allow_redirects=True)
         
         # Account doesn't exist
         if response.status_code == 404:
@@ -553,6 +558,15 @@ def check_instagram_privacy(username):
                 'exists': False,
                 'message': '✗ Account not found - please check the username',
                 'icon': '❌'
+            }
+        
+        # If redirected to login, might be private or doesn't exist
+        if 'login' in response.url.lower() or response.status_code == 302:
+            return {
+                'valid': False,
+                'error': 'Account may be private or not found',
+                'message': '⚠️ Unable to verify - account may be private',
+                'icon': '⚠️'
             }
         
         if response.status_code != 200:
@@ -565,9 +579,17 @@ def check_instagram_privacy(username):
         
         html = response.text
         
-        # Check for privacy indicators
-        # Instagram embeds JSON-LD data with is_private field
+        # Check for privacy indicators - multiple methods
+        # Method 1: JSON-LD data
         is_private = '"is_private":true' in html or '"is_private": true' in html
+        
+        # Method 2: Check for "This Account is Private" text
+        if not is_private:
+            is_private = 'this account is private' in html.lower() or 'account is private' in html.lower()
+        
+        # Method 3: Check for login redirect indicators
+        if not is_private:
+            is_private = 'log in' in html.lower() and 'see photos' in html.lower()
         
         if is_private:
             return {
@@ -579,14 +601,32 @@ def check_instagram_privacy(username):
                 'icon': '🔒'
             }
         
-        # Public account found
-        return {
-            'valid': True,
-            'private': False,
-            'exists': True,
-            'message': '✓ Public profile found',
-            'icon': '✅'
-        }
+        # Check if account exists (has profile data)
+        # Look for common Instagram profile indicators
+        has_profile_data = (
+            'profile_pic_url' in html or 
+            'edge_followed_by' in html or 
+            'edge_owner_to_timeline_media' in html or
+            f'/{username}/' in html
+        )
+        
+        if has_profile_data:
+            # Public account found
+            return {
+                'valid': True,
+                'private': False,
+                'exists': True,
+                'message': '✓ Public profile found',
+                'icon': '✅'
+            }
+        else:
+            # Can't determine - allow them to try
+            return {
+                'valid': True,  # Allow them to try anyway
+                'error': 'Could not verify privacy status',
+                'message': '⚠️ Unable to verify - click Connect to try',
+                'icon': '⚠️'
+            }
     
     except requests.Timeout:
         return {

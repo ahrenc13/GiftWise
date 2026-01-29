@@ -97,6 +97,29 @@
         .status-message {
             font-size: 1.1em;
             opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+        
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        .progress-bar {
+            height: 100%;
+            background: white;
+            width: 0%;
+            transition: width 0.5s ease;
+            border-radius: 10px;
+        }
+        
+        .warning-message {
+            color: #ffd700;
+            font-weight: 600;
         }
     </style>
 </head>
@@ -130,42 +153,53 @@
         let startTime = Date.now();
         let progressInterval;
         let currentProgress = 0;
+        let warningShown = false;
         
-        // Simulate progress (since we can't track real progress easily)
+        // Simulate progress (gradual, realistic progression)
         function updateProgress() {
             const elapsed = (Date.now() - startTime) / 1000; // seconds
-            const maxTime = 120; // 2 minutes max
             
-            // Gradually increase progress, but cap at 90% until complete
-            if (elapsed < 10) {
-                currentProgress = Math.min(20 + (elapsed / 10) * 30, 50);
-            } else if (elapsed < 30) {
-                currentProgress = Math.min(50 + ((elapsed - 10) / 20) * 30, 80);
+            // Very gradual progress - starts slow, accelerates slightly
+            // 0-15s: 0% to 30%
+            // 15-45s: 30% to 60%
+            // 45-90s: 60% to 85%
+            // 90+: stays at 85% until complete
+            
+            if (elapsed < 15) {
+                currentProgress = Math.min((elapsed / 15) * 30, 30);
+            } else if (elapsed < 45) {
+                currentProgress = Math.min(30 + ((elapsed - 15) / 30) * 30, 60);
+            } else if (elapsed < 90) {
+                currentProgress = Math.min(60 + ((elapsed - 45) / 45) * 25, 85);
             } else {
-                currentProgress = Math.min(80 + ((elapsed - 30) / 90) * 10, 90);
+                currentProgress = 85; // Cap at 85% until API call completes
             }
             
-            // Update UI if progress bar exists (smooth animation)
+            // Update UI
             const progressBar = document.getElementById('progressBar');
             const progressText = document.querySelector('.status-message');
             
             if (progressBar) {
-                // Smooth transition - CSS handles the animation
                 progressBar.style.width = currentProgress + '%';
             }
             
-            // Show timeout warning after 90 seconds (fade in smoothly)
-            if (elapsed > 90 && progressText && !progressText.innerHTML.includes('⚠️')) {
+            // Show timeout warning after 90 seconds (only once)
+            if (elapsed > 90 && progressText && !warningShown) {
+                warningShown = true;
                 progressText.style.opacity = '0';
                 setTimeout(() => {
                     progressText.innerHTML = '⚠️ This is taking longer than usual. Please wait...';
+                    progressText.className = 'status-message warning-message';
                     progressText.style.opacity = '1';
                 }, 300);
             }
         }
         
-        // Start progress simulation
-        progressInterval = setInterval(updateProgress, 1000);
+        // Start progress simulation after a small delay to ensure smooth start
+        setTimeout(() => {
+            progressInterval = setInterval(updateProgress, 1000);
+            updateProgress(); // Initial call
+        }, 500);
         
         // Auto-generate recommendations when page loads
         window.addEventListener('load', async function() {

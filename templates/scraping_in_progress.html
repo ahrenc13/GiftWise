@@ -335,12 +335,16 @@
         const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
         console.log('Elapsed time:', elapsedSeconds, 'seconds');
         
+        // Cap progress at 75% until scraping actually completes
         const stages = [
-            { time: 0, percent: 25, text: "Connecting to social platforms...", stage: 1 },
-            { time: 20, percent: 50, text: "Downloading recent posts and content...", stage: 2 },
-            { time: 40, percent: 75, text: "Analyzing interests and preferences...", stage: 3 },
-            { time: 60, percent: 90, text: "Preparing personalized recommendations...", stage: 4 }
+            { time: 0, percent: 20, text: "Connecting to social platforms...", stage: 1 },
+            { time: 15, percent: 40, text: "Downloading recent posts and content...", stage: 2 },
+            { time: 30, percent: 60, text: "Understanding what they love...", stage: 3 },
+            { time: 60, percent: 75, text: "Finding gifts that feel made just for them...", stage: 4 }
         ];
+        
+        // Track warning state
+        const state = { warningShown: false };
         
         // Find current stage based on elapsed time
         let currentStage = stages[0];
@@ -384,10 +388,16 @@
                 }
             }
             
-            // Smoothly animate progress bar
-            const targetPercent = currentStage.percent;
+            // CRITICAL: Never allow progress above 75% until scraping completes
+            let targetPercent = Math.min(currentStage.percent, 75);
             const currentPercent = parseInt(progressBar.style.width) || 0;
             
+            // Never allow progress to decrease
+            if (targetPercent < currentPercent) {
+                targetPercent = currentPercent;
+            }
+            
+            // Smoothly animate progress bar
             if (Math.abs(targetPercent - currentPercent) > 1) {
                 const newPercent = currentPercent + (targetPercent - currentPercent) * 0.1;
                 progressBar.style.width = newPercent + '%';
@@ -419,11 +429,16 @@
                 }
             }
             
-            // Check timeout
-            if (elapsed > 180) {
-                progressText.innerHTML = '⚠️ Taking longer than expected. <a href="/connect-platforms" style="color: white; text-decoration: underline;">Try again?</a>';
-                clearInterval(progressUpdateInterval);
-                clearInterval(checkStatusInterval);
+            // Check timeout - but don't stop, just show message
+            if (elapsed > 120 && !state.warningShown) {
+                state.warningShown = true;
+                const originalText = progressText.textContent;
+                progressText.style.opacity = '0';
+                setTimeout(() => {
+                    progressText.innerHTML = '⏳ Still working on it - this can take a few minutes for lots of content...';
+                    progressText.className = 'status-message';
+                    progressText.style.opacity = '1';
+                }, 300);
             }
         }
         

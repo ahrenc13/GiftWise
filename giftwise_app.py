@@ -660,6 +660,53 @@ def check_tiktok_privacy(username):
             'icon': '⚠️'
         }
 
+def check_pinterest_profile(username):
+    """
+    Check if Pinterest profile exists and is accessible
+    Returns: dict with valid, exists, message
+    """
+    try:
+        url = f'https://www.pinterest.com/{username}/'
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        
+        response = requests.get(url, headers=headers, timeout=10, allow_redirects=False)
+        
+        # Account doesn't exist
+        if response.status_code == 404:
+            return {
+                'valid': False,
+                'exists': False,
+                'message': '✗ Profile not found - please check the username',
+                'icon': '❌'
+            }
+        
+        # Profile exists
+        if response.status_code == 200:
+            return {
+                'valid': True,
+                'exists': True,
+                'message': '✓ Profile found',
+                'icon': '✅'
+            }
+        
+        return {
+            'valid': False,
+            'exists': False,
+            'message': '⚠️ Unable to verify profile',
+            'icon': '⚠️'
+        }
+    
+    except Exception as e:
+        logger.error(f"Pinterest profile check error: {e}")
+        return {
+            'valid': True,  # Allow them to try anyway
+            'error': str(e),
+            'message': '⚠️ Unable to verify - click Connect to try',
+            'icon': '⚠️'
+        }
+
 # ============================================================================
 # SCRAPING FUNCTIONS (with progress tracking)
 # ============================================================================
@@ -1522,6 +1569,20 @@ def start_scraping():
                     user = get_user(user_id)
                     if user:
                         platforms = user.get('platforms', {})
+                        platforms['pinterest']['data'] = data
+                        platforms['pinterest']['status'] = 'complete'
+                        platforms['pinterest']['connected_at'] = datetime.now().isoformat()
+                        save_user(user_id, {'platforms': platforms})
+                else:
+                    # Mark as failed if scraping returned None
+                    user = get_user(user_id)
+                    if user:
+                        platforms = user.get('platforms', {})
+                        platforms['pinterest']['status'] = 'failed'
+                        platforms['pinterest']['error'] = 'Failed to scrape Pinterest profile'
+                        save_user(user_id, {'platforms': platforms})
+                    if user:
+                        platforms = user.get('platforms', {})
                         if 'pinterest' in platforms:
                             platforms['pinterest']['data'] = data
                             platforms['pinterest']['status'] = 'complete'
@@ -2330,17 +2391,34 @@ def check_scraping_status():
     
     platforms = user.get('platforms', {})
     
+    if not platforms:
+        return jsonify({'complete': False, 'error': 'No platforms connected'})
+    
     # Check if any scraping is still in progress
     scraping_in_progress = False
+    has_data = False
+    
     for platform, data in platforms.items():
-        if data.get('status') == 'scraping':
+        status = data.get('status', '')
+        
+        # Still scraping
+        if status == 'scraping':
             scraping_in_progress = True
             break
+        
+        # Has completed data
+        if status == 'complete' and data.get('data'):
+            has_data = True
     
+    # If still scraping, return in progress
     if scraping_in_progress:
         return jsonify({'complete': False, 'in_progress': True})
     
-    # Check if we have data
+    # If no data yet, might still be processing
+    if not has_data:
+        return jsonify({'complete': False, 'in_progress': True, 'message': 'Processing data...'})
+    
+    # Check if we have sufficient data
     quality = check_data_quality(platforms)
     
     if quality['quality'] == 'insufficient':

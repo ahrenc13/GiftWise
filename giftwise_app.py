@@ -934,6 +934,140 @@ def scrape_tiktok_profile(username, max_videos=50, task_id=None):
             set_progress(task_id, 'error', f'Error: {str(e)}', 0)
         return None
 
+def scrape_pinterest_profile(username, max_pins=100, task_id=None):
+    """
+    Scrape Pinterest profile (boards and pins)
+    Uses basic web scraping - can be enhanced with Apify later
+    """
+    try:
+        if task_id:
+            set_progress(task_id, 'scraping', f'Scraping Pinterest profile @{username}...', 10)
+        
+        logger.info(f"Starting Pinterest scrape for @{username}")
+        
+        # Pinterest profile URL
+        profile_url = f'https://www.pinterest.com/{username}/'
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        }
+        
+        if task_id:
+            set_progress(task_id, 'scraping', 'Fetching profile page...', 30)
+        
+        response = requests.get(profile_url, headers=headers, timeout=15)
+        
+        if response.status_code != 200:
+            if task_id:
+                set_progress(task_id, 'error', f'Failed to access Pinterest profile (status {response.status_code})', 0)
+            logger.error(f"Pinterest profile not accessible: {response.status_code}")
+            return None
+        
+        html = response.text
+        
+        if task_id:
+            set_progress(task_id, 'scraping', 'Parsing pins and boards...', 50)
+        
+        # Extract basic data from HTML
+        import re
+        import json
+        
+        pins = []
+        boards = []
+        hashtags = []
+        
+        # Try to extract JSON-LD or embedded JSON data
+        json_patterns = [
+            r'<script[^>]*type="application/json"[^>]*>(.*?)</script>',
+            r'window\.__initialData__\s*=\s*({.*?});',
+            r'<script[^>]*id="initial-state"[^>]*>(.*?)</script>'
+        ]
+        
+        extracted_data = None
+        for pattern in json_patterns:
+            matches = re.findall(pattern, html, re.DOTALL)
+            for match in matches:
+                try:
+                    data = json.loads(match)
+                    if isinstance(data, dict) and ('pins' in str(data).lower() or 'boards' in str(data).lower()):
+                        extracted_data = data
+                        break
+                except:
+                    continue
+            if extracted_data:
+                break
+        
+        # Fallback: Extract basic info from HTML
+        # Get board names
+        board_pattern = r'<a[^>]*href="/[^/]+/([^/]+)/"[^>]*>.*?<div[^>]*>([^<]+)</div>'
+        board_matches = re.findall(board_pattern, html)
+        for board_slug, board_name in board_matches[:20]:  # Limit to 20 boards
+            boards.append({
+                'name': board_name.strip(),
+                'slug': board_slug,
+                'url': f'https://www.pinterest.com/{username}/{board_slug}/'
+            })
+        
+        # Extract hashtags from pin descriptions
+        hashtag_pattern = r'#(\w+)'
+        hashtag_matches = re.findall(hashtag_pattern, html)
+        hashtags = list(set(hashtag_matches[:50]))  # Unique hashtags, limit 50
+        
+        # Extract pin descriptions/titles
+        pin_patterns = [
+            r'<div[^>]*class="[^"]*pin[^"]*"[^>]*>.*?<div[^>]*>([^<]+)</div>',
+            r'alt="([^"]+)"[^>]*class="[^"]*pin[^"]*"',
+            r'<img[^>]*alt="([^"]+)"[^>]*>'
+        ]
+        
+        pin_titles = []
+        for pattern in pin_patterns:
+            matches = re.findall(pattern, html, re.DOTALL)
+            pin_titles.extend([m.strip() for m in matches if len(m.strip()) > 5])
+        
+        # Create pin objects
+        for i, title in enumerate(pin_titles[:max_pins]):
+            pins.append({
+                'title': title,
+                'description': title,
+                'index': i
+            })
+        
+        if task_id:
+            set_progress(task_id, 'scraping', f'Found {len(pins)} pins, {len(boards)} boards', 80)
+        
+        # Extract interests from boards and pins
+        interests = []
+        for board in boards:
+            interests.append(board['name'].lower())
+        for pin in pins[:20]:  # Analyze top pins
+            interests.append(pin['title'].lower())
+        
+        # Build result
+        result = {
+            'platform': 'pinterest',
+            'username': username,
+            'method': 'scraping',
+            'pins': pins[:max_pins],
+            'boards': boards,
+            'hashtags': hashtags[:30],
+            'total_pins': len(pins),
+            'total_boards': len(boards),
+            'interests': list(set(interests))[:50],
+            'collected_at': datetime.now().isoformat()
+        }
+        
+        if task_id:
+            set_progress(task_id, 'complete', f'Scraped {len(pins)} pins from {len(boards)} boards', 100)
+        
+        logger.info(f"Successfully scraped {len(pins)} Pinterest pins for @{username}")
+        return result
+    
+    except Exception as e:
+        logger.error(f"Pinterest scraping error for @{username}: {e}", exc_info=True)
+        if task_id:
+            set_progress(task_id, 'error', f'Error: {str(e)}', 0)
+        return None
+
 def parse_tiktok_data(data, username):
     """
     Parse TikTok data with repost analysis
@@ -1373,6 +1507,31 @@ def start_scraping():
         thread = threading.Thread(target=scrape_tt)
         thread.daemon = True
         thread.start()
+    
+    # Pinterest scraping (if using scraping method, not OAuth)
+    if 'pinterest' in platforms:
+        pinterest_data = platforms['pinterest']
+        # Only scrape if method is 'scraping' and status is 'ready'
+        if pinterest_data.get('method') == 'scraping' and pinterest_data.get('status') == 'ready':
+            task_id = str(uuid.uuid4())
+            scrape_tasks['pinterest'] = task_id
+            username = pinterest_data['username']
+            
+            def scrape_pin():
+                data = scrape_pinterest_profile(username, max_pins=100, task_id=task_id)
+                if data:
+                    user = get_user(user_id)
+                    if user:
+                        platforms = user.get('platforms', {})
+                        if 'pinterest' in platforms:
+                            platforms['pinterest']['data'] = data
+                            platforms['pinterest']['status'] = 'complete'
+                            platforms['pinterest']['connected_at'] = datetime.now().isoformat()
+                            save_user(user_id, {'platforms': platforms})
+            
+            thread = threading.Thread(target=scrape_pin)
+            thread.daemon = True
+            thread.start()
     
     # Redirect to multi-platform progress page
     return redirect(f"/scraping-progress?tasks={','.join([f'{k}:{v}' for k, v in scrape_tasks.items()])}")
@@ -2187,6 +2346,32 @@ def api_usage():
 # ============================================================================
 # OAUTH ROUTES
 # ============================================================================
+
+@app.route('/connect/pinterest', methods=['POST'])
+def connect_pinterest():
+    """Connect Pinterest via scraping (alternative to OAuth)"""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    
+    username = sanitize_username(request.form.get('username', ''))
+    
+    if not username:
+        return redirect('/connect-platforms?error=pinterest_no_username')
+    
+    user_id = session['user_id']
+    
+    # Save Pinterest username (will scrape on generate)
+    platforms = user.get('platforms', {})
+    platforms['pinterest'] = {
+        'username': username,
+        'status': 'ready',
+        'method': 'scraping'  # Scraping method instead of OAuth
+    }
+    save_user(user_id, {'platforms': platforms})
+    logger.info(f"User {user_id} connected Pinterest via scraping: {username}")
+    
+    return redirect('/connect-platforms?success=pinterest_ready')
 
 @app.route('/oauth/pinterest')
 def pinterest_oauth():

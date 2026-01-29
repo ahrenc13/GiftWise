@@ -180,13 +180,13 @@ def get_product_image(recommendation):
     Get image for a recommendation using multiple strategies
     
     Priority:
-    1. Extract from product URL
-    2. Google Image Search (if API configured)
-    3. Unsplash (evocative image)
-    4. Placeholder
+    1. Extract from product URL (if direct product page)
+    2. Google Image Search (if API configured) - ALWAYS try this for product images
+    3. Unsplash (evocative image) - if Google fails
+    4. Placeholder - last resort
     
     Args:
-        recommendation: Dict with name, product_url, etc.
+        recommendation: Dict with name, product_url, purchase_link, etc.
     
     Returns:
         Dict with 'image_url', 'image_source', 'fallback'
@@ -194,8 +194,8 @@ def get_product_image(recommendation):
     product_name = recommendation.get('name', '')
     product_url = recommendation.get('product_url', '') or recommendation.get('purchase_link', '')
     
-    # Strategy 1: Extract from product URL
-    if product_url:
+    # Strategy 1: Extract from product URL (only if it's a direct product page, not search)
+    if product_url and not is_search_url(product_url):
         img_url = extract_image_from_url(product_url)
         if img_url:
             return {
@@ -204,7 +204,8 @@ def get_product_image(recommendation):
                 'fallback': False
             }
     
-    # Strategy 2: Google Image Search (if configured)
+    # Strategy 2: Google Image Search (if configured) - BEST for product images
+    # This should work even without product_url
     if GOOGLE_CUSTOM_SEARCH_API_KEY and GOOGLE_CUSTOM_SEARCH_ENGINE_ID:
         img_url = get_google_image_search(
             product_name,
@@ -218,7 +219,7 @@ def get_product_image(recommendation):
                 'fallback': False
             }
     
-    # Strategy 3: Unsplash (evocative image)
+    # Strategy 3: Unsplash (evocative image) - works without APIs if configured
     if UNSPLASH_ACCESS_KEY:
         img_url = get_unsplash_image(product_name, UNSPLASH_ACCESS_KEY)
         if img_url:
@@ -229,12 +230,36 @@ def get_product_image(recommendation):
             }
     
     # Strategy 4: Placeholder service (always works)
-    # Using placeholder.com or similar
+    # Using a better placeholder that shows product name
+    product_name_encoded = product_name.replace(' ', '+')[:30]
     return {
-        'image_url': f'https://via.placeholder.com/400x400/667eea/ffffff?text={product_name[:20]}',
+        'image_url': f'https://via.placeholder.com/400x400/667eea/ffffff?text={product_name_encoded}',
         'image_source': 'placeholder',
         'fallback': True
     }
+
+def is_search_url(url):
+    """
+    Check if URL is a search results page (not a product page)
+    """
+    if not url:
+        return False
+    
+    search_indicators = [
+        '/s?',  # Amazon search
+        '/search?',  # Generic search
+        '?q=',  # Query parameter
+        '?k=',  # Amazon search key
+        'tbm=shop',  # Google Shopping
+        '/search/',  # Etsy search path
+    ]
+    
+    url_lower = url.lower()
+    for indicator in search_indicators:
+        if indicator in url_lower:
+            return True
+    
+    return False
 
 def process_recommendation_images(recommendations):
     """

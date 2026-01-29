@@ -367,17 +367,11 @@ Return EXACTLY {rec_count} recommendations as JSON array:
 [
   {{
     "name": "EXACT product name with brand/model (e.g., 'LEGO Architecture Tokyo Skyline Set 21051')",
-    "description": "2-3 sentences describing what this is and why it's special",
-    "why_perfect": "DETAILED explanation with SPECIFIC evidence:
-      - Platform signals: Instagram (3 posts about Tokyo, #tokyo 8x), TikTok (reposts from @tokyotravel)
-      - Engagement: High (avg 150 likes on travel posts)
-      - Gap analysis: They collect LEGO Architecture but don't have Tokyo set
-      - Aspirational signal: Reposts travel content frequently
-      - Price match: Wishlist items average $60, this fits range
-      - Not duplicate: Not on wishlist, not owned",
+    "description": "BRIEF 1-2 sentence description (max 40 words total)",
+    "why_perfect": "CONCISE explanation (max 20 words): e.g., 'Based on 3 Tokyo posts (#tokyo 8x) and LEGO Architecture collection gap'",
     "price_range": "$55-65",
     "where_to_buy": "Specific retailer name (Etsy shop name, UncommonGoods, brand.com, Amazon as fallback)",
-    "product_url": "https://specific-url.com (prefer Etsy, specialty retailers, brand sites over Amazon)",
+    "product_url": "DIRECT product page URL (NOT search results). Must be a real, buyable product page. Verify URL works before including.",
     "retailer_type": "etsy" or "specialty" or "brand_direct" or "amazon",
     "shipping_info": "Ships in X days" (if known, helps user decide),
     "gift_type": "physical",
@@ -392,6 +386,26 @@ Return EXACTLY {rec_count} recommendations as JSON array:
     }}
   }}
 ]
+
+=== CRITICAL REQUIREMENTS ===
+
+1. **REAL, BUYABLE PRODUCTS ONLY**
+   - Every product_url MUST be a DIRECT link to an actual product page
+   - NOT search results (e.g., NOT amazon.com/s?k=...)
+   - NOT category pages
+   - MUST be a specific product that can be purchased immediately
+   - Verify the URL works and shows a real product before including
+
+2. **DESCRIPTION LENGTH**
+   - Total text (description + why_perfect) = MAX 60 words
+   - Description: Max 40 words
+   - Why_perfect: Max 20 words
+   - Be concise but specific
+
+3. **PRODUCT VERIFICATION**
+   - Only recommend products that exist and are currently available
+   - If unsure about availability, don't recommend it
+   - Prefer products from reliable retailers with good stock
 
 === QUALITY STANDARDS ===
 

@@ -310,6 +310,11 @@
 
                 {% if platforms.tiktok %}
                     <div class="connected-badge">✓ Connected: @{{ platforms.tiktok.username }}</div>
+                    <form method="POST" action="/disconnect/tiktok" style="margin-top: 10px;">
+                        <button type="submit" class="connect-button" style="background: #ef4444; font-size: 0.9em;">
+                            Disconnect
+                        </button>
+                    </form>
                 {% else %}
                     <form method="POST" action="/connect/tiktok" class="platform-form">
                         <div class="form-group">
@@ -347,12 +352,28 @@
                     </form>
                 {% else %}
                     {% if platform_access.pinterest %}
-                        <a href="/oauth/pinterest" class="connect-button" style="display: block; text-align: center; text-decoration: none; line-height: 1.4;">
-                            Connect Pinterest
-                        </a>
-                        <p style="margin-top: 10px; font-size: 0.85em; color: #6b7280; text-align: center;">
-                            You'll be redirected to Pinterest to authorize
-                        </p>
+                        <div style="margin-bottom: 15px;">
+                            <a href="/oauth/pinterest" class="connect-button" style="display: block; text-align: center; text-decoration: none; line-height: 1.4; margin-bottom: 10px;">
+                                Connect via OAuth (Your Account)
+                            </a>
+                            <p style="font-size: 0.85em; color: #6b7280; text-align: center; margin-bottom: 15px;">
+                                Or scrape a public profile:
+                            </p>
+                            <form method="POST" action="/connect/pinterest" class="platform-form">
+                                <div class="form-group">
+                                    <label for="pinterest-username">Pinterest Username</label>
+                                    <input type="text" 
+                                           name="username" 
+                                           id="pinterest-username" 
+                                           placeholder="username" 
+                                           required>
+                                    <div id="pinterest-username-status" class="validation-status"></div>
+                                </div>
+                                <button type="submit" id="pinterest-submit" class="connect-button" style="background: #6b7280;">
+                                    Connect via Scraping
+                                </button>
+                            </form>
+                        </div>
                     {% else %}
                         <p style="color: #6b7280; text-align: center; padding: 20px;">
                             Upgrade to Pro to connect Pinterest
@@ -361,7 +382,8 @@
                 {% endif %}
             </div>
             
-            <!-- Spotify -->
+            <!-- Spotify (Hidden - OAuth not available yet) -->
+            {% if False %}
             <div class="platform-card {% if platforms.spotify %}connected{% endif %}">
                 <div class="platform-header">
                     <div class="platform-icon">🎵</div>
@@ -378,14 +400,12 @@
                         </button>
                     </form>
                 {% else %}
-                    <a href="/oauth/spotify" class="connect-button" style="display: block; text-align: center; text-decoration: none; line-height: 1.4;">
-                        Connect Spotify
-                    </a>
-                    <p style="margin-top: 10px; font-size: 0.85em; color: #6b7280; text-align: center;">
-                        You'll be redirected to Spotify to authorize
+                    <p style="color: #6b7280; text-align: center; padding: 20px;">
+                        Spotify integration coming soon
                     </p>
                 {% endif %}
             </div>
+            {% endif %}
         </div>
 
         <!-- Optional Platforms Section (Collapsible to avoid paralysis) -->
@@ -512,11 +532,38 @@
             this.statusDiv = document.getElementById(`${inputId}-status`);
             this.timeout = null;
             
-            if (this.input) {
-                this.input.addEventListener('input', () => this.handleInput());
-                // Disable button initially
-                if (this.button) this.button.disabled = true;
+            if (!this.input) {
+                console.warn(`UsernameValidator: Input ${inputId} not found`);
+                return;
             }
+            
+            if (!this.statusDiv) {
+                console.error(`UsernameValidator: Status div ${inputId}-status not found`);
+                // Create status div if missing
+                const formGroup = this.input.closest('.form-group');
+                if (formGroup) {
+                    this.statusDiv = document.createElement('div');
+                    this.statusDiv.id = `${inputId}-status`;
+                    this.statusDiv.className = 'validation-status';
+                    this.input.parentNode.insertBefore(this.statusDiv, this.input.nextSibling);
+                } else {
+                    return;
+                }
+            }
+            
+            // Listen for input changes
+            this.input.addEventListener('input', () => this.handleInput());
+            this.input.addEventListener('blur', () => {
+                // Validate immediately on blur
+                clearTimeout(this.timeout);
+                const username = this.input.value.trim().replace('@', '');
+                if (username.length >= 2) {
+                    this.validateUsername(username);
+                }
+            });
+            
+            // Disable button initially
+            if (this.button) this.button.disabled = true;
         }
         
         handleInput() {
@@ -663,10 +710,12 @@
         // Initialize validators
         new UsernameValidator('instagram-username', 'instagram', 'instagram-submit');
         new UsernameValidator('tiktok-username', 'tiktok', 'tiktok-submit');
+        new UsernameValidator('pinterest-username', 'pinterest', 'pinterest-submit');
         
         // Initialize autocomplete
         new UsernameAutocomplete('instagram-username', 'instagram');
         new UsernameAutocomplete('tiktok-username', 'tiktok');
+        new UsernameAutocomplete('pinterest-username', 'pinterest');
     });
     </script>
 </body>

@@ -526,6 +526,10 @@
                         <button onclick="copyLink('{{ rec.purchase_link }}', this)" class="rec-link" style="background: #6b7280; cursor: pointer; border: none;">
                             📋 Copy Link
                         </button>
+                        {% elif rec.link_error %}
+                        <span class="rec-link disabled" title="{{ rec.link_error }}" style="cursor: help;">
+                            ⚠️ Link Needed
+                        </span>
                         {% else %}
                         <span class="rec-link disabled">Link Coming Soon</span>
                         {% endif %}

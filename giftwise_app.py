@@ -577,19 +577,38 @@ def check_instagram_privacy(username):
                 'icon': '⚠️'
             }
         
-        html = response.text
+        html = response.text.lower()
         
-        # Check for privacy indicators - multiple methods
+        # Check for privacy indicators - multiple methods (more robust)
         # Method 1: JSON-LD data
-        is_private = '"is_private":true' in html or '"is_private": true' in html
+        is_private = (
+            '"is_private":true' in html or 
+            '"is_private": true' in html or
+            '"isprivate":true' in html
+        )
         
-        # Method 2: Check for "This Account is Private" text
+        # Method 2: Check for "This Account is Private" text (various formats)
         if not is_private:
-            is_private = 'this account is private' in html.lower() or 'account is private' in html.lower()
+            private_indicators = [
+                'this account is private',
+                'account is private',
+                'private account',
+                'posts are private',
+                'this profile is private'
+            ]
+            is_private = any(indicator in html for indicator in private_indicators)
         
         # Method 3: Check for login redirect indicators
         if not is_private:
-            is_private = 'log in' in html.lower() and 'see photos' in html.lower()
+            login_indicators = (
+                ('log in' in html or 'login' in html) and 
+                ('see photos' in html or 'see posts' in html or 'follow' in html)
+            )
+            is_private = login_indicators
+        
+        # Method 4: Check if we're redirected to login page
+        if not is_private:
+            is_private = 'accounts/login' in response.url.lower()
         
         if is_private:
             return {
@@ -601,16 +620,28 @@ def check_instagram_privacy(username):
                 'icon': '🔒'
             }
         
-        # Check if account exists (has profile data)
+        # Check if account exists (has profile data) - more comprehensive checks
         # Look for common Instagram profile indicators
-        has_profile_data = (
-            'profile_pic_url' in html or 
-            'edge_followed_by' in html or 
-            'edge_owner_to_timeline_media' in html or
-            f'/{username}/' in html
-        )
+        profile_indicators = [
+            'profile_pic_url',
+            'edge_followed_by',
+            'edge_owner_to_timeline_media',
+            'edge_felix_video_timeline',
+            'graphql',
+            'window._shareddata',
+            'userinfo',
+            f'/{username}/',
+            f'@{username}',
+            'biography',
+            'full_name'
+        ]
         
-        if has_profile_data:
+        has_profile_data = any(indicator in html for indicator in profile_indicators)
+        
+        # Also check if we got a 200 response and URL contains the username
+        url_contains_username = username.lower() in response.url.lower()
+        
+        if has_profile_data or (response.status_code == 200 and url_contains_username):
             # Public account found
             return {
                 'valid': True,

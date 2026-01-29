@@ -304,7 +304,7 @@
                     <div class="platform-icon">🎬</div>
                     <div class="platform-info">
                         <h3>TikTok</h3>
-                        <p>Video content analysis{% if not platform_access.tiktok %} <span class="lock-icon">🔒 Pro</span>{% endif %}</p>
+                        <p>Discover their interests{% if not platform_access.tiktok %} <span class="lock-icon">🔒 Pro</span>{% endif %}</p>
                     </div>
                 </div>
 
@@ -339,7 +339,7 @@
                     <div class="platform-icon">📌</div>
                     <div class="platform-info">
                         <h3>Pinterest</h3>
-                        <p>Board and pin analysis{% if not platform_access.pinterest %} <span class="lock-icon">🔒 Pro</span>{% endif %}</p>
+                        <p>What they're saving for later{% if not platform_access.pinterest %} <span class="lock-icon">🔒 Pro</span>{% endif %}</p>
                     </div>
                 </div>
 
@@ -370,7 +370,7 @@
                                     <div id="pinterest-username-status" class="validation-status"></div>
                                 </div>
                                 <button type="submit" id="pinterest-submit" class="connect-button" style="background: #6b7280;">
-                                    Connect via Scraping
+                                    Connect Profile
                                 </button>
                                 {% if request.args.get('error') == 'pinterest_no_username' %}
                                 <p style="color: #ef4444; font-size: 0.85em; margin-top: 10px;">Please enter a Pinterest username</p>
@@ -637,6 +637,7 @@
                 this.statusDiv.innerHTML = '';
                 this.statusDiv.className = 'validation-status';
                 this.statusDiv.style.display = 'none';
+                this.statusDiv.style.visibility = 'hidden';
                 return;
             }
             
@@ -644,6 +645,10 @@
             this.statusDiv.className = `validation-status ${type}`;
             this.statusDiv.style.display = 'block';
             this.statusDiv.style.visibility = 'visible';
+            this.statusDiv.style.opacity = '1';
+            
+            // Force a reflow to ensure visibility
+            this.statusDiv.offsetHeight;
         }
     }
 

@@ -55,54 +55,58 @@
             opacity: 0.95;
         }
         
-        /* Progress Bar */
-        .progress-container {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 50px;
-            padding: 8px;
-            margin-bottom: 40px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-        }
-
-        .progress-bar {
-            background: linear-gradient(90deg, #10b981, #059669);
-            height: 30px;
-            border-radius: 50px;
-            width: 0%;
-            transition: width 1.5s ease-out;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 0.9em;
-            box-shadow: 0 2px 10px rgba(16, 185, 129, 0.4);
-        }
-
-        .progress-text {
-            text-align: center;
-            margin-top: 15px;
-            font-size: 1.1em;
-            font-weight: 600;
-            transition: opacity 0.3s ease;
+        /* Stages Container */
+        .stages-container {
+            margin: 50px 0;
         }
 
         /* Stages */
         .stages {
             display: flex;
             justify-content: space-between;
-            margin: 50px 0;
+            margin-bottom: 30px;
             position: relative;
+            padding: 0 20px;
         }
 
         .stages::before {
             content: '';
             position: absolute;
-            top: 20px;
-            left: 0;
-            right: 0;
-            height: 3px;
+            top: 25px;
+            left: 60px;
+            right: 60px;
+            height: 4px;
             background: rgba(255, 255, 255, 0.2);
             z-index: 0;
+            border-radius: 2px;
+            transition: background 0.5s ease;
+        }
+
+        .stages::after {
+            content: '';
+            position: absolute;
+            top: 25px;
+            left: 60px;
+            height: 4px;
+            background: linear-gradient(90deg, #10b981, #059669);
+            z-index: 1;
+            border-radius: 2px;
+            transition: width 1s ease-out;
+            width: 0%;
+        }
+
+        .stages.stage1::after { width: 0%; }
+        .stages.stage2::after { width: calc(33.33% - 40px); }
+        .stages.stage3::after { width: calc(66.66% - 40px); }
+        .stages.stage4::after { width: calc(100% - 120px); }
+
+        .progress-text {
+            text-align: center;
+            font-size: 1.1em;
+            font-weight: 600;
+            transition: opacity 0.3s ease;
+            margin-top: 20px;
+            min-height: 30px;
         }
 
         .stage {
@@ -113,26 +117,58 @@
         }
 
         .stage-icon {
-            width: 40px;
-            height: 40px;
+            width: 50px;
+            height: 50px;
             background: rgba(255, 255, 255, 0.2);
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            margin: 0 auto 10px;
-            font-size: 1.2em;
+            margin: 0 auto 12px;
+            font-size: 1.5em;
             transition: all 0.5s ease;
+            border: 3px solid transparent;
+            position: relative;
+            z-index: 2;
         }
 
         .stage.active .stage-icon {
             background: #10b981;
-            box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
-            transform: scale(1.2);
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.8);
+            transform: scale(1.15);
+            border-color: rgba(255, 255, 255, 0.5);
+            animation: pulse-active 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-active {
+            0%, 100% {
+                box-shadow: 0 0 25px rgba(16, 185, 129, 0.8);
+            }
+            50% {
+                box-shadow: 0 0 35px rgba(16, 185, 129, 1);
+            }
         }
 
         .stage.completed .stage-icon {
             background: #10b981;
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .stage.completed .stage-icon::after {
+            content: '✓';
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: white;
+            color: #10b981;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7em;
+            font-weight: bold;
         }
 
         .stage-label {
@@ -249,32 +285,27 @@
             <p>Matching a picture of who {% if recipient_type == 'someone_else' %}they{% else %}you{% endif %} are to what {% if recipient_type == 'someone_else' %}they{% else %}you{% endif %} want</p>
         </div>
 
-        <!-- Progress Bar -->
-        <div class="progress-container">
-            <div class="progress-bar" id="progressBar">
-                <span id="progressPercent">0%</span>
+        <!-- Stages Progress Indicator -->
+        <div class="stages-container">
+            <div class="stages">
+                <div class="stage" id="stage1">
+                    <div class="stage-icon">📡</div>
+                    <div class="stage-label">Connect</div>
+                </div>
+                <div class="stage" id="stage2">
+                    <div class="stage-icon">📥</div>
+                    <div class="stage-label">Download</div>
+                </div>
+                <div class="stage" id="stage3">
+                    <div class="stage-icon">🔍</div>
+                    <div class="stage-label">Understand</div>
+                </div>
+                <div class="stage" id="stage4">
+                    <div class="stage-icon">✨</div>
+                    <div class="stage-label">Curate</div>
+                </div>
             </div>
-        </div>
-        <div class="progress-text" id="progressText">Connecting to platforms...</div>
-
-        <!-- Stages -->
-        <div class="stages">
-            <div class="stage" id="stage1">
-                <div class="stage-icon">📡</div>
-                <div class="stage-label">Connect</div>
-            </div>
-            <div class="stage" id="stage2">
-                <div class="stage-icon">📥</div>
-                <div class="stage-label">Download</div>
-            </div>
-            <div class="stage" id="stage3">
-                <div class="stage-icon">🔍</div>
-                <div class="stage-label">Understand</div>
-            </div>
-            <div class="stage" id="stage4">
-                <div class="stage-icon">✨</div>
-                <div class="stage-label">Curate</div>
-            </div>
+            <div class="progress-text" id="progressText">Connecting to platforms...</div>
         </div>
 
         <!-- Connected Platforms -->
@@ -335,16 +366,16 @@
         const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
         console.log('Elapsed time:', elapsedSeconds, 'seconds');
         
-        // Cap progress at 75% until scraping actually completes
+        // Stage definitions - no percentages, just stages
         const stages = [
-            { time: 0, percent: 20, text: "Connecting to social platforms...", stage: 1 },
-            { time: 15, percent: 40, text: "Downloading recent posts and content...", stage: 2 },
-            { time: 30, percent: 60, text: "Understanding what they love...", stage: 3 },
-            { time: 60, percent: 75, text: "Finding gifts that feel made just for them...", stage: 4 }
+            { time: 0, text: "Connecting to social platforms...", stage: 1 },
+            { time: 15, text: "Downloading recent posts and content...", stage: 2 },
+            { time: 30, text: "Understanding what they love...", stage: 3 },
+            { time: 60, text: "Finding gifts that feel made just for them...", stage: 4 }
         ];
         
         // Track warning state
-        const state = { warningShown: false };
+        const state = { warningShown: false, currentStageNum: 1 };
         
         // Find current stage based on elapsed time
         let currentStage = stages[0];
@@ -355,17 +386,17 @@
         }
         
         // Update UI immediately on page load
-        const progressBar = document.getElementById('progressBar');
-        const progressPercent = document.getElementById('progressPercent');
+        const stagesContainer = document.querySelector('.stages');
         const progressText = document.getElementById('progressText');
         
-        progressBar.style.width = currentStage.percent + '%';
-        progressPercent.textContent = currentStage.percent + '%';
         progressText.textContent = currentStage.text;
+        state.currentStageNum = currentStage.stage;
         
-        // Update stage indicators
+        // Update stage indicators and container class
+        stagesContainer.className = 'stages stage' + currentStage.stage;
         for (let i = 1; i <= 4; i++) {
             const stageEl = document.getElementById('stage' + i);
+            stageEl.classList.remove('active', 'completed');
             if (i < currentStage.stage) {
                 stageEl.classList.add('completed');
             } else if (i === currentStage.stage) {
@@ -380,7 +411,7 @@
         function updateProgressSmoothly() {
             const elapsed = (Date.now() - startTime) / 1000;
             
-            // Find current stage
+            // Find current stage based on elapsed time
             let currentStage = stages[0];
             for (let stage of stages) {
                 if (elapsed >= stage.time) {
@@ -388,55 +419,38 @@
                 }
             }
             
-            // CRITICAL: Never allow progress above 75% until scraping completes
-            let targetPercent = Math.min(currentStage.percent, 75);
-            const currentPercent = parseInt(progressBar.style.width) || 0;
-            
-            // Never allow progress to decrease
-            if (targetPercent < currentPercent) {
-                targetPercent = currentPercent;
-            }
-            
-            // Smoothly animate progress bar
-            if (Math.abs(targetPercent - currentPercent) > 1) {
-                const newPercent = currentPercent + (targetPercent - currentPercent) * 0.1;
-                progressBar.style.width = newPercent + '%';
-                progressPercent.textContent = Math.round(newPercent) + '%';
-            } else {
-                progressBar.style.width = targetPercent + '%';
-                progressPercent.textContent = targetPercent + '%';
-            }
-            
-            // Update text smoothly
-            if (progressText.textContent !== currentStage.text) {
+            // Only update if stage changed
+            if (currentStage.stage !== state.currentStageNum) {
+                state.currentStageNum = currentStage.stage;
+                
+                // Update container class for progress line
+                stagesContainer.className = 'stages stage' + currentStage.stage;
+                
+                // Update text smoothly
                 progressText.style.opacity = '0';
                 setTimeout(() => {
                     progressText.textContent = currentStage.text;
                     progressText.style.opacity = '1';
                 }, 200);
-            }
-            
-            // Update stage indicators
-            for (let i = 1; i <= 4; i++) {
-                const stageEl = document.getElementById('stage' + i);
-                if (i < currentStage.stage) {
-                    stageEl.classList.add('completed');
-                    stageEl.classList.remove('active');
-                } else if (i === currentStage.stage) {
-                    stageEl.classList.add('active');
-                } else {
+                
+                // Update stage indicators
+                for (let i = 1; i <= 4; i++) {
+                    const stageEl = document.getElementById('stage' + i);
                     stageEl.classList.remove('active', 'completed');
+                    if (i < currentStage.stage) {
+                        stageEl.classList.add('completed');
+                    } else if (i === currentStage.stage) {
+                        stageEl.classList.add('active');
+                    }
                 }
             }
             
             // Check timeout - but don't stop, just show message
             if (elapsed > 120 && !state.warningShown) {
                 state.warningShown = true;
-                const originalText = progressText.textContent;
                 progressText.style.opacity = '0';
                 setTimeout(() => {
                     progressText.innerHTML = '⏳ Still working on it - this can take a few minutes for lots of content...';
-                    progressText.className = 'status-message';
                     progressText.style.opacity = '1';
                 }, 300);
             }
@@ -454,13 +468,14 @@
                     clearInterval(checkStatusInterval);
                     
                     // Show completion
-                    progressBar.style.width = '100%';
-                    progressPercent.textContent = '100%';
-                    progressText.textContent = '✓ Analysis complete! Redirecting...';
+                    stagesContainer.className = 'stages stage4';
+                    progressText.textContent = '✓ All done! Redirecting...';
                     
                     // Mark all stages complete
                     for (let i = 1; i <= 4; i++) {
-                        document.getElementById('stage' + i).classList.add('completed');
+                        const stageEl = document.getElementById('stage' + i);
+                        stageEl.classList.remove('active');
+                        stageEl.classList.add('completed');
                     }
                     
                     // Smooth redirect after brief delay

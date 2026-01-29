@@ -1564,34 +1564,39 @@ def start_scraping():
             username = pinterest_data['username']
             
             def scrape_pin():
-                data = scrape_pinterest_profile(username, max_pins=100, task_id=task_id)
-                if data:
-                    user = get_user(user_id)
-                    if user:
-                        platforms = user.get('platforms', {})
-                        platforms['pinterest']['data'] = data
-                        platforms['pinterest']['status'] = 'complete'
-                        platforms['pinterest']['connected_at'] = datetime.now().isoformat()
-                        save_user(user_id, {'platforms': platforms})
-                else:
-                    # Mark as failed if scraping returned None
-                    user = get_user(user_id)
-                    if user:
-                        platforms = user.get('platforms', {})
-                        platforms['pinterest']['status'] = 'failed'
-                        platforms['pinterest']['error'] = 'Failed to scrape Pinterest profile'
-                        save_user(user_id, {'platforms': platforms})
-                    if user:
-                        platforms = user.get('platforms', {})
-                        if 'pinterest' in platforms:
+                try:
+                    data = scrape_pinterest_profile(username, max_pins=100, task_id=task_id)
+                    if data:
+                        user = get_user(user_id)
+                        if user:
+                            platforms = user.get('platforms', {})
                             platforms['pinterest']['data'] = data
                             platforms['pinterest']['status'] = 'complete'
                             platforms['pinterest']['connected_at'] = datetime.now().isoformat()
                             save_user(user_id, {'platforms': platforms})
+                            logger.info(f"Pinterest scraping completed for @{username}")
+                    else:
+                        # Mark as failed if scraping returned None
+                        logger.warning(f"Pinterest scraping returned None for @{username}")
+                        user = get_user(user_id)
+                        if user:
+                            platforms = user.get('platforms', {})
+                            platforms['pinterest']['status'] = 'failed'
+                            platforms['pinterest']['error'] = 'Failed to scrape Pinterest profile'
+                            save_user(user_id, {'platforms': platforms})
+                except Exception as e:
+                    logger.error(f"Error scraping Pinterest for @{username}: {e}")
+                    user = get_user(user_id)
+                    if user:
+                        platforms = user.get('platforms', {})
+                        platforms['pinterest']['status'] = 'failed'
+                        platforms['pinterest']['error'] = f'Scraping error: {str(e)}'
+                        save_user(user_id, {'platforms': platforms})
             
             thread = threading.Thread(target=scrape_pin)
             thread.daemon = True
             thread.start()
+            logger.info(f"Started Pinterest scraping thread for @{username}")
     
     # Redirect to multi-platform progress page
     return redirect(f"/scraping-progress?tasks={','.join([f'{k}:{v}' for k, v in scrape_tasks.items()])}")
@@ -1700,6 +1705,44 @@ def generate_recommendations_route():
                 thread = threading.Thread(target=scrape_tt)
                 thread.daemon = True
                 thread.start()
+            
+            elif platform == 'pinterest':
+                # Pinterest scraping (if using scraping method)
+                if data.get('method') == 'scraping':
+                    def scrape_pin():
+                        try:
+                            pin_data = scrape_pinterest_profile(username, max_pins=100, task_id=task_id)
+                            if pin_data:
+                                user = get_user(user_id)
+                                if user:
+                                    platforms = user.get('platforms', {})
+                                    platforms['pinterest']['data'] = pin_data
+                                    platforms['pinterest']['status'] = 'complete'
+                                    platforms['pinterest']['connected_at'] = datetime.now().isoformat()
+                                    save_user(user_id, {'platforms': platforms})
+                                    logger.info(f"Pinterest scraping completed for @{username}")
+                            else:
+                                # Mark as failed if scraping returned None
+                                logger.warning(f"Pinterest scraping returned None for @{username}")
+                                user = get_user(user_id)
+                                if user:
+                                    platforms = user.get('platforms', {})
+                                    platforms['pinterest']['status'] = 'failed'
+                                    platforms['pinterest']['error'] = 'Failed to scrape Pinterest profile'
+                                    save_user(user_id, {'platforms': platforms})
+                        except Exception as e:
+                            logger.error(f"Error scraping Pinterest for @{username}: {e}")
+                            user = get_user(user_id)
+                            if user:
+                                platforms = user.get('platforms', {})
+                                platforms['pinterest']['status'] = 'failed'
+                                platforms['pinterest']['error'] = f'Scraping error: {str(e)}'
+                                save_user(user_id, {'platforms': platforms})
+                    
+                    thread = threading.Thread(target=scrape_pin)
+                    thread.daemon = True
+                    thread.start()
+                    logger.info(f"Started Pinterest scraping thread for @{username}")
     
     # Reload fresh data after saving
     user = get_user(user_id)
@@ -2394,45 +2437,73 @@ def check_scraping_status():
     if not platforms:
         return jsonify({'complete': False, 'error': 'No platforms connected'})
     
-    # Check if any scraping is still in progress
+    # Check status of each platform
     scraping_in_progress = False
-    has_data = False
+    completed_count = 0
+    total_platforms = len(platforms)
+    platform_statuses = {}
     
     for platform, data in platforms.items():
         status = data.get('status', '')
+        has_data = bool(data.get('data'))
+        platform_statuses[platform] = {'status': status, 'has_data': has_data}
         
         # Still scraping
         if status == 'scraping':
             scraping_in_progress = True
-            break
+            logger.info(f"Platform {platform} still scraping (status: {status})")
         
         # Has completed data
-        if status == 'complete' and data.get('data'):
-            has_data = True
+        elif status == 'complete' and has_data:
+            completed_count += 1
+            logger.debug(f"Platform {platform} complete with data")
+        
+        # Ready but not started (shouldn't happen, but handle it)
+        elif status == 'ready':
+            logger.warning(f"Platform {platform} is ready but scraping hasn't started")
+            scraping_in_progress = True  # Treat as in progress
+    
+    logger.info(f"Scraping status check: {completed_count}/{total_platforms} complete, in_progress={scraping_in_progress}")
     
     # If still scraping, return in progress
     if scraping_in_progress:
-        return jsonify({'complete': False, 'in_progress': True})
+        return jsonify({
+            'complete': False, 
+            'in_progress': True,
+            'completed': completed_count,
+            'total': total_platforms,
+            'statuses': platform_statuses
+        })
     
     # If no data yet, might still be processing
-    if not has_data:
-        return jsonify({'complete': False, 'in_progress': True, 'message': 'Processing data...'})
+    if completed_count == 0:
+        logger.warning("No platforms have completed scraping yet")
+        return jsonify({
+            'complete': False, 
+            'in_progress': True, 
+            'message': 'Processing data...',
+            'statuses': platform_statuses
+        })
     
     # Check if we have sufficient data
     quality = check_data_quality(platforms)
     
     if quality['quality'] == 'insufficient':
+        logger.warning(f"Insufficient data quality: {quality}")
         return jsonify({
             'complete': False, 
             'error': 'Insufficient data',
-            'quality': quality
+            'quality': quality,
+            'statuses': platform_statuses
         })
     
     # All done!
+    logger.info(f"All scraping complete! Redirecting to recommendations.")
     return jsonify({
         'complete': True,
         'platforms': list(platforms.keys()),
-        'quality': quality
+        'quality': quality,
+        'statuses': platform_statuses
     })
 
 @app.route('/usage')

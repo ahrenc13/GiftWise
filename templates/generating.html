@@ -150,133 +150,201 @@
     </div>
     
     <script>
-        // CRITICAL SAFEGUARDS: Prevent progress bar bugs from recurring
-        // Use sessionStorage to prevent stale state from page refreshes
-        const SESSION_KEY = 'giftwise_generating_' + Date.now();
-        sessionStorage.setItem('giftwise_generating_session', SESSION_KEY);
+        // NUCLEAR APPROACH: Complete rewrite with maximum safeguards
+        // This prevents ALL possible ways the 90% bug can occur
         
-        // Initialize progress bar to 0% IMMEDIATELY with multiple safeguards
-        const progressBar = document.getElementById('progressBar');
-        if (progressBar) {
-            // Force reset with multiple methods
+        (function() {
+            'use strict';
+            
+            // Clear any existing intervals from previous page loads
+            const existingIntervals = window.giftwiseIntervals || [];
+            existingIntervals.forEach(id => clearInterval(id));
+            window.giftwiseIntervals = [];
+            
+            // Get progress bar element ONCE
+            const progressBar = document.getElementById('progressBar');
+            if (!progressBar) {
+                console.error('Progress bar element not found!');
+                return;
+            }
+            
+            // NUCLEAR RESET: Force progress bar to 0% using EVERY possible method
+            progressBar.style.cssText = 'width: 0% !important;';
             progressBar.style.width = '0%';
-            progressBar.style.setProperty('width', '0%', 'important');
+            progressBar.setAttribute('style', 'width: 0% !important;');
             progressBar.setAttribute('data-progress', '0');
-        }
-        
-        // Initialize ALL variables BEFORE any functions
-        let startTime = null;
-        let progressInterval = null;
-        let currentProgress = 0;
-        let warningShown = false;
-        let isInitialized = false;
-        
-        // SAFEGUARD: Validate progress value before setting
-        function setProgressSafely(percent) {
-            // Ensure progress is always between 0 and 100
-            percent = Math.max(0, Math.min(100, percent));
+            progressBar.setAttribute('data-initialized', 'true');
             
-            // Never allow progress above 75% until API completes (unless explicitly 100%)
-            if (percent > 75 && percent < 100) {
-                percent = 75;
+            // State management - all in one object to prevent conflicts
+            // startTime is set ONCE and never changed
+            const START_TIME = Date.now();
+            
+            const state = {
+                get startTime() { return START_TIME; }, // Read-only accessor
+                currentProgress: 0,
+                warningShown: false,
+                intervalId: null,
+                apiComplete: false
+            };
+            
+            // Validate elapsed time is reasonable
+            function getElapsedSeconds() {
+                const now = Date.now();
+                const elapsed = (now - state.startTime) / 1000;
+                
+                // If elapsed is negative or suspiciously large, something is wrong
+                if (elapsed < 0 || elapsed > 600) {
+                    console.warn('Invalid elapsed time:', elapsed, 'Resetting...');
+                    return 0;
+                }
+                
+                return elapsed;
             }
             
-            const progressBarEl = document.getElementById('progressBar');
-            if (progressBarEl) {
-                progressBarEl.style.width = percent + '%';
-                progressBarEl.setAttribute('data-progress', percent.toString());
-            }
-            currentProgress = percent;
-            return percent;
-        }
-        
-        // Simulate progress (gradual, realistic progression)
-        function updateProgress() {
-            // SAFEGUARD: Ensure startTime is initialized
-            if (!startTime || startTime === null) {
-                startTime = Date.now();
-                setProgressSafely(0);
-                return;
-            }
-            
-            const elapsed = (Date.now() - startTime) / 1000; // seconds
-            
-            // SAFEGUARD: Prevent negative elapsed time
-            if (elapsed < 0) {
-                startTime = Date.now();
-                setProgressSafely(0);
-                return;
-            }
-            
-            // Very gradual progress - starts slow, accelerates slightly
-            // 0-20s: 0% to 25%
-            // 20-50s: 25% to 50%
-            // 50-90s: 50% to 75%
-            // 90+: stays at 75% until complete
-            
-            let newProgress = 0;
-            if (elapsed < 20) {
-                newProgress = Math.min((elapsed / 20) * 25, 25);
-            } else if (elapsed < 50) {
-                newProgress = Math.min(25 + ((elapsed - 20) / 30) * 25, 50);
-            } else if (elapsed < 90) {
-                newProgress = Math.min(50 + ((elapsed - 50) / 40) * 25, 75);
-            } else {
-                newProgress = 75; // Cap at 75% until API call completes
+            // Set progress with MAXIMUM validation
+            function setProgress(percent) {
+                // Validate input
+                if (typeof percent !== 'number' || isNaN(percent)) {
+                    console.error('Invalid progress value:', percent);
+                    return;
+                }
+                
+                // Clamp to valid range
+                percent = Math.max(0, Math.min(100, percent));
+                
+                // CRITICAL: Never allow progress above 75% until API explicitly completes
+                if (!state.apiComplete && percent > 75 && percent < 100) {
+                    console.warn('Attempted to set progress above 75% before API complete:', percent);
+                    percent = 75;
+                }
+                
+                // Never allow progress to decrease
+                if (percent < state.currentProgress) {
+                    console.warn('Attempted to decrease progress:', percent, '<', state.currentProgress);
+                    percent = state.currentProgress;
+                }
+                
+                // Update state
+                state.currentProgress = percent;
+                
+                // Update DOM
+                progressBar.style.width = percent + '%';
+                progressBar.setAttribute('data-progress', percent.toString());
+                
+                // Verify it was set correctly
+                const actualWidth = parseFloat(progressBar.style.width) || 0;
+                if (Math.abs(actualWidth - percent) > 1) {
+                    console.error('Progress bar width mismatch! Expected:', percent, 'Got:', actualWidth);
+                    progressBar.style.cssText = 'width: ' + percent + '% !important;';
+                }
             }
             
-            // SAFEGUARD: Never allow progress to decrease (prevents jumps)
-            if (newProgress < currentProgress) {
-                newProgress = currentProgress;
+            // Update progress based on elapsed time
+            function updateProgress() {
+                // Don't update if API is complete
+                if (state.apiComplete) {
+                    return;
+                }
+                
+                const elapsed = getElapsedSeconds();
+                
+                // Calculate progress based on elapsed time
+                let targetProgress = 0;
+                
+                if (elapsed < 20) {
+                    targetProgress = (elapsed / 20) * 25; // 0-25% in 20s
+                } else if (elapsed < 50) {
+                    targetProgress = 25 + ((elapsed - 20) / 30) * 25; // 25-50% in 30s
+                } else if (elapsed < 90) {
+                    targetProgress = 50 + ((elapsed - 50) / 40) * 25; // 50-75% in 40s
+                } else {
+                    targetProgress = 75; // Cap at 75%
+                }
+                
+                // Ensure we never exceed 75% until API completes
+                targetProgress = Math.min(targetProgress, 75);
+                
+                // Set progress
+                setProgress(targetProgress);
+                
+                // Show warning after 90 seconds
+                const progressText = document.querySelector('.status-message');
+                if (elapsed >= 90 && progressText && !state.warningShown) {
+                    state.warningShown = true;
+                    progressText.style.opacity = '0';
+                    setTimeout(() => {
+                        progressText.innerHTML = '⚠️ This is taking longer than usual. Please wait...';
+                        progressText.className = 'status-message warning-message';
+                        progressText.style.opacity = '1';
+                    }, 300);
+                }
             }
             
-            // Update UI with safeguards
-            setProgressSafely(newProgress);
-            
-            const progressText = document.querySelector('.status-message');
-            
-            // Show timeout warning after 90 seconds (only once)
-            if (elapsed > 90 && progressText && !warningShown) {
-                warningShown = true;
-                progressText.style.opacity = '0';
-                setTimeout(() => {
-                    progressText.innerHTML = '⚠️ This is taking longer than usual. Please wait...';
-                    progressText.className = 'status-message warning-message';
-                    progressText.style.opacity = '1';
-                }, 300);
-            }
-        }
-        
-        // SAFEGUARD: Initialize only once, with proper timing
-        function initializeProgress() {
-            if (isInitialized) {
-                return; // Prevent double initialization
-            }
-            
-            // Clear any existing intervals
-            if (progressInterval) {
-                clearInterval(progressInterval);
+            // Initialize progress tracking
+            function startProgressTracking() {
+                // Clear any existing interval
+                if (state.intervalId) {
+                    clearInterval(state.intervalId);
+                }
+                
+                // Reset state (but NOT startTime - it's const)
+                state.currentProgress = 0;
+                state.warningShown = false;
+                state.apiComplete = false;
+                // startTime is const START_TIME - never changes
+                
+                // Set initial progress to 0%
+                setProgress(0);
+                
+                // Start interval
+                state.intervalId = setInterval(updateProgress, 1000);
+                window.giftwiseIntervals.push(state.intervalId);
+                
+                // Initial update
+                updateProgress();
             }
             
-            // Reset everything
-            startTime = Date.now();
-            currentProgress = 0;
-            warningShown = false;
-            isInitialized = true;
+            // Cleanup function
+            window.giftwiseCleanup = function() {
+                if (state.intervalId) {
+                    clearInterval(state.intervalId);
+                    state.intervalId = null;
+                }
+            };
             
-            // Set initial progress to 0% with safeguards
-            setProgressSafely(0);
+            // Start tracking immediately
+            startProgressTracking();
             
-            // Start interval immediately
-            progressInterval = setInterval(updateProgress, 1000);
+            // NUCLEAR SAFEGUARD: Watch for unauthorized progress bar changes
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                        const currentWidth = parseFloat(progressBar.style.width) || 0;
+                        
+                        // If progress is above 75% and API isn't complete, reset it
+                        if (!state.apiComplete && currentWidth > 75 && currentWidth < 100) {
+                            console.error('UNAUTHORIZED PROGRESS CHANGE DETECTED!', currentWidth);
+                            setProgress(Math.min(currentWidth, 75));
+                        }
+                        
+                        // If progress jumps too fast, reset it
+                        if (currentWidth - state.currentProgress > 10) {
+                            console.error('PROGRESS JUMP DETECTED!', currentWidth, 'from', state.currentProgress);
+                            setProgress(state.currentProgress);
+                        }
+                    }
+                });
+            });
             
-            // Initial call immediately (no delay - DOM is ready)
-            updateProgress();
-        }
-        
-        // Initialize immediately - no delay for UX
-        // Script runs at end of body, so DOM is already ready
-        initializeProgress();
+            observer.observe(progressBar, {
+                attributes: true,
+                attributeFilter: ['style', 'data-progress']
+            });
+            
+            // Expose state for debugging (can be removed in production)
+            window.giftwiseProgressState = state;
+            window.giftwiseObserver = observer;
+        })();
         
         // Auto-generate recommendations when page loads
         window.addEventListener('load', async function() {
@@ -294,28 +362,40 @@
                 });
                 
                 clearTimeout(timeoutId);
-                if (window.clearProgressInterval) {
-                    window.clearProgressInterval();
+                
+                // Cleanup progress tracking
+                if (window.giftwiseCleanup) {
+                    window.giftwiseCleanup();
                 }
                 
                 const data = await response.json();
                 
                 if (data.success) {
+                    // Mark API as complete
+                    if (window.giftwiseProgressState) {
+                        window.giftwiseProgressState.apiComplete = true;
+                    }
+                    
                     // Show 100% briefly before redirect
                     const progressBar = document.getElementById('progressBar');
                     if (progressBar) {
                         progressBar.style.width = '100%';
+                        progressBar.setAttribute('data-progress', '100');
                     }
                     setTimeout(() => {
                         window.location.href = '/recommendations';
                     }, 500);
                 } else {
-                    clearInterval(progressInterval);
+                    if (window.giftwiseCleanup) {
+                        window.giftwiseCleanup();
+                    }
                     alert('Error generating recommendations: ' + (data.error || 'Unknown error'));
                     window.location.href = '/connect-platforms';
                 }
             } catch (error) {
-                clearInterval(progressInterval);
+                if (window.giftwiseCleanup) {
+                    window.giftwiseCleanup();
+                }
                 console.error('Error:', error);
                 
                 if (error.name === 'AbortError') {

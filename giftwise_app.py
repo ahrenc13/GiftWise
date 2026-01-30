@@ -77,7 +77,7 @@ try:
     USAGE_TRACKING_AVAILABLE = True
 except ImportError:
     USAGE_TRACKING_AVAILABLE = False
-    logger.warning("Usage tracking not available")
+    pass  # Logger not defined yet
 
 # Import link validation
 try:
@@ -117,7 +117,7 @@ try:
     FAVORITES_AVAILABLE = True
 except ImportError:
     FAVORITES_AVAILABLE = False
-    logger.warning("Favorites/share features not available")
+    pass  # Logger not defined yet
 
 # OAuth libraries
 from requests_oauthlib import OAuth2Session
@@ -142,28 +142,37 @@ try:
     OAUTH_INTEGRATIONS_AVAILABLE = True
 except ImportError as e:
     OAUTH_INTEGRATIONS_AVAILABLE = False
-    logger.warning(f"OAuth integrations not available: {e}")
+    pass  # Logger not defined yet
 
-# Import OAuth integrations
+
+# Enhanced modules (FIXED VERSIONS)
 try:
-    from oauth_integrations import (
-        get_pinterest_authorization_url,
-        exchange_pinterest_code,
-        fetch_pinterest_data as oauth_fetch_pinterest_data,
-        get_spotify_authorization_url,
-        exchange_spotify_code,
-        fetch_spotify_data as oauth_fetch_spotify_data,
-        get_etsy_authorization_url,
-        exchange_etsy_code,
-        fetch_etsy_favorites as oauth_fetch_etsy_favorites,
-        get_google_authorization_url,
-        exchange_google_code,
-        fetch_youtube_subscriptions
-    )
-    OAUTH_INTEGRATIONS_AVAILABLE = True
-except ImportError as e:
-    OAUTH_INTEGRATIONS_AVAILABLE = False
-    logger.warning(f"OAuth integrations not available: {e}")
+    from link_validation import process_recommendation_links, get_reliable_link
+    LINK_VALIDATION_AVAILABLE = True
+except ImportError:
+    LINK_VALIDATION_AVAILABLE = False
+    pass  # Logger not defined yet
+
+try:
+    from image_fetcher import process_recommendation_images, get_product_image
+    IMAGE_FETCHING_AVAILABLE = True
+except ImportError:
+    IMAGE_FETCHING_AVAILABLE = False
+    pass  # Logger not defined yet
+
+try:
+    from recommendation_engine import generate_recommendations, enhance_recommendations_with_context
+    RECOMMENDATION_ENGINE_AVAILABLE = True
+except ImportError:
+    RECOMMENDATION_ENGINE_AVAILABLE = False
+    pass  # Logger not defined yet
+
+try:
+    import stripe_integration
+    STRIPE_INTEGRATION_AVAILABLE = True
+except ImportError:
+    STRIPE_INTEGRATION_AVAILABLE = False
+    pass  # Logger not defined yet
 
 # Database (using simple JSON for MVP - upgrade to PostgreSQL later)
 import shelve
@@ -852,6 +861,10 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
                 track_apify_usage(1, 'instagram')
             except Exception as e:
                 logger.warning(f"Failed to track Apify usage: {e}")
+
+        # Track Apify usage
+        if USAGE_TRACKING_AVAILABLE:
+            track_apify_usage(1, 'instagram')
         
         return result
         
@@ -1211,6 +1224,116 @@ def signup():
     
     return render_template('signup.html', relationship_options=RELATIONSHIP_OPTIONS)
 
+
+@app.route('/create-checkout-session', methods=['POST'])
+def create_checkout_session():
+    """Create Stripe checkout session for Pro subscription"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Please log in first'}), 401
+    
+    user = get_user(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    email = user.get('email', '')
+    if not email:
+        return jsonify({'error': 'Email required'}), 400
+    
+    # Determine which plan
+    plan = request.form.get('plan', 'pro')
+    
+    if not STRIPE_INTEGRATION_AVAILABLE:
+        logger.error("Stripe integration not available")
+        return jsonify({'error': 'Payment system not configured'}), 500
+    
+    # Get correct price ID
+    if plan == 'premium':
+        price_id = stripe_integration.STRIPE_PREMIUM_PRICE_ID
+    elif plan == 'pro_annual':
+        price_id = stripe_integration.STRIPE_PRO_ANNUAL_PRICE_ID
+    else:
+        price_id = stripe_integration.STRIPE_PRO_PRICE_ID
+    
+    if not price_id:
+        logger.error(f"Stripe price ID not configured for plan: {plan}")
+        return jsonify({'error': 'Subscription plan not available'}), 500
+    
+    # Create checkout session
+    checkout_url = stripe_integration.create_checkout_session(
+        user_email=email,
+        price_id=price_id,
+        success_url=request.url_root + 'upgrade/success',
+        cancel_url=request.url_root + 'upgrade',
+        metadata={'user_id': user_id, 'plan': plan}
+    )
+    
+    if checkout_url:
+        logger.info(f"Created Stripe checkout for {user_id} - plan: {plan}")
+        return redirect(checkout_url)
+    else:
+        logger.error("Failed to create Stripe checkout session")
+        return jsonify({'error': 'Payment system error'}), 500
+
+@app.route('/stripe/webhook', methods=['POST'])
+def stripe_webhook():
+    """Handle Stripe webhook events"""
+    if not STRIPE_INTEGRATION_AVAILABLE:
+        return jsonify({'error': 'Stripe not configured'}), 500
+    
+    payload = request.data
+    sig_header = request.headers.get('Stripe-Signature')
+    
+    if not sig_header:
+        logger.error("Stripe webhook missing signature")
+        return jsonify({'error': 'Missing signature'}), 400
+    
+    event_data = stripe_integration.handle_webhook(payload, sig_header)
+    
+    if not event_data:
+        logger.error("Invalid Stripe webhook")
+        return jsonify({'error': 'Invalid webhook'}), 400
+    
+    event_type = event_data.get('event_type')
+    logger.info(f"Processing Stripe webhook: {event_type}")
+    
+    # Handle subscription created
+    if event_type == 'subscription_created':
+        customer_email = event_data.get('customer_email')
+        subscription_id = event_data.get('subscription_id')
+        customer_id = event_data.get('customer_id')
+        metadata = event_data.get('metadata', {})
+        
+        user_id = metadata.get('user_id')
+        if user_id:
+            user = get_user(user_id)
+            if user:
+                user['subscription_tier'] = 'pro'
+                user['stripe_customer_id'] = customer_id
+                user['stripe_subscription_id'] = subscription_id
+                user['subscription_started_at'] = datetime.now().isoformat()
+                save_user(user_id, user)
+                logger.info(f"User {customer_email} upgraded to Pro")
+    
+    # Handle subscription cancelled
+    elif event_type == 'subscription_cancelled':
+        subscription_id = event_data.get('subscription_id')
+        # Find and downgrade user
+        try:
+            with shelve.open('giftwise_db', flag='r') as db:
+                for uid, user_data in db.items():
+                    if user_data.get('stripe_subscription_id') == subscription_id:
+                        user_data['subscription_tier'] = 'free'
+                        user_data['stripe_subscription_id'] = None
+                        save_user(uid, user_data)
+                        logger.info(f"User downgraded to free")
+                        break
+        except Exception as e:
+            logger.error(f"Error downgrading user: {e}")
+    
+    return jsonify({'status': 'success'}), 200
+
+
 @app.route('/connect-platforms')
 def connect_platforms():
     """Platform connection page"""
@@ -1226,7 +1349,7 @@ def connect_platforms():
     platform_access = {
         'instagram': 'instagram' in allowed_platforms,
         'tiktok': 'tiktok' in allowed_platforms,
-        'pinterest': True  # Temporarily unlocked for testing
+        'pinterest': 'pinterest' in allowed_platforms  # Pro only
     }
     
     return render_template('connect_platforms.html', 

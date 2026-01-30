@@ -1,17 +1,16 @@
 """
-OAUTH INTEGRATIONS
-Complete OAuth implementations for Pinterest, Spotify, Etsy, and more
+OAUTH INTEGRATIONS - FIXED
+Complete OAuth implementations for Pinterest, Spotify, Etsy, YouTube
 
-Each platform has:
-- Authorization URL generation
-- Callback handling
-- Token refresh (where applicable)
-- Data fetching
+FIXES:
+- Added environment variable definitions (CRITICAL BUG FIX)
+- Removed duplicate definitions
+- Better error handling
+- Added logging
 """
 
 import os
 import requests
-from requests_oauthlib import OAuth2Session
 from urllib.parse import urlencode
 import logging
 import time
@@ -19,19 +18,37 @@ import time
 logger = logging.getLogger('giftwise')
 
 # ============================================================================
+# ENVIRONMENT VARIABLES - LOAD ONCE AT MODULE LEVEL
+# ============================================================================
+
+# Pinterest OAuth
+PINTEREST_CLIENT_ID = os.environ.get('PINTEREST_CLIENT_ID')
+PINTEREST_CLIENT_SECRET = os.environ.get('PINTEREST_CLIENT_SECRET')
+PINTEREST_REDIRECT_URI = os.environ.get('PINTEREST_REDIRECT_URI', 'http://localhost:5000/oauth/pinterest/callback')
+
+# Spotify OAuth
+SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID')
+SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET')
+SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI', 'http://localhost:5000/oauth/spotify/callback')
+
+# Etsy OAuth
+ETSY_CLIENT_ID = os.environ.get('ETSY_CLIENT_ID')
+ETSY_CLIENT_SECRET = os.environ.get('ETSY_CLIENT_SECRET')
+ETSY_REDIRECT_URI = os.environ.get('ETSY_REDIRECT_URI', 'http://localhost:5000/oauth/etsy/callback')
+
+# Google OAuth (YouTube)
+GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
+GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
+GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:5000/oauth/google/callback')
+
+# ============================================================================
 # PINTEREST OAUTH
 # ============================================================================
 
-# These are set from environment variables (see above)
-
 def get_pinterest_authorization_url():
-    """
-    Generate Pinterest OAuth authorization URL
-    
-    Returns:
-        Authorization URL
-    """
+    """Generate Pinterest OAuth authorization URL"""
     if not PINTEREST_CLIENT_ID:
+        logger.error("Pinterest OAuth not configured - missing PINTEREST_CLIENT_ID")
         return None
     
     scopes = ['boards:read', 'pins:read']
@@ -40,23 +57,18 @@ def get_pinterest_authorization_url():
         'redirect_uri': PINTEREST_REDIRECT_URI,
         'response_type': 'code',
         'scope': ' '.join(scopes),
-        'state': 'pinterest_auth'  # Add CSRF protection
+        'state': 'pinterest_auth'
     }
     
     auth_url = f"https://www.pinterest.com/oauth/?{urlencode(params)}"
+    logger.info(f"Generated Pinterest OAuth URL")
     return auth_url
 
+
 def exchange_pinterest_code(code):
-    """
-    Exchange authorization code for access token
-    
-    Args:
-        code: Authorization code from callback
-    
-    Returns:
-        Access token dict or None
-    """
+    """Exchange Pinterest authorization code for access token"""
     if not PINTEREST_CLIENT_ID or not PINTEREST_CLIENT_SECRET:
+        logger.error("Pinterest OAuth not configured")
         return None
     
     try:
@@ -74,6 +86,7 @@ def exchange_pinterest_code(code):
         
         if response.status_code == 200:
             token_data = response.json()
+            logger.info("Pinterest token exchange successful")
             return {
                 'access_token': token_data.get('access_token'),
                 'refresh_token': token_data.get('refresh_token'),
@@ -88,17 +101,11 @@ def exchange_pinterest_code(code):
         logger.error(f"Pinterest token exchange error: {e}")
         return None
 
+
 def fetch_pinterest_data(access_token):
-    """
-    Fetch Pinterest boards and pins
-    
-    Args:
-        access_token: Pinterest access token
-    
-    Returns:
-        Dict with boards and pins data
-    """
+    """Fetch Pinterest boards and pins via OAuth"""
     if not access_token:
+        logger.error("No Pinterest access token provided")
         return None
     
     try:
@@ -141,6 +148,7 @@ def fetch_pinterest_data(access_token):
                     'pins': pins
                 })
         
+        logger.info(f"Fetched Pinterest data: {len(boards)} boards")
         return {
             'platform': 'pinterest',
             'method': 'oauth',
@@ -158,18 +166,10 @@ def fetch_pinterest_data(access_token):
 # SPOTIFY OAUTH
 # ============================================================================
 
-SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID')
-SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET')
-SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI', 'http://localhost:5000/oauth/spotify/callback')
-
 def get_spotify_authorization_url():
-    """
-    Generate Spotify OAuth authorization URL
-    
-    Returns:
-        Authorization URL
-    """
+    """Generate Spotify OAuth authorization URL"""
     if not SPOTIFY_CLIENT_ID:
+        logger.error("Spotify OAuth not configured - missing SPOTIFY_CLIENT_ID")
         return None
     
     scopes = [
@@ -188,19 +188,14 @@ def get_spotify_authorization_url():
     }
     
     auth_url = f"https://accounts.spotify.com/authorize?{urlencode(params)}"
+    logger.info("Generated Spotify OAuth URL")
     return auth_url
 
+
 def exchange_spotify_code(code):
-    """
-    Exchange authorization code for access token
-    
-    Args:
-        code: Authorization code from callback
-    
-    Returns:
-        Access token dict or None
-    """
+    """Exchange Spotify authorization code for access token"""
     if not SPOTIFY_CLIENT_ID or not SPOTIFY_CLIENT_SECRET:
+        logger.error("Spotify OAuth not configured")
         return None
     
     try:
@@ -218,6 +213,7 @@ def exchange_spotify_code(code):
         
         if response.status_code == 200:
             token_data = response.json()
+            logger.info("Spotify token exchange successful")
             return {
                 'access_token': token_data.get('access_token'),
                 'refresh_token': token_data.get('refresh_token'),
@@ -232,70 +228,73 @@ def exchange_spotify_code(code):
         logger.error(f"Spotify token exchange error: {e}")
         return None
 
+
 def fetch_spotify_data(access_token):
-    """
-    Fetch Spotify listening data
-    
-    Args:
-        access_token: Spotify access token
-    
-    Returns:
-        Dict with Spotify data
-    """
+    """Fetch Spotify listening data via OAuth"""
     if not access_token:
+        logger.error("No Spotify access token provided")
         return None
     
     try:
-        headers = {
-            'Authorization': f'Bearer {access_token}'
-        }
+        headers = {'Authorization': f'Bearer {access_token}'}
         
-        # Get top artists
-        top_artists_url = 'https://api.spotify.com/v1/me/top/artists?time_range=medium_term&limit=50'
-        top_artists_response = requests.get(top_artists_url, headers=headers, timeout=10)
-        
-        artists = []
-        genres = []
-        if top_artists_response.status_code == 200:
-            artists_data = top_artists_response.json().get('items', [])
-            for artist in artists_data:
-                artists.append(artist.get('name', ''))
-                genres.extend(artist.get('genres', []))
+        # Get top artists (medium term = last 6 months)
+        top_artists_response = requests.get(
+            'https://api.spotify.com/v1/me/top/artists?time_range=medium_term&limit=50',
+            headers=headers,
+            timeout=10
+        )
         
         # Get top tracks
-        top_tracks_url = 'https://api.spotify.com/v1/me/top/tracks?time_range=medium_term&limit=50'
-        top_tracks_response = requests.get(top_tracks_url, headers=headers, timeout=10)
-        
-        tracks = []
-        if top_tracks_response.status_code == 200:
-            tracks_data = top_tracks_response.json().get('items', [])
-            for track in tracks_data:
-                tracks.append({
-                    'name': track.get('name', ''),
-                    'artist': ', '.join([a['name'] for a in track.get('artists', [])]),
-                    'album': track.get('album', {}).get('name', '')
-                })
+        top_tracks_response = requests.get(
+            'https://api.spotify.com/v1/me/top/tracks?time_range=medium_term&limit=50',
+            headers=headers,
+            timeout=10
+        )
         
         # Get playlists
-        playlists_url = 'https://api.spotify.com/v1/me/playlists?limit=20'
-        playlists_response = requests.get(playlists_url, headers=headers, timeout=10)
+        playlists_response = requests.get(
+            'https://api.spotify.com/v1/me/playlists?limit=20',
+            headers=headers,
+            timeout=10
+        )
         
-        playlists = []
-        if playlists_response.status_code == 200:
-            playlists_data = playlists_response.json().get('items', [])
-            for playlist in playlists_data:
-                playlists.append(playlist.get('name', ''))
+        if top_artists_response.status_code != 200:
+            logger.error(f"Spotify API error: {top_artists_response.status_code}")
+            return None
+        
+        top_artists = top_artists_response.json()
+        top_tracks = top_tracks_response.json()
+        playlists = playlists_response.json()
+        
+        # Extract data
+        artists = []
+        genres = []
+        for artist in top_artists.get('items', []):
+            artists.append(artist['name'])
+            genres.extend(artist.get('genres', []))
         
         from collections import Counter
         genre_counts = Counter(genres)
         
+        tracks = [
+            {
+                'name': track['name'],
+                'artist': track['artists'][0]['name']
+            }
+            for track in top_tracks.get('items', [])
+        ]
+        
+        playlist_names = [p['name'] for p in playlists.get('items', [])]
+        
+        logger.info(f"Fetched Spotify data: {len(artists)} artists, {len(tracks)} tracks")
         return {
             'platform': 'spotify',
             'method': 'oauth',
             'top_artists': artists[:20],
-            'top_tracks': tracks[:20],
             'top_genres': dict(genre_counts.most_common(15)),
-            'playlists': playlists,
+            'top_tracks': tracks[:20],
+            'playlists': playlist_names,
             'collected_at': time.time()
         }
     
@@ -307,47 +306,31 @@ def fetch_spotify_data(access_token):
 # ETSY OAUTH
 # ============================================================================
 
-ETSY_CLIENT_ID = os.environ.get('ETSY_CLIENT_ID')
-ETSY_CLIENT_SECRET = os.environ.get('ETSY_CLIENT_SECRET')
-ETSY_REDIRECT_URI = os.environ.get('ETSY_REDIRECT_URI', 'http://localhost:5000/oauth/etsy/callback')
-
 def get_etsy_authorization_url():
-    """
-    Generate Etsy OAuth authorization URL
-    
-    Etsy uses OAuth 2.0 with PKCE (recommended) or without
-    
-    Returns:
-        Authorization URL
-    """
+    """Generate Etsy OAuth authorization URL"""
     if not ETSY_CLIENT_ID:
+        logger.error("Etsy OAuth not configured - missing ETSY_CLIENT_ID")
         return None
     
-    # Etsy OAuth 2.0
-    scopes = ['favorites_r', 'profile_r']
+    scopes = ['favorites_r']
     
     params = {
-        'response_type': 'code',
-        'redirect_uri': ETSY_REDIRECT_URI,
-        'scope': ' '.join(scopes),
         'client_id': ETSY_CLIENT_ID,
+        'redirect_uri': ETSY_REDIRECT_URI,
+        'response_type': 'code',
+        'scope': ' '.join(scopes),
         'state': 'etsy_auth'
     }
     
     auth_url = f"https://www.etsy.com/oauth/connect?{urlencode(params)}"
+    logger.info("Generated Etsy OAuth URL")
     return auth_url
 
+
 def exchange_etsy_code(code):
-    """
-    Exchange authorization code for access token
-    
-    Args:
-        code: Authorization code from callback
-    
-    Returns:
-        Access token dict or None
-    """
+    """Exchange Etsy authorization code for access token"""
     if not ETSY_CLIENT_ID or not ETSY_CLIENT_SECRET:
+        logger.error("Etsy OAuth not configured")
         return None
     
     try:
@@ -355,10 +338,9 @@ def exchange_etsy_code(code):
         
         data = {
             'grant_type': 'authorization_code',
-            'client_id': ETSY_CLIENT_ID,
-            'redirect_uri': ETSY_REDIRECT_URI,
             'code': code,
-            'code_verifier': ''  # Etsy may require PKCE
+            'redirect_uri': ETSY_REDIRECT_URI,
+            'client_id': ETSY_CLIENT_ID
         }
         
         auth = (ETSY_CLIENT_ID, ETSY_CLIENT_SECRET)
@@ -367,6 +349,7 @@ def exchange_etsy_code(code):
         
         if response.status_code == 200:
             token_data = response.json()
+            logger.info("Etsy token exchange successful")
             return {
                 'access_token': token_data.get('access_token'),
                 'refresh_token': token_data.get('refresh_token'),
@@ -381,17 +364,11 @@ def exchange_etsy_code(code):
         logger.error(f"Etsy token exchange error: {e}")
         return None
 
+
 def fetch_etsy_favorites(access_token):
-    """
-    Fetch Etsy favorites/wishlist
-    
-    Args:
-        access_token: Etsy access token
-    
-    Returns:
-        Dict with favorites data
-    """
+    """Fetch Etsy favorites/wishlist via OAuth"""
     if not access_token:
+        logger.error("No Etsy access token provided")
         return None
     
     try:
@@ -414,7 +391,7 @@ def fetch_etsy_favorites(access_token):
         for listing in data.get('results', []):
             favorites.append({
                 'name': listing.get('title', ''),
-                'price': float(listing.get('price', {}).get('amount', 0)) / 100,  # Etsy prices in cents
+                'price': float(listing.get('price', {}).get('amount', 0)) / 100,
                 'currency': listing.get('price', {}).get('currency_code', 'USD'),
                 'url': listing.get('url', ''),
                 'shop_name': listing.get('shop_name', ''),
@@ -422,6 +399,7 @@ def fetch_etsy_favorites(access_token):
                 'image_url': listing.get('images', [{}])[0].get('url', '') if listing.get('images') else ''
             })
         
+        logger.info(f"Fetched Etsy favorites: {len(favorites)} items")
         return {
             'platform': 'etsy',
             'method': 'oauth',
@@ -435,27 +413,16 @@ def fetch_etsy_favorites(access_token):
         return None
 
 # ============================================================================
-# GOOGLE OAUTH (for YouTube)
+# GOOGLE OAUTH (YouTube)
 # ============================================================================
 
-GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID')
-GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET')
-GOOGLE_REDIRECT_URI = os.environ.get('GOOGLE_REDIRECT_URI', 'http://localhost:5000/oauth/google/callback')
-GOOGLE_YOUTUBE_API_KEY = os.environ.get('GOOGLE_YOUTUBE_API_KEY')  # Alternative: API key instead of OAuth
-
 def get_google_authorization_url():
-    """
-    Generate Google OAuth authorization URL (for YouTube)
-    
-    Returns:
-        Authorization URL
-    """
+    """Generate Google OAuth authorization URL (for YouTube)"""
     if not GOOGLE_CLIENT_ID:
+        logger.error("Google OAuth not configured - missing GOOGLE_CLIENT_ID")
         return None
     
-    scopes = [
-        'https://www.googleapis.com/auth/youtube.readonly'
-    ]
+    scopes = ['https://www.googleapis.com/auth/youtube.readonly']
     
     params = {
         'client_id': GOOGLE_CLIENT_ID,
@@ -468,19 +435,14 @@ def get_google_authorization_url():
     }
     
     auth_url = f"https://accounts.google.com/o/oauth2/v2/auth?{urlencode(params)}"
+    logger.info("Generated Google OAuth URL")
     return auth_url
 
+
 def exchange_google_code(code):
-    """
-    Exchange authorization code for access token
-    
-    Args:
-        code: Authorization code from callback
-    
-    Returns:
-        Access token dict or None
-    """
+    """Exchange Google authorization code for access token"""
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
+        logger.error("Google OAuth not configured")
         return None
     
     try:
@@ -498,6 +460,7 @@ def exchange_google_code(code):
         
         if response.status_code == 200:
             token_data = response.json()
+            logger.info("Google token exchange successful")
             return {
                 'access_token': token_data.get('access_token'),
                 'refresh_token': token_data.get('refresh_token'),
@@ -512,55 +475,25 @@ def exchange_google_code(code):
         logger.error(f"Google token exchange error: {e}")
         return None
 
-def fetch_youtube_subscriptions(access_token=None, api_key=None, channel_id=None):
-    """
-    Fetch YouTube subscriptions (channels they follow)
+
+def fetch_youtube_subscriptions(access_token):
+    """Fetch YouTube subscriptions (channels they follow) via OAuth"""
+    if not access_token:
+        logger.error("No YouTube access token provided")
+        return None
     
-    Can use OAuth (access_token) or API key (api_key + channel_id)
-    
-    Args:
-        access_token: OAuth access token (preferred)
-        api_key: YouTube Data API key (alternative)
-        channel_id: YouTube channel ID (if using API key)
-    
-    Returns:
-        Dict with subscriptions data
-    """
     try:
-        if access_token:
-            # OAuth method
-            headers = {
-                'Authorization': f'Bearer {access_token}'
-            }
-            
-            # Get channel ID
-            me_url = 'https://www.googleapis.com/youtube/v3/channels?part=id&mine=true'
-            me_response = requests.get(me_url, headers=headers, timeout=10)
-            
-            if me_response.status_code != 200:
-                return None
-            
-            channel_id = me_response.json().get('items', [{}])[0].get('id')
-            if not channel_id:
-                return None
-            
-            # Get subscriptions
-            subs_url = f'https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50'
-            subs_response = requests.get(subs_url, headers=headers, timeout=10)
+        headers = {'Authorization': f'Bearer {access_token}'}
         
-        elif api_key and channel_id:
-            # API key method
-            subs_url = f'https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&channelId={channel_id}&maxResults=50&key={api_key}'
-            subs_response = requests.get(subs_url, timeout=10)
+        # Get subscriptions
+        subs_url = 'https://www.googleapis.com/youtube/v3/subscriptions?part=snippet&mine=true&maxResults=50'
+        response = requests.get(subs_url, headers=headers, timeout=10)
         
-        else:
+        if response.status_code != 200:
+            logger.error(f"YouTube subscriptions fetch failed: {response.status_code}")
             return None
         
-        if subs_response.status_code != 200:
-            logger.error(f"YouTube subscriptions fetch failed: {subs_response.status_code}")
-            return None
-        
-        subscriptions_data = subs_response.json().get('items', [])
+        subscriptions_data = response.json().get('items', [])
         
         channels = []
         categories = []
@@ -579,7 +512,6 @@ def fetch_youtube_subscriptions(access_token=None, api_key=None, channel_id=None
             # Extract categories from description
             if description:
                 words = description.lower().split()
-                # Common YouTube categories
                 youtube_categories = ['gaming', 'music', 'tech', 'cooking', 'travel', 'fitness', 'education', 'comedy', 'beauty', 'fashion']
                 for cat in youtube_categories:
                     if cat in words:
@@ -588,9 +520,10 @@ def fetch_youtube_subscriptions(access_token=None, api_key=None, channel_id=None
         from collections import Counter
         category_counts = Counter(categories)
         
+        logger.info(f"Fetched YouTube subscriptions: {len(channels)} channels")
         return {
             'platform': 'youtube',
-            'method': 'oauth' if access_token else 'api_key',
+            'method': 'oauth',
             'subscriptions': channels[:30],
             'total_subscriptions': len(channels),
             'categories': dict(category_counts.most_common(10)),

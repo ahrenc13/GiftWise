@@ -307,4 +307,126 @@ const observer = new MutationObserver(function(mutations) {
 
 ---
 
+---
+
+## 🔴 Critical Issues Identified (End of Session - Jan 29, 2026)
+
+### 1. **Pinterest Data Not Being Scraped**
+**Problem:** Logs show Pinterest connection but no scraping completion log
+- User connected Pinterest via scraping: `lstratz`
+- No "Successfully scraped Pinterest pins" log appears
+- Pinterest scraping may be failing silently or not starting
+
+**Investigation Needed:**
+- Check if Pinterest scraping thread is starting in `/scraping-progress` route
+- Verify Pinterest scraping completion status is being set
+- Check for errors in Pinterest scraping function
+
+**Files to Check:**
+- `giftwise_app.py`: Lines 1557-1600 (Pinterest scraping in connect-platforms)
+- `giftwise_app.py`: Lines 1714-1740 (Pinterest scraping in scraping-progress)
+- `giftwise_app.py`: Lines 981-1113 (scrape_pinterest_profile function)
+
+---
+
+### 2. **Image Thumbnails - "Evocative" Badge Issue**
+**Problem:** "Evocative" text appearing on placeholders/thumbnails
+- Very few thumbnails showing (likely due to link issues)
+- "Evocative" badge appears when `image_is_fallback` is true
+- This is confusing UX - users don't know what "evocative" means
+
+**Fix Needed:**
+- Remove or change "Evocative" badge text
+- Improve image fetching to get more product images
+- Better fallback handling
+
+**Files to Fix:**
+- `templates/recommendations.html`: Line 576 (remove "Evocative" badge)
+- `image_fetcher.py`: Improve image fetching logic
+
+---
+
+### 3. **Recommendation Logic Needs Refinement**
+**Problem:** Logic doesn't account for frequent posters
+- If someone posts a lot about one thing/place/activity, assume they already have typical items
+- Need more off-the-beaten-path ideas
+- Experiences are important but may not be prioritized
+
+**Improvements Needed:**
+- Detect when someone posts frequently about a topic (e.g., coffee, travel, fitness)
+- For frequent topics, suggest unique/niche items instead of generic ones
+- Increase emphasis on experiences
+- Add logic: "If user has 10+ posts about X, they likely have basic X items - suggest unique X items"
+
+**Files to Update:**
+- `giftwise_app.py`: Prompt engineering (lines 2068-2130)
+- `enhanced_recommendation_engine.py`: Add frequency analysis
+
+---
+
+### 4. **Filter Buttons Not Working**
+**Problem:** Filter buttons at top of recommendations page don't filter results
+- Filter function exists (`applyFilters()`)
+- Event listeners are attached
+- Likely issue: Recommendation cards missing `data-price`, `data-type`, `data-confidence` attributes
+
+**Fix Needed:**
+- Add data attributes to recommendation cards in template
+- Ensure price_range, gift_type, confidence_level are properly set
+- Test filter functionality
+
+**Files to Fix:**
+- `templates/recommendations.html`: Add data attributes to cards (around line 550-600)
+- `giftwise_app.py`: Ensure recommendation data includes required fields
+
+---
+
+### 5. **Post Limits Too Low**
+**Problem:** Only scraping 30 TikTok videos and 50 Instagram posts
+- User wants more data for better recommendations
+- Current limits: `max_posts=50` (Instagram), `max_videos=50` (TikTok) but logs show 30 TikTok
+- Should increase to get more comprehensive data
+
+**Fix Needed:**
+- Increase Instagram limit from 50 to 100+ posts
+- Increase TikTok limit from 50 to 100+ videos
+- Check why TikTok is only getting 30 (may be Apify limit)
+
+**Files to Update:**
+- `giftwise_app.py`: Lines 714, 1523, 1681 (Instagram max_posts)
+- `giftwise_app.py`: Lines 1155, 1543, 1691 (TikTok max_videos)
+- Check Apify actor limits
+
+---
+
+### 6. **Link Generation Issues**
+**Problem:** Very few thumbnails because links are broken or missing
+- Only one thumbnail showing
+- Links showing "link needed" or broken
+- This is causing image fetching to fail
+
+**Status:**
+- Already fixed link validation to provide fallback search links
+- But may need to improve link validation further
+- Image fetching depends on having purchase links
+
+**Files to Review:**
+- `link_validation.py`: Verify fallback links are working
+- `image_fetcher.py`: Check if images are being fetched from purchase links
+
+---
+
+## 📋 TODO for Next Session
+
+1. **Fix Pinterest scraping** - Debug why scraping isn't completing
+2. **Remove "Evocative" badge** - Change or remove from UI
+3. **Add data attributes to filter cards** - Make filters work
+4. **Increase post limits** - 100+ for Instagram/TikTok
+5. **Improve recommendation logic** - Account for frequent posters, prioritize unique items
+6. **Enhance experience recommendations** - Make experiences more prominent
+7. **Debug image fetching** - Why so few thumbnails?
+8. **Test filter functionality** - Ensure filters actually work
+
+---
+
 **End of Session Summary**

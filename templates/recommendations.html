@@ -670,21 +670,6 @@
         </div>
         
         <script>
-        function toggleCard(card) {
-            // Toggle expanded class
-            card.classList.toggle('expanded');
-        }
-        
-        // Close card when clicking outside (optional)
-        document.addEventListener('click', function(event) {
-            if (!event.target.closest('.recommendation-card') && !event.target.closest('.rec-link')) {
-                document.querySelectorAll('.recommendation-card.expanded').forEach(card => {
-                    card.classList.remove('expanded');
-                });
-            }
-        });
-        
-        <script>
         // Copy link to clipboard
         function copyLink(url, button) {
             navigator.clipboard.writeText(url).then(() => {
@@ -721,6 +706,26 @@
             });
         }
         
+        // Toggle favorite (save/unsave)
+        function toggleFavorite(index, button) {
+            fetch('/api/toggle-favorite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ index: index })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    button.classList.toggle('favorited');
+                    if (data.favorited) {
+                        button.style.transform = 'scale(1.2)';
+                        setTimeout(() => button.style.transform = 'scale(1)', 200);
+                    }
+                }
+            })
+            .catch(err => console.error('Error toggling favorite:', err));
+        }
+        
         // Toggle card expansion
         function toggleCard(card) {
             card.classList.toggle('expanded');
@@ -737,20 +742,6 @@
     </script>
     
     <script>
-        // Toggle card expansion
-        function toggleCard(card) {
-            card.classList.toggle('expanded');
-        }
-        
-        // Close cards when clicking outside
-        document.addEventListener('click', function(event) {
-            if (!event.target.closest('.recommendation-card') && !event.target.closest('.rec-link') && !event.target.closest('.favorite-btn')) {
-                document.querySelectorAll('.recommendation-card.expanded').forEach(card => {
-                    card.classList.remove('expanded');
-                });
-            }
-        });
-        
         // Filtering Logic
         const filterButtons = document.querySelectorAll('.filter-button');
         const recommendationCards = document.querySelectorAll('.recommendation-card');

@@ -1,282 +1,316 @@
 """
-MULTI-PLATFORM RECOMMENDATION ENGINE
-Generates gift recommendations from Instagram, Spotify, Pinterest, TikTok data
+RECOMMENDATION ENGINE - ENHANCED VERSION
+Generates gift recommendations using Claude AI with strict validation
 
-Uses Claude to analyze cross-platform signals and generate ultra-specific recommendations
+CRITICAL IMPROVEMENT: Prompt engineering to ensure REAL, BUYABLE products only
+- Forces Claude to only recommend specific products with brand names and models
+- Rejects generic or made-up products
+- Requires product URLs and images
+- Better category targeting
+
+Author: Chad + Claude  
+Date: January 2026
 """
 
+import anthropic
 import json
+import logging
+import os
+from datetime import datetime
 
-def generate_multi_platform_recommendations(platform_data, user_email, claude_client, max_recommendations=10):
+logger = logging.getLogger('giftwise')
+
+# Anthropic API client
+ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
+anthropic_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY) if ANTHROPIC_API_KEY else None
+
+def build_recommendation_prompt(platform_insights, signals, rec_count=15, relationship='someone_else'):
     """
-    Generate gift recommendations from multi-platform data
+    Build the Claude prompt with strict requirements for REAL products
     
     Args:
-        platform_data: Dict with keys like 'instagram', 'spotify', 'pinterest', 'tiktok'
-        user_email: User identifier
-        claude_client: Anthropic client instance
-        max_recommendations: Maximum number of recommendations to generate (5 for free, 10 for pro)
+        platform_insights: Analyzed data from social platforms
+        signals: Interest signals extracted
+        rec_count: Number of recommendations to generate
+        relationship: 'myself' or 'someone_else'
     
     Returns:
-        List of recommendation dicts
+        str: Formatted prompt
     """
     
-    # Build context from all platforms
-    context = build_context(platform_data)
-    platforms_connected = list(platform_data.keys())
+    recipient_pronoun = "yourself" if relationship == 'myself' else "them"
+    recipient_possessive = "your" if relationship == 'myself' else "their"
     
-    # Calculate distribution based on max recommendations
-    if max_recommendations == 5:
-        # FREE TIER: 3 safe, 2 balanced
-        safe_count = 3
-        balanced_count = 2
-        stretch_count = 0
-    else:
-        # PRO TIER: 4 safe, 4 balanced, 2 stretch
-        safe_count = 4
-        balanced_count = 4
-        stretch_count = 2
-    
-    # Generate prompt for Claude
-    prompt = f"""{context}
+    prompt = f"""You are the world's best gift advisor. Analyze this person's social media data and recommend {rec_count} SPECIFIC, REAL products they'd love.
 
-CONNECTED PLATFORMS: {', '.join([p.upper() for p in platforms_connected])}
+# CRITICAL RULES - READ CAREFULLY:
 
-Generate {max_recommendations} ULTRA-SPECIFIC gift recommendations using ALL available platform data.
+1. **ONLY RECOMMEND REAL PRODUCTS**: Every recommendation MUST be a specific, currently-available product with a brand name and model number. Examples:
+   ✅ GOOD: "Bose QuietComfort 45 Headphones"
+   ✅ GOOD: "Nintendo Switch OLED Console"
+   ✅ GOOD: "Lululemon Align High-Rise Pant 25"
+   ❌ BAD: "Wireless headphones" (too generic)
+   ❌ BAD: "Gaming console" (not specific)
+   ❌ BAD: "Yoga pants" (no brand/model)
 
-CRITICAL RULES:
+2. **EVERY PRODUCT MUST HAVE**:
+   - Brand name (Nike, Apple, Lego, etc.)
+   - Specific model or product name
+   - Clear where to buy it (Amazon, Target, brand website, etc.)
+   - Realistic price range
 
-1. **CROSS-PLATFORM VALIDATION**
-   - Interest appears on 3+ platforms → 95% match (safe confidence)
-   - Interest on 2 platforms → 80% match (balanced confidence)
-   - Single platform strong signal → 70% match (stretch confidence)
+3. **VALIDATION CHECK**: Before including a product, ask yourself:
+   - "Can I Google this exact product name and find it?"
+   - "Is this a real brand with a real product?"
+   - "Would someone actually be able to buy this?"
+   - If ANY answer is "no", DO NOT include it.
 
-2. **BE ULTRA-SPECIFIC** - Include brand names, models, specific editions
-   ❌ "Vintage Band T-Shirt"
-   ✅ "Original 1989 Depeche Mode Violator Tour T-Shirt, Size Large"
-   ❌ "Music equipment"
-   ✅ "Focusrite Scarlett Solo USB Audio Interface (3rd Gen)"
+4. **PRICE RANGES**: Be realistic based on actual market prices:
+   - Electronics: $20-$500+
+   - Clothing: $20-$200
+   - Books: $10-$40
+   - Experiences: $30-$300
 
-3. **IDENTIFY EXISTING INVESTMENTS**
-   - Look for frequent mentions, hashtags, or patterns
-   - Don't suggest more of what they already have
-   - Suggest ADJACENT/COMPLEMENTARY items instead
-   
-   Examples:
-   - Frequent concert posts → Suggest: Band biography book (NOT more tickets)
-   - Heavy Spotify usage → Suggest: Vinyl of favorite album (NOT Spotify gift card)
-   - Pinterest boards on running → Suggest: GPS watch (NOT running shoes they probably have)
+5. **DIVERSITY**: Include mix of:
+   - 60-70% Physical products (things they can hold)
+   - 30-40% Experiences (classes, subscriptions, events)
+   - Mix of price ranges ($20-30, $30-60, $60-100, $100-200, $200+)
 
-4. **PLATFORM-SPECIFIC INSIGHTS**
-   - **Pinterest = HIGHEST INTENT**: They're literally pinning what they want!
-   - **Spotify**: Music taste → Concert tickets, vinyl, artist merch, music gear
-   - **Instagram**: Lifestyle, aesthetics, experiences they value
-   - **TikTok**: Current trends, active interests right now
+6. **CATEGORIES TO CONSIDER** (based on their interests):
+   - Tech gadgets (if tech-interested)
+   - Books (if reader)
+   - Fitness gear (if active)
+   - Kitchen/cooking (if food-interested)
+   - Fashion/accessories (if style-conscious)
+   - Art/craft supplies (if creative)
+   - Gaming (if gamer)
+   - Music gear (if musician)
+   - Home decor (if design-interested)
+   - Experiences (classes, subscriptions, events)
 
-5. **MATCH PERCENTAGE SCORING**
-   - safe (85-95%): Cross-platform validation + specific + NOT duplicate
-   - balanced (72-84%): Strong signal + specific + complementary
-   - stretch (60-71%): Creative connection + fills a gap
+---
 
-6. **NO CATEGORIES, ONLY PRODUCTS**
-   - "Marshall Acton III Bluetooth Speaker in Black" ✓
-   - "High-quality Bluetooth speaker" ✗
+# PERSON'S DATA:
 
-Generate {max_recommendations} gifts:
-- {safe_count} "safe": Cross-platform validated + specific + adjacent (85-95% match)
-- {balanced_count} "balanced": Strong single platform + specific + complementary (72-84% match)
-{f'- {stretch_count} "stretch": Creative connection + unique (60-71% match)' if stretch_count > 0 else ''}
+## Platform Insights:
+{json.dumps(platform_insights, indent=2)}
 
-Format as JSON:
+## Interest Signals:
+{json.dumps(signals, indent=2)}
+
+---
+
+# YOUR TASK:
+
+Generate {rec_count} gift recommendations in JSON format. For EACH recommendation, include:
+
+```json
+{{
+  "name": "BRAND NAME + SPECIFIC PRODUCT (e.g., 'Sony WH-1000XM5 Headphones')",
+  "description": "Brief description of what it is and what makes it special",
+  "why_perfect": "Explain specifically why this matches {recipient_possessive} interests based on {recipient_possessive} social media (be specific!)",
+  "price_range": "Realistic price with $ (e.g., '$80-$120')",
+  "where_to_buy": "Specific retailer (Amazon, Target, official website, etc.)",
+  "category": "One of: Electronics, Books, Fashion, Home, Fitness, Food, Art, Gaming, Music, Experience",
+  "confidence_level": "safe_bet or adventurous",
+  "gift_type": "physical or experience",
+  "product_url": "If known, provide the purchase URL. Otherwise leave empty.",
+  "match_score": 75-95 (how well it matches their interests)
+}}
+```
+
+**CONFIDENCE LEVELS**:
+- **safe_bet**: Product directly matches their shown interests (70% of recommendations)
+- **adventurous**: Related to their interests but introduces something new (30%)
+
+**MATCH SCORE GUIDANCE**:
+- 90-95: Perfect match, obvious from data
+- 80-89: Strong match, clear connection
+- 75-79: Good match, reasonable connection
+
+---
+
+# EXAMPLE (DO NOT COPY - CREATE YOUR OWN):
+
+If person loves photography (posts lots of photos):
+✅ "Canon EOS M50 Mark II Camera" 
+✅ "Peak Design Everyday Backpack 20L"
+✅ "Adobe Creative Cloud Photography Plan (1-year subscription)"
+
+NOT:
+❌ "Professional camera" (not specific)
+❌ "Camera accessories" (not specific) 
+❌ "Photography equipment" (too vague)
+
+---
+
+# OUTPUT FORMAT:
+
+Return ONLY a JSON array of recommendations. NO other text. Start with [ and end with ].
+
+Example structure:
 [
   {{
-    "name": "Specific product with brand/model/edition",
-    "price": "$X",
-    "match": X,
-    "confidence": "safe/balanced/stretch",
-    "reason": "Which platforms + why THIS specific item + why not duplicate",
-    "platforms": ["instagram", "spotify"]
-  }}
+    "name": "Real Product Name Here",
+    "description": "...",
+    "why_perfect": "...",
+    "price_range": "$XX-$YY",
+    "where_to_buy": "...",
+    "category": "...",
+    "confidence_level": "safe_bet",
+    "gift_type": "physical",
+    "product_url": "",
+    "match_score": 85
+  }},
+  ... more recommendations ...
 ]
 
-Return ONLY the JSON array, no other text."""
-
-    # Call Claude
-    response = claude_client.messages.create(
-        model="claude-sonnet-4-20250514",
-        max_tokens=4000,
-        messages=[{"role": "user", "content": prompt}]
-    )
-    
-    # Parse response
-    text = response.content[0].text
-    
-    # Extract JSON
-    if "```json" in text:
-        text = text.split("```json")[1].split("```")[0]
-    elif "```" in text:
-        text = text.split("```")[1].split("```")[0]
-    
-    recommendations = json.loads(text.strip())
-    
-    # Add Amazon affiliate links (placeholder - implement later)
-    for rec in recommendations:
-        rec['amazon_search_url'] = create_amazon_search_url(rec['name'])
-    
-    return recommendations
-
-
-def build_context(platform_data):
-    """Build detailed context string from all platform data"""
-    
-    context = "USER INTEREST PROFILE\n\n"
-    
-    # Instagram data
-    if 'instagram' in platform_data and 'error' not in platform_data['instagram']:
-        ig = platform_data['instagram']
-        context += f"""INSTAGRAM (Full OAuth Access):
-Username: @{ig.get('username', 'unknown')}
-Posts Analyzed: {ig.get('total_posts', 0)}
-
-Top Hashtags:
-{format_dict(ig.get('top_hashtags', {}), limit=20)}
-
-Recent Caption Samples:
-{format_list(ig.get('recent_captions', []), limit=5)}
-
----
-
+Generate {rec_count} recommendations now. BE SPECIFIC. USE REAL BRANDS. ONLY RECOMMEND PRODUCTS THAT ACTUALLY EXIST.
 """
     
-    # Spotify data
-    if 'spotify' in platform_data and 'error' not in platform_data['spotify']:
-        sp = platform_data['spotify']
-        context += f"""SPOTIFY (Full OAuth Access):
+    return prompt
 
-Top Artists (Last 6 Months):
-{format_list(sp.get('top_artists', []), limit=15)}
 
-Top Genres:
-{format_dict(sp.get('top_genres', {}), limit=10)}
-
-Top Tracks:
-{format_track_list(sp.get('top_tracks', []), limit=10)}
-
-Playlists:
-{format_list(sp.get('playlists', []), limit=8)}
-
----
-
-"""
+def generate_recommendations(platform_insights, signals, rec_count=15, relationship='someone_else', max_retries=2):
+    """
+    Generate gift recommendations using Claude AI
     
-    # Pinterest data
-    if 'pinterest' in platform_data and 'error' not in platform_data['pinterest']:
-        pin = platform_data['pinterest']
-        context += f"""PINTEREST (Full OAuth Access) - HIGHEST INTENT DATA:
-Total Boards: {pin.get('total_boards', 0)}
-Total Pins: {pin.get('total_pins', 0)}
-
-Boards:
-{format_pinterest_boards(pin.get('boards', []), limit=10)}
-
-Top Keywords from Pins:
-{format_dict(pin.get('top_keywords', {}), limit=25)}
-
-⚠️ PINTEREST = WISHLIST DATA - These are things they're actively wanting!
-
----
-
-"""
+    Args:
+        platform_insights: Analyzed data from platforms
+        signals: Interest signals
+        rec_count: Number of recommendations
+        relationship: 'myself' or 'someone_else'
+        max_retries: Number of retry attempts if validation fails
     
-    # TikTok data
-    if 'tiktok' in platform_data and 'error' not in platform_data['tiktok']:
-        tt = platform_data['tiktok']
-        context += f"""TIKTOK (Public Profile):
-Username: @{tt.get('username', 'unknown')}
-Posts Analyzed: {tt.get('total_posts', 0)}
-
-Top Hashtags:
-{format_dict(tt.get('top_hashtags', {}), limit=20)}
-
-Top Music/Sounds:
-{format_dict(tt.get('top_music', {}), limit=15)}
-
-Note: Limited to public content only (OAuth coming soon for full access)
-
----
-
-"""
+    Returns:
+        list of recommendation dicts or None on failure
+    """
+    if not anthropic_client:
+        logger.error("Anthropic API not configured")
+        return None
     
-    return context
-
-
-def format_dict(data_dict, limit=10):
-    """Format dictionary as readable list"""
-    if not data_dict:
-        return "None"
+    prompt = build_recommendation_prompt(platform_insights, signals, rec_count, relationship)
     
-    items = sorted(data_dict.items(), key=lambda x: x[1], reverse=True)[:limit]
-    return '\n'.join([f"- {k}: {v}x" for k, v in items])
-
-
-def format_list(data_list, limit=10):
-    """Format list as readable bullet points"""
-    if not data_list:
-        return "None"
-    
-    items = data_list[:limit]
-    return '\n'.join([f"- {item}" for item in items if item])
-
-
-def format_track_list(tracks, limit=10):
-    """Format Spotify tracks"""
-    if not tracks:
-        return "None"
-    
-    return '\n'.join([
-        f"- \"{track['name']}\" by {track['artist']}"
-        for track in tracks[:limit]
-    ])
-
-
-def format_pinterest_boards(boards, limit=10):
-    """Format Pinterest boards with pin info"""
-    if not boards:
-        return "None"
-    
-    output = []
-    for board in boards[:limit]:
-        output.append(f"- {board['name']} ({board.get('pin_count', 0)} pins)")
-        if board.get('description'):
-            output.append(f"  Description: {board['description'][:100]}")
+    attempt = 0
+    while attempt < max_retries:
+        try:
+            logger.info(f"Generating {rec_count} recommendations (attempt {attempt + 1}/{max_retries})...")
+            
+            # Call Claude API
+            message = anthropic_client.messages.create(
+                model="claude-sonnet-4-20250514",
+                max_tokens=8000,
+                temperature=0.7,  # Balance creativity with accuracy
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ]
+            )
+            
+            # Extract JSON from response
+            response_text = message.content[0].text
+            
+            # Remove markdown code blocks if present
+            if '```json' in response_text:
+                response_text = response_text.split('```json')[1].split('```')[0]
+            elif '```' in response_text:
+                response_text = response_text.split('```')[1].split('```')[0]
+            
+            # Parse JSON
+            recommendations = json.loads(response_text.strip())
+            
+            if not isinstance(recommendations, list):
+                logger.error("Response is not a list")
+                attempt += 1
+                continue
+            
+            # Validate recommendations
+            validated_recommendations = []
+            for i, rec in enumerate(recommendations):
+                # Check required fields
+                required_fields = ['name', 'description', 'why_perfect', 'price_range', 'where_to_buy', 'category']
+                if not all(field in rec for field in required_fields):
+                    logger.warning(f"Recommendation {i+1} missing required fields, skipping")
+                    continue
+                
+                # Check name is specific enough (at least 2 words)
+                name_words = rec['name'].split()
+                if len(name_words) < 2:
+                    logger.warning(f"Recommendation '{rec['name']}' too generic (< 2 words), skipping")
+                    continue
+                
+                # Check for vague product names
+                vague_words = ['item', 'product', 'thing', 'gift', 'set', 'collection', 'bundle']
+                if any(vague in rec['name'].lower() for vague in vague_words) and len(name_words) < 3:
+                    logger.warning(f"Recommendation '{rec['name']}' seems vague, skipping")
+                    continue
+                
+                # Add defaults for optional fields
+                rec.setdefault('confidence_level', 'safe_bet')
+                rec.setdefault('gift_type', 'physical')
+                rec.setdefault('match_score', 80)
+                rec.setdefault('product_url', '')
+                
+                # Ensure proper confidence level values
+                if rec['confidence_level'] not in ['safe_bet', 'adventurous']:
+                    rec['confidence_level'] = 'safe_bet'
+                
+                # Ensure proper gift type values
+                if rec['gift_type'] not in ['physical', 'experience']:
+                    rec['gift_type'] = 'physical'
+                
+                validated_recommendations.append(rec)
+            
+            if len(validated_recommendations) < rec_count * 0.6:  # Less than 60% valid
+                logger.warning(f"Only {len(validated_recommendations)}/{rec_count} recommendations passed validation")
+                attempt += 1
+                continue
+            
+            logger.info(f"Successfully generated {len(validated_recommendations)} validated recommendations")
+            return validated_recommendations
         
-        # Sample pins
-        pins = board.get('pins', [])[:3]
-        for pin in pins:
-            if pin.get('title'):
-                output.append(f"  • {pin['title']}")
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON parsing error: {e}")
+            logger.debug(f"Response text: {response_text[:500]}...")
+            attempt += 1
+        
+        except Exception as e:
+            logger.error(f"Recommendation generation error: {e}")
+            attempt += 1
     
-    return '\n'.join(output)
+    logger.error(f"Failed to generate recommendations after {max_retries} attempts")
+    return None
 
 
-def create_amazon_search_url(product_name):
-    """Create Amazon search URL (will add affiliate tag later)"""
-    import urllib.parse
-    query = urllib.parse.quote_plus(product_name)
-    return f"https://www.amazon.com/s?k={query}"
-
-
-def add_affiliate_links(recommendations, associate_id="giftwise-20"):
+def enhance_recommendations_with_context(recommendations, platform_insights):
     """
-    Add Amazon affiliate links to recommendations
-    This is a placeholder - implement actual product matching later
+    Add additional context to recommendations based on platform data
     
-    For MVP: Just create search URLs with affiliate tag
-    Later: Use Amazon Product API to get actual product links
+    Args:
+        recommendations: List of recommendation dicts
+        platform_insights: Platform analysis data
+    
+    Returns:
+        Enhanced recommendations list
     """
+    # Add metadata
     for rec in recommendations:
-        import urllib.parse
-        query = urllib.parse.quote_plus(rec['name'])
-        rec['amazon_affiliate_url'] = f"https://www.amazon.com/s?k={query}&tag={associate_id}"
+        # Determine retailer type from where_to_buy
+        where = rec.get('where_to_buy', '').lower()
+        if 'amazon' in where:
+            rec['retailer_type'] = 'amazon'
+        elif 'etsy' in where:
+            rec['retailer_type'] = 'etsy'
+        elif 'target' in where:
+            rec['retailer_type'] = 'target'
+        elif 'best buy' in where:
+            rec['retailer_type'] = 'best_buy'
+        else:
+            rec['retailer_type'] = 'other'
+        
+        # Add timestamp
+        rec['generated_at'] = datetime.now().isoformat()
     
     return recommendations

@@ -1320,7 +1320,7 @@ def stripe_webhook():
         subscription_id = event_data.get('subscription_id')
         # Find and downgrade user
         try:
-            with shelve.open('giftwise_db', flag='r') as db:
+            with shelve.open(USER_DB, flag='r') as db:
                 for uid, user_data in db.items():
                     if user_data.get('stripe_subscription_id') == subscription_id:
                         user_data['subscription_tier'] = 'free'

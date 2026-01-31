@@ -572,9 +572,6 @@
                              loading="lazy"
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                         <div class="rec-image-placeholder" style="display: none;">🎁</div>
-                        {% if rec.image_is_fallback %}
-                        <div class="rec-image-fallback-badge">Evocative</div>
-                        {% endif %}
                         {% else %}
                         <div class="rec-image-placeholder">🎁</div>
                         {% endif %}
@@ -612,9 +609,6 @@
                              loading="lazy"
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                         <div class="rec-image-placeholder" style="display: none;">🎁</div>
-                        {% if rec.image_is_fallback %}
-                        <div class="rec-image-fallback-badge">Evocative</div>
-                        {% endif %}
                         {% else %}
                         <div class="rec-image-placeholder">🎁</div>
                         {% endif %}

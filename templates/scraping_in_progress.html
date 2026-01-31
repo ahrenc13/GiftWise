@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Analyzing Profiles - Giftwise</title>
+    <title>Analyzing Your Social Media | Giftwise</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -12,496 +13,362 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: white;
             padding: 20px;
         }
-        
+
         .container {
-            max-width: 700px;
-            width: 100%;
-            animation: fadeIn 0.5s ease-in;
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-        
-        .header {
-            text-align: center;
-            margin-bottom: 50px;
-        }
-
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 15px;
-            font-weight: 700;
-        }
-
-        .header p {
-            font-size: 1.2em;
-            opacity: 0.95;
-        }
-        
-        /* Stages Container */
-        .stages-container {
-            margin: 50px 0;
-        }
-
-        /* Stages */
-        .stages {
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 30px;
-            position: relative;
-            padding: 0 20px;
-        }
-
-        .stages::before {
-            content: '';
-            position: absolute;
-            top: 25px;
-            left: 60px;
-            right: 60px;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.2);
-            z-index: 0;
-            border-radius: 2px;
-            transition: background 0.5s ease;
-        }
-
-        .stages::after {
-            content: '';
-            position: absolute;
-            top: 25px;
-            left: 60px;
-            height: 4px;
-            background: linear-gradient(90deg, #10b981, #059669);
-            z-index: 1; /* Behind icons */
-            border-radius: 2px;
-            transition: width 1s ease-out;
-            width: 0%;
-        }
-
-        .stages.stage1::after { width: 0%; }
-        .stages.stage2::after { width: calc(33.33% - 40px); }
-        .stages.stage3::after { width: calc(66.66% - 40px); }
-        .stages.stage4::after { width: calc(100% - 120px); }
-
-        .progress-text {
-            text-align: center;
-            font-size: 1.1em;
-            font-weight: 600;
-            transition: opacity 0.3s ease;
-            margin-top: 20px;
-            min-height: 30px;
-        }
-
-        .stage {
-            text-align: center;
-            flex: 1;
-            position: relative;
-            z-index: 1;
-        }
-
-        .stage-icon {
-            width: 50px;
-            height: 50px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0 auto 12px;
-            font-size: 1.5em;
-            transition: all 0.5s ease;
-            border: 3px solid transparent;
-            position: relative;
-            z-index: 2;
-        }
-
-        .stage.active .stage-icon {
-            background: #10b981;
-            box-shadow: 0 0 25px rgba(16, 185, 129, 0.8);
-            transform: scale(1.15);
-            border-color: rgba(255, 255, 255, 0.5);
-            animation: pulse-active 2s ease-in-out infinite;
-        }
-
-        @keyframes pulse-active {
-            0%, 100% {
-                box-shadow: 0 0 25px rgba(16, 185, 129, 0.8);
-            }
-            50% {
-                box-shadow: 0 0 35px rgba(16, 185, 129, 1);
-            }
-        }
-
-        .stage.completed .stage-icon {
-            background: #10b981;
-            border-color: rgba(255, 255, 255, 0.3);
-        }
-
-        .stage.completed .stage-icon::after {
-            content: '✓';
-            position: absolute;
-            top: -5px;
-            right: -5px;
             background: white;
-            color: #10b981;
-            width: 20px;
-            height: 20px;
+            border-radius: 24px;
+            padding: 60px 40px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 12px;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: #666;
+            margin-bottom: 40px;
+        }
+
+        /* Animated loading spinner */
+        .loader {
+            width: 80px;
+            height: 80px;
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #667eea;
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.7em;
-            font-weight: bold;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 30px;
         }
 
-        .stage-label {
-            font-size: 0.85em;
-            opacity: 0.8;
-            transition: all 0.3s ease;
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
-        .stage.active .stage-label {
-            opacity: 1;
-            font-weight: 600;
-        }
-
-        /* Platform Cards */
+        /* Platform icons container */
         .platforms {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            display: flex;
+            justify-content: center;
             gap: 20px;
             margin: 40px 0;
+            flex-wrap: wrap;
         }
 
-        .platform-card {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
-            padding: 25px;
-            border-radius: 15px;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        .platform {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            position: relative;
         }
 
         .platform-icon {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-            display: block;
-        }
-
-        .platform-name {
-            font-size: 1.1em;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-
-        .platform-status {
-            font-size: 0.9em;
-            opacity: 0.9;
+            width: 60px;
+            height: 60px;
+            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            font-size: 28px;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 10; /* Ensure icons stay on top */
         }
 
-        .status-pulse {
-            width: 8px;
-            height: 8px;
-            background: #10b981;
-            border-radius: 50%;
-            animation: pulse 1.5s ease-in-out infinite;
+        .platform-icon.scraping {
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        .platform-icon.complete {
+            background: #10b981 !important;
+            animation: none;
+        }
+
+        .platform-icon.complete::after {
+            content: '✓';
+            position: absolute;
+            font-size: 32px;
+            color: white;
+            font-weight: bold;
         }
 
         @keyframes pulse {
-            0%, 100% {
-                opacity: 1;
-                transform: scale(1);
-            }
-            50% {
-                opacity: 0.5;
-                transform: scale(1.3);
-            }
+            0%, 100% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.1); opacity: 0.8; }
         }
 
-        /* Info Box */
-        .info-box {
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
-            padding: 25px;
-            border-radius: 15px;
-            margin-top: 40px;
-            text-align: center;
+        .platform-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
         }
 
-        .info-box h3 {
-            font-size: 1.2em;
-            margin-bottom: 15px;
+        .platform-status {
+            font-size: 12px;
+            color: #999;
+            font-weight: 500;
         }
 
-        .info-box p {
-            opacity: 0.9;
+        /* Progress bar - FIXED z-index */
+        .progress-container {
+            background: #f0f0f0;
+            border-radius: 12px;
+            height: 8px;
+            margin: 40px 0 20px;
+            overflow: hidden;
+            position: relative;
+            z-index: 1; /* Behind icons */
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 12px;
+            transition: width 0.5s ease;
+            width: 0%;
+        }
+
+        .progress-text {
+            font-size: 14px;
+            color: #666;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+
+        /* Status messages */
+        .status-messages {
+            margin: 30px 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            min-height: 60px;
+        }
+
+        .status-message {
+            font-size: 14px;
+            color: #666;
             line-height: 1.6;
+            animation: fadeIn 0.5s ease;
         }
 
-        @media (max-width: 600px) {
-            .header h1 {
-                font-size: 2em;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .estimate {
+            font-size: 13px;
+            color: #999;
+            margin-top: 20px;
+            font-style: italic;
+        }
+
+        /* Platform colors */
+        .instagram { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
+        .tiktok { background: linear-gradient(45deg, #000000, #ee1d52, #69c9d0); }
+        .pinterest { background: linear-gradient(45deg, #bd081c, #e60023); }
+        .spotify { background: #1db954; }
+        .etsy { background: #f1641e; }
+        .youtube { background: #ff0000; }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .container {
+                padding: 40px 24px;
             }
 
-            .stages {
-                margin: 30px 0;
+            h1 {
+                font-size: 24px;
             }
 
-            .stage-label {
-                font-size: 0.75em;
-            }
-
-            .platforms {
-                grid-template-columns: 1fr;
+            .platform-icon {
+                width: 50px;
+                height: 50px;
+                font-size: 24px;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>Getting to know {% if recipient_type == 'someone_else' %}them{% else %}you{% endif %}...</h1>
-            <p>Matching a picture of who {% if recipient_type == 'someone_else' %}they{% else %}you{% endif %} are to what {% if recipient_type == 'someone_else' %}they{% else %}you{% endif %} want</p>
+        <h1>Analyzing Your Social Media</h1>
+        <p class="subtitle">Hang tight! We're gathering insights from your profiles...</p>
+
+        <div class="loader"></div>
+
+        <div class="platforms" id="platforms-container">
+            <!-- Platforms will be inserted here via JavaScript -->
         </div>
 
-        <!-- Stages Progress Indicator -->
-        <div class="stages-container">
-            <div class="stages">
-                <div class="stage" id="stage1">
-                    <div class="stage-icon">📡</div>
-                    <div class="stage-label">Connect</div>
-                </div>
-                <div class="stage" id="stage2">
-                    <div class="stage-icon">📥</div>
-                    <div class="stage-label">Download</div>
-                </div>
-                <div class="stage" id="stage3">
-                    <div class="stage-icon">🔍</div>
-                    <div class="stage-label">Understand</div>
-                </div>
-                <div class="stage" id="stage4">
-                    <div class="stage-icon">✨</div>
-                    <div class="stage-label">Curate</div>
-                </div>
+        <div class="progress-container">
+            <div class="progress-bar" id="progress-bar"></div>
+        </div>
+        <div class="progress-text" id="progress-text">0% complete</div>
+
+        <div class="status-messages">
+            <div class="status-message" id="status-message">
+                Connecting to platforms...
             </div>
-            <div class="progress-text" id="progressText">Connecting to platforms...</div>
         </div>
 
-        <!-- Connected Platforms -->
-        <div class="platforms">
-            {% for platform in platforms %}
-            <div class="platform-card">
-                <span class="platform-icon">
-                    {% if platform == 'instagram' %}📷{% endif %}
-                    {% if platform == 'tiktok' %}🎬{% endif %}
-                    {% if platform == 'pinterest' %}📌{% endif %}
-                </span>
-                <div class="platform-name">{{ platform|title }}</div>
-                <div class="platform-status">
-                    <span class="status-pulse"></span>
-                    <span>Analyzing posts...</span>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-
-        <!-- Info Box -->
-        <div class="info-box">
-            <h3>⏱ This takes 30-90 seconds</h3>
-            <p>
-                We're downloading posts, analyzing interests, and finding unique gift ideas that match 
-                {% if recipient_type == 'someone_else' %}their{% else %}your{% endif %} personality perfectly.
-            </p>
-        </div>
+        <p class="estimate">⏱️ This usually takes 30-60 seconds</p>
     </div>
-    
+
     <script>
-        // CRITICAL FIX: Use session-specific localStorage key to prevent stale timestamps
-        // This prevents the "90% immediately" bug from old scraping sessions
-        const platforms = {{ platforms|tojson }};
-        const sessionId = platforms.sort().join('_'); // Unique per platform combo
-        const storageKey = 'giftwise_scraping_' + sessionId;
+        const platformData = {{ platforms | tojson }};
+        const userId = "{{ user_id }}";
         
-        // Clear any old scraping sessions (cleanup)
-        const allKeys = Object.keys(localStorage);
-        for (let key of allKeys) {
-            if (key.startsWith('giftwise_scraping_') && key !== storageKey) {
-                localStorage.removeItem(key);
-                console.log('Cleared old session:', key);
-            }
-        }
-        
-        // Get or set start time for THIS session only
-        let startTime = localStorage.getItem(storageKey);
-        if (!startTime) {
-            startTime = Date.now();
-            localStorage.setItem(storageKey, startTime);
-            console.log('Started new scraping session:', sessionId);
-        } else {
-            startTime = parseInt(startTime);
-            console.log('Continuing scraping session:', sessionId);
-        }
-        
-        const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
-        console.log('Elapsed time:', elapsedSeconds, 'seconds');
-        
-        // Stage definitions - no percentages, just stages
-        const stages = [
-            { time: 0, text: "Connecting to social platforms...", stage: 1 },
-            { time: 15, text: "Downloading recent posts and content...", stage: 2 },
-            { time: 30, text: "Understanding what they love...", stage: 3 },
-            { time: 60, text: "Finding gifts that feel made just for them...", stage: 4 }
+        const platformIcons = {
+            'instagram': '📷',
+            'tiktok': '🎵',
+            'pinterest': '📌',
+            'spotify': '🎧',
+            'etsy': '🛍️',
+            'youtube': '▶️'
+        };
+
+        const statusMessages = [
+            "Reading your posts...",
+            "Analyzing your interests...",
+            "Finding patterns in your content...",
+            "Identifying your style...",
+            "Understanding what you love...",
+            "Almost there..."
         ];
-        
-        // Track warning state
-        const state = { warningShown: false, currentStageNum: 1 };
-        
-        // Find current stage based on elapsed time
-        let currentStage = stages[0];
-        for (let stage of stages) {
-            if (elapsedSeconds >= stage.time) {
-                currentStage = stage;
-            }
+
+        let messageIndex = 0;
+
+        // Render platform icons
+        function renderPlatforms() {
+            const container = document.getElementById('platforms-container');
+            container.innerHTML = '';
+
+            Object.entries(platformData).forEach(([platform, data]) => {
+                const status = data.status || 'pending';
+                const platformDiv = document.createElement('div');
+                platformDiv.className = 'platform';
+                platformDiv.innerHTML = `
+                    <div class="platform-icon ${platform} ${status}" data-platform="${platform}">
+                        ${platformIcons[platform] || '🔗'}
+                    </div>
+                    <div class="platform-name">${platform.charAt(0).toUpperCase() + platform.slice(1)}</div>
+                    <div class="platform-status" data-status="${platform}">
+                        ${status === 'scraping' ? 'Analyzing...' : status === 'complete' ? 'Complete!' : 'Waiting...'}
+                    </div>
+                `;
+                container.appendChild(platformDiv);
+            });
         }
-        
-        // Update UI immediately on page load
-        const stagesContainer = document.querySelector('.stages');
-        const progressText = document.getElementById('progressText');
-        
-        progressText.textContent = currentStage.text;
-        state.currentStageNum = currentStage.stage;
-        
-        // Update stage indicators and container class
-        stagesContainer.className = 'stages stage' + currentStage.stage;
-        for (let i = 1; i <= 4; i++) {
-            const stageEl = document.getElementById('stage' + i);
-            stageEl.classList.remove('active', 'completed');
-            // Only mark as completed if we've moved past it (not just active)
-            if (i < currentStage.stage) {
-                stageEl.classList.add('completed');
-            } else if (i === currentStage.stage) {
-                stageEl.classList.add('active');
-                // Don't add completed class to active stage
-            }
-        }
-        
-        // Smooth progress updates without page reload
-        let progressUpdateInterval;
-        let checkStatusInterval;
-        
-        function updateProgressSmoothly() {
-            const elapsed = (Date.now() - startTime) / 1000;
-            
-            // Find current stage based on elapsed time
-            let currentStage = stages[0];
-            for (let stage of stages) {
-                if (elapsed >= stage.time) {
-                    currentStage = stage;
-                }
-            }
-            
-            // Only update if stage changed
-            if (currentStage.stage !== state.currentStageNum) {
-                state.currentStageNum = currentStage.stage;
-                
-                // Update container class for progress line
-                stagesContainer.className = 'stages stage' + currentStage.stage;
-                
-                // Update text smoothly
-                progressText.style.opacity = '0';
-                setTimeout(() => {
-                    progressText.textContent = currentStage.text;
-                    progressText.style.opacity = '1';
-                }, 200);
-                
-                // Update stage indicators
-                for (let i = 1; i <= 4; i++) {
-                    const stageEl = document.getElementById('stage' + i);
-                    stageEl.classList.remove('active', 'completed');
-                    if (i < currentStage.stage) {
-                        stageEl.classList.add('completed');
-                    } else if (i === currentStage.stage) {
-                        stageEl.classList.add('active');
+
+        // Update progress
+        function updateProgress() {
+            const total = Object.keys(platformData).length;
+            const complete = Object.values(platformData).filter(p => p.status === 'complete').length;
+            const percentage = Math.round((complete / total) * 100);
+
+            document.getElementById('progress-bar').style.width = percentage + '%';
+            document.getElementById('progress-text').textContent = percentage + '% complete';
+
+            // Update status message periodically
+            if (complete < total && messageIndex < statusMessages.length) {
+                const elapsed = Date.now() - startTime;
+                if (elapsed > (messageIndex + 1) * 8000) { // Every 8 seconds
+                    messageIndex++;
+                    if (messageIndex < statusMessages.length) {
+                        document.getElementById('status-message').textContent = statusMessages[messageIndex];
                     }
                 }
             }
-            
-            // Check timeout - but don't stop, just show message
-            if (elapsed > 120 && !state.warningShown) {
-                state.warningShown = true;
-                progressText.style.opacity = '0';
+
+            // All complete - redirect
+            if (complete === total) {
+                document.getElementById('status-message').textContent = "✅ Analysis complete! Generating your recommendations...";
                 setTimeout(() => {
-                    progressText.innerHTML = '⏳ Still working on it - this can take a few minutes for lots of content...';
-                    progressText.style.opacity = '1';
-                }, 300);
+                    window.location.href = '/recommendations';
+                }, 1500);
             }
         }
+
+        // Poll for status updates
+        let startTime = Date.now();
         
-        // Check scraping status via API (no page reload!)
-        async function checkScrapingStatus() {
-            try {
-                const response = await fetch('/api/check-scraping-status');
-                const data = await response.json();
-                
-                if (data.complete) {
-                    // All scraping done - redirect smoothly
-                    clearInterval(progressUpdateInterval);
-                    clearInterval(checkStatusInterval);
-                    
-                    // Show completion
-                    stagesContainer.className = 'stages stage4';
-                    progressText.textContent = '✓ All done! Redirecting...';
-                    
-                    // Mark all stages complete
-                    for (let i = 1; i <= 4; i++) {
-                        const stageEl = document.getElementById('stage' + i);
-                        stageEl.classList.remove('active');
-                        stageEl.classList.add('completed');
+        function checkStatus() {
+            fetch('/api/scraping-status')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.platforms) {
+                        // Update platform data
+                        Object.entries(data.platforms).forEach(([platform, info]) => {
+                            platformData[platform] = info;
+                            
+                            // Update icon status
+                            const icon = document.querySelector(`[data-platform="${platform}"]`);
+                            if (icon) {
+                                icon.className = `platform-icon ${platform}`;
+                                if (info.status === 'complete') {
+                                    icon.classList.add('complete');
+                                } else if (info.status === 'scraping') {
+                                    icon.classList.add('scraping');
+                                }
+                            }
+
+                            // Update status text
+                            const statusText = document.querySelector(`[data-status="${platform}"]`);
+                            if (statusText) {
+                                if (info.status === 'scraping') {
+                                    statusText.textContent = 'Analyzing...';
+                                } else if (info.status === 'complete') {
+                                    statusText.textContent = 'Complete!';
+                                    statusText.style.color = '#10b981';
+                                }
+                            }
+                        });
+
+                        updateProgress();
+
+                        // Continue polling if not complete
+                        if (!data.all_complete) {
+                            setTimeout(checkStatus, 2000);
+                        }
                     }
-                    
-                    // Smooth redirect after brief delay
-                    setTimeout(() => {
-                        window.location.href = '/generate-recommendations';
-                    }, 1000);
-                } else if (data.error) {
-                    // Error occurred
-                    clearInterval(progressUpdateInterval);
-                    clearInterval(checkStatusInterval);
-                    progressText.innerHTML = '❌ ' + data.error + ' <a href="/connect-platforms" style="color: white; text-decoration: underline;">Try again?</a>';
-                }
-            } catch (error) {
-                console.error('Error checking status:', error);
-                // Don't stop - keep checking
-            }
+                })
+                .catch(error => {
+                    console.error('Error checking status:', error);
+                    setTimeout(checkStatus, 3000);
+                });
         }
-        
-        // Start smooth updates
-        progressUpdateInterval = setInterval(updateProgressSmoothly, 100); // Smooth animation
-        checkStatusInterval = setInterval(checkScrapingStatus, 2000); // Check status every 2 seconds
-        
-        // Initial update
-        updateProgressSmoothly();
+
+        // Initialize
+        renderPlatforms();
+        updateProgress();
+        checkStatus();
+
+        // Rotate status messages
+        setInterval(() => {
+            const complete = Object.values(platformData).filter(p => p.status === 'complete').length;
+            const total = Object.keys(platformData).length;
+            
+            if (complete < total && messageIndex < statusMessages.length - 1) {
+                messageIndex++;
+                document.getElementById('status-message').textContent = statusMessages[messageIndex];
+            }
+        }, 8000);
     </script>
 </body>
 </html>

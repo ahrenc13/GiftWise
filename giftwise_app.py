@@ -720,7 +720,7 @@ def check_pinterest_profile(username):
 # SCRAPING FUNCTIONS (with progress tracking)
 # ============================================================================
 
-def scrape_instagram_profile(username, max_posts=50, task_id=None):
+def scrape_instagram_profile(username, max_posts=20, task_id=None):
     """
     Scrape Instagram with progress tracking
     """
@@ -874,7 +874,7 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
             set_progress(task_id, 'error', f'Error: {str(e)}', 0)
         return None
 
-def scrape_tiktok_profile(username, max_videos=50, task_id=None):
+def scrape_tiktok_profile(username, max_videos=20, task_id=None):
     """
     Scrape TikTok with progress tracking and repost analysis
     """

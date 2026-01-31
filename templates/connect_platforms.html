@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connect Platforms - Giftwise</title>
+    <title>Connect Your Platforms | Giftwise</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         * {
             margin: 0;
@@ -12,14 +13,14 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 40px 20px;
         }
 
         .container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
         }
 
@@ -29,721 +30,469 @@
             margin-bottom: 40px;
         }
 
-        .header h1 {
-            font-size: 2.5em;
-            margin-bottom: 10px;
+        h1 {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 12px;
         }
 
-        .header p {
-            font-size: 1.1em;
+        .subtitle {
+            font-size: 18px;
             opacity: 0.9;
-        }
-
-        .progress-bar {
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
-            padding: 5px;
-            margin-bottom: 40px;
-        }
-
-        .progress-fill {
-            background: white;
-            height: 10px;
-            border-radius: 15px;
-            transition: width 0.3s ease;
         }
 
         .platforms-grid {
             display: grid;
-            gap: 25px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
         }
 
         .platform-card {
             background: white;
-            border-radius: 20px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             transition: all 0.3s ease;
+            position: relative;
         }
 
         .platform-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
-        }
-
-        .platform-card.connected {
-            border: 3px solid #10b981;
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
         }
 
         .platform-card.locked {
             opacity: 0.6;
-            pointer-events: none;
+            cursor: not-allowed;
+        }
+
+        .platform-card.locked:hover {
+            transform: none;
         }
 
         .platform-header {
             display: flex;
             align-items: center;
-            margin-bottom: 20px;
+            gap: 16px;
+            margin-bottom: 16px;
         }
 
         .platform-icon {
-            font-size: 2.5em;
-            margin-right: 15px;
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
         }
 
+        .instagram-icon { background: linear-gradient(45deg, #f09433, #e6683c, #dc2743, #cc2366, #bc1888); }
+        .tiktok-icon { background: linear-gradient(45deg, #000000, #ee1d52, #69c9d0); }
+        .pinterest-icon { background: linear-gradient(45deg, #bd081c, #e60023); }
+        .spotify-icon { background: #1db954; }
+        .etsy-icon { background: #f1641e; }
+        .youtube-icon { background: #ff0000; }
+
         .platform-info h3 {
-            font-size: 1.5em;
-            color: #1f2937;
-            margin-bottom: 5px;
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a1a1a;
+            margin-bottom: 4px;
         }
 
         .platform-info p {
-            color: #6b7280;
-            font-size: 0.9em;
+            font-size: 13px;
+            color: #666;
         }
 
-        .platform-form {
-            margin-top: 20px;
+        .platform-status {
+            margin: 16px 0;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 14px;
         }
 
-        .form-group {
-            margin-bottom: 15px;
-        }
-
-        .form-group label {
-            display: block;
-            color: #374151;
+        .platform-status.connected {
+            background: #d1fae5;
+            color: #065f46;
             font-weight: 600;
+        }
+
+        .platform-status .username {
+            font-weight: 600;
+            color: #667eea;
+        }
+
+        .platform-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            text-align: center;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        /* FIXED: Softer disconnect button - amber/orange instead of red */
+        .btn-disconnect {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-disconnect:hover {
+            background: #d97706;
+        }
+
+        .btn-secondary {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .btn-secondary:hover {
+            background: #d1d5db;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-upgrade {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            font-weight: 700;
+        }
+
+        .btn-upgrade:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .pro-badge {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .input-group {
+            margin: 16px 0;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
             margin-bottom: 8px;
         }
 
-        .form-group input {
+        .input-group input {
             width: 100%;
-            padding: 12px 15px;
+            padding: 12px;
             border: 2px solid #e5e7eb;
-            border-radius: 10px;
-            font-size: 1em;
-            transition: border-color 0.2s;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.2s ease;
         }
 
-        .form-group input:focus {
+        .input-group input:focus {
             outline: none;
             border-color: #667eea;
         }
 
-        .validation-status {
-            margin-top: 8px;
-            padding: 10px 15px;
-            border-radius: 8px;
-            font-size: 0.9em;
-            display: none;
-            animation: fadeIn 0.3s;
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        .validation-status.checking {
-            background: #f3f4f6;
-            color: #6b7280;
-            display: block;
-        }
-
-        .validation-status.success {
-            background: #d1fae5;
-            color: #065f46;
-            display: block;
-        }
-
-        .validation-status.error {
-            background: #fee2e2;
-            color: #991b1b;
-            display: block;
-        }
-
-        .validation-status.warning {
-            background: #fef3c7;
-            color: #92400e;
-            display: block;
-        }
-
-        .status-icon {
-            font-weight: bold;
-            margin-right: 5px;
-        }
-
-        .connect-button {
-            width: 100%;
-            padding: 14px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 10px;
-            font-size: 1.1em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .connect-button:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        .connect-button:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-
-        .connected-badge {
-            display: inline-block;
-            background: #10b981;
-            color: white;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-size: 0.9em;
-            font-weight: 600;
-        }
-
-        .generate-section {
-            text-align: center;
-            margin-top: 40px;
-        }
-
-        .generate-button {
-            display: inline-block;
-            padding: 18px 50px;
+        .continue-section {
             background: white;
-            color: #667eea;
+            border-radius: 16px;
+            padding: 32px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .continue-section h2 {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a1a1a;
+            margin-bottom: 12px;
+        }
+
+        .continue-section p {
+            color: #666;
+            margin-bottom: 24px;
+        }
+
+        .btn-continue {
+            padding: 16px 48px;
+            font-size: 16px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
             border: none;
-            border-radius: 50px;
-            font-size: 1.3em;
+            border-radius: 12px;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.3s ease;
-            text-decoration: none;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
 
-        .generate-button:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        .btn-continue:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
         }
 
-        .generate-button:disabled {
+        .btn-continue:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+            transform: none;
         }
 
-        .requirement-text {
-            color: white;
-            margin-top: 15px;
-            font-size: 0.95em;
-            opacity: 0.9;
+        .tier-info {
+            background: #f8f9fa;
+            padding: 16px;
+            border-radius: 8px;
+            margin-top: 24px;
+            font-size: 13px;
+            color: #666;
         }
 
-        .lock-icon {
-            font-size: 1.2em;
-            margin-left: 10px;
+        .tier-info strong {
+            color: #667eea;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 28px;
+            }
+
+            .platforms-grid {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="header">
-            <h1>Connect Your Platforms</h1>
-            <p>{% if recipient_type == 'someone_else' %}Connect their social media so we can get to know them{% else %}Connect your social media so we can get to know you{% endif %}</p>
-        </div>
-
-        <div class="progress-bar">
-            <div class="progress-fill" style="width: {{ (platforms|length / 3 * 100)|int }}%;"></div>
+            <h1>Connect Your Social Media</h1>
+            <p class="subtitle">The more platforms you connect, the better your recommendations!</p>
         </div>
 
         <div class="platforms-grid">
             <!-- Instagram -->
-            <div class="platform-card {% if platforms.instagram %}connected{% endif %}{% if not platform_access.instagram %} locked{% endif %}">
+            <div class="platform-card {% if 'instagram' not in allowed_platforms %}locked{% endif %}">
+                {% if 'instagram' not in allowed_platforms %}
+                <div class="pro-badge">Pro</div>
+                {% endif %}
+                
                 <div class="platform-header">
-                    <div class="platform-icon">📷</div>
+                    <div class="platform-icon instagram-icon">📷</div>
                     <div class="platform-info">
                         <h3>Instagram</h3>
-                        <p>See what they love{% if not platform_access.instagram %} <span class="lock-icon">🔒 Pro</span>{% endif %}</p>
+                        <p>Visual interests & style</p>
                     </div>
                 </div>
 
-                {% if platforms.instagram %}
-                    <div class="connected-badge">✓ Connected: @{{ platforms.instagram.username }}</div>
-                    <form method="POST" action="/disconnect/instagram" style="margin-top: 10px;">
-                        <button type="submit" class="connect-button" style="background: #ef4444; font-size: 0.9em;">
-                            Disconnect
-                        </button>
-                    </form>
+                {% if platforms.instagram.status == 'connected' %}
+                    <div class="platform-status connected">
+                        ✓ Connected as <span class="username">@{{ platforms.instagram.username }}</span>
+                    </div>
+                    <div class="platform-actions">
+                        <form method="POST" action="/disconnect/instagram" style="flex: 1;">
+                            <button type="submit" class="btn btn-disconnect">Disconnect</button>
+                        </form>
+                    </div>
+                {% elif 'instagram' in allowed_platforms %}
+                    <div class="input-group">
+                        <label for="instagram_username">Instagram Username</label>
+                        <input type="text" id="instagram_username" placeholder="@username">
+                    </div>
+                    <div class="platform-actions">
+                        <button class="btn btn-primary" onclick="connectInstagram()">Connect</button>
+                    </div>
                 {% else %}
-                    <form method="POST" action="/connect/instagram" class="platform-form">
-                        <div class="form-group">
-                            <label for="instagram-username">{% if recipient_type == 'someone_else' %}Their{% else %}Your{% endif %} Instagram Username</label>
-                            <input type="text" 
-                                   name="username" 
-                                   id="instagram-username" 
-                                   placeholder="username" 
-                                   required>
-                            <div id="instagram-username-status" class="validation-status"></div>
-                        </div>
-                        <button type="submit" id="instagram-submit" class="connect-button" disabled>
-                            Connect Instagram
-                        </button>
-                    </form>
+                    <div class="platform-status">
+                        Instagram requires Pro tier
+                    </div>
+                    <div class="platform-actions">
+                        <a href="/upgrade" class="btn btn-upgrade">Upgrade to Pro</a>
+                    </div>
                 {% endif %}
             </div>
 
             <!-- TikTok -->
-            <div class="platform-card {% if platforms.tiktok %}connected{% endif %}{% if not platform_access.tiktok %} locked{% endif %}">
+            <div class="platform-card {% if 'tiktok' not in allowed_platforms %}locked{% endif %}">
+                {% if 'tiktok' not in allowed_platforms %}
+                <div class="pro-badge">Pro</div>
+                {% endif %}
+                
                 <div class="platform-header">
-                    <div class="platform-icon">🎬</div>
+                    <div class="platform-icon tiktok-icon">🎵</div>
                     <div class="platform-info">
                         <h3>TikTok</h3>
-                        <p>Discover their interests{% if not platform_access.tiktok %} <span class="lock-icon">🔒 Pro</span>{% endif %}</p>
+                        <p>Trending interests & vibes</p>
                     </div>
                 </div>
 
-                {% if platforms.tiktok %}
-                    <div class="connected-badge">✓ Connected: @{{ platforms.tiktok.username }}</div>
-                    <form method="POST" action="/disconnect/tiktok" style="margin-top: 10px;">
-                        <button type="submit" class="connect-button" style="background: #ef4444; font-size: 0.9em;">
-                            Disconnect
-                        </button>
-                    </form>
+                {% if platforms.tiktok.status == 'connected' %}
+                    <div class="platform-status connected">
+                        ✓ Connected as <span class="username">@{{ platforms.tiktok.username }}</span>
+                    </div>
+                    <div class="platform-actions">
+                        <form method="POST" action="/disconnect/tiktok" style="flex: 1;">
+                            <button type="submit" class="btn btn-disconnect">Disconnect</button>
+                        </form>
+                    </div>
+                {% elif 'tiktok' in allowed_platforms %}
+                    <div class="input-group">
+                        <label for="tiktok_username">TikTok Username</label>
+                        <input type="text" id="tiktok_username" placeholder="@username">
+                    </div>
+                    <div class="platform-actions">
+                        <button class="btn btn-primary" onclick="connectTikTok()">Connect</button>
+                    </div>
                 {% else %}
-                    <form method="POST" action="/connect/tiktok" class="platform-form">
-                        <div class="form-group">
-                            <label for="tiktok-username">{% if recipient_type == 'someone_else' %}Their{% else %}Your{% endif %} TikTok Username</label>
-                            <input type="text" 
-                                   name="username" 
-                                   id="tiktok-username" 
-                                   placeholder="username" 
-                                   required>
-                            <div id="tiktok-username-status" class="validation-status"></div>
-                        </div>
-                        <button type="submit" id="tiktok-submit" class="connect-button" disabled>
-                            Connect TikTok
-                        </button>
-                    </form>
+                    <div class="platform-status">
+                        TikTok requires Pro tier
+                    </div>
+                    <div class="platform-actions">
+                        <a href="/upgrade" class="btn btn-upgrade">Upgrade to Pro</a>
+                    </div>
                 {% endif %}
             </div>
 
             <!-- Pinterest -->
-            <div class="platform-card {% if platforms.pinterest %}connected{% endif %}{% if not platform_access.pinterest %} locked{% endif %}">
+            <div class="platform-card {% if 'pinterest' not in allowed_platforms %}locked{% endif %}">
+                {% if 'pinterest' not in allowed_platforms %}
+                <div class="pro-badge">Pro</div>
+                {% endif %}
+                
                 <div class="platform-header">
-                    <div class="platform-icon">📌</div>
+                    <div class="platform-icon pinterest-icon">📌</div>
                     <div class="platform-info">
                         <h3>Pinterest</h3>
-                        <p>What they're saving for later{% if not platform_access.pinterest %} <span class="lock-icon">🔒 Pro</span>{% endif %}</p>
+                        <p>Aesthetic & inspiration</p>
                     </div>
                 </div>
 
-                {% if platforms.pinterest %}
-                    <div class="connected-badge">✓ Connected</div>
-                    <form method="POST" action="/disconnect/pinterest" style="margin-top: 10px;">
-                        <button type="submit" class="connect-button" style="background: #ef4444; font-size: 0.9em;">
-                            Disconnect
-                        </button>
-                    </form>
+                {% if platforms.pinterest.status == 'connected' %}
+                    <div class="platform-status connected">
+                        ✓ Connected via OAuth
+                    </div>
+                    <div class="platform-actions">
+                        <form method="POST" action="/disconnect/pinterest" style="flex: 1;">
+                            <button type="submit" class="btn btn-disconnect">Disconnect</button>
+                        </form>
+                    </div>
+                {% elif 'pinterest' in allowed_platforms %}
+                    <div class="platform-status">
+                        Connect via OAuth for best results
+                    </div>
+                    <div class="platform-actions">
+                        <a href="/oauth/pinterest" class="btn btn-primary">Connect Pinterest</a>
+                    </div>
                 {% else %}
-                    {% if platform_access.pinterest %}
-                        <div style="margin-bottom: 15px;">
-                            <a href="/oauth/pinterest" class="connect-button" style="display: block; text-align: center; text-decoration: none; line-height: 1.4; margin-bottom: 10px;">
-                                Connect via OAuth (Your Account)
-                            </a>
-                            <p style="font-size: 0.85em; color: #6b7280; text-align: center; margin-bottom: 15px;">
-                                Or scrape a public profile:
-                            </p>
-                            <form method="POST" action="/connect/pinterest" class="platform-form">
-                                <div class="form-group">
-                                    <label for="pinterest-username">Pinterest Username</label>
-                                    <input type="text" 
-                                           name="username" 
-                                           id="pinterest-username" 
-                                           placeholder="username" 
-                                           required>
-                                    <div id="pinterest-username-status" class="validation-status"></div>
-                                </div>
-                                <button type="submit" id="pinterest-submit" class="connect-button" style="background: #6b7280;">
-                                    Connect Profile
-                                </button>
-                                {% if request.args.get('error') == 'pinterest_no_username' %}
-                                <p style="color: #ef4444; font-size: 0.85em; margin-top: 10px;">Please enter a Pinterest username</p>
-                                {% elif request.args.get('error') == 'pinterest_username_too_short' %}
-                                <p style="color: #ef4444; font-size: 0.85em; margin-top: 10px;">Username must be at least 3 characters</p>
-                                {% elif request.args.get('error') == 'pinterest_invalid_username' %}
-                                <p style="color: #ef4444; font-size: 0.85em; margin-top: 10px;">Invalid username format</p>
-                                {% endif %}
-                            </form>
-                        </div>
-                    {% else %}
-                        <p style="color: #6b7280; text-align: center; padding: 20px;">
-                            Upgrade to Pro to connect Pinterest
-                        </p>
-                    {% endif %}
+                    <div class="platform-status">
+                        Pinterest requires Pro tier
+                    </div>
+                    <div class="platform-actions">
+                        <a href="/upgrade" class="btn btn-upgrade">Upgrade to Pro</a>
+                    </div>
                 {% endif %}
-            </div>
-            
-            <!-- Spotify (Hidden - OAuth not available yet) -->
-            {% if False %}
-            <div class="platform-card {% if platforms.spotify %}connected{% endif %}">
-                <div class="platform-header">
-                    <div class="platform-icon">🎵</div>
-                    <div class="platform-info">
-                        <h3>Spotify</h3>
-                        <p>Music taste analysis</p>
-                    </div>
-                </div>
-                {% if platforms.spotify %}
-                    <div class="connected-badge">✓ Connected</div>
-                    <form method="POST" action="/disconnect/spotify" style="margin-top: 10px;">
-                        <button type="submit" class="connect-button" style="background: #ef4444; font-size: 0.9em;">
-                            Disconnect
-                        </button>
-                    </form>
-                {% else %}
-                    <p style="color: #6b7280; text-align: center; padding: 20px;">
-                        Spotify integration coming soon
-                    </p>
-                {% endif %}
-            </div>
-            {% endif %}
-        </div>
-
-        <!-- Optional Platforms Section (Collapsible to avoid paralysis) -->
-        <div style="margin-top: 30px;">
-            <button id="more-platforms-toggle" class="connect-button" style="width: 100%; background: rgba(255,255,255,0.2); color: white; border: 2px solid white;">
-                + Connect More Platforms (Optional)
-            </button>
-            
-            <div id="more-platforms" style="display: none; margin-top: 25px;">
-                <div class="platforms-grid">
-                    <!-- Etsy Wishlist -->
-                    <div class="platform-card {% if user.wishlists and user.wishlists|selectattr('platform', 'equalto', 'etsy')|list %}connected{% endif %}">
-                        <div class="platform-header">
-                            <div class="platform-icon">🛍️</div>
-                            <div class="platform-info">
-                                <h3>Etsy Wishlist</h3>
-                                <p>See what they've favorited</p>
-                            </div>
-                        </div>
-                        {% if user.wishlists and user.wishlists|selectattr('platform', 'equalto', 'etsy')|list %}
-                            <div class="connected-badge">✓ Connected</div>
-                        {% else %}
-                            <form method="POST" action="/connect/etsy" class="platform-form">
-                                <p style="font-size: 0.9em; color: #6b7280; margin-bottom: 15px; text-align: center;">
-                                    Connect your Etsy account to see favorited items
-                                </p>
-                                <button type="submit" class="connect-button">
-                                    Connect Etsy
-                                </button>
-                            </form>
-                        {% endif %}
-                    </div>
-
-                    <!-- Goodreads -->
-                    <div class="platform-card {% if user.wishlists and user.wishlists|selectattr('platform', 'equalto', 'goodreads')|list %}connected{% endif %}">
-                        <div class="platform-header">
-                            <div class="platform-icon">📚</div>
-                            <div class="platform-info">
-                                <h3>Goodreads</h3>
-                                <p>"Want to Read" shelf analysis</p>
-                            </div>
-                        </div>
-                        {% if user.wishlists and user.wishlists|selectattr('platform', 'equalto', 'goodreads')|list %}
-                            <div class="connected-badge">✓ Connected</div>
-                            <form method="POST" action="/disconnect/goodreads" style="margin-top: 10px;">
-                                <button type="submit" class="connect-button" style="background: #ef4444; font-size: 0.9em;">
-                                    Disconnect
-                                </button>
-                            </form>
-                        {% else %}
-                            <form method="POST" action="/connect/goodreads" class="platform-form">
-                                <div class="form-group">
-                                    <label for="goodreads-username">Goodreads Username</label>
-                                    <input type="text" 
-                                           name="username" 
-                                           id="goodreads-username" 
-                                           placeholder="username" 
-                                           required>
-                                </div>
-                                <button type="submit" class="connect-button">
-                                    Connect Goodreads
-                                </button>
-                            </form>
-                        {% endif %}
-                    </div>
-
-                    <!-- YouTube -->
-                    <div class="platform-card {% if platforms.youtube %}connected{% endif %}">
-                        <div class="platform-header">
-                            <div class="platform-icon">📺</div>
-                            <div class="platform-info">
-                                <h3>YouTube</h3>
-                                <p>Channel subscriptions = interests</p>
-                            </div>
-                        </div>
-                        {% if platforms.youtube %}
-                            <div class="connected-badge">✓ Connected</div>
-                        {% else %}
-                            <form method="POST" action="/connect/youtube" class="platform-form">
-                                <div class="form-group">
-                                    <label for="youtube-channel">Channel ID or Username</label>
-                                    <input type="text" 
-                                           name="channel_id" 
-                                           id="youtube-channel" 
-                                           placeholder="@channel or channel_id" 
-                                           required>
-                                </div>
-                                <button type="submit" class="connect-button">
-                                    Connect YouTube
-                                </button>
-                            </form>
-                        {% endif %}
-                    </div>
-                </div>
             </div>
         </div>
 
-        <div class="generate-section">
-            {% if platforms|length >= 1 %}
-                <a href="/generate-recommendations" class="generate-button">
-                    🎁 Generate Gift Ideas
-                </a>
-                <p class="requirement-text">
-                    ✓ Ready to generate! ({{ platforms|length }} platform{{ 's' if platforms|length != 1 else '' }} connected)
-                </p>
-            {% else %}
-                <button class="generate-button" disabled>
-                    🎁 Generate Gift Ideas
+        <div class="continue-section">
+            <h2>Ready to Generate Recommendations?</h2>
+            <p>Connect at least one platform to get started</p>
+            
+            <form method="POST" action="/start-scraping">
+                <button type="submit" class="btn-continue" id="continueBtn" {% if connected_count == 0 %}disabled{% endif %}>
+                    Continue to Analysis
                 </button>
-                <p class="requirement-text">
-                    Connect at least 1 platform to continue
-                </p>
-            {% endif %}
+            </form>
+
+            <div class="tier-info">
+                <strong>Your tier:</strong> {{ subscription_tier | title }}<br>
+                <strong>Platforms connected:</strong> {{ connected_count }}/{{ total_available }}
+            </div>
         </div>
     </div>
 
     <script>
-    // Username validation with debouncing
-    class UsernameValidator {
-        constructor(inputId, platform, buttonId) {
-            this.input = document.getElementById(inputId);
-            this.platform = platform;
-            this.button = document.getElementById(buttonId);
-            this.statusDiv = document.getElementById(`${inputId}-status`);
-            this.timeout = null;
-            
-            if (!this.input) {
-                console.warn(`UsernameValidator: Input ${inputId} not found`);
+        function connectInstagram() {
+            const username = document.getElementById('instagram_username').value.trim().replace('@', '');
+            if (!username) {
+                alert('Please enter your Instagram username');
                 return;
             }
-            
-            if (!this.statusDiv) {
-                console.error(`UsernameValidator: Status div ${inputId}-status not found`);
-                // Create status div if missing
-                const formGroup = this.input.closest('.form-group');
-                if (formGroup) {
-                    this.statusDiv = document.createElement('div');
-                    this.statusDiv.id = `${inputId}-status`;
-                    this.statusDiv.className = 'validation-status';
-                    this.input.parentNode.insertBefore(this.statusDiv, this.input.nextSibling);
+
+            fetch('/connect/instagram', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: username})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
                 } else {
-                    return;
-                }
-            }
-            
-            // Listen for input changes
-            this.input.addEventListener('input', () => this.handleInput());
-            this.input.addEventListener('blur', () => {
-                // Validate immediately on blur
-                clearTimeout(this.timeout);
-                const username = this.input.value.trim().replace('@', '');
-                if (username.length >= 2) {
-                    this.validateUsername(username);
+                    alert(data.error || 'Failed to connect Instagram');
                 }
             });
-            
-            // Disable button initially
-            if (this.button) this.button.disabled = true;
         }
-        
-        handleInput() {
-            clearTimeout(this.timeout);
-            const username = this.input.value.trim().replace('@', '');
-            
-            if (username.length < 2) {
-                this.showStatus('', '');
-                if (this.button) this.button.disabled = true;
-                return;
-            }
-            
-            // Debounce - wait 800ms after user stops typing
-            this.timeout = setTimeout(() => {
-                this.validateUsername(username);
-            }, 800);
-        }
-        
-        async validateUsername(username) {
-            if (!this.statusDiv) {
-                console.error('Status div not found, cannot show validation');
-                return;
-            }
-            
-            this.showStatus('⏳', 'Checking...', 'checking');
-            
-            try {
-                const response = await fetch('/api/validate-username', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        platform: this.platform,
-                        username: username
-                    })
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP ${response.status}`);
-                }
-                
-                const result = await response.json();
-                
-                if (result.valid) {
-                    this.showStatus(result.icon || '✅', result.message || 'Valid account', 'success');
-                    if (this.button) this.button.disabled = false;
-                } else {
-                    this.showStatus(result.icon || '❌', result.message || 'Invalid account', 'error');
-                    if (this.button) this.button.disabled = true;
-                }
-            } catch (error) {
-                console.error('Validation error:', error);
-                this.showStatus('⚠️', 'Unable to verify - you can still try', 'warning');
-                if (this.button) this.button.disabled = false; // Allow them to try anyway
-            }
-        }
-        
-        showStatus(icon, message, type) {
-            if (!this.statusDiv) {
-                console.error('Status div not available');
-                return;
-            }
-            
-            if (!message || message === '') {
-                this.statusDiv.innerHTML = '';
-                this.statusDiv.className = 'validation-status';
-                this.statusDiv.style.display = 'none';
-                this.statusDiv.style.visibility = 'hidden';
-                return;
-            }
-            
-            this.statusDiv.innerHTML = `${icon ? icon + ' ' : ''}${message}`;
-            this.statusDiv.className = `validation-status ${type}`;
-            this.statusDiv.style.display = 'block';
-            this.statusDiv.style.visibility = 'visible';
-            this.statusDiv.style.opacity = '1';
-            
-            // Force a reflow to ensure visibility
-            this.statusDiv.offsetHeight;
-        }
-    }
 
-    // Username autocomplete from browser history
-    class UsernameAutocomplete {
-        constructor(inputId, platform) {
-            this.input = document.getElementById(inputId);
-            if (!this.input) return;
-            
-            this.platform = platform;
-            this.storageKey = `giftwise_${platform}_history`;
-            this.setupAutocomplete();
-        }
-        
-        setupAutocomplete() {
-            // Create datalist for native autocomplete
-            const datalistId = `${this.input.id}-suggestions`;
-            const datalist = document.createElement('datalist');
-            datalist.id = datalistId;
-            this.input.setAttribute('list', datalistId);
-            this.input.parentNode.insertBefore(datalist, this.input.nextSibling);
-            
-            // Load history
-            this.updateSuggestions();
-            
-            // Save on form submit
-            const form = this.input.closest('form');
-            if (form) {
-                form.addEventListener('submit', () => {
-                    this.saveUsername(this.input.value.trim().replace('@', ''));
-                });
+        function connectTikTok() {
+            const username = document.getElementById('tiktok_username').value.trim().replace('@', '');
+            if (!username) {
+                alert('Please enter your TikTok username');
+                return;
             }
-        }
-        
-        updateSuggestions() {
-            const history = this.getHistory();
-            const datalist = document.getElementById(`${this.input.id}-suggestions`);
-            if (!datalist) return;
-            
-            datalist.innerHTML = '';
-            history.forEach(username => {
-                const option = document.createElement('option');
-                option.value = username;
-                datalist.appendChild(option);
+
+            fetch('/connect/tiktok', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: username})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert(data.error || 'Failed to connect TikTok');
+                }
             });
         }
-        
-        getHistory() {
-            const stored = localStorage.getItem(this.storageKey);
-            return stored ? JSON.parse(stored) : [];
-        }
-        
-        saveUsername(username) {
-            if (!username) return;
-            
-            let history = this.getHistory();
-            
-            // Add to front, remove duplicates
-            history = [username, ...history.filter(u => u !== username)];
-            
-            // Keep last 10
-            history = history.slice(0, 10);
-            
-            localStorage.setItem(this.storageKey, JSON.stringify(history));
-        }
-    }
 
-    // Toggle more platforms section
-    const morePlatformsToggle = document.getElementById('more-platforms-toggle');
-    const morePlatforms = document.getElementById('more-platforms');
-    
-    if (morePlatformsToggle && morePlatforms) {
-        morePlatformsToggle.addEventListener('click', function() {
-            if (morePlatforms.style.display === 'none') {
-                morePlatforms.style.display = 'block';
-                morePlatformsToggle.textContent = '− Hide Optional Platforms';
-            } else {
-                morePlatforms.style.display = 'none';
-                morePlatformsToggle.textContent = '+ Connect More Platforms (Optional)';
-            }
-        });
-    }
-
-    // Initialize when page loads
-    document.addEventListener('DOMContentLoaded', function() {
-        // Initialize validators
-        new UsernameValidator('instagram-username', 'instagram', 'instagram-submit');
-        new UsernameValidator('tiktok-username', 'tiktok', 'tiktok-submit');
-        new UsernameValidator('pinterest-username', 'pinterest', 'pinterest-submit');
-        
-        // Initialize autocomplete
-        new UsernameAutocomplete('instagram-username', 'instagram');
-        new UsernameAutocomplete('tiktok-username', 'tiktok');
-        new UsernameAutocomplete('pinterest-username', 'pinterest');
-    });
+        // Enable continue button when platforms connected
+        const connectedCount = {{ connected_count }};
+        if (connectedCount > 0) {
+            document.getElementById('continueBtn').disabled = false;
+        }
     </script>
 </body>
 </html>

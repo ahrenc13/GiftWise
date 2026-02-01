@@ -20,8 +20,8 @@ import os
 
 logger = logging.getLogger('giftwise')
 
-# Google Shopping API (for product validation)
-GOOGLE_SHOPPING_API_KEY = os.environ.get('GOOGLE_CUSTOM_SEARCH_API_KEY', '')
+# Google Custom Search (for product validation) - accept both env var names
+GOOGLE_SHOPPING_API_KEY = os.environ.get('GOOGLE_CSE_API_KEY') or os.environ.get('GOOGLE_CUSTOM_SEARCH_API_KEY', '')
 GOOGLE_SHOPPING_ENGINE_ID = os.environ.get('GOOGLE_CUSTOM_SEARCH_ENGINE_ID', '')
 
 def validate_url_exists(url, timeout=5):
@@ -72,17 +72,27 @@ def search_google_shopping(product_name):
         
         response = requests.get(url, params=params, timeout=10)
         
-        if response.status_code == 200:
-            data = response.json()
-            if 'items' in data and len(data['items']) > 0:
-                item = data['items'][0]
-                return {
-                    'exists': True,
-                    'url': item.get('link'),
-                    'title': item.get('title'),
-                    'snippet': item.get('snippet'),
-                    'image_url': item.get('pagemap', {}).get('cse_image', [{}])[0].get('src')
-                }
+        if response.status_code != 200:
+            try:
+                err = response.json()
+                logger.warning(
+                    f"Google CSE (link validation) status={response.status_code} "
+                    f"error={err.get('error', {}).get('message', response.text[:150])}"
+                )
+            except Exception:
+                logger.warning(f"Google CSE (link validation) status={response.status_code} body={response.text[:200]}")
+            return None
+        
+        data = response.json()
+        if 'items' in data and len(data['items']) > 0:
+            item = data['items'][0]
+            return {
+                'exists': True,
+                'url': item.get('link'),
+                'title': item.get('title'),
+                'snippet': item.get('snippet'),
+                'image_url': item.get('pagemap', {}).get('cse_image', [{}])[0].get('src')
+            }
         
         return None
     

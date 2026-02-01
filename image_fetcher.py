@@ -22,8 +22,8 @@ import hashlib
 
 logger = logging.getLogger('giftwise')
 
-# API Keys (set from environment or passed in)
-GOOGLE_CUSTOM_SEARCH_API_KEY = os.environ.get('GOOGLE_CUSTOM_SEARCH_API_KEY', None)
+# API Keys (set from environment or passed in) - accept both env var names
+GOOGLE_CUSTOM_SEARCH_API_KEY = os.environ.get('GOOGLE_CSE_API_KEY') or os.environ.get('GOOGLE_CUSTOM_SEARCH_API_KEY', None)
 GOOGLE_CUSTOM_SEARCH_ENGINE_ID = os.environ.get('GOOGLE_CUSTOM_SEARCH_ENGINE_ID', None)
 UNSPLASH_ACCESS_KEY = os.environ.get('UNSPLASH_ACCESS_KEY', None)
 
@@ -165,9 +165,16 @@ def get_google_image_search(product_name, api_key=None, engine_id=None):
                 _image_cache[cache_key] = result
                 return result
         elif response.status_code == 429:
-            logger.warning("Google Custom Search API rate limit exceeded")
+            logger.warning("Google Custom Search API rate limit exceeded (429)")
         else:
-            logger.warning(f"Google Image Search API error: {response.status_code}")
+            try:
+                err = response.json()
+                logger.warning(
+                    f"Google CSE (image) status={response.status_code} "
+                    f"error={err.get('error', {}).get('message', response.text[:150])}"
+                )
+            except Exception:
+                logger.warning(f"Google CSE (image) status={response.status_code} body={response.text[:200]}")
         
         return None
     

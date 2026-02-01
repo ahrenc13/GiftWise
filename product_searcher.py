@@ -118,11 +118,24 @@ def search_real_products(profile, google_api_key, google_cse_id, target_count=40
                 'q': query,
                 'num': 10,  # Get 10 results per query
                 # 'searchType': 'image',  # Removed - try regular search first
-                'safe': 'off'
+                'safe': 'active'  # Use 'active' if CSE blocks with safe='off'; free tier allows this
             }
             
             response = requests.get(url, params=params, timeout=10)
-            response.raise_for_status()
+            
+            # Log non-200 so we can diagnose CSE blocking (403/429)
+            if response.status_code != 200:
+                try:
+                    err_body = response.json()
+                    logger.error(
+                        f"Google CSE blocked: status={response.status_code} query='{query}' "
+                        f"error={err_body.get('error', {}).get('message', response.text[:200])}"
+                    )
+                except Exception:
+                    logger.error(
+                        f"Google CSE blocked: status={response.status_code} query='{query}' body={response.text[:300]}"
+                    )
+                continue
             
             data = response.json()
             items = data.get('items', [])

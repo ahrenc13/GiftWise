@@ -2097,11 +2097,7 @@ def api_generate_recommendations():
                 
                 all_recommendations.append({
                     'name': exp.get('name', 'Experience Gift'),
-                    'description': f"{exp.get('description', '')}
-
-{exp.get('how_to_execute', '')}
-
-{materials_summary}".strip(),
+                    'description': f"{exp.get('description', '')}\n\n{exp.get('how_to_execute', '')}\n\n{materials_summary}".strip(),
                     'why_perfect': exp.get('why_perfect', ''),
                     'price_range': 'Variable',
                     'where_to_buy': f"Experience{location_info}",

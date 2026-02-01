@@ -2047,6 +2047,19 @@ def api_generate_recommendations():
             
             logger.info(f"Found {len(products)} real products")
             
+            # Apply smart filters BEFORE curation
+            from smart_filters import apply_smart_filters
+            from relationship_rules import RelationshipRules
+            
+            # Filter out work-related and wrong activity type items
+            products = apply_smart_filters(products, profile)
+            logger.info(f"After smart filters: {len(products)} products")
+            
+            # Filter by relationship appropriateness
+            if recipient_type == 'someone_else' and relationship:
+                products = RelationshipRules.filter_by_relationship(products, relationship)
+                logger.info(f"After relationship filter ({relationship}): {len(products)} products")
+            
             # STEP 3: Curate best gifts from real products + generate experiences
             logger.info("STEP 3: Curating gifts...")
             curated = curate_gifts(profile, products, recipient_type, relationship, claude_client, rec_count=10)

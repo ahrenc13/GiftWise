@@ -37,14 +37,13 @@ def curate_gifts(profile, products, recipient_type, relationship, claude_client,
     logger.info(f"Curating {rec_count} products from {len(products)} options...")
     
     # Build curation prompt
+    # Import relationship rules
+    from relationship_rules import get_relationship_guidance
+    
     relationship_context = ""
     if recipient_type == 'someone_else' and relationship:
-        relationship_context = f"""
-RELATIONSHIP TYPE: {relationship}
-- Consider what's appropriate for this relationship level
-- Respect intimacy boundaries
-- Choose gifts that match the relationship context
-"""
+        # Get detailed relationship-specific rules
+        relationship_context = get_relationship_guidance(relationship)
     
     # Format profile for prompt
     profile_summary = f"""

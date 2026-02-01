@@ -1814,6 +1814,278 @@ def start_scraping():
     # Redirect to multi-platform progress page
     return redirect(f"/scraping-progress?tasks={','.join([f'{k}:{v}' for k, v in scrape_tasks.items()])}")
 
+@app.route('/scraping-in-progress')
+def scraping_in_progress():
+    """Show scraping progress page"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect('/login')
+    
+    user = get_user(user_id)
+    if not user:
+        return redirect('/login')
+    
+    # Get platforms that are being scraped
+    platforms = user.get('platforms', {})
+    
+    # Filter to only platforms that are connected
+    active_platforms = {}
+    for platform_name, platform_data in platforms.items():
+        if platform_data.get('status') in ['scraping', 'ready', 'complete']:
+            active_platforms[platform_name] = platform_data
+    
+    # If no platforms are being scraped, redirect to connect page
+    if not active_platforms:
+        return redirect('/connect-platforms')
+    
+    return render_template(
+        'scraping_in_progress.html',
+        platforms=active_platforms,
+        user_id=user_id
+    )
+
+
+@app.route('/api/scraping-status')
+def api_scraping_status():
+    """API endpoint to check scraping status (polled by frontend)"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    user = get_user(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    platforms = user.get('platforms', {})
+    
+    # Check if all platforms are complete
+    all_complete = True
+    in_progress = False
+    
+    platform_status = {}
+    for platform_name, platform_data in platforms.items():
+        status = platform_data.get('status', 'not_connected')
+        
+        if status in ['scraping', 'ready']:
+            in_progress = True
+            all_complete = False
+        
+        if status in ['scraping', 'ready', 'complete']:
+            platform_status[platform_name] = {
+                'status': status,
+                'username': platform_data.get('username', ''),
+                'post_count': platform_data.get('post_count', 0)
+            }
+    
+    return jsonify({
+        'platforms': platform_status,
+        'all_complete': all_complete,
+        'in_progress': in_progress
+    })
+
+
+@app.route('/start-scraping', methods=['POST'])
+def start_scraping():
+    """Start scraping connected platforms"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect('/login')
+    
+    user = get_user(user_id)
+    if not user:
+        return redirect('/login')
+    
+    platforms = user.get('platforms', {})
+    
+    # Find connected platforms and mark them as ready for scraping
+    platforms_to_scrape = []
+    for platform_name, platform_data in platforms.items():
+        if platform_data.get('status') == 'connected':
+            # Mark as ready for scraping
+            platforms[platform_name]['status'] = 'ready'
+            platforms_to_scrape.append(platform_name)
+    
+    if not platforms_to_scrape:
+        flash('Please connect at least one platform first')
+        return redirect('/connect-platforms')
+    
+    # Save updated status
+    user['platforms'] = platforms
+    save_user(user_id, user)
+    
+    logger.info(f"User {user.get('email')} started scraping for platforms: {platforms_to_scrape}")
+    
+    # Start background scraping threads
+    for platform_name in platforms_to_scrape:
+        platform_data = platforms[platform_name]
+        username = platform_data.get('username', '')
+        
+        if platform_name == 'instagram' and username:
+            # Start Instagram scraping in background thread
+            import threading
+            thread = threading.Thread(
+                target=scrape_instagram_background,
+                args=(user_id, username)
+            )
+            thread.daemon = True
+            thread.start()
+            logger.info(f"Started Instagram scraping thread for {username}")
+        
+        elif platform_name == 'tiktok' and username:
+            # Start TikTok scraping in background thread
+            import threading
+            thread = threading.Thread(
+                target=scrape_tiktok_background,
+                args=(user_id, username)
+            )
+            thread.daemon = True
+            thread.start()
+            logger.info(f"Started TikTok scraping thread for {username}")
+        
+        elif platform_name == 'pinterest' and username:
+            # Start Pinterest scraping in background thread
+            import threading
+            thread = threading.Thread(
+                target=scrape_pinterest_background,
+                args=(user_id, username)
+            )
+            thread.daemon = True
+            thread.start()
+            logger.info(f"Started Pinterest scraping thread for {username}")
+    
+    # Redirect to progress page
+    return redirect('/scraping-in-progress')
+
+
+# ========================================
+# BACKGROUND SCRAPING FUNCTIONS
+# ========================================
+
+def scrape_instagram_background(user_id, username):
+    """Background thread for Instagram scraping"""
+    try:
+        # Update status to scraping
+        user = get_user(user_id)
+        platforms = user.get('platforms', {})
+        platforms['instagram']['status'] = 'scraping'
+        platforms['instagram']['scraping_started_at'] = datetime.now().isoformat()
+        save_user(user_id, user)
+        
+        logger.info(f"Starting Instagram scrape for @{username}")
+        
+        # Call your existing Instagram scraping function
+        result = scrape_instagram_public(username)  # Your existing function
+        
+        # Update status to complete
+        user = get_user(user_id)
+        platforms = user.get('platforms', {})
+        
+        if result and result.get('items'):
+            platforms['instagram']['status'] = 'complete'
+            platforms['instagram']['data'] = result
+            platforms['instagram']['post_count'] = len(result.get('items', []))
+            platforms['instagram']['completed_at'] = datetime.now().isoformat()
+            logger.info(f"Successfully scraped {len(result.get('items', []))} Instagram posts for @{username}")
+        else:
+            platforms['instagram']['status'] = 'failed'
+            platforms['instagram']['error'] = 'No data retrieved'
+            logger.error(f"Instagram scraping failed for @{username}")
+        
+        save_user(user_id, user)
+        
+    except Exception as e:
+        logger.error(f"Error in Instagram scraping thread: {e}")
+        # Mark as failed
+        user = get_user(user_id)
+        platforms = user.get('platforms', {})
+        platforms['instagram']['status'] = 'failed'
+        platforms['instagram']['error'] = str(e)
+        save_user(user_id, user)
+
+
+def scrape_tiktok_background(user_id, username):
+    """Background thread for TikTok scraping"""
+    try:
+        # Update status to scraping
+        user = get_user(user_id)
+        platforms = user.get('platforms', {})
+        platforms['tiktok']['status'] = 'scraping'
+        platforms['tiktok']['scraping_started_at'] = datetime.now().isoformat()
+        save_user(user_id, user)
+        
+        logger.info(f"Starting TikTok scrape for @{username}")
+        
+        # Call your existing TikTok scraping function
+        result = scrape_tiktok_public(username)  # Your existing function
+        
+        # Update status to complete
+        user = get_user(user_id)
+        platforms = user.get('platforms', {})
+        
+        if result and result.get('items'):
+            platforms['tiktok']['status'] = 'complete'
+            platforms['tiktok']['data'] = result
+            platforms['tiktok']['post_count'] = len(result.get('items', []))
+            platforms['tiktok']['completed_at'] = datetime.now().isoformat()
+            logger.info(f"Successfully scraped {len(result.get('items', []))} TikTok posts for @{username}")
+        else:
+            platforms['tiktok']['status'] = 'failed'
+            platforms['tiktok']['error'] = 'No data retrieved'
+            logger.error(f"TikTok scraping failed for @{username}")
+        
+        save_user(user_id, user)
+        
+    except Exception as e:
+        logger.error(f"Error in TikTok scraping thread: {e}")
+        # Mark as failed
+        user = get_user(user_id)
+        platforms = user.get('platforms', {})
+        platforms['tiktok']['status'] = 'failed'
+        platforms['tiktok']['error'] = str(e)
+        save_user(user_id, user)
+
+
+def scrape_pinterest_background(user_id, username):
+    """Background thread for Pinterest scraping"""
+    try:
+        # Update status to scraping
+        user = get_user(user_id)
+        platforms = user.get('platforms', {})
+        platforms['pinterest']['status'] = 'scraping'
+        platforms['pinterest']['scraping_started_at'] = datetime.now().isoformat()
+        save_user(user_id, user)
+        
+        logger.info(f"Starting Pinterest scrape for @{username}")
+        
+        # Call your existing Pinterest scraping function (if you have one)
+        result = scrape_pinterest_public(username) if 'scrape_pinterest_public' in dir() else None
+        
+        # Update status to complete
+        user = get_user(user_id)
+        platforms = user.get('platforms', {})
+        
+        if result and result.get('items'):
+            platforms['pinterest']['status'] = 'complete'
+            platforms['pinterest']['data'] = result
+            platforms['pinterest']['post_count'] = len(result.get('items', []))
+            platforms['pinterest']['completed_at'] = datetime.now().isoformat()
+            logger.info(f"Successfully scraped {len(result.get('items', []))} Pinterest pins for @{username}")
+        else:
+            platforms['pinterest']['status'] = 'failed'
+            platforms['pinterest']['error'] = 'No data retrieved'
+            logger.error(f"Pinterest scraping failed for @{username}")
+        
+        save_user(user_id, user)
+        
+    except Exception as e:
+        logger.error(f"Error in Pinterest scraping thread: {e}")
+        # Mark as failed
+        user = get_user(user_id)
+        platforms = user.get('platforms', {})
+        platforms['pinterest']['status'] = 'failed'
+        platforms['pinterest']['error'] = str(e)
+        save_user(user_id, user)
+
 @app.route('/connect-progress/<platform>/<task_id>')
 def connect_progress(platform, task_id):
     """Progress page for scraping"""

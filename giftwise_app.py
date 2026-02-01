@@ -1335,30 +1335,60 @@ def stripe_webhook():
 
 
 @app.route('/connect-platforms')
-def connect_platforms():
-    """Platform connection page"""
-    user = get_session_user()
+def connect_platforms_page():
+    """Display platform connection page"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect('/login')
+    
+    user = get_user(user_id)
     if not user:
-        return redirect('/signup')
+        return redirect('/login')
     
-    # Check which platforms user's tier allows
-    tier = get_user_tier(user)
-    tier_config = SUBSCRIPTION_TIERS[tier]
-    allowed_platforms = tier_config['platforms']
+    # Get user's subscription tier
+    subscription_tier = user.get('subscription_tier', 'free')
     
-    platform_access = {
-        'instagram': 'instagram' in allowed_platforms,
-        'tiktok': 'tiktok' in allowed_platforms,
-        'pinterest': 'pinterest' in allowed_platforms  # Pro only
-    }
+    # Determine which platforms are allowed based on tier
+    if subscription_tier == 'free':
+        allowed_platforms = ['instagram', 'tiktok']  # Free tier
+    elif subscription_tier == 'pro':
+        allowed_platforms = ['instagram', 'tiktok', 'pinterest']  # Pro tier
+    elif subscription_tier == 'premium':
+        allowed_platforms = ['instagram', 'tiktok', 'pinterest', 'spotify', 'etsy', 'youtube']  # Premium tier
+    else:
+        allowed_platforms = ['instagram', 'tiktok']  # Default to free
     
-    return render_template('connect_platforms.html', 
-                         user=user,
-                         platforms=user.get('platforms', {}),
-                         recipient_type=user.get('recipient_type', 'myself'),
-                         platform_access=platform_access,
-                         user_tier=tier,
-                         wishlists=user.get('wishlists', []))
+    # Get platform connection statuses
+    platforms = user.get('platforms', {})
+    
+    # Initialize platforms if they don't exist
+    if not platforms:
+        platforms = {
+            'instagram': {'status': 'not_connected', 'username': ''},
+            'tiktok': {'status': 'not_connected', 'username': ''},
+            'pinterest': {'status': 'not_connected', 'username': ''},
+        }
+        user['platforms'] = platforms
+        save_user(user_id, user)
+    
+    # Make sure each platform has the expected structure
+    for platform_name in ['instagram', 'tiktok', 'pinterest']:
+        if platform_name not in platforms:
+            platforms[platform_name] = {'status': 'not_connected', 'username': ''}
+    
+    # Count connected platforms
+    connected_count = sum(1 for p in platforms.values() if p.get('status') == 'connected')
+    total_available = len(allowed_platforms)
+    
+    return render_template(
+        'connect_platforms.html',
+        platforms=platforms,
+        allowed_platforms=allowed_platforms,
+        subscription_tier=subscription_tier,
+        connected_count=connected_count,
+        total_available=total_available
+    )
+
 
 @app.route('/api/validate-username', methods=['POST'])
 def validate_username():
@@ -1387,55 +1417,82 @@ def validate_username():
 
 @app.route('/connect/instagram', methods=['POST'])
 def connect_instagram():
-    """Save Instagram username (scraping happens on generate)"""
-    user = get_session_user()
-    if not user:
-        return redirect('/signup')
+    """Connect Instagram account"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
     
-    username = sanitize_username(request.form.get('username', ''))
+    user = get_user(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    # Check if user's tier allows Instagram
+    subscription_tier = user.get('subscription_tier', 'free')
+    allowed_platforms = ['instagram', 'tiktok'] if subscription_tier == 'free' else ['instagram', 'tiktok', 'pinterest']
+    
+    if 'instagram' not in allowed_platforms:
+        return jsonify({'error': 'Instagram requires Pro tier'}), 403
+    
+    # Get username from request
+    data = request.get_json()
+    username = data.get('username', '').strip().replace('@', '')
     
     if not username:
-        return redirect('/connect-platforms?error=instagram_no_username')
+        return jsonify({'error': 'Username required'}), 400
     
-    user_id = session['user_id']
-    
-    # Just save the username - don't scrape yet
+    # Update user's platforms
     platforms = user.get('platforms', {})
     platforms['instagram'] = {
+        'status': 'connected',
         'username': username,
-        'status': 'ready',  # Ready to scrape
-        'method': 'scraping'
+        'connected_at': datetime.now().isoformat()
     }
-    save_user(user_id, {'platforms': platforms})
-    logger.info(f"User {user_id} connected Instagram: @{username}")
+    user['platforms'] = platforms
+    save_user(user_id, user)
     
-    return redirect('/connect-platforms?success=instagram_ready')
+    logger.info(f"User {user.get('email')} connected Instagram: @{username}")
+    
+    return jsonify({'success': True, 'username': username})
+
 
 @app.route('/connect/tiktok', methods=['POST'])
 def connect_tiktok():
-    """Save TikTok username (scraping happens on generate)"""
-    user = get_session_user()
-    if not user:
-        return redirect('/signup')
+    """Connect TikTok account"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'Not logged in'}), 401
     
-    username = sanitize_username(request.form.get('username', ''))
+    user = get_user(user_id)
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
+    
+    # Check if user's tier allows TikTok
+    subscription_tier = user.get('subscription_tier', 'free')
+    allowed_platforms = ['instagram', 'tiktok'] if subscription_tier == 'free' else ['instagram', 'tiktok', 'pinterest']
+    
+    if 'tiktok' not in allowed_platforms:
+        return jsonify({'error': 'TikTok requires Pro tier'}), 403
+    
+    # Get username from request
+    data = request.get_json()
+    username = data.get('username', '').strip().replace('@', '')
     
     if not username:
-        return redirect('/connect-platforms?error=tiktok_no_username')
+        return jsonify({'error': 'Username required'}), 400
     
-    user_id = session['user_id']
-    
-    # Just save the username - don't scrape yet
+    # Update user's platforms
     platforms = user.get('platforms', {})
     platforms['tiktok'] = {
+        'status': 'connected',
         'username': username,
-        'status': 'ready',  # Ready to scrape
-        'method': 'scraping'
+        'connected_at': datetime.now().isoformat()
     }
-    save_user(user_id, {'platforms': platforms})
-    logger.info(f"User {user_id} connected TikTok: @{username}")
+    user['platforms'] = platforms
+    save_user(user_id, user)
     
-    return redirect('/connect-platforms?success=tiktok_ready')
+    logger.info(f"User {user.get('email')} connected TikTok: @{username}")
+    
+    return jsonify({'success': True, 'username': username})
 
 @app.route('/connect/etsy', methods=['POST'])
 def connect_etsy():
@@ -1515,28 +1572,61 @@ def etsy_oauth_callback():
     
     return redirect('/connect-platforms?success=etsy_connected')
 
-@app.route('/disconnect/<platform>', methods=['POST'])
-def disconnect_platform(platform):
-    """Disconnect a platform"""
-    user = get_session_user()
-    if not user:
-        return redirect('/signup')
+@app.route('/disconnect/instagram', methods=['POST'])
+def disconnect_instagram():
+    """Disconnect Instagram account"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect('/connect-platforms')
     
-    user_id = session['user_id']
-    platforms = user.get('platforms', {})
-    wishlists = user.get('wishlists', [])
+    user = get_user(user_id)
+    if user:
+        platforms = user.get('platforms', {})
+        if 'instagram' in platforms:
+            platforms['instagram'] = {'status': 'not_connected', 'username': ''}
+            user['platforms'] = platforms
+            save_user(user_id, user)
+            logger.info(f"User {user.get('email')} disconnected Instagram")
     
-    # Remove from platforms
-    if platform in platforms:
-        del platforms[platform]
-        logger.info(f"User {user_id} disconnected {platform}")
+    return redirect('/connect-platforms')
+
+
+@app.route('/disconnect/tiktok', methods=['POST'])
+def disconnect_tiktok():
+    """Disconnect TikTok account"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect('/connect-platforms')
     
-    # Remove from wishlists if it's a wishlist platform
-    wishlists = [w for w in wishlists if w.get('platform') != platform]
+    user = get_user(user_id)
+    if user:
+        platforms = user.get('platforms', {})
+        if 'tiktok' in platforms:
+            platforms['tiktok'] = {'status': 'not_connected', 'username': ''}
+            user['platforms'] = platforms
+            save_user(user_id, user)
+            logger.info(f"User {user.get('email')} disconnected TikTok")
     
-    save_user(user_id, {'platforms': platforms, 'wishlists': wishlists})
+    return redirect('/connect-platforms')
+
+
+@app.route('/disconnect/pinterest', methods=['POST'])
+def disconnect_pinterest():
+    """Disconnect Pinterest account"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return redirect('/connect-platforms')
     
-    return redirect('/connect-platforms?success=disconnected')
+    user = get_user(user_id)
+    if user:
+        platforms = user.get('platforms', {})
+        if 'pinterest' in platforms:
+            platforms['pinterest'] = {'status': 'not_connected', 'username': ''}
+            user['platforms'] = platforms
+            save_user(user_id, user)
+            logger.info(f"User {user.get('email')} disconnected Pinterest")
+
+    return redirect('/connect-platforms')
 
 @app.route('/connect/goodreads', methods=['POST'])
 def connect_goodreads():

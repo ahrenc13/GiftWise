@@ -2016,8 +2016,11 @@ def api_generate_recommendations():
             
             # Check if Google CSE is configured
             if not GOOGLE_CSE_API_KEY or not GOOGLE_CUSTOM_SEARCH_ENGINE_ID:
-                logger.error("Google Custom Search not configured - falling back to old flow")
-                return generate_recommendations_legacy(user, platforms, recipient_type, relationship)
+                logger.error("Google Custom Search not configured")
+                return jsonify({
+                    'success': False,
+                    'error': 'Product search is not configured. Please contact support.'
+                }), 503
             
             # STEP 1: Build comprehensive recipient profile
             logger.info("STEP 1: Building deep recipient profile...")

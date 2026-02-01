@@ -1752,7 +1752,7 @@ def start_scraping():
             logger.info(f"Started Pinterest scraping thread for @{username}")
     
     # Redirect to multi-platform progress page
-    return redirect(f"/scraping-progress?tasks={','.join([f'{k}:{v}' for k, v in scrape_tasks.items()])}")
+    return redirect('/scraping-in-progress')
 
 @app.route('/scraping-in-progress')
 def scraping_in_progress():
@@ -1779,6 +1779,11 @@ def scraping_in_progress():
         platforms=active_platforms,
         user_id=user.get('user_id')
     )
+
+@app.route('/scraping-progress')
+def scraping_progress_alias():
+    """Alias for backward compatibility"""
+    return scraping_in_progress()
 
 @app.route('/api/scraping-status')
 def api_scraping_status():

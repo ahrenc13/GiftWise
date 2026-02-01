@@ -318,7 +318,7 @@
             if (complete === total) {
                 document.getElementById('status-message').textContent = "✅ Analysis complete! Generating your recommendations...";
                 setTimeout(() => {
-                    window.location.href = '/recommendations';
+                    window.location.href = '/generate-recommendations';
                 }, 1500);
             }
         }
@@ -369,7 +369,7 @@
                             // All complete - redirect
                             document.getElementById('status-message').textContent = "✅ Analysis complete! Generating your recommendations...";
                             setTimeout(() => {
-                                window.location.href = '/recommendations';
+                                window.location.href = '/generate-recommendations';
                             }, 1500);
                         }
                     }

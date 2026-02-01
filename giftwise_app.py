@@ -36,7 +36,17 @@ from collections import Counter, defaultdict, OrderedDict
 # Load environment variables FIRST (before any code that uses them)
 load_dotenv()
 
-# Import enhanced recommendation engine
+# Import new recommendation architecture (profile → search → curate)
+try:
+    from profile_analyzer import build_recipient_profile
+    from product_searcher import search_real_products
+    from gift_curator import curate_gifts
+    NEW_RECOMMENDATION_FLOW = True
+except ImportError:
+    NEW_RECOMMENDATION_FLOW = False
+    pass
+
+# Import enhanced recommendation engine (legacy fallback)
 try:
     from enhanced_recommendation_engine import (
         extract_deep_signals,
@@ -1975,11 +1985,12 @@ def generate_recommendations_route():
 @app.route('/api/generate-recommendations', methods=['POST'])
 def api_generate_recommendations():
     """
-    Generate recommendations with:
-    - Dynamic rec count based on data quality
-    - Collectible series intelligence
-    - Relationship-specific prompts
-    - FIXED: Comprehensive error handling
+    Generate recommendations with NEW ARCHITECTURE:
+    1. Build deep recipient profile from social media
+    2. Search for 30-50 real products using Google CSE
+    3. Curate best 10 products + 2-3 experience gifts
+    
+    Falls back to old logic if new modules unavailable.
     """
     user = get_session_user()
     if not user:
@@ -1991,552 +2002,154 @@ def api_generate_recommendations():
             'error': 'AI service not configured. Please contact support.'
         }), 503
     
+    # NEW RECOMMENDATION FLOW (Profile → Search → Curate)
+    if NEW_RECOMMENDATION_FLOW:
+        try:
+            logger.info("="*60)
+            logger.info("USING NEW RECOMMENDATION ARCHITECTURE")
+            logger.info("="*60)
+            
+            platforms = user.get('platforms', {})
+            recipient_type = user.get('recipient_type', 'myself')
+            relationship = user.get('relationship', '')
+            user_id = session['user_id']
+            
+            # Check if Google CSE is configured
+            if not GOOGLE_CUSTOM_SEARCH_API_KEY or not GOOGLE_CUSTOM_SEARCH_ENGINE_ID:
+                logger.error("Google Custom Search not configured - falling back to old flow")
+                return generate_recommendations_legacy(user, platforms, recipient_type, relationship)
+            
+            # STEP 1: Build comprehensive recipient profile
+            logger.info("STEP 1: Building deep recipient profile...")
+            profile = build_recipient_profile(platforms, recipient_type, relationship, claude_client)
+            
+            if not profile.get('interests'):
+                logger.warning("No interests extracted from profile - data quality issue")
+                return jsonify({
+                    'success': False,
+                    'error': 'Unable to extract enough information from social media. Please connect more platforms or ensure profiles are public.'
+                }), 422
+            
+            logger.info(f"Profile built: {len(profile.get('interests', []))} interests, location: {profile.get('location_context', {}).get('city_region')}")
+            
+            # STEP 2: Search for real products based on profile
+            logger.info("STEP 2: Searching for real products...")
+            products = search_real_products(
+                profile,
+                GOOGLE_CUSTOM_SEARCH_API_KEY,
+                GOOGLE_CUSTOM_SEARCH_ENGINE_ID,
+                target_count=40
+            )
+            
+            if len(products) < 10:
+                logger.warning(f"Only found {len(products)} products - may not be enough for good curation")
+            
+            logger.info(f"Found {len(products)} real products")
+            
+            # STEP 3: Curate best gifts from real products + generate experiences
+            logger.info("STEP 3: Curating gifts...")
+            curated = curate_gifts(profile, products, recipient_type, relationship, claude_client, rec_count=10)
+            
+            product_gifts = curated.get('product_gifts', [])
+            experience_gifts = curated.get('experience_gifts', [])
+            
+            if not product_gifts and not experience_gifts:
+                logger.error("Curation returned no gifts")
+                return jsonify({
+                    'success': False,
+                    'error': 'Unable to generate recommendations. Please try again.'
+                }), 500
+            
+            logger.info(f"Curated {len(product_gifts)} products + {len(experience_gifts)} experiences")
+            
+            # Combine and format recommendations
+            all_recommendations = []
+            
+            # Add product gifts
+            for gift in product_gifts:
+                all_recommendations.append({
+                    'name': gift.get('name', 'Unknown Product'),
+                    'description': gift.get('description', ''),
+                    'why_perfect': gift.get('why_perfect', ''),
+                    'price_range': gift.get('price', 'Price unknown'),
+                    'where_to_buy': gift.get('where_to_buy', 'Online'),
+                    'product_url': gift.get('product_url', ''),
+                    'purchase_link': gift.get('product_url', ''),  # Compatibility
+                    'image_url': gift.get('image_url', ''),
+                    'gift_type': 'physical',
+                    'confidence_level': gift.get('confidence_level', 'safe_bet'),
+                    'interest_match': gift.get('interest_match', ''),
+                    'is_direct_link': True,  # These are from search, so they're real
+                    'link_source': 'google_cse_search'
+                })
+            
+            # Add experience gifts
+            for exp in experience_gifts:
+                materials_list = exp.get('materials_needed', [])
+                materials_summary = ""
+                if materials_list:
+                    materials_items = [f"{m.get('item', 'Item')} ({m.get('estimated_price', '$XX')})" for m in materials_list[:3]]
+                    materials_summary = f"Materials needed: {', '.join(materials_items)}"
+                
+                location_info = ""
+                if exp.get('location_specific'):
+                    location_info = f" | {exp.get('location_details', 'Location-based')}"
+                
+                all_recommendations.append({
+                    'name': exp.get('name', 'Experience Gift'),
+                    'description': f"{exp.get('description', '')}
+
+{exp.get('how_to_execute', '')}
+
+{materials_summary}".strip(),
+                    'why_perfect': exp.get('why_perfect', ''),
+                    'price_range': 'Variable',
+                    'where_to_buy': f"Experience{location_info}",
+                    'product_url': materials_list[0].get('product_url', '') if materials_list else '',
+                    'purchase_link': materials_list[0].get('product_url', '') if materials_list else '',
+                    'image_url': '',  # Experiences don't have product images
+                    'gift_type': 'experience',
+                    'confidence_level': exp.get('confidence_level', 'adventurous'),
+                    'materials_needed': materials_list,
+                    'location_specific': exp.get('location_specific', False)
+                })
+            
+            logger.info(f"Total recommendations: {len(all_recommendations)}")
+            
+            # Calculate data quality for compatibility
+            quality = check_data_quality(platforms)
+            
+            # Save recommendations
+            save_user(user_id, {
+                'recommendations': all_recommendations,
+                'data_quality': quality,
+                'last_generated': datetime.now().isoformat(),
+                'recipient_profile': profile  # Save profile for future use
+            })
+            
+            return jsonify({
+                'success': True,
+                'recommendations': all_recommendations,
+                'data_quality': quality
+            })
+            
+        except Exception as e:
+            logger.error(f"Error in new recommendation flow: {e}", exc_info=True)
+            logger.warning("Falling back to legacy recommendation flow")
+            # Fall through to legacy flow below
+    
+    # LEGACY RECOMMENDATION FLOW (fallback)
+    logger.warning("New recommendation flow not available - using simplified fallback")
     try:
         platforms = user.get('platforms', {})
         recipient_type = user.get('recipient_type', 'myself')
         relationship = user.get('relationship', '')
         
-        # Check tier limits
-        tier = get_user_tier(user)
-        tier_config = SUBSCRIPTION_TIERS[tier]
-        
-        # Check data quality
-        quality = check_data_quality(platforms)
-        # Always generate 10 recommendations (user requested)
-        rec_count = 10
-        
-        # ENHANCED: Extract ALL possible signals from platforms
-        signals = {}
-        wishlist_data = {}
-        avoid_items = []
-        all_extracted_signals = {}
-        
-        if ENHANCED_ENGINE_AVAILABLE:
-            try:
-                # Extract deep signals (engagement, aspirational, brands)
-                signals = extract_deep_signals(platforms)
-                
-                # ENHANCED: Extract ALL signals from each platform (comprehensive mining)
-                try:
-                    all_extracted_signals = combine_all_signals(platforms)
-                    # Merge combined signals into main signals dict
-                    if all_extracted_signals.get('combined'):
-                        combined = all_extracted_signals['combined']
-                        # Merge hashtags, brands, activities, etc.
-                        if combined.get('all_hashtags'):
-                            signals.setdefault('high_engagement_topics', {}).update(combined['all_hashtags'])
-                        if combined.get('all_brands'):
-                            signals.setdefault('brand_preferences', {}).update(combined['all_brands'])
-                        if combined.get('aspirational_interests'):
-                            signals.setdefault('aspirational_interests', []).extend(combined['aspirational_interests'])
-                        if combined.get('current_interests'):
-                            signals.setdefault('current_interests', []).extend(combined['current_interests'])
-                        if combined.get('price_preferences'):
-                            signals['price_preferences'] = combined['price_preferences']
-                    
-                    logger.info(f"Extracted comprehensive signals: {len(all_extracted_signals)} platform signals")
-                except Exception as e:
-                    logger.warning(f"Enhanced data extraction not available: {e}")
-                
-                # Get wishlist data (if user has connected)
-                user_wishlists = user.get('wishlists', [])
-                if user_wishlists:
-                    wishlist_data = integrate_wishlist_data(user_wishlists, platforms)
-                    duplicates = detect_duplicates(platforms, user_wishlists)
-                    avoid_items = duplicates.get('avoid', [])
-                    logger.info(f"Found {len(avoid_items)} items to avoid from wishlists")
-            except Exception as e:
-                logger.error(f"Error in enhanced signal extraction: {e}", exc_info=True)
-                signals = {}
-                wishlist_data = {}
-                all_extracted_signals = {}
-        
-        # Build platform insights (ENHANCED with comprehensive data extraction)
-        platform_insights = []
-        
-        # Use enhanced extracted signals if available, otherwise fallback to basic
-        use_enhanced = all_extracted_signals and any(all_extracted_signals.values())
-        
-        if use_enhanced and all_extracted_signals.get('instagram'):
-            # Enhanced Instagram insights
-            ig_signals = all_extracted_signals['instagram']
-            ig_data = platforms['instagram'].get('data', {})
-            posts = ig_data.get('posts', [])
-            
-            high_engagement_count = len(ig_signals.get('high_engagement_content', []))
-            top_hashtags = list(ig_signals.get('hashtags', {}).keys())[:15]
-            top_brands = list(ig_signals.get('brand_mentions', {}).keys())[:10]
-            top_activities = list(ig_signals.get('activity_types', {}).keys())[:10]
-            aesthetics = list(ig_signals.get('aesthetic_keywords', {}).keys())[:10]
-            
-            platform_insights.append(f"""
-INSTAGRAM DATA ({len(posts)} posts analyzed):
-- Username: @{ig_data.get('username', 'unknown')}
-- High Engagement Posts: {high_engagement_count} posts with 50+ engagement (strongest interest signals)
-- Top Hashtags: {', '.join(top_hashtags)}
-- Brand Preferences: {', '.join(top_brands)}
-- Activity Types: {', '.join(top_activities)}
-- Aesthetic Style: {', '.join(aesthetics)}
-- Recent Interests: {', '.join(ig_signals.get('recent_interests', [])[:10])}
-- Locations Mentioned: {', '.join(list(ig_signals.get('locations', {}).keys())[:5])}
-""")
-        elif 'instagram' in platforms:
-            # Basic Instagram insights (fallback)
-            ig_data = platforms['instagram'].get('data', {})
-            if ig_data:
-                posts = ig_data.get('posts', [])
-                # OPTIMIZED: Prioritize high-engagement posts (quality signals)
-                # Sort posts by engagement (likes + comments*2)
-                sorted_posts = sorted(posts, key=lambda p: (p.get('likes', 0) + p.get('comments', 0) * 2), reverse=True)
-                high_engagement = [p for p in sorted_posts if (p.get('likes', 0) + p.get('comments', 0) * 2) > 50]
-                
-                # Use high-engagement posts if available, otherwise top posts
-                priority_posts = high_engagement[:12] if high_engagement else sorted_posts[:12]
-                captions = [p['caption'][:150] for p in priority_posts if p.get('caption')]
-                
-                # Extract hashtags from priority posts
-                hashtags_all = []
-                for p in priority_posts:
-                    hashtags_all.extend(p.get('hashtags', []))
-                top_hashtags = Counter(hashtags_all).most_common(15)  # Restore to 15
-                
-                avg_likes = sum(p.get('likes', 0) for p in priority_posts) / len(priority_posts) if priority_posts else 0
-                
-                platform_insights.append(f"""
-INSTAGRAM DATA ({len(posts)} posts):
-- Username: @{ig_data.get('username', 'unknown')}
-- High-Engagement Posts: {len(high_engagement)} posts with 50+ engagement
-- Key Themes: {'; '.join(captions[:10])}
-- Top Hashtags: {', '.join([tag[0] for tag in top_hashtags])}
-- Engagement: Avg {avg_likes:.0f} likes
-""")
-        
-        # TikTok data (enhanced if available, otherwise basic)
-        if use_enhanced and all_extracted_signals.get('tiktok'):
-            tt_signals = all_extracted_signals['tiktok']
-            tt_data = platforms['tiktok'].get('data', {})
-            
-            # CRITICAL: Keep ALL aspirational content (reposts = what they WANT)
-            aspirational_content = tt_signals.get('aspirational_content', [])
-            repost_count = len(aspirational_content)
-            
-            # Extract hashtags from REPOSTS only (aspirational signals)
-            repost_hashtags = []
-            reposts_data = tt_data.get('reposts', [])
-            for repost in reposts_data[:30]:  # All reposts are valuable
-                repost_hashtags.extend(repost.get('hashtags', []))
-            top_hashtags = list(Counter(repost_hashtags).most_common(15))[:15]  # Restore to 15
-            
-            # Keep all creator styles (aspirational aesthetics)
-            creator_styles = [c['creator'] for c in tt_signals.get('creator_styles', [])[:8]]  # Restore to 8
-            music_trends = list(tt_signals.get('music_trends', {}).keys())[:6]  # Restore to 6
-            
-            # Sample repost descriptions (the gold mine)
-            sample_reposts = [r.get('description', '')[:120] for r in reposts_data[:10]]
-            
-            platform_insights.append(f"""
-TIKTOK DATA ({tt_data.get('total_videos', 0)} videos):
-- Username: @{tt_data.get('username', 'unknown')}
-- Aspirational Content: {repost_count} reposts (what they WANT but don't have)
-- Repost Themes: {'; '.join(sample_reposts)}
-- Hashtags (from reposts): {', '.join([tag[0] for tag in top_hashtags])}
-- Creator Styles: {', '.join(creator_styles)} (aspirational aesthetics)
-- Music Trends: {', '.join(music_trends)}
-- CRITICAL: Reposts reveal ASPIRATIONAL interests - prioritize these for gifts
-""")
-        elif 'tiktok' in platforms:
-            # TikTok data (basic fallback if enhanced not available)
-            tt_data = platforms['tiktok'].get('data', {})
-            if tt_data:
-                videos = tt_data.get('videos', [])
-                # CRITICAL: Prioritize REPOSTS (aspirational content)
-                reposts = tt_data.get('reposts', [])
-                repost_patterns = tt_data.get('repost_patterns', {})
-                favorite_creators = tt_data.get('favorite_creators', [])
-                top_hashtags = tt_data.get('top_hashtags', {})
-                top_music = tt_data.get('top_music', {})
-                
-                # Use repost descriptions if available (aspirational signals)
-                if reposts:
-                    descriptions = [r.get('description', '')[:120] for r in reposts[:15] if r.get('description')]
-                else:
-                    videos = tt_data.get('videos', [])
-                    descriptions = [v['description'][:120] for v in videos[:12] if v.get('description')]
-                
-                creator_insights = ""
-                if favorite_creators:
-                    creator_list = [f"@{creator[0]} ({creator[1]} reposts)" for creator in favorite_creators[:8]]  # Restore to 8
-                    creator_insights = f"\n- Frequently Reposts From: {', '.join(creator_list)}"
-                    creator_insights += f"\n- CRITICAL: These creators represent their aspirations"
-                
-                music_insights = ""
-                if top_music:
-                    music_list = list(top_music.keys())[:6]  # Restore to 6
-                    music_insights = f"\n- Popular Sounds: {', '.join(music_list)}"
-                
-                platform_insights.append(f"""
-TIKTOK DATA ({tt_data.get('total_videos', 0)} videos):
-- Username: @{tt_data.get('username', 'unknown')}
-- Repost Behavior: {repost_patterns.get('total_reposts', 0)} reposts ({repost_patterns.get('repost_percentage', 0):.1f}%)
-- Aspirational Themes: {'; '.join(descriptions[:12])}
-{creator_insights}
-{music_insights}
-- Top Hashtags: {', '.join(list(top_hashtags.keys())[:12])}
-- CRITICAL: Reposts reveal ASPIRATIONAL interests - prioritize these for gifts
-""")
-        
-        # Pinterest data (enhanced if available)
-        if use_enhanced and all_extracted_signals.get('pinterest'):
-            pin_signals = all_extracted_signals['pinterest']
-            boards = platforms['pinterest'].get('boards', [])
-            
-            # CRITICAL: Keep ALL Pinterest data (explicit wishlist = highest value)
-            board_themes = list(pin_signals.get('board_themes', {}).keys())[:12]  # Restore to 12
-            pin_keywords = list(pin_signals.get('pin_keywords', {}).keys())[:20]  # Restore to 20 (explicit wants)
-            specific_wants = pin_signals.get('specific_wants', [])[:15]  # Restore to 15 (explicit wishlist items)
-            price_prefs = pin_signals.get('price_preferences', {})
-            
-            price_info = ""
-            if price_prefs:
-                price_info = f"\n- Price Preferences: ${price_prefs.get('min', 0)}-${price_prefs.get('max', 0)} (avg ${price_prefs.get('avg', 0):.0f})"
-            
-            platform_insights.append(f"""
-PINTEREST DATA ({len(boards)} boards):
-- Board Themes: {', '.join(board_themes)}
-- Pin Keywords: {', '.join(pin_keywords)}
-- Specific Wants: {', '.join(specific_wants)}
-- Planning Mindset: {'Yes' if pin_signals.get('planning_mindset') else 'No'}{price_info}
-- CRITICAL: Pinterest = EXPLICIT WISHLIST - they're pinning what they want
-""")
-        elif 'pinterest' in platforms:
-            # Basic Pinterest insights (fallback)
-            pinterest = platforms['pinterest']
-            boards = pinterest.get('boards', [])
-            if boards:
-                board_names = [b['name'] for b in boards[:10]]
-                platform_insights.append(f"""
-PINTEREST DATA ({len(boards)} boards):
-- Board Names: {', '.join(board_names)}
-- Saved Interests: Visual preferences, aspirations, planning mindset
-""")
-        
-        # Relationship context
-        relationship_context = ""
-        if recipient_type == 'someone_else' and relationship:
-            relationship_context = RELATIONSHIP_PROMPTS.get(relationship, "")
-        
-        # ENHANCED: Use enhanced prompt if available, otherwise fallback to basic
-        if ENHANCED_ENGINE_AVAILABLE and signals:
-            try:
-                prompt = build_enhanced_prompt(
-                    platforms,
-                    wishlist_data,
-                    signals,
-                    relationship_context,
-                    recipient_type,
-                    quality,
-                    rec_count
-                )
-                logger.info("Using enhanced recommendation engine")
-            except Exception as e:
-                logger.error(f"Error building enhanced prompt: {e}", exc_info=True)
-                # Fallback to basic prompt below
-                prompt = None
-        else:
-            prompt = None
-        
-        # Build basic prompt (fallback or if enhanced not available)
-        if not prompt:
-            low_data_instructions = ""
-            if quality['quality'] in ['limited', 'insufficient']:
-                low_data_instructions = f"""
-NOTE: Limited data available ({quality['total_posts']} posts) - focus on SAFE, OBVIOUS choices based on clear signals.
-Generate ONLY {rec_count} recommendations (NOT 10 - we have limited data).
-With limited data, prioritize SAFE BETS - obvious choices that won't miss.
-Each recommendation MUST cite specific posts/behaviors that justify it.
-If you only have evidence for {rec_count - 1} gifts, return {rec_count - 1} gifts, not {rec_count}.
-DO NOT make assumptions - only recommend what you have clear evidence for.
-"""
-            
-            prompt = f"""You are an expert gift curator. Based on the following social media data, generate {rec_count} highly specific, actionable gift recommendations.
-
-USER DATA:
-{chr(10).join(platform_insights)}{relationship_context}
-
-{low_data_instructions}
-
-CRITICAL INSTRUCTIONS - REAL PRODUCTS ONLY:
-1. ONLY recommend products that ACTUALLY EXIST and can be purchased RIGHT NOW
-   - Each product MUST have a DIRECT product page URL (not search results, not homepage)
-   - Example: https://www.lego.com/en-us/product/tokyo-skyline-21051 (NOT https://www.lego.com or search URL)
-   - If you cannot find a real, buyable product URL, DO NOT include that recommendation
-   - Search URLs are NOT acceptable - only direct product pages
-   
-2. VERIFY products exist before recommending:
-   - Use specific product names with brand/model numbers (e.g., "LEGO Architecture Tokyo Skyline Set 21051")
-   - Include exact retailer where it's sold (e.g., "LEGO.com", "Etsy shop: CraftyGifts", "Amazon seller: BrandName")
-   - Provide the EXACT product page URL where someone can click and buy immediately
-   
-3. If a product doesn't have a direct purchase URL available, DO NOT recommend it
-   - Better to return fewer recommendations than fake/unbuyable ones
-   - Only include products you can verify exist with real purchase links
-   
-4. Be as specific as possible with product names, brands, and model numbers
-5. Prioritize UNIQUE, SPECIALTY items over generic mass-market products
-6. Focus on independent makers, artisan shops, unique items that show thoughtfulness
-7. Use evidence from their actual posts - cite specific captions, hashtags, or creators they follow
-
-COLLECTIBLE SERIES INTELLIGENCE:
-- If someone collects something (LEGO sets, Funko Pops, vinyl variants, sneakers, trading cards, action figures, etc.):
-  * Identify the series/collection they're building
-  * Note what they already have based on posts
-  * Suggest the BEST next item considering:
-    - Recency (new releases they might not know about)
-    - Rarity (hard-to-find items that are valuable)
-    - Completion (missing pieces in their collection)
-    - Personal relevance (e.g., Tokyo LEGO set for someone who posts about Tokyo)
-  * Include "collectible_series" field with 2-3 alternatives and reasoning
-  * Example: If they collect LEGO Architecture, suggest specific sets with alternatives
-
-PRICE DISTRIBUTION:
-{f"- {rec_count // 2} items in $15-50 range" if rec_count >= 5 else "- Most items in $15-50 range"}
-{f"- {rec_count // 3} items in $50-100 range" if rec_count >= 6 else "- Some items in $50-100 range"}
-{f"- {rec_count // 5} items in $100-200 range" if rec_count >= 8 else "- 1-2 items in $100-200 range"}
-
-Return EXACTLY {rec_count} recommendations as a JSON array with this structure:
-[
-  {{
-    "name": "SPECIFIC product name with brand/model (e.g., 'LEGO Architecture: Tokyo Skyline Set 21051')",
-    "description": "2-3 sentence description of what this is and why it's special",
-    "why_perfect": "Why this matches their interests with SPECIFIC evidence from their posts/reposts/hashtags",
-    "price_range": "$XX-$XX",
-    "where_to_buy": "Specific retailer name (Etsy shop name, UncommonGoods, brand site, Amazon)",
-    "product_url": "https://REAL-DIRECT-PRODUCT-PAGE.com/products/item-name (MUST be a direct product page URL where someone can purchase - NOT a search URL, NOT a homepage)",
-    "gift_type": "physical" or "experience",
-    "confidence_level": "safe_bet" or "adventurous",
-    "collectible_series": {{  // OPTIONAL - only if this is part of a collectible series
-      "series_name": "LEGO Architecture",
-      "current_suggestion": "Tokyo Skyline (newest 2024 release)",
-      "alternatives": [
-        "Dubai Skyline - More intricate, 740 pieces ($60)",
-        "New York City - Iconic skyline, 598 pieces ($50)",
-        "The White House - Historic architecture, 1,483 pieces ($100)"
-      ],
-      "why_these": "Based on their travel posts (Tokyo tagged 3x) and architecture interest shown in hashtags"
-    }}
-  }}
-]
-
-CRITICAL REQUIREMENTS:
-- Return ONLY the JSON array, no markdown, no backticks, no explanatory text
-- Each recommendation MUST be a REAL, BUYABLE product with a DIRECT product page URL
-- If you cannot find a real product with a direct purchase URL, DO NOT include it
-- Better to return fewer recommendations than include fake/unbuyable products
-- Each recommendation must have clear evidence from their social media
-- URLs MUST be direct product pages (e.g., /products/item-name or /p/item-name), NOT search URLs
-- For collectibles, research the series and suggest thoughtful alternatives
-- Verify products exist before recommending - only include products you can confirm are real and purchasable"""
-
-        logger.info(f"Generating {rec_count} recommendations for user: {user.get('email', 'unknown')}")
-        logger.info(f"Data quality: {quality['quality']} ({quality['total_posts']} posts)")
-        logger.info(f"Platforms: {list(platforms.keys())}")
-        
-        # FIXED: Comprehensive error handling for Claude API
-        try:
-            message = claude_client.messages.create(
-                model="claude-sonnet-4-20250514",
-                max_tokens=7000,  # Slightly reduced but keep quality high
-                messages=[{"role": "user", "content": prompt}],
-                timeout=180.0  # 3 minutes (reduced from 5) - prompt optimization should make this sufficient
-            )
-            
-            # Track API usage
-            if USAGE_TRACKING_AVAILABLE:
-                try:
-                    # Get actual token usage from response if available
-                    if hasattr(message, 'usage'):
-                        input_tokens = message.usage.input_tokens
-                        output_tokens = message.usage.output_tokens
-                        total_tokens = input_tokens + output_tokens
-                    else:
-                        # Estimate tokens (rough: 1 token ≈ 4 characters)
-                        input_tokens = len(prompt) // 4
-                        output_tokens = 2000  # Estimate for output
-                        total_tokens = input_tokens + output_tokens
-                    track_anthropic_usage(total_tokens, 'recommendation')
-                except Exception as e:
-                    logger.warning(f"Failed to track Anthropic usage: {e}")
-        except anthropic.APIError as e:
-            logger.error(f"Claude API error: {e}")
-            return jsonify({
-                'success': False,
-                'error': 'AI service temporarily unavailable. Please try again in a moment.',
-                'retry_after': 60
-            }), 503
-        except anthropic.APIConnectionError as e:
-            logger.error(f"Claude connection error: {e}")
-            return jsonify({
-                'success': False,
-                'error': 'Unable to connect to AI service. Please check your internet connection and try again.'
-            }), 503
-        except anthropic.RateLimitError as e:
-            logger.error(f"Claude rate limit error: {e}")
-            return jsonify({
-                'success': False,
-                'error': 'Service is busy. Please try again in a few minutes.',
-                'retry_after': 300
-            }), 429
-        except Exception as e:
-            logger.error(f"Unexpected Claude API error: {e}", exc_info=True)
-            return jsonify({
-                'success': False,
-                'error': 'An unexpected error occurred. Please contact support if this persists.'
-            }), 500
-        
-        # Extract response
-        response_text = ""
-        try:
-            for block in message.content:
-                if block.type == "text":
-                    response_text += block.text
-        except Exception as e:
-            logger.error(f"Error extracting Claude response: {e}")
-            return jsonify({
-                'success': False,
-                'error': 'Error processing AI response. Please try again.'
-            }), 500
-        
-        response_text = response_text.strip()
-        
-        logger.info(f"Claude response received, length: {len(response_text)}")
-        
-        # Parse JSON
-        try:
-            if response_text.startswith('```'):
-                response_text = response_text.split('```')[1]
-                if response_text.startswith('json'):
-                    response_text = response_text[4:]
-                response_text = response_text.strip()
-            
-            recommendations = json.loads(response_text)
-            
-            # Validate recommendations structure
-            if not isinstance(recommendations, list):
-                raise ValueError("Recommendations must be a list")
-            
-            if len(recommendations) == 0:
-                raise ValueError("No recommendations generated")
-            
-            # ENHANCED: Post-process validation if enhanced engine available
-            if ENHANCED_ENGINE_AVAILABLE and avoid_items:
-                try:
-                    recommendations = validate_recommendations(recommendations, avoid_items, signals)
-                    logger.info(f"Validated {len(recommendations)} recommendations (filtered duplicates)")
-                except Exception as e:
-                    logger.error(f"Error validating recommendations: {e}")
-                    # Continue with unvalidated recommendations
-            
-            # OPTIMIZED: Process links and images in parallel for faster response
-            import concurrent.futures
-            
-            if LINK_VALIDATION_AVAILABLE or IMAGE_FETCHING_AVAILABLE:
-                def process_links(recs):
-                    if LINK_VALIDATION_AVAILABLE:
-                        try:
-                            return process_recommendation_links(recs, AMAZON_AFFILIATE_TAG)
-                        except Exception as e:
-                            logger.warning(f"Link processing failed: {e}")
-                            return recs
-                    return recs
-                
-                def process_images(recs):
-                    if IMAGE_FETCHING_AVAILABLE:
-                        try:
-                            return process_recommendation_images(recs)
-                        except Exception as e:
-                            logger.warning(f"Image fetching failed: {e}")
-                            return recs
-                    return recs
-                
-                # Process links first (needed for image fetching), then images in parallel
-                if LINK_VALIDATION_AVAILABLE:
-                    recommendations = process_links(recommendations)
-                    logger.info(f"Processed links for {len(recommendations)} recommendations")
-                    
-                    # CRITICAL: Filter out recommendations without ANY purchase link
-                    # Direct URLs are preferred, but search fallbacks are acceptable if product seems real
-                    verified_recommendations = []
-                    unverified_count = 0
-                    direct_link_count = 0
-                    search_fallback_count = 0
-                    
-                    for rec in recommendations:
-                        purchase_link = rec.get('purchase_link')
-                        is_direct = rec.get('is_direct_link', False)
-                        link_source = rec.get('link_source', '')
-                        
-                        # Must have some purchase link
-                        if not purchase_link:
-                            unverified_count += 1
-                            logger.warning(f"Filtering out product without purchase link: {rec.get('name')}")
-                            continue
-                        
-                        # Track link types
-                        if is_direct:
-                            direct_link_count += 1
-                        elif 'fallback' in link_source:
-                            search_fallback_count += 1
-                            # Mark search fallbacks clearly
-                            rec['link_warning'] = 'Search link - product existence not verified'
-                        
-                        verified_recommendations.append(rec)
-                    
-                    if unverified_count > 0:
-                        logger.warning(f"Filtered out {unverified_count} recommendations without purchase links")
-                    
-                    logger.info(f"Link breakdown: {direct_link_count} direct, {search_fallback_count} search fallbacks")
-                    
-                    recommendations = verified_recommendations
-                    
-                    # If we filtered out too many, log warning
-                    if len(recommendations) < rec_count * 0.7:  # Less than 70% of requested
-                        logger.warning(f"Only {len(recommendations)}/{rec_count} recommendations have purchase links - AI may have suggested non-existent products")
-                
-                # Images can be fetched in parallel per recommendation (handled internally by image_fetcher)
-                if IMAGE_FETCHING_AVAILABLE:
-                    recommendations = process_images(recommendations)
-                    logger.info(f"Added images to {len(recommendations)} recommendations")
-            
-            logger.info(f"Successfully parsed {len(recommendations)} recommendations")
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"JSON parse error: {e}")
-            logger.error(f"Response text (first 500 chars): {response_text[:500]}")
-            return jsonify({
-                'success': False,
-                'error': 'AI returned invalid response format. Please try again.',
-                'debug': response_text[:200] if len(response_text) < 200 else response_text[:200] + '...'
-            }), 500
-        except Exception as e:
-            logger.error(f"Error parsing recommendations: {e}")
-            return jsonify({
-                'success': False,
-                'error': 'Error processing recommendations. Please try again.'
-            }), 500
-        
-        # Save recommendations
-        user_id = session['user_id']
-        save_user(user_id, {
-            'recommendations': recommendations,
-            'data_quality': quality,
-            'last_generated': datetime.now().isoformat()
-        })
-        
+        # Simplified fallback: Return error asking to configure new system
         return jsonify({
-            'success': True,
-            'recommendations': recommendations,
-            'data_quality': quality
-        })
+            'success': False,
+            'error': 'New recommendation system not fully configured. Please ensure profile_analyzer.py, product_searcher.py, and gift_curator.py are deployed.'
+        }), 503
         
     except Exception as e:
         logger.error(f"Recommendation generation error: {e}", exc_info=True)

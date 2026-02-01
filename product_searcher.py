@@ -117,7 +117,7 @@ def search_real_products(profile, google_api_key, google_cse_id, target_count=40
                 'cx': google_cse_id,
                 'q': query,
                 'num': 10,  # Get 10 results per query
-                'searchType': 'image',  # Get image results (better for products)
+                # 'searchType': 'image',  # Removed - try regular search first
                 'safe': 'off'
             }
             
@@ -131,11 +131,19 @@ def search_real_products(profile, google_api_key, google_cse_id, target_count=40
             
             for item in items:
                 # Extract product info
+                # For regular search, images are in pagemap.cse_image or pagemap.cse_thumbnail
+                image_url = ''
+                if 'pagemap' in item:
+                    if 'cse_image' in item['pagemap'] and item['pagemap']['cse_image']:
+                        image_url = item['pagemap']['cse_image'][0].get('src', '')
+                    elif 'cse_thumbnail' in item['pagemap'] and item['pagemap']['cse_thumbnail']:
+                        image_url = item['pagemap']['cse_thumbnail'][0].get('src', '')
+                
                 product = {
                     'title': item.get('title', ''),
                     'link': item.get('link', ''),
                     'snippet': item.get('snippet', ''),
-                    'image': item.get('image', {}).get('thumbnailLink', ''),
+                    'image': image_url,
                     'source_domain': extract_domain(item.get('link', '')),
                     'search_query': query,
                     'interest_match': interest,

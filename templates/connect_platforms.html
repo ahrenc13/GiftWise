@@ -123,7 +123,7 @@
 
         .platform-status .username {
             font-weight: 600;
-            color: #667eea;
+            color: #be123c;
         }
 
         .platform-actions {
@@ -154,7 +154,6 @@
             background: #9f1239;
         }
 
-        /* FIXED: Softer disconnect button - amber/orange instead of red */
         .btn-disconnect {
             background: #f59e0b;
             color: white;
@@ -298,8 +297,13 @@
 <body>
     <div class="container">
         <div class="header">
+            {% if recipient_type == 'myself' %}
             <h1>Connect Your Social Media</h1>
             <p class="subtitle">The more platforms you connect, the better your recommendations!</p>
+            {% else %}
+            <h1>Connect Their Social Media</h1>
+            <p class="subtitle">The more platforms you connect, the better their recommendations!</p>
+            {% endif %}
         </div>
 
         <div class="platforms-grid">
@@ -317,9 +321,9 @@
                     </div>
                 </div>
 
-                {% if platforms.instagram.status == 'connected' %}
+                {% if platforms.get('instagram', {}).get('status') == 'connected' %}
                     <div class="platform-status connected">
-                        ✓ Connected as <span class="username">@{{ platforms.instagram.username }}</span>
+                        ✓ Connected as <span class="username">@{{ platforms.get('instagram', {}).get('username', '') }}</span>
                     </div>
                     <div class="platform-actions">
                         <form method="POST" action="/disconnect/instagram" style="flex: 1;">
@@ -358,9 +362,9 @@
                     </div>
                 </div>
 
-                {% if platforms.tiktok.status == 'connected' %}
+                {% if platforms.get('tiktok', {}).get('status') == 'connected' %}
                     <div class="platform-status connected">
-                        ✓ Connected as <span class="username">@{{ platforms.tiktok.username }}</span>
+                        ✓ Connected as <span class="username">@{{ platforms.get('tiktok', {}).get('username', '') }}</span>
                     </div>
                     <div class="platform-actions">
                         <form method="POST" action="/disconnect/tiktok" style="flex: 1;">
@@ -399,7 +403,7 @@
                     </div>
                 </div>
 
-                {% if platforms.pinterest.status == 'connected' %}
+                {% if platforms.get('pinterest', {}).get('status') == 'connected' %}
                     <div class="platform-status connected">
                         ✓ Connected via OAuth
                     </div>

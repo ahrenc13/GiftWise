@@ -2733,6 +2733,17 @@ def check_scraping_status():
             'statuses': platform_statuses
         })
     
+    # CRITICAL: Check if ALL platforms are complete (not just some)
+    if completed_count < total_platforms:
+        logger.info(f"Still waiting for {total_platforms - completed_count} platform(s) to complete")
+        return jsonify({
+            'complete': False,
+            'in_progress': True,
+            'completed': completed_count,
+            'total': total_platforms,
+            'statuses': platform_statuses
+        })
+    
     # Check if we have sufficient data
     quality = check_data_quality(platforms)
     

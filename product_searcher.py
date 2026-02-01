@@ -14,14 +14,13 @@ from collections import defaultdict
 logger = logging.getLogger(__name__)
 
 
-def search_real_products(profile, google_api_key, google_cse_id, target_count=40):
+def search_real_products(profile, serpapi_key, target_count=40):
     """
-    Search for real products using Google Custom Search based on recipient profile.
+    Search for real products using SerpAPI (Google Search) based on recipient profile.
     
     Args:
         profile: Recipient profile dict from build_recipient_profile()
-        google_api_key: Google Custom Search API key
-        google_cse_id: Custom Search Engine ID
+        serpapi_key: SerpAPI API key
         target_count: Target number of products to find (default 40)
     
     Returns:
@@ -36,8 +35,8 @@ def search_real_products(profile, google_api_key, google_cse_id, target_count=40
         - interest_match: Which interest(s) it matches
     """
     
-    if not google_api_key or not google_cse_id:
-        logger.error("Google Custom Search API credentials not configured")
+    if not serpapi_key:
+        logger.error("SerpAPI key not configured")
         return []
     
     logger.info(f"Searching for real products based on profile interests...")
@@ -110,68 +109,91 @@ def search_real_products(profile, google_api_key, google_cse_id, target_count=40
         interest = query_info['interest']
         
         try:
-            # Call Google Custom Search API
-            url = "https://www.googleapis.com/customsearch/v1"
+            # Call SerpAPI (Google Search wrapper)
+            url = "https://serpapi.com/search"
             params = {
-                'key': google_api_key,
-                'cx': google_cse_id,
                 'q': query,
+                'api_key': serpapi_key,
                 'num': 10,  # Get 10 results per query
-                # 'searchType': 'image',  # Removed - try regular search first
-                'safe': 'active'  # Use 'active' if CSE blocks with safe='off'; free tier allows this
+                'engine': 'google',  # Use Google search engine
+                'gl': 'us',  # Geographic location
+                'hl': 'en'   # Language
             }
             
             response = requests.get(url, params=params, timeout=10)
             
-            # Log non-200 so we can diagnose CSE blocking (403/429)
+            # Log non-200 so we can diagnose issues
             if response.status_code != 200:
                 try:
                     err_body = response.json()
                     logger.error(
-                        f"Google CSE blocked: status={response.status_code} query='{query}' "
-                        f"error={err_body.get('error', {}).get('message', response.text[:200])}"
+                        f"SerpAPI error: status={response.status_code} query='{query}' "
+                        f"error={err_body.get('error', response.text[:200])}"
                     )
                 except Exception:
                     logger.error(
-                        f"Google CSE blocked: status={response.status_code} query='{query}' body={response.text[:300]}"
+                        f"SerpAPI error: status={response.status_code} query='{query}' body={response.text[:300]}"
                     )
                 continue
             
             data = response.json()
-            items = data.get('items', [])
             
-            logger.info(f"Query '{query}' returned {len(items)} results")
+            # SerpAPI returns organic_results for regular search
+            items = data.get('organic_results', [])
             
-            for item in items:
-                # Extract product info
-                # For regular search, images are in pagemap.cse_image or pagemap.cse_thumbnail
-                image_url = ''
-                if 'pagemap' in item:
-                    if 'cse_image' in item['pagemap'] and item['pagemap']['cse_image']:
-                        image_url = item['pagemap']['cse_image'][0].get('src', '')
-                    elif 'cse_thumbnail' in item['pagemap'] and item['pagemap']['cse_thumbnail']:
-                        image_url = item['pagemap']['cse_thumbnail'][0].get('src', '')
+            # Also check shopping_results if available (better for products)
+            shopping_items = data.get('shopping_results', [])
+            if shopping_items:
+                # Shopping results are better for products - use those first
+                for shop_item in shopping_items[:10]:
+                    product = {
+                        'title': shop_item.get('title', ''),
+                        'link': shop_item.get('link', ''),
+                        'snippet': shop_item.get('snippet', ''),
+                        'image': shop_item.get('thumbnail', ''),
+                        'source_domain': extract_domain(shop_item.get('link', '')),
+                        'search_query': query,
+                        'interest_match': interest,
+                        'priority': query_info['priority'],
+                        'price': shop_item.get('price', '')  # SerpAPI extracts price automatically
+                    }
+                    
+                    # Avoid duplicates
+                    if not any(p['link'] == product['link'] for p in all_products):
+                        all_products.append(product)
+                        products_by_interest[interest].append(product)
                 
-                product = {
-                    'title': item.get('title', ''),
-                    'link': item.get('link', ''),
-                    'snippet': item.get('snippet', ''),
-                    'image': image_url,
-                    'source_domain': extract_domain(item.get('link', '')),
-                    'search_query': query,
-                    'interest_match': interest,
-                    'priority': query_info['priority']
-                }
+                logger.info(f"Query '{query}' returned {len(shopping_items)} shopping results")
+            else:
+                # Fall back to organic results
+                logger.info(f"Query '{query}' returned {len(items)} organic results")
                 
-                # Try to extract price from snippet
-                price = extract_price(item.get('snippet', ''))
-                if price:
-                    product['price'] = price
-                
-                # Avoid duplicates
-                if not any(p['link'] == product['link'] for p in all_products):
-                    all_products.append(product)
-                    products_by_interest[interest].append(product)
+                for item in items[:10]:
+                    # Extract product info from organic results
+                    image_url = ''
+                    if 'thumbnail' in item:
+                        image_url = item['thumbnail']
+                    
+                    product = {
+                        'title': item.get('title', ''),
+                        'link': item.get('link', ''),
+                        'snippet': item.get('snippet', ''),
+                        'image': image_url,
+                        'source_domain': extract_domain(item.get('link', '')),
+                        'search_query': query,
+                        'interest_match': interest,
+                        'priority': query_info['priority']
+                    }
+                    
+                    # Try to extract price from snippet
+                    price = extract_price(item.get('snippet', ''))
+                    if price:
+                        product['price'] = price
+                    
+                    # Avoid duplicates
+                    if not any(p['link'] == product['link'] for p in all_products):
+                        all_products.append(product)
+                        products_by_interest[interest].append(product)
             
             # Rate limiting - wait between requests
             time.sleep(0.5)

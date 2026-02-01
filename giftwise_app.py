@@ -225,8 +225,7 @@ STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID')
 AMAZON_AFFILIATE_TAG = os.environ.get('AMAZON_AFFILIATE_TAG', '')  # Optional: for affiliate links
 
 # Image fetching APIs (optional)
-GOOGLE_CSE_API_KEY = os.environ.get('GOOGLE_CSE_API_KEY', '')
-GOOGLE_CUSTOM_SEARCH_ENGINE_ID = os.environ.get('GOOGLE_CUSTOM_SEARCH_ENGINE_ID', '')
+SERPAPI_API_KEY = os.environ.get('SERPAPI_API_KEY', '')
 UNSPLASH_ACCESS_KEY = os.environ.get('UNSPLASH_ACCESS_KEY', '')
 
 # Pinterest OAuth Configuration
@@ -2014,9 +2013,9 @@ def api_generate_recommendations():
             relationship = user.get('relationship', '')
             user_id = session['user_id']
             
-            # Check if Google CSE is configured
-            if not GOOGLE_CSE_API_KEY or not GOOGLE_CUSTOM_SEARCH_ENGINE_ID:
-                logger.error("Google Custom Search not configured")
+            # Check if SerpAPI is configured
+            if not SERPAPI_API_KEY:
+                logger.error("SerpAPI not configured")
                 return jsonify({
                     'success': False,
                     'error': 'Product search is not configured. Please contact support.'
@@ -2039,8 +2038,7 @@ def api_generate_recommendations():
             logger.info("STEP 2: Searching for real products...")
             products = search_real_products(
                 profile,
-                GOOGLE_CSE_API_KEY,
-                GOOGLE_CUSTOM_SEARCH_ENGINE_ID,
+                SERPAPI_API_KEY,
                 target_count=40
             )
             

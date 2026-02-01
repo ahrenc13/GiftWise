@@ -104,7 +104,7 @@ try:
     # Set API keys for image fetching
     import image_fetcher
     # Get image API keys from environment (load_dotenv() already called above)
-    google_key = os.environ.get('GOOGLE_CUSTOM_SEARCH_API_KEY', '')
+    google_key = os.environ.get('GOOGLE_CSE_API_KEY', '')
     google_engine = os.environ.get('GOOGLE_CUSTOM_SEARCH_ENGINE_ID', '')
     unsplash_key = os.environ.get('UNSPLASH_ACCESS_KEY', '')
     
@@ -225,7 +225,7 @@ STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID')
 AMAZON_AFFILIATE_TAG = os.environ.get('AMAZON_AFFILIATE_TAG', '')  # Optional: for affiliate links
 
 # Image fetching APIs (optional)
-GOOGLE_CUSTOM_SEARCH_API_KEY = os.environ.get('GOOGLE_CUSTOM_SEARCH_API_KEY', '')
+GOOGLE_CSE_API_KEY = os.environ.get('GOOGLE_CSE_API_KEY', '')
 GOOGLE_CUSTOM_SEARCH_ENGINE_ID = os.environ.get('GOOGLE_CUSTOM_SEARCH_ENGINE_ID', '')
 UNSPLASH_ACCESS_KEY = os.environ.get('UNSPLASH_ACCESS_KEY', '')
 
@@ -2015,7 +2015,7 @@ def api_generate_recommendations():
             user_id = session['user_id']
             
             # Check if Google CSE is configured
-            if not GOOGLE_CUSTOM_SEARCH_API_KEY or not GOOGLE_CUSTOM_SEARCH_ENGINE_ID:
+            if not GOOGLE_CSE_API_KEY or not GOOGLE_CUSTOM_SEARCH_ENGINE_ID:
                 logger.error("Google Custom Search not configured - falling back to old flow")
                 return generate_recommendations_legacy(user, platforms, recipient_type, relationship)
             
@@ -2036,7 +2036,7 @@ def api_generate_recommendations():
             logger.info("STEP 2: Searching for real products...")
             products = search_real_products(
                 profile,
-                GOOGLE_CUSTOM_SEARCH_API_KEY,
+                GOOGLE_CSE_API_KEY,
                 GOOGLE_CUSTOM_SEARCH_ENGINE_ID,
                 target_count=40
             )

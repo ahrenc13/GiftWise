@@ -1774,10 +1774,14 @@ def scraping_in_progress():
     if not active_platforms:
         return redirect('/connect-platforms')
     
+    # Get recipient type for correct pronouns
+    recipient_type = user.get('recipient_type', 'myself')
+    
     return render_template(
         'scraping_in_progress.html',
         platforms=active_platforms,
-        user_id=user.get('user_id')
+        user_id=user.get('user_id'),
+        recipient_type=recipient_type
     )
 
 @app.route('/scraping-progress')
@@ -1787,8 +1791,8 @@ def scraping_progress_alias():
 
 @app.route('/api/scraping-status')
 def api_scraping_status():
-    """API endpoint to check scraping status (alias)"""
-    return api_check_scraping_status()
+    """API endpoint to check scraping status (alias for /api/check-scraping-status)"""
+    return check_scraping_status()
 
 @app.route('/connect-progress/<platform>/<task_id>')
 def connect_progress(platform, task_id):

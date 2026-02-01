@@ -3,7 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    {% if recipient_type == 'myself' %}
     <title>Analyzing Your Social Media | Giftwise</title>
+    {% else %}
+    <title>Analyzing Their Social Media | Giftwise</title>
+    {% endif %}
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         * {
@@ -207,8 +211,13 @@
 </head>
 <body>
     <div class="container">
+        {% if recipient_type == 'myself' %}
         <h1>Analyzing Your Social Media</h1>
         <p class="subtitle">Hang tight! We're gathering insights from your profiles...</p>
+        {% else %}
+        <h1>Analyzing Their Social Media</h1>
+        <p class="subtitle">Hang tight! We're gathering insights from their profiles...</p>
+        {% endif %}
 
         <div class="loader"></div>
 
@@ -233,22 +242,31 @@
     <script>
         const platformData = {{ platforms | tojson }};
         const userId = "{{ user_id }}";
+        const recipientType = "{{ recipient_type }}";
         
         const platformIcons = {
             'instagram': '📷',
-            'tiktok': '🎵',
+            'tiktok': '🎬',
             'pinterest': '📌',
             'spotify': '🎧',
             'etsy': '🛍️',
             'youtube': '▶️'
         };
 
-        const statusMessages = [
+        // Dynamic status messages based on recipient type
+        const statusMessages = recipientType === 'myself' ? [
             "Reading your posts...",
             "Analyzing your interests...",
             "Finding patterns in your content...",
             "Identifying your style...",
             "Understanding what you love...",
+            "Almost there..."
+        ] : [
+            "Reading their posts...",
+            "Analyzing their interests...",
+            "Finding patterns in their content...",
+            "Identifying their style...",
+            "Understanding what they love...",
             "Almost there..."
         ];
 
@@ -312,9 +330,11 @@
             fetch('/api/scraping-status')
                 .then(response => response.json())
                 .then(data => {
-                    if (data.platforms) {
-                        // Update platform data
-                        Object.entries(data.platforms).forEach(([platform, info]) => {
+                    console.log('Status response:', data); // Debug logging
+                    
+                    if (data.statuses) {
+                        // Update platform data with statuses
+                        Object.entries(data.statuses).forEach(([platform, info]) => {
                             platformData[platform] = info;
                             
                             // Update icon status
@@ -343,8 +363,14 @@
                         updateProgress();
 
                         // Continue polling if not complete
-                        if (!data.all_complete) {
+                        if (!data.complete) {
                             setTimeout(checkStatus, 2000);
+                        } else {
+                            // All complete - redirect
+                            document.getElementById('status-message').textContent = "✅ Analysis complete! Generating your recommendations...";
+                            setTimeout(() => {
+                                window.location.href = '/recommendations';
+                            }, 1500);
                         }
                     }
                 })

@@ -14,7 +14,7 @@
 
         body {
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%);
             min-height: 100vh;
             padding: 40px 20px;
         }
@@ -123,7 +123,7 @@
 
         .platform-status .username {
             font-weight: 600;
-            color: #667eea;
+            color: #be123c;
         }
 
         .platform-actions {
@@ -146,15 +146,14 @@
         }
 
         .btn-primary {
-            background: #667eea;
+            background: #be123c;
             color: white;
         }
 
         .btn-primary:hover {
-            background: #5568d3;
+            background: #9f1239;
         }
 
-        /* FIXED: Softer disconnect button - amber/orange instead of red */
         .btn-disconnect {
             background: #f59e0b;
             color: white;
@@ -179,14 +178,14 @@
         }
 
         .btn-upgrade {
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, #f43f5e, #be123c);
             color: white;
             font-weight: 700;
         }
 
         .btn-upgrade:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 4px 12px rgba(190, 18, 60, 0.4);
         }
 
         .pro-badge {
@@ -225,7 +224,7 @@
 
         .input-group input:focus {
             outline: none;
-            border-color: #667eea;
+            border-color: #f43f5e;
         }
 
         .continue-section {
@@ -251,7 +250,7 @@
         .btn-continue {
             padding: 16px 48px;
             font-size: 16px;
-            background: linear-gradient(135deg, #667eea, #764ba2);
+            background: linear-gradient(135deg, #f43f5e, #be123c);
             color: white;
             border: none;
             border-radius: 12px;
@@ -262,7 +261,7 @@
 
         .btn-continue:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 8px 24px rgba(190, 18, 60, 0.4);
         }
 
         .btn-continue:disabled {
@@ -281,7 +280,7 @@
         }
 
         .tier-info strong {
-            color: #667eea;
+            color: #be123c;
         }
 
         @media (max-width: 768px) {
@@ -317,9 +316,9 @@
                     </div>
                 </div>
 
-                {% if platforms.instagram.status == 'connected' %}
+                {% if platforms.get('instagram', {}).get('status') == 'connected' %}
                     <div class="platform-status connected">
-                        ✓ Connected as <span class="username">@{{ platforms.instagram.username }}</span>
+                        ✓ Connected as <span class="username">@{{ platforms.get('instagram', {}).get('username', '') }}</span>
                     </div>
                     <div class="platform-actions">
                         <form method="POST" action="/disconnect/instagram" style="flex: 1;">
@@ -358,9 +357,9 @@
                     </div>
                 </div>
 
-                {% if platforms.tiktok.status == 'connected' %}
+                {% if platforms.get('tiktok', {}).get('status') == 'connected' %}
                     <div class="platform-status connected">
-                        ✓ Connected as <span class="username">@{{ platforms.tiktok.username }}</span>
+                        ✓ Connected as <span class="username">@{{ platforms.get('tiktok', {}).get('username', '') }}</span>
                     </div>
                     <div class="platform-actions">
                         <form method="POST" action="/disconnect/tiktok" style="flex: 1;">
@@ -399,7 +398,7 @@
                     </div>
                 </div>
 
-                {% if platforms.pinterest.status == 'connected' %}
+                {% if platforms.get('pinterest', {}).get('status') == 'connected' %}
                     <div class="platform-status connected">
                         ✓ Connected via OAuth
                     </div>

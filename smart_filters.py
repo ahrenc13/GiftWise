@@ -26,7 +26,7 @@ class WorkExclusionFilter:
     ]
     
     @staticmethod
-    def is_work_related_gift(product_title, product_description, user_interests):
+    def is_work_related_gift(product_title, product_description, user_interests, user_profile=None):
         """
         Determine if a product is something they'd get through work
         
@@ -34,6 +34,7 @@ class WorkExclusionFilter:
             product_title: Gift product title
             product_description: Product description/snippet
             user_interests: List of interest dicts with 'name', 'is_work', 'description'
+            user_profile: Full profile with location, job details, etc.
         
         Returns:
             {
@@ -54,7 +55,55 @@ class WorkExclusionFilter:
                     'confidence': 0.8
                 }
         
-        # Check against work-related interests
+        # Extract work location/venue from profile if available
+        work_venues = []
+        work_companies = []
+        
+        if user_profile:
+            # Check location context for work venues
+            location_context = user_profile.get('location_context', {})
+            city = location_context.get('city_region', '').lower()
+            
+            # Look for work-specific locations in interests
+            for interest in user_interests:
+                if not interest.get('is_work'):
+                    continue
+                
+                desc = interest.get('description', '').lower()
+                
+                # Extract venue/location mentions
+                # "Works at Indianapolis Motor Speedway" → ["indianapolis motor speedway", "indy 500"]
+                if 'works at' in desc or 'work at' in desc:
+                    # Extract what comes after "works at"
+                    import re
+                    venue_match = re.search(r'works? (?:at|for) ([a-z0-9\s]+?)(?:\.|,|;|$)', desc)
+                    if venue_match:
+                        venue = venue_match.group(1).strip()
+                        work_venues.append(venue)
+                        
+                        # Add common abbreviations
+                        if 'motor speedway' in venue or 'indy 500' in desc:
+                            work_venues.extend(['indy 500', 'indianapolis 500', 'motor speedway', 'race track'])
+                        if 'concert venue' in venue or 'arena' in venue:
+                            work_venues.extend(['backstage', 'vip access', 'behind the scenes'])
+        
+        # Check if gift is an experience at their workplace
+        workplace_indicators = [
+            'tour', 'behind the scenes', 'backstage', 'vip access', 'access to',
+            'experience at', 'visit to', 'tickets to'
+        ]
+        
+        for venue in work_venues:
+            if venue in combined_text:
+                # Check if it's a workplace experience (tour, access, etc.)
+                if any(indicator in combined_text for indicator in workplace_indicators):
+                    return {
+                        'is_work_item': True,
+                        'reason': f"Experience at their workplace: {venue}",
+                        'confidence': 0.95
+                    }
+        
+        # Check against work-related interests (original logic)
         for interest in user_interests:
             if not interest.get('is_work'):
                 continue
@@ -66,7 +115,8 @@ class WorkExclusionFilter:
             if interest_name in combined_text:
                 # BUT: Check if it's a collectible or fan item
                 fan_indicators = ['poster', 'collectible', 'memorabilia', 'signed', 
-                                 'replica', 'vintage', 'art', 'print', 'book about']
+                                 'replica', 'vintage', 'art', 'print', 'book about',
+                                 'history of', 'documentary', 'biography']
                 
                 if any(indicator in combined_text for indicator in fan_indicators):
                     # This is a FAN item about their work, not a work tool
@@ -91,18 +141,19 @@ class WorkExclusionFilter:
         }
     
     @staticmethod
-    def filter_products(products, user_interests):
+    def filter_products(products, user_profile):
         """
         Remove work-related items from product list
         
         Args:
             products: List of product dicts
-            user_interests: List of interest dicts
+            user_profile: Full profile dict with interests, location, etc.
         
         Returns:
             Filtered product list with work items removed
         """
         
+        user_interests = user_profile.get('interests', [])
         filtered = []
         removed_count = 0
         
@@ -110,7 +161,8 @@ class WorkExclusionFilter:
             result = WorkExclusionFilter.is_work_related_gift(
                 product.get('title', ''),
                 product.get('snippet', ''),
-                user_interests
+                user_interests,
+                user_profile  # Pass full profile for venue detection
             )
             
             if result['is_work_item']:
@@ -242,18 +294,17 @@ def apply_smart_filters(products, profile):
     
     Args:
         products: List of product dicts
-        profile: User profile with interests
+        profile: User profile with interests, location, work details
     
     Returns:
         Filtered product list
     """
     
-    interests = profile.get('interests', [])
-    
-    # Step 1: Remove work-related items
-    products = WorkExclusionFilter.filter_products(products, interests)
+    # Step 1: Remove work-related items (pass full profile for venue detection)
+    products = WorkExclusionFilter.filter_products(products, profile)
     
     # Step 2: Filter by activity type (passive vs active)
+    interests = profile.get('interests', [])
     products = PassiveActiveFilter.filter_by_activity_type(products, interests)
     
     logger.info(f"Smart filters complete: {len(products)} products remaining")

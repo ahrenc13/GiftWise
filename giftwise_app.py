@@ -144,6 +144,22 @@ except ImportError as e:
     OAUTH_INTEGRATIONS_AVAILABLE = False
     pass  # Logger not defined yet
 
+# Import Valentine's Day features
+try:
+    from share_generator import generate_share_image, generate_story_image
+    from referral_system import (
+        generate_referral_code,
+        validate_referral_code,
+        apply_referral_to_user,
+        credit_referrer,
+        get_referral_stats,
+        get_valentines_day_bonus
+    )
+    from flask import send_file
+    VALENTINES_FEATURES_AVAILABLE = True
+except ImportError:
+    VALENTINES_FEATURES_AVAILABLE = False
+    pass
 
 # Enhanced modules (FIXED VERSIONS)
 try:
@@ -720,7 +736,7 @@ def check_pinterest_profile(username):
 # SCRAPING FUNCTIONS (with progress tracking)
 # ============================================================================
 
-def scrape_instagram_profile(username, max_posts=20, task_id=None):
+def scrape_instagram_profile(username, max_posts=50, task_id=None):
     """
     Scrape Instagram with progress tracking
     """
@@ -874,7 +890,7 @@ def scrape_instagram_profile(username, max_posts=20, task_id=None):
             set_progress(task_id, 'error', f'Error: {str(e)}', 0)
         return None
 
-def scrape_tiktok_profile(username, max_videos=20, task_id=None):
+def scrape_tiktok_profile(username, max_videos=50, task_id=None):
     """
     Scrape TikTok with progress tracking and repost analysis
     """
@@ -1335,43 +1351,21 @@ def stripe_webhook():
 
 
 @app.route('/connect-platforms')
-def connect_platforms_page():
-    """Display platform connection page"""
-    user_id = session.get('user_id')
-    if not user_id:
-        return redirect('/login')
-    
-    user = get_user(user_id)
+def connect_platforms():
+    """Platform connection page"""
+    user = get_session_user()
     if not user:
-        return redirect('/login')
+        return redirect('/signup')
     
     # Get user's subscription tier
-    subscription_tier = user.get('subscription_tier', 'free')
+    tier = get_user_tier(user)
+    tier_config = SUBSCRIPTION_TIERS[tier]
+    allowed_platforms = tier_config['platforms']
     
-    # Determine which platforms are allowed based on tier
-    if subscription_tier == 'free':
-        allowed_platforms = ['instagram', 'tiktok']  # Free tier
-    elif subscription_tier == 'pro':
-        allowed_platforms = ['instagram', 'tiktok', 'pinterest']  # Pro tier
-    elif subscription_tier == 'premium':
-        allowed_platforms = ['instagram', 'tiktok', 'pinterest', 'spotify', 'etsy', 'youtube']  # Premium tier
-    else:
-        allowed_platforms = ['instagram', 'tiktok']  # Default to free
-    
-    # Get platform connection statuses
+    # Get platforms with safe defaults
     platforms = user.get('platforms', {})
     
     # Initialize platforms if they don't exist
-    if not platforms:
-        platforms = {
-            'instagram': {'status': 'not_connected', 'username': ''},
-            'tiktok': {'status': 'not_connected', 'username': ''},
-            'pinterest': {'status': 'not_connected', 'username': ''},
-        }
-        user['platforms'] = platforms
-        save_user(user_id, user)
-    
-    # Make sure each platform has the expected structure
     for platform_name in ['instagram', 'tiktok', 'pinterest']:
         if platform_name not in platforms:
             platforms[platform_name] = {'status': 'not_connected', 'username': ''}
@@ -1380,15 +1374,15 @@ def connect_platforms_page():
     connected_count = sum(1 for p in platforms.values() if p.get('status') == 'connected')
     total_available = len(allowed_platforms)
     
-    return render_template(
-        'connect_platforms.html',
-        platforms=platforms,
-        allowed_platforms=allowed_platforms,
-        subscription_tier=subscription_tier,
-        connected_count=connected_count,
-        total_available=total_available
-    )
-
+    return render_template('connect_platforms.html', 
+                         user=user,
+                         platforms=platforms,
+                         allowed_platforms=allowed_platforms,
+                         subscription_tier=tier,
+                         connected_count=connected_count,
+                         total_available=total_available,
+                         recipient_type=user.get('recipient_type', 'myself'),
+                         wishlists=user.get('wishlists', []))
 
 @app.route('/api/validate-username', methods=['POST'])
 def validate_username():
@@ -1417,82 +1411,55 @@ def validate_username():
 
 @app.route('/connect/instagram', methods=['POST'])
 def connect_instagram():
-    """Connect Instagram account"""
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Not logged in'}), 401
-    
-    user = get_user(user_id)
+    """Save Instagram username (scraping happens on generate)"""
+    user = get_session_user()
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        return redirect('/signup')
     
-    # Check if user's tier allows Instagram
-    subscription_tier = user.get('subscription_tier', 'free')
-    allowed_platforms = ['instagram', 'tiktok'] if subscription_tier == 'free' else ['instagram', 'tiktok', 'pinterest']
-    
-    if 'instagram' not in allowed_platforms:
-        return jsonify({'error': 'Instagram requires Pro tier'}), 403
-    
-    # Get username from request
-    data = request.get_json()
-    username = data.get('username', '').strip().replace('@', '')
+    username = sanitize_username(request.form.get('username', ''))
     
     if not username:
-        return jsonify({'error': 'Username required'}), 400
+        return redirect('/connect-platforms?error=instagram_no_username')
     
-    # Update user's platforms
+    user_id = session['user_id']
+    
+    # Just save the username - don't scrape yet
     platforms = user.get('platforms', {})
     platforms['instagram'] = {
-        'status': 'connected',
         'username': username,
-        'connected_at': datetime.now().isoformat()
+        'status': 'ready',  # Ready to scrape
+        'method': 'scraping'
     }
-    user['platforms'] = platforms
-    save_user(user_id, user)
+    save_user(user_id, {'platforms': platforms})
+    logger.info(f"User {user_id} connected Instagram: @{username}")
     
-    logger.info(f"User {user.get('email')} connected Instagram: @{username}")
-    
-    return jsonify({'success': True, 'username': username})
-
+    return redirect('/connect-platforms?success=instagram_ready')
 
 @app.route('/connect/tiktok', methods=['POST'])
 def connect_tiktok():
-    """Connect TikTok account"""
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Not logged in'}), 401
-    
-    user = get_user(user_id)
+    """Save TikTok username (scraping happens on generate)"""
+    user = get_session_user()
     if not user:
-        return jsonify({'error': 'User not found'}), 404
+        return redirect('/signup')
     
-    # Check if user's tier allows TikTok
-    subscription_tier = user.get('subscription_tier', 'free')
-    allowed_platforms = ['instagram', 'tiktok'] if subscription_tier == 'free' else ['instagram', 'tiktok', 'pinterest']
-    
-    if 'tiktok' not in allowed_platforms:
-        return jsonify({'error': 'TikTok requires Pro tier'}), 403
-    
-    # Get username from request
-    data = request.get_json()
-    username = data.get('username', '').strip().replace('@', '')
+    username = sanitize_username(request.form.get('username', ''))
     
     if not username:
-        return jsonify({'error': 'Username required'}), 400
+        return redirect('/connect-platforms?error=tiktok_no_username')
     
-    # Update user's platforms
+    user_id = session['user_id']
+    
+    # Just save the username - don't scrape yet
     platforms = user.get('platforms', {})
     platforms['tiktok'] = {
-        'status': 'connected',
         'username': username,
-        'connected_at': datetime.now().isoformat()
+        'status': 'ready',  # Ready to scrape
+        'method': 'scraping'
     }
-    user['platforms'] = platforms
-    save_user(user_id, user)
+    save_user(user_id, {'platforms': platforms})
+    logger.info(f"User {user_id} connected TikTok: @{username}")
     
-    logger.info(f"User {user.get('email')} connected TikTok: @{username}")
-    
-    return jsonify({'success': True, 'username': username})
+    return redirect('/connect-platforms?success=tiktok_ready')
 
 @app.route('/connect/etsy', methods=['POST'])
 def connect_etsy():
@@ -1572,61 +1539,28 @@ def etsy_oauth_callback():
     
     return redirect('/connect-platforms?success=etsy_connected')
 
-@app.route('/disconnect/instagram', methods=['POST'])
-def disconnect_instagram():
-    """Disconnect Instagram account"""
-    user_id = session.get('user_id')
-    if not user_id:
-        return redirect('/connect-platforms')
+@app.route('/disconnect/<platform>', methods=['POST'])
+def disconnect_platform(platform):
+    """Disconnect a platform"""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
     
-    user = get_user(user_id)
-    if user:
-        platforms = user.get('platforms', {})
-        if 'instagram' in platforms:
-            platforms['instagram'] = {'status': 'not_connected', 'username': ''}
-            user['platforms'] = platforms
-            save_user(user_id, user)
-            logger.info(f"User {user.get('email')} disconnected Instagram")
+    user_id = session['user_id']
+    platforms = user.get('platforms', {})
+    wishlists = user.get('wishlists', [])
     
-    return redirect('/connect-platforms')
-
-
-@app.route('/disconnect/tiktok', methods=['POST'])
-def disconnect_tiktok():
-    """Disconnect TikTok account"""
-    user_id = session.get('user_id')
-    if not user_id:
-        return redirect('/connect-platforms')
+    # Remove from platforms
+    if platform in platforms:
+        del platforms[platform]
+        logger.info(f"User {user_id} disconnected {platform}")
     
-    user = get_user(user_id)
-    if user:
-        platforms = user.get('platforms', {})
-        if 'tiktok' in platforms:
-            platforms['tiktok'] = {'status': 'not_connected', 'username': ''}
-            user['platforms'] = platforms
-            save_user(user_id, user)
-            logger.info(f"User {user.get('email')} disconnected TikTok")
+    # Remove from wishlists if it's a wishlist platform
+    wishlists = [w for w in wishlists if w.get('platform') != platform]
     
-    return redirect('/connect-platforms')
-
-
-@app.route('/disconnect/pinterest', methods=['POST'])
-def disconnect_pinterest():
-    """Disconnect Pinterest account"""
-    user_id = session.get('user_id')
-    if not user_id:
-        return redirect('/connect-platforms')
+    save_user(user_id, {'platforms': platforms, 'wishlists': wishlists})
     
-    user = get_user(user_id)
-    if user:
-        platforms = user.get('platforms', {})
-        if 'pinterest' in platforms:
-            platforms['pinterest'] = {'status': 'not_connected', 'username': ''}
-            user['platforms'] = platforms
-            save_user(user_id, user)
-            logger.info(f"User {user.get('email')} disconnected Pinterest")
-
-    return redirect('/connect-platforms')
+    return redirect('/connect-platforms?success=disconnected')
 
 @app.route('/connect/goodreads', methods=['POST'])
 def connect_goodreads():
@@ -1817,21 +1751,17 @@ def start_scraping():
 @app.route('/scraping-in-progress')
 def scraping_in_progress():
     """Show scraping progress page"""
-    user_id = session.get('user_id')
-    if not user_id:
-        return redirect('/login')
-    
-    user = get_user(user_id)
+    user = get_session_user()
     if not user:
-        return redirect('/login')
+        return redirect('/signup')
     
     # Get platforms that are being scraped
     platforms = user.get('platforms', {})
     
-    # Filter to only platforms that are connected
+    # Filter to only platforms that are connected or scraping
     active_platforms = {}
     for platform_name, platform_data in platforms.items():
-        if platform_data.get('status') in ['scraping', 'ready', 'complete']:
+        if platform_data.get('status') in ['scraping', 'ready', 'complete', 'connected']:
             active_platforms[platform_name] = platform_data
     
     # If no platforms are being scraped, redirect to connect page
@@ -1841,250 +1771,13 @@ def scraping_in_progress():
     return render_template(
         'scraping_in_progress.html',
         platforms=active_platforms,
-        user_id=user_id
+        user_id=user.get('user_id')
     )
-
 
 @app.route('/api/scraping-status')
 def api_scraping_status():
-    """API endpoint to check scraping status (polled by frontend)"""
-    user_id = session.get('user_id')
-    if not user_id:
-        return jsonify({'error': 'Not logged in'}), 401
-    
-    user = get_user(user_id)
-    if not user:
-        return jsonify({'error': 'User not found'}), 404
-    
-    platforms = user.get('platforms', {})
-    
-    # Check if all platforms are complete
-    all_complete = True
-    in_progress = False
-    
-    platform_status = {}
-    for platform_name, platform_data in platforms.items():
-        status = platform_data.get('status', 'not_connected')
-        
-        if status in ['scraping', 'ready']:
-            in_progress = True
-            all_complete = False
-        
-        if status in ['scraping', 'ready', 'complete']:
-            platform_status[platform_name] = {
-                'status': status,
-                'username': platform_data.get('username', ''),
-                'post_count': platform_data.get('post_count', 0)
-            }
-    
-    return jsonify({
-        'platforms': platform_status,
-        'all_complete': all_complete,
-        'in_progress': in_progress
-    })
-
-
-@app.route('/start-scraping', methods=['POST'])
-def start_scraping():
-    """Start scraping connected platforms"""
-    user_id = session.get('user_id')
-    if not user_id:
-        return redirect('/login')
-    
-    user = get_user(user_id)
-    if not user:
-        return redirect('/login')
-    
-    platforms = user.get('platforms', {})
-    
-    # Find connected platforms and mark them as ready for scraping
-    platforms_to_scrape = []
-    for platform_name, platform_data in platforms.items():
-        if platform_data.get('status') == 'connected':
-            # Mark as ready for scraping
-            platforms[platform_name]['status'] = 'ready'
-            platforms_to_scrape.append(platform_name)
-    
-    if not platforms_to_scrape:
-        flash('Please connect at least one platform first')
-        return redirect('/connect-platforms')
-    
-    # Save updated status
-    user['platforms'] = platforms
-    save_user(user_id, user)
-    
-    logger.info(f"User {user.get('email')} started scraping for platforms: {platforms_to_scrape}")
-    
-    # Start background scraping threads
-    for platform_name in platforms_to_scrape:
-        platform_data = platforms[platform_name]
-        username = platform_data.get('username', '')
-        
-        if platform_name == 'instagram' and username:
-            # Start Instagram scraping in background thread
-            import threading
-            thread = threading.Thread(
-                target=scrape_instagram_background,
-                args=(user_id, username)
-            )
-            thread.daemon = True
-            thread.start()
-            logger.info(f"Started Instagram scraping thread for {username}")
-        
-        elif platform_name == 'tiktok' and username:
-            # Start TikTok scraping in background thread
-            import threading
-            thread = threading.Thread(
-                target=scrape_tiktok_background,
-                args=(user_id, username)
-            )
-            thread.daemon = True
-            thread.start()
-            logger.info(f"Started TikTok scraping thread for {username}")
-        
-        elif platform_name == 'pinterest' and username:
-            # Start Pinterest scraping in background thread
-            import threading
-            thread = threading.Thread(
-                target=scrape_pinterest_background,
-                args=(user_id, username)
-            )
-            thread.daemon = True
-            thread.start()
-            logger.info(f"Started Pinterest scraping thread for {username}")
-    
-    # Redirect to progress page
-    return redirect('/scraping-in-progress')
-
-
-# ========================================
-# BACKGROUND SCRAPING FUNCTIONS
-# ========================================
-
-def scrape_instagram_background(user_id, username):
-    """Background thread for Instagram scraping"""
-    try:
-        # Update status to scraping
-        user = get_user(user_id)
-        platforms = user.get('platforms', {})
-        platforms['instagram']['status'] = 'scraping'
-        platforms['instagram']['scraping_started_at'] = datetime.now().isoformat()
-        save_user(user_id, user)
-        
-        logger.info(f"Starting Instagram scrape for @{username}")
-        
-        # Call your existing Instagram scraping function
-        result = scrape_instagram_public(username)  # Your existing function
-        
-        # Update status to complete
-        user = get_user(user_id)
-        platforms = user.get('platforms', {})
-        
-        if result and result.get('items'):
-            platforms['instagram']['status'] = 'complete'
-            platforms['instagram']['data'] = result
-            platforms['instagram']['post_count'] = len(result.get('items', []))
-            platforms['instagram']['completed_at'] = datetime.now().isoformat()
-            logger.info(f"Successfully scraped {len(result.get('items', []))} Instagram posts for @{username}")
-        else:
-            platforms['instagram']['status'] = 'failed'
-            platforms['instagram']['error'] = 'No data retrieved'
-            logger.error(f"Instagram scraping failed for @{username}")
-        
-        save_user(user_id, user)
-        
-    except Exception as e:
-        logger.error(f"Error in Instagram scraping thread: {e}")
-        # Mark as failed
-        user = get_user(user_id)
-        platforms = user.get('platforms', {})
-        platforms['instagram']['status'] = 'failed'
-        platforms['instagram']['error'] = str(e)
-        save_user(user_id, user)
-
-
-def scrape_tiktok_background(user_id, username):
-    """Background thread for TikTok scraping"""
-    try:
-        # Update status to scraping
-        user = get_user(user_id)
-        platforms = user.get('platforms', {})
-        platforms['tiktok']['status'] = 'scraping'
-        platforms['tiktok']['scraping_started_at'] = datetime.now().isoformat()
-        save_user(user_id, user)
-        
-        logger.info(f"Starting TikTok scrape for @{username}")
-        
-        # Call your existing TikTok scraping function
-        result = scrape_tiktok_public(username)  # Your existing function
-        
-        # Update status to complete
-        user = get_user(user_id)
-        platforms = user.get('platforms', {})
-        
-        if result and result.get('items'):
-            platforms['tiktok']['status'] = 'complete'
-            platforms['tiktok']['data'] = result
-            platforms['tiktok']['post_count'] = len(result.get('items', []))
-            platforms['tiktok']['completed_at'] = datetime.now().isoformat()
-            logger.info(f"Successfully scraped {len(result.get('items', []))} TikTok posts for @{username}")
-        else:
-            platforms['tiktok']['status'] = 'failed'
-            platforms['tiktok']['error'] = 'No data retrieved'
-            logger.error(f"TikTok scraping failed for @{username}")
-        
-        save_user(user_id, user)
-        
-    except Exception as e:
-        logger.error(f"Error in TikTok scraping thread: {e}")
-        # Mark as failed
-        user = get_user(user_id)
-        platforms = user.get('platforms', {})
-        platforms['tiktok']['status'] = 'failed'
-        platforms['tiktok']['error'] = str(e)
-        save_user(user_id, user)
-
-
-def scrape_pinterest_background(user_id, username):
-    """Background thread for Pinterest scraping"""
-    try:
-        # Update status to scraping
-        user = get_user(user_id)
-        platforms = user.get('platforms', {})
-        platforms['pinterest']['status'] = 'scraping'
-        platforms['pinterest']['scraping_started_at'] = datetime.now().isoformat()
-        save_user(user_id, user)
-        
-        logger.info(f"Starting Pinterest scrape for @{username}")
-        
-        # Call your existing Pinterest scraping function (if you have one)
-        result = scrape_pinterest_public(username) if 'scrape_pinterest_public' in dir() else None
-        
-        # Update status to complete
-        user = get_user(user_id)
-        platforms = user.get('platforms', {})
-        
-        if result and result.get('items'):
-            platforms['pinterest']['status'] = 'complete'
-            platforms['pinterest']['data'] = result
-            platforms['pinterest']['post_count'] = len(result.get('items', []))
-            platforms['pinterest']['completed_at'] = datetime.now().isoformat()
-            logger.info(f"Successfully scraped {len(result.get('items', []))} Pinterest pins for @{username}")
-        else:
-            platforms['pinterest']['status'] = 'failed'
-            platforms['pinterest']['error'] = 'No data retrieved'
-            logger.error(f"Pinterest scraping failed for @{username}")
-        
-        save_user(user_id, user)
-        
-    except Exception as e:
-        logger.error(f"Error in Pinterest scraping thread: {e}")
-        # Mark as failed
-        user = get_user(user_id)
-        platforms = user.get('platforms', {})
-        platforms['pinterest']['status'] = 'failed'
-        platforms['pinterest']['error'] = str(e)
-        save_user(user_id, user)
+    """API endpoint to check scraping status (alias)"""
+    return api_check_scraping_status()
 
 @app.route('/connect-progress/<platform>/<task_id>')
 def connect_progress(platform, task_id):
@@ -3321,6 +3014,66 @@ def logout():
     """Logout user"""
     session.clear()
     return redirect('/')
+
+
+# ========================================
+# VALENTINE'S DAY ROUTES
+# ========================================
+
+@app.route('/api/generate-share-image', methods=['POST'])
+def api_generate_share_image():
+    """Generate shareable social media image"""
+    if not VALENTINES_FEATURES_AVAILABLE:
+        return jsonify({'error': 'Feature not available'}), 503
+    
+    user = get_session_user()
+    if not user:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    # Get user's recommendations count
+    recommendations = user.get('recommendations', [])
+    rec_count = len(recommendations)
+    
+    user_name = user.get('name', '').split()[0] if user.get('name') else 'Friend'
+    relationship = user.get('last_generation_relationship', 'someone special')
+    
+    # Generate image
+    try:
+        img_bytes = generate_share_image(
+            user_name=user_name,
+            rec_count=rec_count,
+            relationship=relationship
+        )
+        
+        return send_file(
+            img_bytes,
+            mimetype='image/png',
+            as_attachment=True,
+            download_name='my-valentine-gifts.png'
+        )
+    except Exception as e:
+        logger.error(f"Error generating share image: {e}")
+        return jsonify({'error': 'Failed to generate image'}), 500
+
+
+@app.route('/api/referral-stats')
+def api_referral_stats():
+    """Get user's referral statistics"""
+    if not VALENTINES_FEATURES_AVAILABLE:
+        return jsonify({'error': 'Feature not available'}), 503
+    
+    user = get_session_user()
+    if not user:
+        return jsonify({'error': 'Not logged in'}), 401
+    
+    stats = get_referral_stats(user)
+    
+    # Add Valentine's Day bonus info
+    vday_bonus = get_valentines_day_bonus()
+    stats['valentines_bonus'] = vday_bonus
+    
+    return jsonify(stats)
+
 
 # Error handlers for better crash reporting
 @app.errorhandler(500)

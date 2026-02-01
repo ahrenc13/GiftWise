@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"="width=device-width, initial-scale=1.0">
+    <title>Find the Perfect Valentine's Gift with AI | Giftwise</title>
+    <meta name="description" content="Stuck on a Valentine's gift? Our AI analyzes their social media and finds exactly what they'll love. Perfect gifts in minutes.">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #fff1f2 0%, #fecdd3 100%);
+            color: #1f2937;
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%);
+            color: white;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '💝';
+            position: absolute;
+            font-size: 400px;
+            opacity: 0.1;
+            top: -100px;
+            right: -100px;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-20px) rotate(5deg); }
+        }
+
+        .hero-content {
+            max-width: 800px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .countdown {
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 30px;
+            animation: pulse 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        h1 {
+            font-size: 64px;
+            font-weight: 800;
+            margin-bottom: 24px;
+            line-height: 1.2;
+        }
+
+        .subtitle {
+            font-size: 24px;
+            margin-bottom: 40px;
+            opacity: 0.95;
+            font-weight: 400;
+        }
+
+        .cta-button {
+            background: white;
+            color: #be123c;
+            padding: 20px 48px;
+            font-size: 18px;
+            font-weight: 700;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .cta-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.3);
+        }
+
+        .trust-badges {
+            margin-top: 40px;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        /* How It Works */
+        .how-it-works {
+            padding: 100px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 48px;
+            font-weight: 800;
+            margin-bottom: 60px;
+            color: #be123c;
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+        }
+
+        .step {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 4px 20px rgba(190, 18, 60, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .step:hover {
+            transform: translateY(-8px);
+        }
+
+        .step-number {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, #f43f5e, #be123c);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 24px;
+        }
+
+        .step h3 {
+            font-size: 24px;
+            margin-bottom: 16px;
+            color: #1f2937;
+        }
+
+        .step p {
+            color: #6b7280;
+            line-height: 1.6;
+        }
+
+        /* Social Proof */
+        .social-proof {
+            background: white;
+            padding: 80px 20px;
+            text-align: center;
+        }
+
+        .testimonial {
+            max-width: 700px;
+            margin: 0 auto;
+            padding: 40px;
+            font-size: 20px;
+            font-style: italic;
+            color: #374151;
+            line-height: 1.8;
+        }
+
+        .testimonial-author {
+            margin-top: 20px;
+            font-size: 16px;
+            color: #f43f5e;
+            font-weight: 600;
+        }
+
+        /* Urgency Section */
+        .urgency {
+            padding: 80px 20px;
+            background: linear-gradient(135deg, #be123c, #881337);
+            color: white;
+            text-align: center;
+        }
+
+        .urgency h2 {
+            font-size: 48px;
+            margin-bottom: 24px;
+        }
+
+        .urgency p {
+            font-size: 20px;
+            margin-bottom: 40px;
+            opacity: 0.95;
+        }
+
+        /* Pricing */
+        .pricing {
+            padding: 100px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 60px;
+        }
+
+        .pricing-card {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 4px 20px rgba(190, 18, 60, 0.1);
+            position: relative;
+        }
+
+        .pricing-card.featured {
+            border: 3px solid #f43f5e;
+            transform: scale(1.05);
+        }
+
+        .featured-badge {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: linear-gradient(135deg, #f43f5e, #be123c);
+            color: white;
+            padding: 8px 24px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .plan-name {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            color: #1f2937;
+        }
+
+        .plan-price {
+            font-size: 48px;
+            font-weight: 800;
+            color: #be123c;
+            margin-bottom: 8px;
+        }
+
+        .plan-price span {
+            font-size: 18px;
+            font-weight: 400;
+            color: #6b7280;
+        }
+
+        .plan-features {
+            list-style: none;
+            margin: 30px 0;
+            text-align: left;
+        }
+
+        .plan-features li {
+            padding: 12px 0;
+            color: #374151;
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .plan-features li::before {
+            content: '✓';
+            position: absolute;
+            left: 0;
+            color: #10b981;
+            font-weight: 700;
+        }
+
+        .plan-button {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #f43f5e, #be123c);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .plan-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(190, 18, 60, 0.3);
+        }
+
+        .vday-discount {
+            background: #fecdd3;
+            color: #be123c;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-top: 12px;
+            display: inline-block;
+        }
+
+        /* Footer CTA */
+        .footer-cta {
+            background: linear-gradient(135deg, #f43f5e, #be123c);
+            padding: 100px 20px;
+            text-align: center;
+            color: white;
+        }
+
+        .footer-cta h2 {
+            font-size: 48px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 40px;
+            }
+
+            .subtitle {
+                font-size: 18px;
+            }
+
+            .section-title {
+                font-size: 32px;
+            }
+
+            .urgency h2 {
+                font-size: 32px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="countdown" id="countdown">
+                ⏰ Valentine's Day in <span id="days">14</span> days
+            </div>
+            
+            <h1>Find the Perfect Valentine's Gift 💝</h1>
+            
+            <p class="subtitle">
+                Stuck on what to get them? Our AI analyzes their social media and finds exactly what they'll love. No more guessing.
+            </p>
+            
+            <a href="/signup" class="cta-button">
+                Find Their Perfect Gift →
+            </a>
+            
+            <div class="trust-badges">
+                ✓ Free to try  •  ✓ Takes 2 minutes  •  ✓ AI-powered recommendations
+            </div>
+        </div>
+    </section>
+
+    <!-- How It Works -->
+    <section class="how-it-works">
+        <h2 class="section-title">How It Works</h2>
+        
+        <div class="steps">
+            <div class="step">
+                <div class="step-number">1</div>
+                <h3>Connect Their Socials</h3>
+                <p>Link their Instagram, TikTok, or Pinterest (with permission, of course! 😊)</p>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">2</div>
+                <h3>AI Analyzes Their Interests</h3>
+                <p>Our AI reads their posts, identifies patterns, and understands what they love</p>
+            </div>
+            
+            <div class="step">
+                <div class="step-number">3</div>
+                <h3>Get Perfect Gift Ideas</h3>
+                <p>Receive 15+ personalized recommendations with real products they'll actually want</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Social Proof -->
+    <section class="social-proof">
+        <div class="testimonial">
+            "I had NO idea what to get my girlfriend for Valentine's Day. Giftwise analyzed her Instagram and found the PERFECT gift - a vintage camera she'd been wanting. She cried. 10/10."
+            <div class="testimonial-author">- Mike, 28</div>
+        </div>
+    </section>
+
+    <!-- Urgency Section -->
+    <section class="urgency">
+        <h2>Valentine's Day is February 14th</h2>
+        <p>Don't wait until the last minute. Find their perfect gift today.</p>
+        <a href="/signup" class="cta-button">
+            Get Started Now →
+        </a>
+    </section>
+
+    <!-- Pricing -->
+    <section class="pricing">
+        <h2 class="section-title">Choose Your Plan</h2>
+        
+        <div class="pricing-grid">
+            <!-- Free Plan -->
+            <div class="pricing-card">
+                <div class="plan-name">Free</div>
+                <div class="plan-price">$0<span>/month</span></div>
+                <ul class="plan-features">
+                    <li>Connect Instagram</li>
+                    <li>Connect TikTok</li>
+                    <li>15 AI gift recommendations</li>
+                    <li>Basic insights</li>
+                </ul>
+                <a href="/signup"><button class="plan-button">Start Free</button></a>
+            </div>
+            
+            <!-- Pro Plan (Featured) -->
+            <div class="pricing-card featured">
+                <div class="featured-badge">💝 Most Popular</div>
+                <div class="plan-name">Pro</div>
+                <div class="plan-price">$4.99<span>/month</span></div>
+                <div class="vday-discount">Valentine's Special: 25% off! →  $3.74</div>
+                <ul class="plan-features">
+                    <li>Everything in Free</li>
+                    <li>Connect Pinterest (OAuth)</li>
+                    <li>Advanced AI analysis</li>
+                    <li>Priority support</li>
+                    <li>Share recommendations</li>
+                </ul>
+                <a href="/signup"><button class="plan-button">Upgrade to Pro</button></a>
+            </div>
+            
+            <!-- Premium Plan -->
+            <div class="pricing-card">
+                <div class="plan-name">Premium</div>
+                <div class="plan-price">$24.99<span>/month</span></div>
+                <ul class="plan-features">
+                    <li>Everything in Pro</li>
+                    <li>Unlimited recommendations</li>
+                    <li>All platforms (Spotify, Etsy, YouTube)</li>
+                    <li>Save unlimited gift lists</li>
+                    <li>Gift reminders</li>
+                </ul>
+                <a href="/signup"><button class="plan-button">Go Premium</button></a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer CTA -->
+    <section class="footer-cta">
+        <h2>Ready to Find the Perfect Gift?</h2>
+        <p style="font-size: 20px; margin-bottom: 40px;">
+            Join hundreds of people who've already found amazing gifts with AI
+        </p>
+        <a href="/signup" class="cta-button">
+            Get Started Free →
+        </a>
+    </section>
+
+    <script>
+        // Countdown timer
+        function updateCountdown() {
+            const vday = new Date('2026-02-14T00:00:00');
+            const now = new Date();
+            const diff = vday - now;
+            
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            
+            const daysEl = document.getElementById('days');
+            if (daysEl) {
+                daysEl.textContent = days;
+                
+                if (days === 0) {
+                    document.getElementById('countdown').innerHTML = '⏰ VALENTINE\'S DAY IS TODAY!';
+                } else if (days === 1) {
+                    document.getElementById('countdown').innerHTML = '⏰ TOMORROW IS VALENTINE\'S DAY!';
+                } else if (days < 0) {
+                    document.getElementById('countdown').style.display = 'none';
+                }
+            }
+        }
+        
+        updateCountdown();
+        setInterval(updateCountdown, 60000); // Update every minute
+    </script>
+</body>
+</html>

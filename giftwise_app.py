@@ -1414,12 +1414,14 @@ def connect_instagram():
     """Save Instagram username (scraping happens on generate)"""
     user = get_session_user()
     if not user:
-        return redirect('/signup')
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
     
-    username = sanitize_username(request.form.get('username', ''))
+    # Accept JSON data from frontend
+    data = request.get_json()
+    username = sanitize_username(data.get('username', '') if data else '')
     
     if not username:
-        return redirect('/connect-platforms?error=instagram_no_username')
+        return jsonify({'success': False, 'error': 'Username required'}), 400
     
     user_id = session['user_id']
     
@@ -1427,25 +1429,28 @@ def connect_instagram():
     platforms = user.get('platforms', {})
     platforms['instagram'] = {
         'username': username,
-        'status': 'ready',  # Ready to scrape
-        'method': 'scraping'
+        'status': 'connected',  # Mark as connected
+        'method': 'scraping',
+        'connected_at': datetime.now().isoformat()
     }
     save_user(user_id, {'platforms': platforms})
     logger.info(f"User {user_id} connected Instagram: @{username}")
     
-    return redirect('/connect-platforms?success=instagram_ready')
+    return jsonify({'success': True, 'username': username})
 
 @app.route('/connect/tiktok', methods=['POST'])
 def connect_tiktok():
     """Save TikTok username (scraping happens on generate)"""
     user = get_session_user()
     if not user:
-        return redirect('/signup')
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
     
-    username = sanitize_username(request.form.get('username', ''))
+    # Accept JSON data from frontend
+    data = request.get_json()
+    username = sanitize_username(data.get('username', '') if data else '')
     
     if not username:
-        return redirect('/connect-platforms?error=tiktok_no_username')
+        return jsonify({'success': False, 'error': 'Username required'}), 400
     
     user_id = session['user_id']
     
@@ -1453,13 +1458,14 @@ def connect_tiktok():
     platforms = user.get('platforms', {})
     platforms['tiktok'] = {
         'username': username,
-        'status': 'ready',  # Ready to scrape
-        'method': 'scraping'
+        'status': 'connected',  # Mark as connected
+        'method': 'scraping',
+        'connected_at': datetime.now().isoformat()
     }
     save_user(user_id, {'platforms': platforms})
     logger.info(f"User {user_id} connected TikTok: @{username}")
     
-    return redirect('/connect-platforms?success=tiktok_ready')
+    return jsonify({'success': True, 'username': username})
 
 @app.route('/connect/etsy', methods=['POST'])
 def connect_etsy():
@@ -1661,7 +1667,7 @@ def start_scraping():
     scrape_tasks = {}
     
     # Start scraping threads for all platforms in parallel
-    if 'instagram' in platforms and platforms['instagram'].get('status') == 'ready':
+    if 'instagram' in platforms and platforms['instagram'].get('status') in ['ready', 'connected']:
         task_id = str(uuid.uuid4())
         scrape_tasks['instagram'] = task_id
         username = platforms['instagram']['username']
@@ -1681,7 +1687,7 @@ def start_scraping():
         thread.daemon = True
         thread.start()
     
-    if 'tiktok' in platforms and platforms['tiktok'].get('status') == 'ready':
+    if 'tiktok' in platforms and platforms['tiktok'].get('status') in ['ready', 'connected']:
         task_id = str(uuid.uuid4())
         scrape_tasks['tiktok'] = task_id
         username = platforms['tiktok']['username']

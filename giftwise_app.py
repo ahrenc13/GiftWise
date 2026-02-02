@@ -1981,6 +1981,75 @@ def generate_recommendations_route():
                          platforms=list(platforms.keys()),
                          recipient_type=recipient_type)
 
+
+@app.route('/review-profile')
+def review_profile():
+    """Build profile from scraped data and show validation UI so user can correct work vs hobby, prioritize, etc."""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    platforms = user.get('platforms', {})
+    if not platforms:
+        return redirect('/connect-platforms?error=need_platforms')
+    if not NEW_RECOMMENDATION_FLOW or not claude_client:
+        return redirect('/generate-recommendations')
+    recipient_type = user.get('recipient_type', 'myself')
+    relationship = user.get('relationship', '')
+    recipient_name = "Your recipient" if recipient_type == 'someone_else' else "You"
+    # Build profile (one Claude call) so user can review before we search/curate
+    logger.info("Building profile for review step...")
+    profile = build_recipient_profile(platforms, recipient_type, relationship, claude_client)
+    if not profile.get('interests'):
+        return redirect('/connect-platforms?error=no_profile')
+    # Prepare interests for template (description = evidence for display)
+    interests = []
+    for i in profile.get('interests', []):
+        interests.append({
+            'name': i.get('name', ''),
+            'description': i.get('description') or i.get('evidence', ''),
+            'is_work': i.get('is_work', False),
+            'activity_type': i.get('activity_type', 'both'),
+            'confidence': 0.8
+        })
+    # Ensure location_context has state for template (optional)
+    loc = profile.get('location_context', {})
+    if loc and 'state' not in loc:
+        loc = dict(loc)
+        loc['state'] = ''
+    else:
+        loc = loc or {}
+    profile_for_template = dict(profile)
+    profile_for_template['location_context'] = loc
+    profile_for_template.setdefault('pet_details', '')
+    profile_for_template.setdefault('family_context', '')
+    generation_id = str(uuid.uuid4())
+    session['review_generation_id'] = generation_id
+    return render_template('profile_validation_fun.html',
+                          recipient_name=recipient_name,
+                          interests=interests,
+                          profile=profile_for_template,
+                          profile_json=json.dumps(profile_for_template),
+                          generation_id=generation_id)
+
+
+@app.route('/api/approve-profile', methods=['POST'])
+def api_approve_profile():
+    """Save user-approved profile and redirect to generating (search + curate use this profile)."""
+    user = get_session_user()
+    if not user:
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+    data = request.get_json() or {}
+    profile = data.get('profile')
+    generation_id = data.get('generation_id')
+    if not profile or not isinstance(profile, dict):
+        return jsonify({'success': False, 'error': 'Invalid profile'}), 400
+    if generation_id and session.get('review_generation_id') != generation_id:
+        logger.warning("approve-profile generation_id mismatch")
+    session['approved_profile'] = profile
+    session.pop('review_generation_id', None)
+    return jsonify({'success': True, 'redirect': '/generating'})
+
+
 @app.route('/api/generate-recommendations', methods=['POST'])
 def api_generate_recommendations():
     """
@@ -2021,9 +2090,13 @@ def api_generate_recommendations():
                     'error': 'Product search is not configured. Please contact support.'
                 }), 503
             
-            # STEP 1: Build comprehensive recipient profile
-            logger.info("STEP 1: Building deep recipient profile...")
-            profile = build_recipient_profile(platforms, recipient_type, relationship, claude_client)
+            # STEP 1: Build or use approved recipient profile
+            if session.get('approved_profile'):
+                profile = session.pop('approved_profile')
+                logger.info("Using user-approved profile from review step")
+            else:
+                logger.info("STEP 1: Building deep recipient profile...")
+                profile = build_recipient_profile(platforms, recipient_type, relationship, claude_client)
             
             if not profile.get('interests'):
                 logger.warning("No interests extracted from profile - data quality issue")
@@ -2048,7 +2121,7 @@ def api_generate_recommendations():
             logger.info(f"Found {len(products)} real products")
             
             # Apply smart filters BEFORE curation
-            from smart_filters import apply_smart_filters
+            from smart_filters import apply_smart_filters, filter_workplace_experiences
             from relationship_rules import RelationshipRules
             
             # Filter out work-related and wrong activity type items
@@ -2066,6 +2139,9 @@ def api_generate_recommendations():
             
             product_gifts = curated.get('product_gifts', [])
             experience_gifts = curated.get('experience_gifts', [])
+            # Remove experience gifts at recipient's workplace (e.g. behind-the-scenes IMS when they work at IMS)
+            experience_gifts = filter_workplace_experiences(experience_gifts, profile)
+            logger.info(f"After workplace-experience filter: {len(experience_gifts)} experiences")
             
             if not product_gifts and not experience_gifts:
                 logger.error("Curation returned no gifts")
@@ -2076,20 +2152,25 @@ def api_generate_recommendations():
             
             logger.info(f"Curated {len(product_gifts)} products + {len(experience_gifts)} experiences")
             
+            # Build product URL -> image map for backfilling thumbnails
+            product_url_to_image = {p.get('link', ''): (p.get('image') or p.get('thumbnail', '')) for p in products if p.get('link')}
+            
             # Combine and format recommendations
             all_recommendations = []
             
-            # Add product gifts
+            # Add product gifts (backfill image from search results when curator didn't return one)
             for gift in product_gifts:
+                product_url = gift.get('product_url', '')
+                image_url = gift.get('image_url', '') or product_url_to_image.get(product_url, '')
                 all_recommendations.append({
                     'name': gift.get('name', 'Unknown Product'),
                     'description': gift.get('description', ''),
                     'why_perfect': gift.get('why_perfect', ''),
                     'price_range': gift.get('price', 'Price unknown'),
                     'where_to_buy': gift.get('where_to_buy', 'Online'),
-                    'product_url': gift.get('product_url', ''),
-                    'purchase_link': gift.get('product_url', ''),  # Compatibility
-                    'image_url': gift.get('image_url', ''),
+                    'product_url': product_url,
+                    'purchase_link': product_url,  # Compatibility
+                    'image_url': image_url,
                     'gift_type': 'physical',
                     'confidence_level': gift.get('confidence_level', 'safe_bet'),
                     'interest_match': gift.get('interest_match', ''),
@@ -2127,6 +2208,15 @@ def api_generate_recommendations():
                 })
             
             logger.info(f"Total recommendations: {len(all_recommendations)}")
+            
+            # Backfill thumbnails for recs missing image_url (physical gifts only)
+            if IMAGE_FETCHING_AVAILABLE:
+                try:
+                    all_recommendations = process_recommendation_images(all_recommendations)
+                    with_images = sum(1 for r in all_recommendations if r.get('image_url') and 'placeholder' not in (r.get('image_url') or '').lower())
+                    logger.info(f"Images: {with_images}/{len(all_recommendations)} with thumbnails")
+                except Exception as img_err:
+                    logger.warning(f"Image backfill failed (continuing): {img_err}")
             
             # Calculate data quality for compatibility
             quality = check_data_quality(platforms)

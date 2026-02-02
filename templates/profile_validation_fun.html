@@ -369,11 +369,11 @@
                 </div>
                 
                 <div class="quick-facts">
-                    {% if profile.location_context.city_region %}
+                    {% if profile.location_context and profile.location_context.city_region %}
                     <div class="fact-row">
                         <span class="fact-icon">🌎</span>
                         <span class="fact-label">Lives in:</span>
-                        <span class="fact-value">{{ profile.location_context.city_region }}, {{ profile.location_context.state }}</span>
+                        <span class="fact-value">{{ profile.location_context.city_region }}{% if profile.location_context.state %}, {{ profile.location_context.state }}{% endif %}</span>
                         <button class="small secondary" onclick="editLocation()">Edit</button>
                     </div>
                     {% endif %}

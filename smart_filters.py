@@ -288,6 +288,48 @@ class PassiveActiveFilter:
         return filtered
 
 
+def get_work_venue_phrases(profile):
+    """Return list of phrases that indicate a workplace (for filtering experience gifts)."""
+    import re
+    phrases = []
+    interests = profile.get('interests', [])
+    for i in interests:
+        if not i.get('is_work'):
+            continue
+        desc = (i.get('description') or i.get('evidence', '')).lower()
+        name = i.get('name', '').lower()
+        if 'works at' in desc or 'work at' in desc:
+            m = re.search(r'works? (?:at|for) ([a-z0-9\s]+?)(?:\.|,|;|$)', desc)
+            if m:
+                v = m.group(1).strip()
+                phrases.append(v)
+                if 'motor speedway' in v or 'speedway' in v or 'ims' in desc:
+                    phrases.extend(['ims', 'indianapolis motor speedway', 'indy 500', 'indianapolis 500'])
+        if name:
+            phrases.append(name)
+    return list(set(phrases))
+
+
+def filter_workplace_experiences(experience_gifts, profile):
+    """Remove experience gifts that are at the recipient's workplace (e.g. behind-the-scenes IMS when they work at IMS)."""
+    work_phrases = get_work_venue_phrases(profile)
+    if not work_phrases:
+        return experience_gifts
+    workplace_indicators = ['behind the scenes', 'backstage', 'vip access', 'tour', 'experience at']
+    filtered = []
+    for exp in experience_gifts:
+        combined = f"{exp.get('name', '')} {exp.get('location_details', '')} {exp.get('description', '')}".lower()
+        is_workplace = False
+        for phrase in work_phrases:
+            if phrase.lower() in combined and any(ind in combined for ind in workplace_indicators):
+                is_workplace = True
+                logger.info(f"EXCLUDED workplace experience: {exp.get('name', '')[:60]} - matches work venue '{phrase}'")
+                break
+        if not is_workplace:
+            filtered.append(exp)
+    return filtered
+
+
 def apply_smart_filters(products, profile):
     """
     Apply all smart filters to remove inappropriate gifts

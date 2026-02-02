@@ -337,6 +337,13 @@ def process_recommendation_images(recommendations):
     for i, rec in enumerate(recommendations):
         try:
             product_name = rec.get('name', 'Unknown')
+            # Skip if we already have a real image URL (e.g. from SerpAPI search results)
+            existing = (rec.get('image_url') or '').strip()
+            if existing and existing.startswith('http') and 'placeholder' not in existing.lower():
+                rec['image_source'] = 'search_result'
+                rec['image_is_fallback'] = False
+                processed.append(rec)
+                continue
             logger.debug(f"Fetching image for recommendation {i+1}/{len(recommendations)}: {product_name}")
             
             image_info = get_product_image(rec)

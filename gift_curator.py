@@ -73,6 +73,9 @@ ASPIRATIONAL VS. CURRENT:
 
 GIFT_AVOID (do not suggest): {', '.join(profile.get('gift_avoid', [])[:8]) or 'None specified'}
 
+WORKPLACE (NEVER suggest experiences or "behind the scenes" at these - they work there!):
+{_format_work_venues(profile)}
+
 SPECIFIC VENUES/PLACES:
 {format_venues(profile.get('specific_venues', []))}
 """
@@ -109,9 +112,10 @@ PRODUCT SELECTION CRITERIA:
 - No square pegs in round holes - only include perfect matches
 
 EXPERIENCE GIFT CRITERIA (CRITICAL):
+- NEVER suggest an experience at their WORKPLACE (see WORKPLACE above). No "behind the scenes", "tour", "VIP access", or tickets to a venue where they work—that would be a clunker (they're already there).
 - Experiences are actions or moments you create for the recipient—guided by what we know about them. The gift-giver needs clear steps and everything they need to make it happen.
 - Each experience MUST synthesize at least 2 distinct profile data points (interests + location, or gaps + venues, or aspirational + style). why_perfect must name those data points.
-- If location-specific: use their actual city/region or specific venues from their profile. If no location context, only suggest portable/at-home experiences—never invent a location.
+- If location-specific: use their actual city/region or specific venues from their profile—but NEVER a venue listed in WORKPLACE. If no location context, only suggest portable/at-home experiences—never invent a location.
 - materials_needed: List concrete items the gift-giver should buy (with where_to_buy and product_url from AVAILABLE PRODUCTS when possible, or "search for X" with estimated_price). This is how the experience becomes actionable.
 - how_to_execute: Step-by-step for the gift-giver (what to book/buy, when, how to present it). Be specific so they can follow it without guessing.
 - how_to_make_it_special: 1-2 sentences—e.g. how to frame it when giving, a small touch that shows thoughtfulness, or why this will feel memorable to the recipient.
@@ -139,7 +143,7 @@ Return ONLY a JSON object with this structure:
       "price": "price from product data",
       "where_to_buy": "source domain",
       "product_url": "direct product URL from search results",
-      "image_url": "product image URL from search results",
+      "image_url": "EXACT image URL from the product's Image line in AVAILABLE PRODUCTS - copy it exactly",
       "confidence_level": "safe_bet|adventurous",
       "gift_type": "physical",
       "interest_match": "which interest(s) this matches from profile"
@@ -216,6 +220,26 @@ CRITICAL REQUIREMENTS:
         return {"product_gifts": [], "experience_gifts": []}
 
 
+def _format_work_venues(profile):
+    """Extract work venues from profile (interests where is_work=true) for curator to avoid."""
+    import re
+    venues = []
+    for i in profile.get('interests', []):
+        if not i.get('is_work'):
+            continue
+        desc = (i.get('description') or i.get('evidence', '')).lower()
+        name = i.get('name', '').lower()
+        if 'works at' in desc or 'work at' in desc:
+            m = re.search(r'works? (?:at|for) ([a-z0-9\s]+?)(?:\.|,|;|$)', desc)
+            if m:
+                venues.append(m.group(1).strip())
+        if name and name not in venues:
+            venues.append(name)
+    if not venues:
+        return "None identified"
+    return ", ".join(venues[:10])
+
+
 def format_interests(interests):
     """Format interests list for prompt"""
     if not interests:
@@ -224,7 +248,7 @@ def format_interests(interests):
     formatted = []
     for i in interests:
         name = i.get('name', 'Unknown')
-        evidence = i.get('evidence', '')
+        evidence = i.get('evidence') or i.get('description', '')
         intensity = i.get('intensity', 'moderate')
         interest_type = i.get('type', 'current')
         
@@ -263,7 +287,7 @@ def format_products(products):
         price = p.get('price', 'Price unknown')
         domain = p.get('source_domain', 'unknown')
         interest = p.get('interest_match', 'general')
-        
-        formatted.append(f"{idx}. {title}\n   Price: {price} | Domain: {domain} | Interest match: {interest}\n   Description: {snippet[:150]}\n   URL: {link}")
+        image_url = p.get('image', '') or p.get('thumbnail', '')
+        formatted.append(f"{idx}. {title}\n   Price: {price} | Domain: {domain} | Interest match: {interest}\n   Description: {snippet[:150]}\n   URL: {link}\n   Image: {image_url}")
     
     return '\n\n'.join(formatted[:50])  # Limit to 50 products in prompt

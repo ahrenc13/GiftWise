@@ -314,11 +314,11 @@
                 }
             }
 
-            // All complete - redirect
+            // All complete - redirect to profile review (then user continues to generating)
             if (complete === total) {
-                document.getElementById('status-message').textContent = "✅ Analysis complete! Generating your recommendations...";
+                document.getElementById('status-message').textContent = "✅ Analysis complete! Review your profile, then we'll find gifts...";
                 setTimeout(() => {
-                    window.location.href = '/generate-recommendations';
+                    window.location.href = '/review-profile';
                 }, 1500);
             }
         }
@@ -366,10 +366,10 @@
                         if (!data.complete) {
                             setTimeout(checkStatus, 2000);
                         } else {
-                            // All complete - redirect
-                            document.getElementById('status-message').textContent = "✅ Analysis complete! Generating your recommendations...";
+                            // All complete - redirect to profile review
+                            document.getElementById('status-message').textContent = "✅ Analysis complete! Review your profile, then we'll find gifts...";
                             setTimeout(() => {
-                                window.location.href = '/generate-recommendations';
+                                window.location.href = '/review-profile';
                             }, 1500);
                         }
                     }

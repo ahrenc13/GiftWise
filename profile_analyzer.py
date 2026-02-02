@@ -19,6 +19,7 @@ INSTAGRAM_CAPTIONS_IN_SUMMARY = 28  # Captions sent to Claude (was 15)
 INSTAGRAM_TOP_HASHTAGS = 30
 TIKTOK_REPOSTS_FOR_ANALYSIS = 35     # Reposts are strong aspirational signals
 TIKTOK_REPOST_DESCRIPTIONS_IN_SUMMARY = 25
+TIKTOK_OWN_VIDEO_DESCRIPTIONS = 30    # Own video captions = what they actually post about (critical when reposts are few)
 TIKTOK_FAVORITE_CREATORS = 12
 PINTEREST_BOARDS_SAMPLED = 15
 PINTEREST_PINS_PER_BOARD = 8
@@ -103,31 +104,42 @@ POST PATTERNS:
         reposts = tiktok_data.get('reposts', [])
         username = tiktok_data.get('username', 'unknown')
         
-        # CRITICAL: Reposts show aspirational interests
+        # OWN VIDEO CONTENT: What they actually post about (critical when they "post a ton" but repost little)
+        sorted_videos = sorted(videos, key=lambda v: (v.get('likes', 0) + v.get('comments', 0) * 2), reverse=True)
+        own_descriptions = [v.get('description', '')[:150] for v in sorted_videos if v.get('description')]
+        n_own = min(TIKTOK_OWN_VIDEO_DESCRIPTIONS, len(own_descriptions))
+        # Hashtags from all videos (own + reposts) for full picture
+        all_hashtags = []
+        for v in videos:
+            all_hashtags.extend(v.get('hashtags', []))
+        top_video_hashtags = [tag for tag, count in Counter(all_hashtags).most_common(30)]
+        
+        # Reposts show aspirational interests
         n_reposts = min(TIKTOK_REPOSTS_FOR_ANALYSIS, len(reposts))
         repost_descriptions = [r.get('description', '')[:150] for r in reposts[:n_reposts] if r.get('description')]
-        
-        # Extract hashtags from reposts
         repost_hashtags = []
         for r in reposts[:n_reposts]:
             repost_hashtags.extend(r.get('hashtags', []))
         top_repost_hashtags = [tag for tag, count in Counter(repost_hashtags).most_common(30)]
-        
-        # Favorite creators
         favorite_creators = tiktok_data.get('favorite_creators', [])
         
         data_summary.append(f"""
 TIKTOK PROFILE (@{username} - {len(videos)} videos, {len(reposts)} reposts):
 
+OWN VIDEO CONTENT (What they POST - use this for current interests and variety):
+{chr(10).join(['- ' + d for d in own_descriptions[:n_own]]) if own_descriptions else '(no captions)'}
+
+VIDEO HASHTAGS (all videos): {', '.join(top_video_hashtags) if top_video_hashtags else 'none'}
+
 ASPIRATIONAL CONTENT (REPOSTS - What they WANT):
-{chr(10).join(['- ' + d for d in repost_descriptions[:TIKTOK_REPOST_DESCRIPTIONS_IN_SUMMARY]])}
+{chr(10).join(['- ' + d for d in repost_descriptions[:TIKTOK_REPOST_DESCRIPTIONS_IN_SUMMARY]]) if repost_descriptions else '(no repost captions)'}
 
 REPOST HASHTAGS: {', '.join(top_repost_hashtags)}
 
 FAVORITE CREATORS (Aspirational aesthetics):
 {chr(10).join([f"- @{creator[0]} ({creator[1]} reposts)" for creator in favorite_creators[:TIKTOK_FAVORITE_CREATORS]])}
 
-CRITICAL NOTE: Reposts reveal aspirational interests - these are things they admire and want but don't currently have.
+CRITICAL: Own videos show what they do and care about; reposts show what they want. When there are many own-video captions, extract MULTIPLE distinct interests (8-12), not one theme.
 """)
     
     # Pinterest analysis
@@ -168,7 +180,7 @@ CRITICAL NOTE: Pinterest boards are explicit wishlists - they're pinning exactly
 Extract and structure the following information:
 
 1. **SPECIFIC INTERESTS** (not generic categories - specific, evidence-based interests):
-   - List 8-12 specific interests with concrete evidence
+   - List 8-12 specific interests with concrete evidence. When the person has many posts/videos (e.g. 50+), you MUST extract multiple distinct interests—do NOT collapse everything into one or two themes.
    - For each interest: name, evidence from posts, intensity (casual/moderate/passionate), type (aspirational|current)
    - **is_work**: true ONLY if this is clearly their job/profession (e.g. "paramedic", "works at venue"); false for hobbies
    - **activity_type**: "passive" if they mainly watch/collect/consume (e.g. anime fan, book reader); "active" if they do it (cooking, sports); "both" if unclear
@@ -260,6 +272,7 @@ Return ONLY a JSON object with this structure:
 
 CRITICAL REQUIREMENTS:
 - Be specific - "interested in cooking" is bad, "passionate about Thai cooking" with evidence is good
+- When there are many posts/videos with varied content, list 8-12 distinct interests (different topics, hobbies, aesthetics). Do not return only 1-2 interests when the data clearly shows variety.
 - Only include information you have CLEAR evidence for
 - If something is unknown, mark it as null or empty array
 - Location: if city_region is unknown, do NOT invent a city; leave null. Only include places with concrete evidence.

@@ -1682,6 +1682,7 @@ def start_scraping():
         username = platforms['instagram']['username']
         
         def scrape_ig():
+            # Keep at least 40–50 posts for profile analyzer; lower limits reduce inferential depth
             data = scrape_instagram_profile(username, max_posts=50, task_id=task_id)
             if data:
                 user = get_user(user_id)

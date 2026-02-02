@@ -13,6 +13,18 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+# How much scraped data we use for inference. Higher = more signal, less "on the nose" (tradeoff: prompt size/cost).
+INSTAGRAM_POSTS_FOR_ANALYSIS = 40   # Use top 40 by engagement (was 20)
+INSTAGRAM_CAPTIONS_IN_SUMMARY = 28  # Captions sent to Claude (was 15)
+INSTAGRAM_TOP_HASHTAGS = 30
+TIKTOK_REPOSTS_FOR_ANALYSIS = 35     # Reposts are strong aspirational signals
+TIKTOK_REPOST_DESCRIPTIONS_IN_SUMMARY = 25
+TIKTOK_FAVORITE_CREATORS = 12
+PINTEREST_BOARDS_SAMPLED = 15
+PINTEREST_PINS_PER_BOARD = 8
+PINTEREST_PIN_DESCRIPTIONS_IN_SUMMARY = 35
+PINTEREST_BOARD_NAMES = 20
+
 
 def build_recipient_profile(platforms, recipient_type, relationship, claude_client):
     """
@@ -54,8 +66,9 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
         sorted_posts = sorted(posts, key=lambda p: (p.get('likes', 0) + p.get('comments', 0) * 2), reverse=True)
         high_engagement = [p for p in sorted_posts if (p.get('likes', 0) + p.get('comments', 0) * 2) > 50]
         
-        # Use top posts for analysis
-        priority_posts = high_engagement[:20] if high_engagement else sorted_posts[:20]
+        # Use top posts for analysis (more = better inference, less "on the nose")
+        n_posts = min(INSTAGRAM_POSTS_FOR_ANALYSIS, len(sorted_posts))
+        priority_posts = (high_engagement[:n_posts] if high_engagement else sorted_posts[:n_posts])
         
         # Extract captions, hashtags, locations
         captions = [p.get('caption', '')[:200] for p in priority_posts if p.get('caption')]
@@ -66,17 +79,17 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
             if p.get('location'):
                 locations.append(p.get('location'))
         
-        top_hashtags = [tag for tag, count in Counter(hashtags_all).most_common(20)]
+        top_hashtags = [tag for tag, count in Counter(hashtags_all).most_common(INSTAGRAM_TOP_HASHTAGS)]
         
         data_summary.append(f"""
 INSTAGRAM PROFILE (@{username} - {len(posts)} posts analyzed):
 
 HIGH ENGAGEMENT POSTS ({len(high_engagement)} posts with 50+ engagement):
-{chr(10).join(['- ' + c for c in captions[:15]])}
+{chr(10).join(['- ' + c for c in captions[:INSTAGRAM_CAPTIONS_IN_SUMMARY]])}
 
 TOP HASHTAGS: {', '.join(top_hashtags)}
 
-LOCATIONS MENTIONED: {', '.join(set(locations[:10]))}
+LOCATIONS MENTIONED: {', '.join(set(locations[:15]))}
 
 POST PATTERNS:
 - Average likes: {sum(p.get('likes', 0) for p in priority_posts) / len(priority_posts) if priority_posts else 0:.0f}
@@ -91,13 +104,14 @@ POST PATTERNS:
         username = tiktok_data.get('username', 'unknown')
         
         # CRITICAL: Reposts show aspirational interests
-        repost_descriptions = [r.get('description', '')[:150] for r in reposts[:20] if r.get('description')]
+        n_reposts = min(TIKTOK_REPOSTS_FOR_ANALYSIS, len(reposts))
+        repost_descriptions = [r.get('description', '')[:150] for r in reposts[:n_reposts] if r.get('description')]
         
         # Extract hashtags from reposts
         repost_hashtags = []
-        for r in reposts[:30]:
+        for r in reposts[:n_reposts]:
             repost_hashtags.extend(r.get('hashtags', []))
-        top_repost_hashtags = [tag for tag, count in Counter(repost_hashtags).most_common(20)]
+        top_repost_hashtags = [tag for tag, count in Counter(repost_hashtags).most_common(30)]
         
         # Favorite creators
         favorite_creators = tiktok_data.get('favorite_creators', [])
@@ -106,12 +120,12 @@ POST PATTERNS:
 TIKTOK PROFILE (@{username} - {len(videos)} videos, {len(reposts)} reposts):
 
 ASPIRATIONAL CONTENT (REPOSTS - What they WANT):
-{chr(10).join(['- ' + d for d in repost_descriptions[:15]])}
+{chr(10).join(['- ' + d for d in repost_descriptions[:TIKTOK_REPOST_DESCRIPTIONS_IN_SUMMARY]])}
 
 REPOST HASHTAGS: {', '.join(top_repost_hashtags)}
 
 FAVORITE CREATORS (Aspirational aesthetics):
-{chr(10).join([f"- @{creator[0]} ({creator[1]} reposts)" for creator in favorite_creators[:8]])}
+{chr(10).join([f"- @{creator[0]} ({creator[1]} reposts)" for creator in favorite_creators[:TIKTOK_FAVORITE_CREATORS]])}
 
 CRITICAL NOTE: Reposts reveal aspirational interests - these are things they admire and want but don't currently have.
 """)
@@ -123,21 +137,21 @@ CRITICAL NOTE: Reposts reveal aspirational interests - these are things they adm
         # Extract board themes
         board_names = [b.get('name', '') for b in boards]
         
-        # Sample pins from boards
+        # Sample pins from boards (more boards/pins = better wishlist signal)
         all_pins = []
-        for board in boards[:10]:
+        for board in boards[:PINTEREST_BOARDS_SAMPLED]:
             pins = board.get('pins', [])
-            all_pins.extend(pins[:5])
+            all_pins.extend(pins[:PINTEREST_PINS_PER_BOARD])
         
         pin_descriptions = [p.get('description', '')[:100] for p in all_pins if p.get('description')]
         
         data_summary.append(f"""
 PINTEREST PROFILE ({len(boards)} boards):
 
-BOARD THEMES: {', '.join(board_names[:15])}
+BOARD THEMES: {', '.join(board_names[:PINTEREST_BOARD_NAMES])}
 
 PIN DESCRIPTIONS (Explicit wishlist signals):
-{chr(10).join(['- ' + d for d in pin_descriptions[:20]])}
+{chr(10).join(['- ' + d for d in pin_descriptions[:PINTEREST_PIN_DESCRIPTIONS_IN_SUMMARY]])}
 
 CRITICAL NOTE: Pinterest boards are explicit wishlists - they're pinning exactly what they want.
 """)

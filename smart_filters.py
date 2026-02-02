@@ -298,7 +298,9 @@ def get_work_venue_phrases(profile):
 
 
 def filter_workplace_experiences(experience_gifts, profile):
-    """Remove experience gifts that are at the recipient's workplace (e.g. behind-the-scenes IMS when they work at IMS)."""
+    """
+    Remove experience gifts that are at the recipient's workplace (e.g. behind-the-scenes IMS when they work at IMS).
+    """
     work_phrases = get_work_venue_phrases(profile)
     if not work_phrases:
         return experience_gifts

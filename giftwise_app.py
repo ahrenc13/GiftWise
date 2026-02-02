@@ -2094,7 +2094,7 @@ def api_generate_recommendations():
                     'confidence_level': gift.get('confidence_level', 'safe_bet'),
                     'interest_match': gift.get('interest_match', ''),
                     'is_direct_link': True,  # These are from search, so they're real
-                    'link_source': 'google_cse_search'
+                    'link_source': 'serpapi_search'
                 })
             
             # Add experience gifts
@@ -2104,14 +2104,15 @@ def api_generate_recommendations():
                 if materials_list:
                     materials_items = [f"{m.get('item', 'Item')} ({m.get('estimated_price', '$XX')})" for m in materials_list[:3]]
                     materials_summary = f"Materials needed: {', '.join(materials_items)}"
-                
+                how_special = exp.get('how_to_make_it_special', '')
+                parts = [exp.get('description', ''), exp.get('how_to_execute', ''), how_special, materials_summary]
+                full_description = '\n\n'.join(p for p in parts if p).strip()
                 location_info = ""
                 if exp.get('location_specific'):
                     location_info = f" | {exp.get('location_details', 'Location-based')}"
-                
                 all_recommendations.append({
                     'name': exp.get('name', 'Experience Gift'),
-                    'description': f"{exp.get('description', '')}\n\n{exp.get('how_to_execute', '')}\n\n{materials_summary}".strip(),
+                    'description': full_description,
                     'why_perfect': exp.get('why_perfect', ''),
                     'price_range': 'Variable',
                     'where_to_buy': f"Experience{location_info}",
@@ -2121,7 +2122,8 @@ def api_generate_recommendations():
                     'gift_type': 'experience',
                     'confidence_level': exp.get('confidence_level', 'adventurous'),
                     'materials_needed': materials_list,
-                    'location_specific': exp.get('location_specific', False)
+                    'location_specific': exp.get('location_specific', False),
+                    'how_to_make_it_special': how_special
                 })
             
             logger.info(f"Total recommendations: {len(all_recommendations)}")

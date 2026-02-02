@@ -155,11 +155,14 @@ Extract and structure the following information:
 
 1. **SPECIFIC INTERESTS** (not generic categories - specific, evidence-based interests):
    - List 8-12 specific interests with concrete evidence
-   - For each interest, note: what it is, evidence from posts, and intensity level (casual/moderate/passionate)
-   - Example: "Thai cooking (passionate) - Posted pad thai 5x, tagged #thaifood 8x, follows 3 Thai cooking creators"
+   - For each interest: name, evidence from posts, intensity (casual/moderate/passionate), type (aspirational|current)
+   - **is_work**: true ONLY if this is clearly their job/profession (e.g. "paramedic", "works at venue"); false for hobbies
+   - **activity_type**: "passive" if they mainly watch/collect/consume (e.g. anime fan, book reader); "active" if they do it (cooking, sports); "both" if unclear
+   - Example: "Thai cooking (passionate, current, active) - Posted pad thai 5x, tagged #thaifood 8x"
 
 2. **LOCATION CONTEXT**:
-   - Where they live/are based (city, region)
+   - Where they live/are based (city, region) - ONLY if you have clear evidence (posts, venues, bio)
+   - If city_region is unknown, do NOT invent a city; leave null
    - Specific places they frequent (restaurants, venues, neighborhoods)
    - Geographic constraints for experiences
    - If no clear location, state "Unknown - location-based recommendations not possible"
@@ -178,7 +181,7 @@ Extract and structure the following information:
 5. **ASPIRATIONAL VS. CURRENT**:
    - Aspirational interests: Things they want/admire but don't have (from reposts, pins, "wish" language)
    - Current interests: Things they already do/have (from owned items, activities)
-   - Gap analysis: What's missing that they clearly want?
+   - **Gaps**: List 2-5 concrete "gaps" - things they clearly want but don't have yet, with brief evidence. Critical for experience and thoughtful product ideas.
 
 6. **SPECIFIC VENUES/EXPERIENCES**:
    - Name specific restaurants, bars, venues, events they've posted about
@@ -197,12 +200,15 @@ Return ONLY a JSON object with this structure:
     {{
       "name": "specific interest name",
       "evidence": "concrete evidence from posts",
+      "description": "same as evidence - short description for filtering",
       "intensity": "casual|moderate|passionate",
-      "type": "aspirational|current"
+      "type": "aspirational|current",
+      "is_work": false,
+      "activity_type": "passive|active|both"
     }}
   ],
   "location_context": {{
-    "city_region": "where they live or null if unknown",
+    "city_region": "where they live or null if unknown - do NOT invent",
     "specific_places": ["specific venue/restaurant names"],
     "geographic_constraints": "description of location limitations"
   }},
@@ -220,8 +226,9 @@ Return ONLY a JSON object with this structure:
   "aspirational_vs_current": {{
     "aspirational": ["things they want but don't have"],
     "current": ["things they already do/have"],
-    "gaps": ["specific desires evident from data"]
+    "gaps": ["2-5 specific desires with brief evidence - what they want but don't have"]
   }},
+  "gift_avoid": ["generic items", "things to avoid based on profile - e.g. work-related, already has many"],
   "specific_venues": [
     {{
       "name": "venue name",
@@ -241,9 +248,9 @@ CRITICAL REQUIREMENTS:
 - Be specific - "interested in cooking" is bad, "passionate about Thai cooking" with evidence is good
 - Only include information you have CLEAR evidence for
 - If something is unknown, mark it as null or empty array
-- Location context is CRITICAL for experience gifts - only include places with concrete evidence
+- Location: if city_region is unknown, do NOT invent a city; leave null. Only include places with concrete evidence.
 - Price signals are for matching gifts to their lifestyle, not judging affordability
-- Distinguish aspirational (wants) from current (has) clearly
+- Distinguish aspirational (wants) from current (has) clearly. Populate gaps with 2-5 concrete desires and evidence.
 
 Return ONLY the JSON object, no markdown, no backticks, no explanation."""
     
@@ -289,6 +296,7 @@ Return ONLY the JSON object, no markdown, no backticks, no explanation."""
             "style_preferences": {},
             "price_signals": {},
             "aspirational_vs_current": {"aspirational": [], "current": [], "gaps": []},
+            "gift_avoid": [],
             "specific_venues": [],
             "gift_relationship_guidance": {}
         }

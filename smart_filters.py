@@ -33,7 +33,7 @@ class WorkExclusionFilter:
         Args:
             product_title: Gift product title
             product_description: Product description/snippet
-            user_interests: List of interest dicts with 'name', 'is_work', 'description'
+            user_interests: List of interest dicts with 'name', 'is_work', 'description' or 'evidence'
             user_profile: Full profile with location, job details, etc.
         
         Returns:
@@ -109,7 +109,7 @@ class WorkExclusionFilter:
                 continue
             
             interest_name = interest.get('name', '').lower()
-            interest_desc = interest.get('description', '').lower()
+            interest_desc = (interest.get('description') or interest.get('evidence', '')).lower()
             
             # If product mentions their work interest, it's probably work-related
             if interest_name in combined_text:

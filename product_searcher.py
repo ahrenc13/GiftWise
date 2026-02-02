@@ -1,5 +1,5 @@
 """
-PRODUCT SEARCHER - Find Real Products Using Google Custom Search
+PRODUCT SEARCHER - Find Real Products Using SerpAPI (Google Search)
 Searches for actual products based on recipient profile interests
 
 Author: Chad + Claude
@@ -10,8 +10,16 @@ import requests
 import logging
 import time
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 logger = logging.getLogger(__name__)
+
+# Max concurrent SerpAPI requests (stay within rate limits)
+MAX_CONCURRENT_SEARCHES = 5
+# Sleep between batches to avoid rate limits
+SLEEP_BETWEEN_REQUESTS = 0.3
+# Cap total queries for speed
+MAX_SEARCH_QUERIES = 10
 
 
 def search_real_products(profile, serpapi_key, target_count=40):
@@ -49,102 +57,47 @@ def search_real_products(profile, serpapi_key, target_count=40):
         logger.warning("No interests in profile - cannot search for products")
         return []
     
-    # Generate targeted search queries
+    # Generate targeted search queries (varied phrasing to avoid only "first Google result" feel)
     for interest in interests:
         name = interest.get('name', '')
         intensity = interest.get('intensity', 'moderate')
         interest_type = interest.get('type', 'current')
-        
         if not name:
             continue
-        
-        # For aspirational interests, search for gifts that would help them get into it
-        # For current interests, search for advanced/specialty items
-        
+        priority = 'high' if intensity == 'passionate' else 'medium'
         if interest_type == 'aspirational':
-            # Beginner/starter gifts for aspirational interests
-            search_queries.append({
-                'query': f"{name} beginner gift set",
-                'interest': name,
-                'priority': 'high' if intensity == 'passionate' else 'medium'
-            })
-            search_queries.append({
-                'query': f"{name} starter kit unique",
-                'interest': name,
-                'priority': 'high' if intensity == 'passionate' else 'medium'
-            })
+            search_queries.append({'query': f"thoughtful gift for someone who loves {name}", 'interest': name, 'priority': priority})
+            search_queries.append({'query': f"{name} starter kit unique", 'interest': name, 'priority': priority})
         else:
-            # Advanced/specialty items for current interests
-            search_queries.append({
-                'query': f"{name} premium gift",
-                'interest': name,
-                'priority': 'high' if intensity == 'passionate' else 'medium'
-            })
-            search_queries.append({
-                'query': f"{name} enthusiast gift unique",
-                'interest': name,
-                'priority': 'medium'
-            })
+            search_queries.append({'query': f"thoughtful gift for someone who loves {name}", 'interest': name, 'priority': priority})
+            search_queries.append({'query': f"unusual {name} gift not generic", 'interest': name, 'priority': priority})
     
-    # Add brand-specific searches if they have brand preferences
     brands = profile.get('style_preferences', {}).get('brands', [])
-    for brand in brands[:3]:  # Top 3 brands
-        search_queries.append({
-            'query': f"{brand} gift",
-            'interest': brand,
-            'priority': 'medium'
-        })
+    for brand in brands[:2]:
+        search_queries.append({'query': f"{brand} gift", 'interest': brand, 'priority': 'medium'})
     
-    # Limit to reasonable number of searches
-    search_queries = search_queries[:15]  # Max 15 searches
+    search_queries = search_queries[:MAX_SEARCH_QUERIES]
+    logger.info(f"Generated {len(search_queries)} search queries (max {MAX_SEARCH_QUERIES})")
     
-    logger.info(f"Generated {len(search_queries)} search queries")
-    
-    # Execute searches
-    all_products = []
-    products_by_interest = defaultdict(list)
-    
-    for query_info in search_queries:
+    def run_one_search(query_info):
         query = query_info['query']
         interest = query_info['interest']
-        
         try:
-            # Call SerpAPI (Google Search wrapper)
             url = "https://serpapi.com/search"
-            params = {
-                'q': query,
-                'api_key': serpapi_key,
-                'num': 10,  # Get 10 results per query
-                'engine': 'google',  # Use Google search engine
-                'gl': 'us',  # Geographic location
-                'hl': 'en'   # Language
-            }
-            
+            params = {'q': query, 'api_key': serpapi_key, 'num': 10, 'engine': 'google', 'gl': 'us', 'hl': 'en'}
             response = requests.get(url, params=params, timeout=10)
-            
-            # Log non-200 so we can diagnose issues
             if response.status_code != 200:
                 try:
                     err_body = response.json()
-                    logger.error(
-                        f"SerpAPI error: status={response.status_code} query='{query}' "
-                        f"error={err_body.get('error', response.text[:200])}"
-                    )
+                    logger.error(f"SerpAPI error: status={response.status_code} query='{query}' error={err_body.get('error', response.text[:200])}")
                 except Exception:
-                    logger.error(
-                        f"SerpAPI error: status={response.status_code} query='{query}' body={response.text[:300]}"
-                    )
-                continue
-            
+                    logger.error(f"SerpAPI error: status={response.status_code} query='{query}' body={response.text[:300]}")
+                return query_info, [], interest
             data = response.json()
-            
-            # SerpAPI returns organic_results for regular search
             items = data.get('organic_results', [])
-            
-            # Also check shopping_results if available (better for products)
             shopping_items = data.get('shopping_results', [])
+            results = []
             if shopping_items:
-                # Shopping results are better for products - use those first
                 for shop_item in shopping_items[:10]:
                     product = {
                         'title': shop_item.get('title', ''),
@@ -155,25 +108,12 @@ def search_real_products(profile, serpapi_key, target_count=40):
                         'search_query': query,
                         'interest_match': interest,
                         'priority': query_info['priority'],
-                        'price': shop_item.get('price', '')  # SerpAPI extracts price automatically
+                        'price': shop_item.get('price', '')
                     }
-                    
-                    # Avoid duplicates
-                    if not any(p['link'] == product['link'] for p in all_products):
-                        all_products.append(product)
-                        products_by_interest[interest].append(product)
-                
-                logger.info(f"Query '{query}' returned {len(shopping_items)} shopping results")
+                    results.append((product, interest))
             else:
-                # Fall back to organic results
-                logger.info(f"Query '{query}' returned {len(items)} organic results")
-                
                 for item in items[:10]:
-                    # Extract product info from organic results
-                    image_url = ''
-                    if 'thumbnail' in item:
-                        image_url = item['thumbnail']
-                    
+                    image_url = item.get('thumbnail', '')
                     product = {
                         'title': item.get('title', ''),
                         'link': item.get('link', ''),
@@ -184,26 +124,29 @@ def search_real_products(profile, serpapi_key, target_count=40):
                         'interest_match': interest,
                         'priority': query_info['priority']
                     }
-                    
-                    # Try to extract price from snippet
                     price = extract_price(item.get('snippet', ''))
                     if price:
                         product['price'] = price
-                    
-                    # Avoid duplicates
+                    results.append((product, interest))
+            return query_info, results, interest
+        except Exception as e:
+            logger.error(f"Error searching for '{query}': {e}")
+            return query_info, [], interest
+    
+    all_products = []
+    products_by_interest = defaultdict(list)
+    with ThreadPoolExecutor(max_workers=MAX_CONCURRENT_SEARCHES) as executor:
+        for i in range(0, len(search_queries), MAX_CONCURRENT_SEARCHES):
+            batch = search_queries[i:i + MAX_CONCURRENT_SEARCHES]
+            futures = [executor.submit(run_one_search, q) for q in batch]
+            for future in as_completed(futures):
+                _qinfo, results, _interest = future.result()
+                for product, intr in results:
                     if not any(p['link'] == product['link'] for p in all_products):
                         all_products.append(product)
-                        products_by_interest[interest].append(product)
-            
-            # Rate limiting - wait between requests
-            time.sleep(0.5)
-            
-        except requests.exceptions.RequestException as e:
-            logger.error(f"Error searching for '{query}': {e}")
-            continue
-        except Exception as e:
-            logger.error(f"Unexpected error searching for '{query}': {e}")
-            continue
+                        products_by_interest[intr].append(product)
+            if i + MAX_CONCURRENT_SEARCHES < len(search_queries):
+                time.sleep(SLEEP_BETWEEN_REQUESTS)
     
     logger.info(f"Found {len(all_products)} total products across {len(products_by_interest)} interests")
     

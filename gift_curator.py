@@ -69,7 +69,9 @@ PRICE SIGNALS:
 ASPIRATIONAL VS. CURRENT:
 - Aspirational (wants): {', '.join(profile.get('aspirational_vs_current', {}).get('aspirational', [])[:5])}
 - Current (has): {', '.join(profile.get('aspirational_vs_current', {}).get('current', [])[:5])}
-- Gaps to fill: {', '.join(profile.get('aspirational_vs_current', {}).get('gaps', [])[:3])}
+- Gaps to fill (prioritize these): {', '.join(profile.get('aspirational_vs_current', {}).get('gaps', [])[:5])}
+
+GIFT_AVOID (do not suggest): {', '.join(profile.get('gift_avoid', [])[:8]) or 'None specified'}
 
 SPECIFIC VENUES/PLACES:
 {format_venues(profile.get('specific_venues', []))}
@@ -87,41 +89,45 @@ AVAILABLE PRODUCTS ({len(products)} real products with actual purchase links):
 
 YOUR TASK:
 1. Select the BEST {rec_count} products that match this person's profile
-2. Generate 2-3 HYPER-SPECIFIC experience gift ideas
+2. Generate 2-3 HYPER-SPECIFIC experience gift ideas (see EXPERIENCE section below)
+
+TASTE CALIBRATION (CRITICAL):
+- Avoid gifts that feel like the first Google result for "gift for X". Aim for thoughtful, human choices.
+- Prefer items that show real familiarity with the interest (specific brands, niches, or experiences). If the best match is slightly unexpected, explain the connection clearly in why_perfect.
+- Include at least 1-2 "adventurous" picks (confidence_level: adventurous) that are clearly linked to their interests but not obvious—and always cite profile evidence for why it fits.
+- why_perfect MUST cite specific profile evidence (interest name, post, or behavior)—never generic fluff.
+- Respect GIFT_AVOID: do not suggest anything that fits those categories.
+- If quality_level or budget_category is present, match it; when in doubt, prefer one notch above generic (thoughtful mid-range over basic).
 
 PRODUCT SELECTION CRITERIA:
 - Match products to specific interests with evidence
 - Ensure diverse coverage (don't pick 10 similar items)
-- Prioritize ASPIRATIONAL interests (things they want but don't have)
+- Prioritize GAPS and ASPIRATIONAL interests (things they want but don't have)
 - Consider relationship appropriateness
 - Prefer unique, specialty items over generic mass-market products
 - Stay within their comfortable price range
 - No square pegs in round holes - only include perfect matches
 
 EXPERIENCE GIFT CRITERIA (CRITICAL):
-- Must be HYPER-SPECIFIC and custom-curated to this exact person
-- Must synthesize multiple data points from their profile
-- If location-specific, MUST use their actual location or specific venues they've mentioned
-- If equipment/materials needed, INCLUDE shop links for those items
-- Generic suggestions (like "book a cooking class") are NOT acceptable
-- Each experience must PROVE it came from deep profile analysis
+- Experiences are actions or moments you create for the recipient—guided by what we know about them. The gift-giver needs clear steps and everything they need to make it happen.
+- Each experience MUST synthesize at least 2 distinct profile data points (interests + location, or gaps + venues, or aspirational + style). why_perfect must name those data points.
+- If location-specific: use their actual city/region or specific venues from their profile. If no location context, only suggest portable/at-home experiences—never invent a location.
+- materials_needed: List concrete items the gift-giver should buy (with where_to_buy and product_url from AVAILABLE PRODUCTS when possible, or "search for X" with estimated_price). This is how the experience becomes actionable.
+- how_to_execute: Step-by-step for the gift-giver (what to book/buy, when, how to present it). Be specific so they can follow it without guessing.
+- how_to_make_it_special: 1-2 sentences—e.g. how to frame it when giving, a small touch that shows thoughtfulness, or why this will feel memorable to the recipient.
+- Generic suggestions ("book a cooking class", "plan a date night") are NOT acceptable. Every experience must PROVE it came from this profile.
 
 LOCATION RULES FOR EXPERIENCES:
-- If suggesting a location-based experience, you MUST have geographic context
-- Use specific venues from their profile if available
-- If no location context, only suggest portable/at-home experiences
-- DO NOT suggest generic location-based experiences without knowing where they are
+- Location-based experiences require geographic context in the profile. Use specific venues from their profile when available.
+- If no location context, only suggest portable/at-home experiences. DO NOT invent a city or venue.
 
-EXPERIENCE EXAMPLES (showing specificity level required):
+EXPERIENCE EXAMPLES (specificity + actionable):
 
 BAD: "Book a cooking class" (too generic)
-GOOD: "Thai cooking workshop at Khan's Kitchen in Indianapolis - they posted about pad thai 5x and mentioned wanting to learn. Classes on Saturdays." [Include links to: cookbook, specialty ingredients set]
+GOOD: "Thai cooking workshop at Khan's Kitchen in Indianapolis - they posted about pad thai 5x and mentioned wanting to learn. Classes on Saturdays." materials_needed: [cookbook, specialty ingredients set] with links; how_to_execute: "Book class at [url], buy ingredients set 2 days before, present with a note: 'First of many Thai nights'"; how_to_make_it_special: "Frame it as 'your next date night' so they know you remembered their wish."
 
 BAD: "Plan a date night" (too generic)
-GOOD: "Studio Ghibli movie marathon with themed snacks - they referenced My Neighbor Totoro 3x, collect anime merch, and reposted Ghibli edits 8x." [Include links to: Criterion Collection box set, Japanese snack subscription, Totoro plushie]
-
-BAD: "Go to a concert" (too generic)
-GOOD: "Indie folk show at The Vogue (Indianapolis venue they've posted from) - they follow 3 indie folk artists and tagged #livemusic 12x. Check upcoming shows: Bon Iver, Phoebe Bridgers, The Lumineers" [Include links to: concert merch, vinyl of featured artist]
+GOOD: "Studio Ghibli movie marathon with themed snacks - they referenced Totoro 3x, collect anime merch, reposted Ghibli 8x." materials_needed: [Criterion box set, Japanese snack subscription, Totoro plushie] with URLs; how_to_execute: "Order snacks and set up a cozy viewing nook; queue 2-3 films"; how_to_make_it_special: "Present the plushie as 'your viewing buddy'—ties the gift to the experience."
 
 Return ONLY a JSON object with this structure:
 {{
@@ -142,19 +148,20 @@ Return ONLY a JSON object with this structure:
   "experience_gifts": [
     {{
       "name": "HYPER-SPECIFIC experience name (must show custom curation)",
-      "description": "2-3 sentences explaining the experience and why it's perfect for them",
-      "why_perfect": "synthesis of multiple profile data points that led to this suggestion - prove it's custom",
+      "description": "2-3 sentences: what the experience is and why it fits this person",
+      "why_perfect": "Cite 2+ profile data points (interests, gaps, venues, aspirational) that led to this—prove it's custom",
       "location_specific": true/false,
       "location_details": "specific venue/city if location-based, or 'N/A - portable experience'",
       "materials_needed": [
         {{
-          "item": "what's needed",
-          "where_to_buy": "retailer",
-          "product_url": "shop link if available",
+          "item": "concrete item to buy",
+          "where_to_buy": "retailer or 'from product list above'",
+          "product_url": "exact URL from AVAILABLE PRODUCTS when possible, else empty",
           "estimated_price": "$XX"
         }}
       ],
-      "how_to_execute": "step-by-step for the gift-giver",
+      "how_to_execute": "Clear step-by-step for the gift-giver: what to book/buy, when, in what order. Actionable.",
+      "how_to_make_it_special": "1-2 sentences: how to present it, a thoughtful touch, or why it will feel memorable",
       "confidence_level": "safe_bet|adventurous",
       "gift_type": "experience"
     }}
@@ -163,7 +170,8 @@ Return ONLY a JSON object with this structure:
 
 CRITICAL REQUIREMENTS:
 - Product gifts MUST come from the provided product list (use exact URLs and data)
-- Experience gifts MUST be hyper-specific and prove custom curation
+- Experience gifts MUST be hyper-specific, cite 2+ profile data points in why_perfect, and include how_to_execute + how_to_make_it_special
+- materials_needed for experiences: use product URLs from AVAILABLE PRODUCTS when an item is there
 - If no location context, DO NOT suggest location-specific experiences
 - Each recommendation must have clear evidence from the profile
 - Maintain variety - don't pick 10 similar products

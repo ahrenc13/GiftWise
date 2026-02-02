@@ -15,6 +15,9 @@ UPDATES IN THIS VERSION:
 ✅ TikTok repost intelligence
 ✅ CRITICAL BUG FIXES (Jan 28, 2026)
 
+from smart_filters import apply_smart_filters, filter_workplace_experiences
+from relationship_rules import RelationshipRules
+
 Author: Chad + Claude
 Date: January 2026
 """

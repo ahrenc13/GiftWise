@@ -141,7 +141,7 @@
                 
                 {% if rec.why_perfect %}
                 <div style="background: #f0fdf4; padding: 15px; border-radius: 10px; margin-bottom: 15px; color: #065f46; font-size: 0.95em;">
-                    <strong>Why it's perfect:</strong> {{ rec.why_perfect }}
+                    <strong>Why it's perfect for them:</strong> {{ rec.why_perfect }}
                 </div>
                 {% endif %}
                 
@@ -150,9 +150,19 @@
                     Available at: {{ rec.where_to_buy }}
                 </div>
                 
+                {% if rec.gift_type == 'experience' and rec.reservation_link %}
+                <a href="{{ rec.reservation_link }}" target="_blank" class="rec-link" style="background: #059669;">
+                    Reserve / Book →
+                </a>
+                {% endif %}
+                {% if rec.gift_type == 'experience' and rec.venue_website %}
+                <a href="{{ rec.venue_website }}" target="_blank" class="rec-link">
+                    Venue / Website
+                </a>
+                {% endif %}
                 {% if rec.purchase_link %}
                 <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link">
-                    View Product →
+                    {{ 'View Product →' if rec.gift_type == 'physical' else 'Get started →' }}
                 </a>
                 {% endif %}
             </div>

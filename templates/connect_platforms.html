@@ -283,6 +283,17 @@
             color: #be123c;
         }
 
+        .error-banner {
+            background: rgba(255, 255, 255, 0.95);
+            color: #b91c1c;
+            padding: 14px 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            font-size: 15px;
+            font-weight: 500;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
         @media (max-width: 768px) {
             h1 {
                 font-size: 28px;
@@ -296,6 +307,11 @@
 </head>
 <body>
     <div class="container">
+        {% if error_message %}
+        <div class="error-banner" role="alert">
+            {{ error_message }}
+        </div>
+        {% endif %}
         <div class="header">
             {% if recipient_type == 'myself' %}
             <h1>Connect Your Social Media</h1>

@@ -276,7 +276,7 @@ SUBSCRIPTION_TIERS = {
         'max_profiles': 1,
         'recommendations_per_profile': 5,
         'monthly_updates': False,
-        'platforms': ['instagram', 'tiktok'],  # No Pinterest
+        'platforms': ['instagram', 'tiktok', 'pinterest'],  # Pinterest unlocked for testing
         'features': ['basic_recommendations', 'shareable_profile']
     },
     'pro': {
@@ -311,7 +311,7 @@ SUBSCRIPTION_TIERS = {
         'max_profiles': 1,
         'recommendations_per_profile': 10,
         'monthly_updates': False,
-        'platforms': ['instagram', 'tiktok'],
+        'platforms': ['instagram', 'tiktok', 'pinterest'],
         'features': ['basic_recommendations'],
         'description': 'One-time recommendations - no subscription needed'
     },
@@ -1383,6 +1383,19 @@ def connect_platforms():
     connected_count = sum(1 for p in platforms.values() if p.get('status') == 'connected')
     total_available = len(allowed_platforms)
     
+    # Friendly message for redirect errors (never expose "Google", "search engine", or "no access")
+    error_param = request.args.get('error')
+    error_message = None
+    if error_param == 'no_recommendations':
+        error_message = "We couldn't find recommendations this time. Try connecting more platforms or try again in a few minutes."
+    elif error_param == 'no_profile':
+        error_message = "We need a bit more from your connected accounts to build recommendations. Connect at least one platform and try again."
+    elif error_param == 'need_platforms':
+        error_message = "Connect at least one platform to get started."
+    elif error_param:
+        # OAuth/config errors (google_*, oauth_*, etc.): generic message only
+        error_message = "We couldn't complete that step. Please try again."
+
     return render_template('connect_platforms.html', 
                          user=user,
                          platforms=platforms,
@@ -1391,7 +1404,8 @@ def connect_platforms():
                          connected_count=connected_count,
                          total_available=total_available,
                          recipient_type=user.get('recipient_type', 'myself'),
-                         wishlists=user.get('wishlists', []))
+                         wishlists=user.get('wishlists', []),
+                         error_message=error_message)
 
 @app.route('/api/validate-username', methods=['POST'])
 def validate_username():
@@ -2103,7 +2117,7 @@ def api_generate_recommendations():
                 logger.error("SerpAPI not configured")
                 return jsonify({
                     'success': False,
-                    'error': 'Product search is not configured. Please contact support.'
+                    'error': "We're having trouble loading gift ideas right now. Please try again in a few minutes."
                 }), 503
             
             # STEP 1: Build or use approved recipient profile
@@ -2131,6 +2145,12 @@ def api_generate_recommendations():
                 target_count=40
             )
             
+            if len(products) == 0:
+                logger.warning("Product search returned no results - may be misconfigured or rate limited")
+                return jsonify({
+                    'success': False,
+                    'error': "We're having trouble loading gift ideas right now. Please try again in a few minutes."
+                }), 503
             if len(products) < 10:
                 logger.warning(f"Only found {len(products)} products - may not be enough for good curation")
             
@@ -2171,13 +2191,22 @@ def api_generate_recommendations():
             # Build product URL -> image map for backfilling thumbnails
             product_url_to_image = {p.get('link', ''): (p.get('image') or p.get('thumbnail', '')) for p in products if p.get('link')}
             
+            try:
+                from link_validation import is_bad_product_url
+            except ImportError:
+                def is_bad_product_url(url):
+                    return False
+            
             # Combine and format recommendations
             all_recommendations = []
             
-            # Add product gifts (backfill image from search results when curator didn't return one)
+            # Add product gifts (backfill image from search results; sanitize bad links/images)
             for gift in product_gifts:
-                product_url = gift.get('product_url', '')
+                product_url = (gift.get('product_url') or '').strip()
                 image_url = gift.get('image_url', '') or product_url_to_image.get(product_url, '')
+                if is_bad_product_url(product_url):
+                    product_url = ''  # Don't send user to search page or homepage
+                    image_url = ''    # Don't show possibly mismatched thumbnail
                 all_recommendations.append({
                     'name': gift.get('name', 'Unknown Product'),
                     'description': gift.get('description', ''),
@@ -2190,11 +2219,11 @@ def api_generate_recommendations():
                     'gift_type': 'physical',
                     'confidence_level': gift.get('confidence_level', 'safe_bet'),
                     'interest_match': gift.get('interest_match', ''),
-                    'is_direct_link': True,  # These are from search, so they're real
+                    'is_direct_link': bool(product_url),
                     'link_source': 'serpapi_search'
                 })
             
-            # Add experience gifts
+            # Add experience gifts (with reservation/venue links for low-friction action)
             for exp in experience_gifts:
                 materials_list = exp.get('materials_needed', [])
                 materials_summary = ""
@@ -2207,15 +2236,20 @@ def api_generate_recommendations():
                 location_info = ""
                 if exp.get('location_specific'):
                     location_info = f" | {exp.get('location_details', 'Location-based')}"
+                reservation_link = (exp.get('reservation_link') or '').strip()
+                venue_website = (exp.get('venue_website') or '').strip()
+                primary_link = reservation_link or venue_website or (materials_list[0].get('product_url', '') if materials_list else '')
                 all_recommendations.append({
                     'name': exp.get('name', 'Experience Gift'),
                     'description': full_description,
                     'why_perfect': exp.get('why_perfect', ''),
                     'price_range': 'Variable',
                     'where_to_buy': f"Experience{location_info}",
-                    'product_url': materials_list[0].get('product_url', '') if materials_list else '',
-                    'purchase_link': materials_list[0].get('product_url', '') if materials_list else '',
-                    'image_url': '',  # Experiences don't have product images
+                    'product_url': primary_link,
+                    'purchase_link': primary_link,
+                    'reservation_link': reservation_link or None,
+                    'venue_website': venue_website or None,
+                    'image_url': '',
                     'gift_type': 'experience',
                     'confidence_level': exp.get('confidence_level', 'adventurous'),
                     'materials_needed': materials_list,

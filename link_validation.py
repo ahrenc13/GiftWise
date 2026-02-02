@@ -152,6 +152,31 @@ def is_search_url(url):
     return any(indicator in url_lower for indicator in search_indicators)
 
 
+def is_generic_domain_url(url):
+    """True if URL is just a site homepage (e.g. etsy.com, amazon.com) with no product path."""
+    if not url or not url.startswith(('http://', 'https://')):
+        return True
+    try:
+        parsed = urlparse(url)
+        path = (parsed.path or '/').strip('/').lower()
+        # No path or just "www" or empty = generic
+        if not path or path in ('www', ''):
+            return True
+        # Etsy/Amazon listing pages have listing/ or dp/ or gp/product
+        if path.startswith('listing/') or path.startswith('dp/') or 'gp/product' in path:
+            return False
+        return False
+    except Exception:
+        return False
+
+
+def is_bad_product_url(url):
+    """True if URL should not be used as a product link (search page or bare domain). Use placeholder image when True."""
+    if not url or not isinstance(url, str):
+        return True
+    return is_search_url(url) or is_generic_domain_url(url)
+
+
 def generate_amazon_search_url(product_name, affiliate_tag=None):
     """Generate Amazon search URL (LAST RESORT ONLY)"""
     url = f"https://www.amazon.com/s?k={quote(product_name)}"

@@ -334,9 +334,24 @@ def process_recommendation_images(recommendations):
     unsplash_count = 0
     placeholder_count = 0
     
+    try:
+        from link_validation import is_bad_product_url
+    except ImportError:
+        def is_bad_product_url(url):
+            return False
+    
     for i, rec in enumerate(recommendations):
         try:
             product_name = rec.get('name', 'Unknown')
+            product_url = rec.get('product_url') or rec.get('purchase_link') or ''
+            # If link is search page or bare domain, don't trust any image—use placeholder to avoid mismatched thumb
+            if rec.get('gift_type') == 'physical' and is_bad_product_url(product_url):
+                rec['image_url'] = generate_placeholder_image(product_name)
+                rec['image_source'] = 'placeholder_bad_link'
+                rec['image_is_fallback'] = True
+                processed.append(rec)
+                placeholder_count += 1
+                continue
             # Skip if we already have a real image URL (e.g. from SerpAPI search results)
             existing = (rec.get('image_url') or '').strip()
             if existing and existing.startswith('http') and 'placeholder' not in existing.lower():

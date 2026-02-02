@@ -336,15 +336,17 @@
 </head>
 <body>
     <div class="container">
+        {% set pronoun_possessive = 'your' if recipient_name == 'You' else 'their' %}
+        {% set pronoun_subject = 'you' if recipient_name == 'You' else 'they' %}
         <!-- Personality Summary -->
         <div class="personality-card">
             <div class="personality-summary">
                 <h2>🎯 Here's What We Learned About {{ recipient_name }}</h2>
-                <p class="intro-lead">Based on their social media, we built this profile. <strong>Why review?</strong> If we mixed up <em>work</em> (e.g. IMS medical team) with <em>hobbies</em>, we might suggest "behind the scenes at IMS" as a gift—they already work there! Mark work vs. hobby, fix anything wrong, then hit <strong>Find my gifts</strong>.</p>
+                <p class="intro-lead">Based on {{ pronoun_possessive }} social media, we built this profile. <strong>Why review?</strong> If we mixed up <em>work</em> (e.g. IMS medical team) with <em>hobbies</em>, we might suggest "behind the scenes at IMS" as a gift—{{ pronoun_subject }} already work there! Mark work vs. hobby, fix anything wrong, then hit <strong>Find my gifts</strong>.</p>
             </div>
         </div>
         
-        <!-- Their Vibe Section -->
+        <!-- Vibe Section -->
         <div class="personality-card">
             <div class="personality-section">
                 <div class="section-header">
@@ -386,7 +388,7 @@
                     
                     <div class="edit-inline" id="edit-{{ loop.index0 }}">
                         <input type="text" id="name-{{ loop.index0 }}" value="{{ interest.name }}" placeholder="Interest name">
-                        <textarea id="desc-{{ loop.index0 }}" placeholder="What they like about it">{{ interest.description }}</textarea>
+                        <textarea id="desc-{{ loop.index0 }}" placeholder="What {{ pronoun_subject }} like about it">{{ interest.description }}</textarea>
                         <button class="small" onclick="saveEdit({{ loop.index0 }})">💾 Save</button>
                         <button class="small secondary" onclick="cancelEdit({{ loop.index0 }})">Cancel</button>
                     </div>
@@ -453,6 +455,8 @@
     <script>
         let profileData = {{ profile_json | safe }};
         let generationId = "{{ generation_id }}";
+        let pronounPossessive = "{{ pronoun_possessive }}";
+        let pronounSubject = "{{ pronoun_subject }}";
         
         function editInterest(index) {
             document.getElementById(`edit-${index}`).classList.add('active');
@@ -479,7 +483,7 @@
         }
         
         function removeInterest(index) {
-            if (confirm('Remove this from their profile?')) {
+            if (confirm('Remove this from {{ pronoun_possessive }} profile?')) {
                 profileData.interests.splice(index, 1);
                 alert('Removed! Page will refresh.');
                 location.reload();
@@ -490,13 +494,13 @@
             const name = prompt('What interest did we miss?');
             if (!name) return;
             
-            const desc = prompt(`What do they like about ${name}?`);
-            const isWork = confirm('Is this related to their job/work?');
-            const isActive = confirm('Do they actively DO this? (vs just watching/enjoying)');
+            const desc = prompt(`What do ${pronounSubject} like about ${name}?`);
+            const isWork = confirm('Is this related to ' + pronounPossessive + ' job/work?');
+            const isActive = confirm('Do ' + pronounSubject + ' actively DO this? (vs just watching/enjoying)');
             
             profileData.interests.push({
                 name: name,
-                description: desc || `Interested in ${name}`,
+                description: desc || (pronounSubject === 'you' ? `You're into ${name}` : `They're into ${name}`),
                 is_work: isWork,
                 activity_type: isActive ? 'active' : 'passive',
                 confidence: 1.0
@@ -507,7 +511,7 @@
         }
         
         function editLocation() {
-            const newLocation = prompt('Where do they live?', profileData.location_context.city_region);
+            const newLocation = prompt(pronounSubject === 'you' ? 'Where do you live?' : 'Where do they live?', profileData.location_context.city_region);
             if (newLocation) {
                 profileData.location_context.city_region = newLocation;
                 alert('Updated!');
@@ -515,7 +519,7 @@
         }
         
         function editPet() {
-            const newPet = prompt('Tell us about their pet:', profileData.pet_details);
+            const newPet = prompt('Tell us about {{ pronoun_possessive }} pet:', profileData.pet_details);
             if (newPet) {
                 profileData.pet_details = newPet;
                 alert('Updated!');
@@ -523,7 +527,7 @@
         }
         
         function editFamily() {
-            const newFamily = prompt('Family details:', profileData.family_context);
+            const newFamily = prompt(pronounSubject === 'you' ? 'Tell us about your family:' : 'Family details:', profileData.family_context);
             if (newFamily) {
                 profileData.family_context = newFamily;
                 alert('Updated!');

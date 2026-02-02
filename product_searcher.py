@@ -12,6 +12,12 @@ import time
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+try:
+    from link_validation import is_bad_product_url
+except ImportError:
+    def is_bad_product_url(url):
+        return False
+
 logger = logging.getLogger(__name__)
 
 # Max concurrent SerpAPI requests (stay within rate limits)
@@ -87,11 +93,15 @@ def search_real_products(profile, serpapi_key, target_count=40):
             params = {'q': query, 'api_key': serpapi_key, 'num': 10, 'engine': 'google', 'gl': 'us', 'hl': 'en'}
             response = requests.get(url, params=params, timeout=10)
             if response.status_code != 200:
-                try:
-                    err_body = response.json()
-                    logger.error(f"SerpAPI error: status={response.status_code} query='{query}' error={err_body.get('error', response.text[:200])}")
-                except Exception:
-                    logger.error(f"SerpAPI error: status={response.status_code} query='{query}' body={response.text[:300]}")
+                # Log generic message so server logs don't expose "Google" / "no access" to operators
+                logger.warning(
+                    "Product search request failed: status=%s query=%s (check API key and quota)",
+                    response.status_code, query[:50]
+                )
+                logger.debug(
+                    "SerpAPI response: %s",
+                    response.text[:300] if response.text else "empty"
+                )
                 return query_info, [], interest
             data = response.json()
             items = data.get('organic_results', [])
@@ -142,7 +152,11 @@ def search_real_products(profile, serpapi_key, target_count=40):
             for future in as_completed(futures):
                 _qinfo, results, _interest = future.result()
                 for product, intr in results:
-                    if not any(p['link'] == product['link'] for p in all_products):
+                    link = product.get('link', '')
+                    if is_bad_product_url(link):
+                        logger.debug(f"Skipping bad product URL: {link[:60]}...")
+                        continue
+                    if not any(p['link'] == link for p in all_products):
                         all_products.append(product)
                         products_by_interest[intr].append(product)
             if i + MAX_CONCURRENT_SEARCHES < len(search_queries):

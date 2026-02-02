@@ -617,25 +617,39 @@
                     <h2 class="rec-name">{{ rec.name }}</h2>
                     <p class="rec-description">{{ rec.description }}</p>
                     <div class="rec-why">
-                        <strong>Why it's perfect:</strong> {{ rec.why_perfect }}
+                        <strong>Why it's perfect for {{ 'you' if user.recipient_type == 'myself' else 'them' }}:</strong> {{ rec.why_perfect }}
                     </div>
                     <div class="rec-footer">
                         <div class="rec-price">{{ rec.price_range }}</div>
                         <div class="rec-where">Available at: {{ rec.where_to_buy }}</div>
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                            {% if rec.gift_type == 'experience' and (rec.reservation_link or rec.venue_website) %}
+                            {% if rec.reservation_link %}
+                            <a href="{{ rec.reservation_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation();" style="background: #059669;">
+                                Reserve / Book →
+                            </a>
+                            {% endif %}
+                            {% if rec.venue_website %}
+                            <a href="{{ rec.venue_website }}" target="_blank" class="rec-link secondary" onclick="event.stopPropagation();">
+                                Venue / Website
+                            </a>
+                            {% endif %}
+                            {% endif %}
                             {% if rec.purchase_link %}
                             <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation();">
-                                View Product →
+                                {{ 'View Product →' if rec.gift_type == 'physical' else 'Get started →' }}
                             </a>
                             <button onclick="event.stopPropagation(); copyLink('{{ rec.purchase_link }}', this)" class="rec-link" style="background: #6b7280; cursor: pointer; border: none;">
                                 📋 Copy Link
                             </button>
-                            {% elif rec.link_error %}
+                            {% elif not rec.reservation_link and not rec.venue_website %}
+                            {% if rec.link_error %}
                             <span class="rec-link disabled" title="{{ rec.link_error }}" style="cursor: help;">
                                 ⚠️ Link Needed
                             </span>
                             {% else %}
                             <span class="rec-link disabled">Link Coming Soon</span>
+                            {% endif %}
                             {% endif %}
                         </div>
                     </div>

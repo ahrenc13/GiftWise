@@ -83,9 +83,19 @@ SPECIFIC VENUES/PLACES:
     # Format products for prompt
     products_summary = format_products(products)
     
+    # Pronoun guidance: "your/you" when recipient is user themselves, "their/they" when buying for someone else
+    pronoun_possessive = "your" if recipient_type == 'myself' else "their"
+    pronoun_subject = "you" if recipient_type == 'myself' else "they"
+    pronoun_context = f"""
+RECIPIENT CONTEXT: This is for {"the user themselves (gifts for you)" if recipient_type == 'myself' else "someone else (gifts for them)"}.
+- Use "{pronoun_possessive}" and "{pronoun_subject}" in why_perfect and descriptions (e.g. "right up {pronoun_possessive} alley," "something {pronoun_subject}'ve been wanting").
+- Use warm, human language. Avoid clinical phrasing like "met their aspiration," "aligns with their interests," "fulfills an aspirational goal," "addresses a gap."
+- Prefer: "something {pronoun_subject}'ve been wanting," "right up {pronoun_possessive} alley," "perfect for someone who loves X," "{pronoun_subject}'ll love this because," "a little treat that shows you get them," "fits what {pronoun_subject} are into."
+"""
+    
     prompt = f"""You are an expert gift curator. You have a deep profile of the recipient and {len(products)} REAL products to choose from.
 
-{profile_summary}{relationship_context}
+{profile_summary}{relationship_context}{pronoun_context}
 
 AVAILABLE PRODUCTS ({len(products)} real products with actual purchase links):
 {products_summary}
@@ -111,6 +121,11 @@ PRODUCT SELECTION CRITERIA:
 - Stay within their comfortable price range
 - No square pegs in round holes - only include perfect matches
 
+LINK AND IMAGE RULES (CRITICAL):
+- product_url MUST be a DIRECT link to the actual product page from AVAILABLE PRODUCTS. Copy the URL field exactly.
+- NEVER use a search URL (e.g. etsy.com/search?q=..., amazon.com/s?k=...) or a bare homepage (etsy.com, amazon.com). If the only URL in the list for an item is a search page, do NOT pick that item—choose a different product that has a direct listing URL.
+- image_url MUST be the EXACT Image URL from that same product's line in AVAILABLE PRODUCTS. Never use an image from a different product—wrong image + right link = bad experience.
+
 EXPERIENCE GIFT CRITERIA (CRITICAL):
 - NEVER suggest an experience at their WORKPLACE (see WORKPLACE above). No "behind the scenes", "tour", "VIP access", or tickets to a venue where they work—that would be a clunker (they're already there).
 - Experiences are actions or moments you create for the recipient—guided by what we know about them. The gift-giver needs clear steps and everything they need to make it happen.
@@ -119,6 +134,8 @@ EXPERIENCE GIFT CRITERIA (CRITICAL):
 - materials_needed: List concrete items the gift-giver should buy (with where_to_buy and product_url from AVAILABLE PRODUCTS when possible, or "search for X" with estimated_price). This is how the experience becomes actionable.
 - how_to_execute: Step-by-step for the gift-giver (what to book/buy, when, how to present it). Be specific so they can follow it without guessing.
 - how_to_make_it_special: 1-2 sentences—e.g. how to frame it when giving, a small touch that shows thoughtfulness, or why this will feel memorable to the recipient.
+- reservation_link: When the experience involves a restaurant or bookable venue, provide a DIRECT link to reserve: OpenTable, Resy, Tock, or the venue's reservation page. Reduce friction—user should click and book. If no specific venue, leave empty.
+- venue_website: When the experience is at a specific place (restaurant, class, venue), provide the venue's website or booking URL so the user can act immediately.
 - Generic suggestions ("book a cooking class", "plan a date night") are NOT acceptable. Every experience must PROVE it came from this profile.
 
 LOCATION RULES FOR EXPERIENCES:
@@ -138,8 +155,8 @@ Return ONLY a JSON object with this structure:
   "product_gifts": [
     {{
       "name": "exact product name from available products",
-      "description": "what this product is",
-      "why_perfect": "specific evidence from profile showing why this matches (cite interests, posts, behaviors)",
+      "description": "what this product is (warm, human tone)",
+      "why_perfect": "warm 1-2 sentences: why this fits them (use {pronoun_possessive}/{pronoun_subject}). Cite specific interest or behavior. No clinical language.",
       "price": "price from product data",
       "where_to_buy": "source domain",
       "product_url": "direct product URL from search results",
@@ -152,8 +169,8 @@ Return ONLY a JSON object with this structure:
   "experience_gifts": [
     {{
       "name": "HYPER-SPECIFIC experience name (must show custom curation)",
-      "description": "2-3 sentences: what the experience is and why it fits this person",
-      "why_perfect": "Cite 2+ profile data points (interests, gaps, venues, aspirational) that led to this—prove it's custom",
+      "description": "2-3 sentences: what the experience is and why it fits (warm, human tone)",
+      "why_perfect": "Warm 1-2 sentences: why this experience is perfect for them. Cite 2+ profile data points in a natural way—no clinical phrasing.",
       "location_specific": true/false,
       "location_details": "specific venue/city if location-based, or 'N/A - portable experience'",
       "materials_needed": [
@@ -166,6 +183,8 @@ Return ONLY a JSON object with this structure:
       ],
       "how_to_execute": "Clear step-by-step for the gift-giver: what to book/buy, when, in what order. Actionable.",
       "how_to_make_it_special": "1-2 sentences: how to present it, a thoughtful touch, or why it will feel memorable",
+      "reservation_link": "Direct URL to book/reserve when applicable: OpenTable, Resy, Tock, or venue rez page. Empty if N/A.",
+      "venue_website": "Venue or experience provider website / booking URL when applicable. Empty if N/A.",
       "confidence_level": "safe_bet|adventurous",
       "gift_type": "experience"
     }}
@@ -173,8 +192,9 @@ Return ONLY a JSON object with this structure:
 }}
 
 CRITICAL REQUIREMENTS:
-- Product gifts MUST come from the provided product list (use exact URLs and data)
-- Experience gifts MUST be hyper-specific, cite 2+ profile data points in why_perfect, and include how_to_execute + how_to_make_it_special
+- Product gifts MUST come from the provided product list (use exact URLs and data). product_url = direct product page ONLY—never search or homepage.
+- Experience gifts MUST be hyper-specific, cite 2+ profile data points in why_perfect, and include how_to_execute + how_to_make_it_special.
+- For restaurant/venue experiences: always provide reservation_link (OpenTable, Resy, or venue rez page) and venue_website when possible—reduce friction to user action.
 - materials_needed for experiences: use product URLs from AVAILABLE PRODUCTS when an item is there
 - If no location context, DO NOT suggest location-specific experiences
 - Each recommendation must have clear evidence from the profile

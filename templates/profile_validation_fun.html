@@ -56,6 +56,13 @@
             margin-bottom: 30px;
         }
         
+        .intro-lead {
+            color: #444;
+            font-size: 16px;
+            line-height: 1.65;
+            margin-bottom: 0;
+        }
+        
         .personality-section {
             margin-bottom: 30px;
         }
@@ -182,15 +189,13 @@
         
         .correction-buttons {
             display: flex;
-            gap: 10px;
+            flex-wrap: wrap;
+            gap: 8px;
             margin-top: 15px;
         }
         
         button {
-            background: #667eea;
-            color: white;
             border: none;
-            padding: 12px 24px;
             border-radius: 8px;
             font-size: 14px;
             font-weight: 600;
@@ -198,36 +203,68 @@
             transition: all 0.2s;
         }
         
-        button:hover {
-            background: #5568d3;
-            transform: translateY(-1px);
-        }
-        
-        button.secondary {
-            background: #e0e0e0;
-            color: #333;
-        }
-        
-        button.secondary:hover {
-            background: #d0d0d0;
-        }
-        
         button.small {
-            padding: 8px 16px;
+            padding: 8px 14px;
             font-size: 13px;
         }
         
         .actions {
             display: flex;
-            gap: 15px;
+            flex-wrap: wrap;
+            gap: 16px;
             justify-content: center;
+            align-items: center;
             margin-top: 30px;
         }
         
+        /* Primary CTA: Find my gifts - stands out */
         button.primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-size: 16px;
-            padding: 15px 40px;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 16px 36px;
+            font-size: 18px;
+            box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
+        }
+        
+        button.primary:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 18px rgba(16, 185, 129, 0.45);
+        }
+        
+        /* Secondary: Back to platforms - low emphasis */
+        button.secondary {
+            background: transparent;
+            color: #666;
+            padding: 12px 20px;
+            font-size: 14px;
+            border: 1px solid #ccc;
+        }
+        
+        button.secondary:hover {
+            background: #f5f5f5;
+            color: #333;
+            border-color: #999;
+        }
+        
+        button.secondary.small {
+            background: #f0f0f0;
+            color: #555;
+            border: 1px solid #ddd;
+        }
+        
+        button.secondary.small:hover {
+            background: #e5e5e5;
+        }
+        
+        button.small.work-toggle {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+        }
+        
+        button.small.work-toggle:hover {
+            background: #a7f3d0;
         }
         
         .confidence-indicator {
@@ -303,7 +340,7 @@
         <div class="personality-card">
             <div class="personality-summary">
                 <h2>🎯 Here's What We Learned About {{ recipient_name }}</h2>
-                <p>Based on their social media, here's the personality profile we built. Take a quick look and let us know if we got anything wrong!</p>
+                <p class="intro-lead">Based on their social media, we built this profile. <strong>Why review?</strong> If we mixed up <em>work</em> (e.g. IMS medical team) with <em>hobbies</em>, we might suggest "behind the scenes at IMS" as a gift—they already work there! Mark work vs. hobby, fix anything wrong, then hit <strong>Find my gifts</strong>.</p>
             </div>
         </div>
         
@@ -341,9 +378,9 @@
                         <button class="small secondary" onclick="editInterest({{ loop.index0 }})">✏️ Edit</button>
                         <button class="small secondary" onclick="removeInterest({{ loop.index0 }})">❌ Remove</button>
                         {% if interest.is_work %}
-                        <button class="small" onclick="toggleWork({{ loop.index0 }})">Actually, this is personal!</button>
+                        <button class="small work-toggle" onclick="toggleWork({{ loop.index0 }})">Mark as hobby (we'll suggest gifts)</button>
                         {% else %}
-                        <button class="small secondary" onclick="toggleWork({{ loop.index0 }})">This is for work</button>
+                        <button class="small secondary" onclick="toggleWork({{ loop.index0 }})">Mark as work (we won't suggest gifts here)</button>
                         {% endif %}
                     </div>
                     
@@ -402,13 +439,13 @@
         <!-- Validation Prompt -->
         <div class="personality-card">
             <div class="validation-prompt">
-                <h3>👆 Did we get it right?</h3>
-                <p>We're about to search for gifts based on this profile. If anything looks off (like we confused their work for a hobby, or said they play basketball when they just watch), fix it now! It'll make the recommendations WAY better.</p>
+                <h3>Ready to find gifts?</h3>
+                <p>If something is wrong—work vs. hobby, or we got the wrong interest—use the buttons on each card to fix it. When it looks good, click the green button below.</p>
             </div>
             
             <div class="actions">
-                <button class="secondary" onclick="window.location.href='/connect-platforms'">← Start Over</button>
-                <button class="primary" onclick="approveProfile()">Looks Perfect - Find Gifts! 🎁</button>
+                <button class="secondary" onclick="window.location.href='/connect-platforms'">← Back to platforms</button>
+                <button class="primary" onclick="approveProfile()">Find my gifts →</button>
             </div>
         </div>
     </div>
@@ -496,7 +533,7 @@
         async function approveProfile() {
             const btn = document.querySelector('.primary');
             btn.disabled = true;
-            btn.textContent = '🔍 Finding perfect gifts...';
+            btn.textContent = 'Finding gifts...';
             
             // Send approved profile to backend
             const response = await fetch('/api/approve-profile', {
@@ -513,7 +550,7 @@
             } else {
                 alert('Error saving. Please try again.');
                 btn.disabled = false;
-                btn.textContent = 'Looks Perfect - Find Gifts! 🎁';
+                btn.textContent = 'Find my gifts →';
             }
         }
     </script>

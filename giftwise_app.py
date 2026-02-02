@@ -2050,6 +2050,21 @@ def api_approve_profile():
     return jsonify({'success': True, 'redirect': '/generating'})
 
 
+@app.route('/generating')
+def generating_page():
+    """Show generating screen (used after profile approval). Renders same template as /generate-recommendations flow."""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    platforms = user.get('platforms', {})
+    if not platforms:
+        return redirect('/connect-platforms?error=need_platforms')
+    recipient_type = user.get('recipient_type', 'myself')
+    return render_template('generating.html',
+                         platforms=list(platforms.keys()),
+                         recipient_type=recipient_type)
+
+
 @app.route('/api/generate-recommendations', methods=['POST'])
 def api_generate_recommendations():
     """

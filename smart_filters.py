@@ -38,40 +38,27 @@ class WorkExclusionFilter:
         
         Returns:
             {
-                'is_work_item': bool,
-                'reason': str,  # Why it was flagged
-                'confidence': float  # 0-1 how sure we are
+                'is_work_item': True,
+                'reason': f"Contains professional keyword: '{keyword}'",
+                'confidence': 0.8
             }
-        """
-        
-        combined_text = f"{product_title} {product_description}".lower()
-        
-        # Check for professional keywords
-        for keyword in WorkExclusionFilter.PROFESSIONAL_KEYWORDS:
-            if keyword in combined_text:
-                return {
-                    'is_work_item': True,
-                    'reason': f"Contains professional keyword: '{keyword}'",
-                    'confidence': 0.8
-                }
-        
-        # Extract work location/venue from profile if available
-        work_venues = []
-        work_companies = []
-        
-        if user_profile:
-            # Check location context for work venues
-            location_context = user_profile.get('location_context', {})
-            city = location_context.get('city_region', '').lower()
+    
+    # Extract work location/venue from profile if available
+    work_venues = []
+    work_companies = []
+    
+    if user_profile:
+        # Check location context for work venues
+        location_context = user_profile.get('location_context', {})
+        city = (location_context or {}).get('city_region', '').lower()
+        # Look for work-specific locations in interests
+        for interest in user_interests:
+            if not interest.get('is_work'):
+                continue
             
-            # Look for work-specific locations in interests
-            for interest in user_interests:
-                if not interest.get('is_work'):
-                    continue
-                
-                desc = interest.get('description', '').lower()
-                
-                # Extract venue/location mentions
+            desc = interest.get('description', '').lower()
+            
+            # Extract venue/location mentions
                 # "Works at Indianapolis Motor Speedway" → ["indianapolis motor speedway", "indy 500"]
                 if 'works at' in desc or 'work at' in desc:
                     # Extract what comes after "works at"

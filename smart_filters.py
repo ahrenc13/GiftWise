@@ -1,6 +1,8 @@
 """
-WORK EXCLUSION FILTER - Don't suggest gifts someone gets through their job
-Prevents suggesting EMS tools to paramedics, Indy 500 tickets to event staff, etc.
+SMART FILTERS - Filter gift recommendations intelligently
+- Work Exclusion: Don't suggest work-related gifts
+- Passive/Active: Don't suggest sports equipment to people who just watch
+- Workplace Experiences: Don't suggest tours of their workplace
 
 Author: Chad + Claude
 Date: February 2026
@@ -26,318 +28,286 @@ class WorkExclusionFilter:
     ]
     
     @staticmethod
-    def is_work_related_gift(product_title, product_description, user_interests, user_profile=None):
+    def is_work_related_gift(product, interest_name, profile):
         """
-        Determine if a product is something they'd get through work
+        Check if product is work-related and should be excluded
         
         Args:
-            product_title: Gift product title
-            product_description: Product description/snippet
-            user_interests: List of interest dicts with 'name', 'is_work', 'description' or 'evidence'
-            user_profile: Full profile with location, job details, etc.
-        
+            product: Product dict with title, snippet
+            interest_name: Which interest this product matches
+            profile: Full user profile
+            
         Returns:
-            {
-                'is_work_item': True,
-                'reason': f"Contains professional keyword: '{keyword}'",
-                'confidence': 0.8
-            }
-    
-    # Extract work location/venue from profile if available
-    work_venues = []
-    work_companies = []
-    
-    if user_profile:
-        # Check location context for work venues
-        location_context = user_profile.get('location_context', {})
-        city = (location_context or {}).get('city_region', '').lower()
-        # Look for work-specific locations in interests
-        for interest in user_interests:
-            if not interest.get('is_work'):
-                continue
+            bool: True if should be excluded
+        """
+        
+        product_title = (product.get('title') or '').lower()
+        product_snippet = (product.get('snippet') or '').lower()
+        
+        # Defensive: Handle missing location_context
+        location_context = profile.get('location_context') or {}
+        city = location_context.get('city_region', '').lower()
+        
+        # Get all interests to check for work flags
+        interests = profile.get('interests', [])
+        work_interests = [i for i in interests if i.get('is_work', False)]
+        
+        # If no work interests, nothing to exclude
+        if not work_interests:
+            return False
+        
+        # Check if product matches work interest
+        for work_interest in work_interests:
+            work_name = (work_interest.get('name') or '').lower()
+            work_desc = (work_interest.get('description') or '').lower()
             
-            desc = interest.get('description', '').lower()
-            
-            # Extract venue/location mentions
-                # "Works at Indianapolis Motor Speedway" → ["indianapolis motor speedway", "indy 500"]
-                if 'works at' in desc or 'work at' in desc:
-                    # Extract what comes after "works at"
-                    import re
-                    venue_match = re.search(r'works? (?:at|for) ([a-z0-9\s]+?)(?:\.|,|;|$)', desc)
-                    if venue_match:
-                        venue = venue_match.group(1).strip()
+            # Extract work venue names if present
+            work_venues = []
+            if 'works at' in work_desc or 'work at' in work_desc:
+                try:
+                    match = re.search(r'works? (?:at|for) ([a-z0-9\s]+?)(?:\.|,|;|$)', work_desc)
+                    if match:
+                        venue = match.group(1).strip()
                         work_venues.append(venue)
                         
-                        # Add common abbreviations
-                        if 'motor speedway' in venue or 'indy 500' in desc:
-                            work_venues.extend(['indy 500', 'indianapolis 500', 'motor speedway', 'race track'])
-                        if 'concert venue' in venue or 'arena' in venue:
-                            work_venues.extend(['backstage', 'vip access', 'behind the scenes'])
-        
-        # Check if gift is an experience at their workplace
-        workplace_indicators = [
-            'tour', 'behind the scenes', 'backstage', 'vip access', 'access to',
-            'experience at', 'visit to', 'tickets to'
-        ]
-        
-        for venue in work_venues:
-            if venue in combined_text:
-                # Check if it's a workplace experience (tour, access, etc.)
-                if any(indicator in combined_text for indicator in workplace_indicators):
-                    return {
-                        'is_work_item': True,
-                        'reason': f"Experience at their workplace: {venue}",
-                        'confidence': 0.95
-                    }
-        
-        # Check against work-related interests (original logic)
-        for interest in user_interests:
-            if not interest.get('is_work'):
-                continue
+                        # Special case: Indianapolis Motor Speedway variations
+                        if 'motor speedway' in venue or 'speedway' in venue or 'ims' in work_desc.lower():
+                            work_venues.extend(['ims', 'indianapolis motor speedway', 'indy 500', 'indianapolis 500'])
+                except:
+                    pass  # Fail gracefully if parsing fails
             
-            interest_name = interest.get('name', '').lower()
-            interest_desc = (interest.get('description') or interest.get('evidence', '')).lower()
+            # Check for work tools/equipment
+            work_tools = ['tools', 'equipment', 'safety', 'professional', 'workplace']
+            if any(tool in product_title or tool in product_snippet for tool in work_tools):
+                if work_name in product_title or work_name in product_snippet:
+                    logger.info(f"EXCLUDED work item: {product.get('title', 'Unknown')[:60]} - Work tools/equipment")
+                    return True
             
-            # If product mentions their work interest, it's probably work-related
-            if interest_name in combined_text:
-                # BUT: Check if it's a collectible or fan item
-                fan_indicators = ['poster', 'collectible', 'memorabilia', 'signed', 
-                                 'replica', 'vintage', 'art', 'print', 'book about',
-                                 'history of', 'documentary', 'biography']
-                
-                if any(indicator in combined_text for indicator in fan_indicators):
-                    # This is a FAN item about their work, not a work tool
-                    return {
-                        'is_work_item': False,
-                        'reason': f"Fan/collectible item related to {interest_name}",
-                        'confidence': 0.9
-                    }
-                else:
-                    # Direct work-related item
-                    return {
-                        'is_work_item': True,
-                        'reason': f"Directly related to work interest: {interest_name}",
-                        'confidence': 0.9
-                    }
+            # Check for experiences at workplace
+            experience_indicators = ['tour', 'visit', 'behind the scenes', 'backstage', 'vip access']
+            if any(ind in product_title or ind in product_snippet for ind in experience_indicators):
+                # Check if it's at their work venue
+                for venue in work_venues:
+                    if venue and (venue in product_title or venue in product_snippet):
+                        logger.info(f"EXCLUDED work item: {product.get('title', 'Unknown')[:60]} - Experience at workplace: {venue}")
+                        return True
         
-        # Not work-related
-        return {
-            'is_work_item': False,
-            'reason': 'No work indicators found',
-            'confidence': 0.7
-        }
+        return False
     
     @staticmethod
-    def filter_products(products, user_profile):
-        """
-        Remove work-related items from product list
+    def filter_products(products, profile):
+        """Filter out work-related products"""
         
-        Args:
-            products: List of product dicts
-            user_profile: Full profile dict with interests, location, etc.
+        # Defensive: Handle None or empty inputs
+        if not products:
+            return []
         
-        Returns:
-            Filtered product list with work items removed
-        """
+        if not profile:
+            logger.warning("No profile provided to WorkExclusionFilter")
+            return products
         
-        user_interests = user_profile.get('interests', [])
         filtered = []
-        removed_count = 0
+        excluded_count = 0
         
         for product in products:
-            result = WorkExclusionFilter.is_work_related_gift(
-                product.get('title', ''),
-                product.get('snippet', ''),
-                user_interests,
-                user_profile  # Pass full profile for venue detection
-            )
+            interest = product.get('interest_match', '')
             
-            if result['is_work_item']:
-                logger.info(f"EXCLUDED work item: {product['title'][:60]} - {result['reason']}")
-                removed_count += 1
-            else:
+            # Check if this is a work-related gift
+            if not WorkExclusionFilter.is_work_related_gift(product, interest, profile):
                 filtered.append(product)
+            else:
+                excluded_count += 1
         
-        logger.info(f"Work filter removed {removed_count} items, kept {len(filtered)}")
-        
+        logger.info(f"Work filter removed {excluded_count} items, kept {len(filtered)}")
         return filtered
 
 
 class PassiveActiveFilter:
-    """Distinguish between passive enjoyment (watching) and active participation (playing)"""
+    """Filter out active products for passive interests (e.g. don't suggest basketballs to people who just watch games)"""
     
     @staticmethod
-    def requires_active_participation(product_title, product_description):
-        """
-        Check if a product requires active participation
+    def is_active_product(product_title, product_snippet):
+        """Check if product requires active participation"""
         
-        Returns:
-            {
-                'requires_active': bool,
-                'activity_type': 'playing' | 'practicing' | 'building' | 'passive',
-                'confidence': float
-            }
-        """
+        # Defensive: Handle None values
+        title = (product_title or '').lower()
+        snippet = (product_snippet or '').lower()
         
-        combined_text = f"{product_title} {product_description}".lower()
+        combined_text = title + ' ' + snippet
         
         # Active participation indicators
-        active_indicators = {
-            'playing': ['basketball hoop', 'soccer ball', 'tennis racket', 'golf clubs', 
-                       'baseball bat', 'hockey stick', 'play with'],
-            'practicing': ['training equipment', 'practice net', 'workout', 'exercise',
-                          'fitness', 'drill', 'lesson'],
-            'building': ['lego', 'model kit', 'build your own', 'diy', 'craft kit',
-                        'construction', 'assembly required']
-        }
+        active_indicators = [
+            'basketball', 'soccer ball', 'football', 
+            'golf clubs', 'tennis racket', 'equipment',
+            'gear', 'training', 'practice', 'play',
+            'workout', 'exercise', 'fitness', 'gym',
+            'sports equipment', 'athletic gear'
+        ]
         
-        for activity_type, indicators in active_indicators.items():
-            for indicator in indicators:
-                if indicator in combined_text:
-                    return {
-                        'requires_active': True,
-                        'activity_type': activity_type,
-                        'confidence': 0.8,
-                        'reason': f"Contains '{indicator}'"
-                    }
-        
-        # Passive enjoyment indicators
-        passive_indicators = ['watch', 'poster', 'book', 'documentary', 'biography',
-                             'history of', 'art print', 'collectible', 'memorabilia',
-                             'signed photo', 'card collection', 'magazine subscription']
-        
-        for indicator in passive_indicators:
-            if indicator in combined_text:
-                return {
-                    'requires_active': False,
-                    'activity_type': 'passive',
-                    'confidence': 0.7,
-                    'reason': f"Contains '{indicator}'"
-                }
-        
-        # Default: assume passive
-        return {
-            'requires_active': False,
-            'activity_type': 'passive',
-            'confidence': 0.5,
-            'reason': 'No clear activity indicators'
-        }
+        return any(indicator in combined_text for indicator in active_indicators)
     
     @staticmethod
-    def filter_by_activity_type(products, user_interests):
-        """
-        Filter products based on whether user actively participates or passively enjoys
+    def filter_products(products, profile):
+        """Filter out active products for passive interests"""
         
-        Args:
-            products: List of product dicts
-            user_interests: List of interest dicts with 'activity_type' field
+        # Defensive: Handle None or empty inputs
+        if not products:
+            return []
         
-        Returns:
-            Filtered product list
-        """
+        if not profile:
+            logger.warning("No profile provided to PassiveActiveFilter")
+            return products
+        
+        interests = profile.get('interests', [])
+        if not interests:
+            return products
+        
+        # Build map of passive interests
+        passive_interests = {}
+        for interest in interests:
+            if interest.get('activity_type') == 'passive':
+                passive_interests[interest.get('name', '').lower()] = interest
+        
+        # If no passive interests, nothing to filter
+        if not passive_interests:
+            logger.info(f"Activity filter removed 0 items, kept {len(products)}")
+            return products
         
         filtered = []
-        removed_count = 0
+        excluded_count = 0
         
         for product in products:
-            # Get the interest this product matches
-            interest_match = product.get('interest_match', '')
+            interest_match = (product.get('interest_match') or '').lower()
             
-            # Find the corresponding user interest
-            matching_interest = None
-            for interest in user_interests:
-                if interest.get('name', '').lower() == interest_match.lower():
-                    matching_interest = interest
-                    break
+            # Check if this matches a passive interest
+            if interest_match in passive_interests:
+                # Check if product requires active participation
+                if PassiveActiveFilter.is_active_product(
+                    product.get('title'), 
+                    product.get('snippet')
+                ):
+                    excluded_count += 1
+                    logger.info(f"EXCLUDED active item for passive interest: {product.get('title', 'Unknown')[:60]}")
+                    continue
             
-            if not matching_interest:
-                # No matching interest found, keep the product
-                filtered.append(product)
-                continue
-            
-            # Check if product requires active participation
-            product_activity = PassiveActiveFilter.requires_active_participation(
-                product.get('title', ''),
-                product.get('snippet', '')
-            )
-            
-            user_is_passive = matching_interest.get('activity_type') == 'passive'
-            
-            # If user is passive but product requires active participation, exclude
-            if user_is_passive and product_activity['requires_active']:
-                logger.info(f"EXCLUDED active item for passive interest: {product['title'][:60]}")
-                removed_count += 1
-            else:
-                filtered.append(product)
+            filtered.append(product)
         
-        logger.info(f"Activity filter removed {removed_count} items, kept {len(filtered)}")
-        
+        logger.info(f"Activity filter removed {excluded_count} items, kept {len(filtered)}")
         return filtered
 
 
+def apply_smart_filters(products, profile):
+    """
+    Apply all smart filters to products
+    
+    Args:
+        products: List of product dicts
+        profile: Recipient profile dict
+    
+    Returns:
+        Filtered list of products
+    """
+    
+    # Defensive: Validate inputs
+    if not products:
+        logger.warning("No products to filter")
+        return []
+    
+    if not profile:
+        logger.warning("No profile provided for filtering, returning all products")
+        return products
+    
+    logger.info(f"Applying smart filters to {len(products)} products")
+    
+    # Apply work exclusion filter
+    try:
+        products = WorkExclusionFilter.filter_products(products, profile)
+    except Exception as e:
+        logger.error(f"Error in WorkExclusionFilter: {e}")
+        # Continue with unfiltered products rather than crash
+    
+    # Apply passive/active filter
+    try:
+        products = PassiveActiveFilter.filter_products(products, profile)
+    except Exception as e:
+        logger.error(f"Error in PassiveActiveFilter: {e}")
+        # Continue with unfiltered products rather than crash
+    
+    logger.info(f"Smart filters complete: {len(products)} products remaining")
+    
+    return products
+
+
 def get_work_venue_phrases(profile):
-    """Return list of phrases that indicate a workplace (for filtering experience gifts)."""
-    import re
+    """
+    Extract work venue/company names from profile
+    
+    Returns list of phrases like ['indianapolis motor speedway', 'ims', 'acme corp']
+    """
+    if not profile:
+        return []
+    
     phrases = []
     interests = profile.get('interests', [])
-    for i in interests:
-        if not i.get('is_work'):
+    
+    for interest in interests:
+        if not interest.get('is_work'):
             continue
-        desc = (i.get('description') or i.get('evidence', '')).lower()
-        name = i.get('name', '').lower()
+        
+        desc = (interest.get('description') or interest.get('evidence', '')).lower()
+        name = interest.get('name', '').lower()
+        
+        # Extract "works at X" or "work at X"
         if 'works at' in desc or 'work at' in desc:
-            m = re.search(r'works? (?:at|for) ([a-z0-9\s]+?)(?:\.|,|;|$)', desc)
-            if m:
-                v = m.group(1).strip()
-                phrases.append(v)
-                if 'motor speedway' in v or 'speedway' in v or 'ims' in desc:
-                    phrases.extend(['ims', 'indianapolis motor speedway', 'indy 500', 'indianapolis 500'])
+            try:
+                match = re.search(r'works? (?:at|for) ([a-z0-9\s]+?)(?:\.|,|;|$)', desc)
+                if match:
+                    venue = match.group(1).strip()
+                    phrases.append(venue)
+                    
+                    # Special handling for Indianapolis Motor Speedway
+                    if 'motor speedway' in venue or 'speedway' in venue or 'ims' in desc:
+                        phrases.extend(['ims', 'indianapolis motor speedway', 'indy 500', 'indianapolis 500'])
+            except:
+                pass  # Fail gracefully
+        
+        # Add the interest name itself
         if name:
             phrases.append(name)
+    
     return list(set(phrases))
 
 
 def filter_workplace_experiences(experience_gifts, profile):
     """
-    Remove experience gifts that are at the recipient's workplace (e.g. behind-the-scenes IMS when they work at IMS).
+    Remove experience gifts that are at the recipient's workplace
+    Example: Don't suggest Indy 500 tour to someone who works at Indianapolis Motor Speedway
     """
+    if not experience_gifts:
+        return []
+    
+    if not profile:
+        return experience_gifts
+    
     work_phrases = get_work_venue_phrases(profile)
     if not work_phrases:
         return experience_gifts
+    
     workplace_indicators = ['behind the scenes', 'backstage', 'vip access', 'tour', 'experience at']
+    
     filtered = []
     for exp in experience_gifts:
+        # Combine all text fields for checking
         combined = f"{exp.get('name', '')} {exp.get('location_details', '')} {exp.get('description', '')}".lower()
+        
         is_workplace = False
         for phrase in work_phrases:
             if phrase.lower() in combined and any(ind in combined for ind in workplace_indicators):
                 is_workplace = True
-                logger.info(f"EXCLUDED workplace experience: {exp.get('name', '')[:60]} - matches work venue '{phrase}'")
+                logger.info(f"EXCLUDED workplace experience: {exp.get('name', 'Unknown')[:60]} - matches work venue '{phrase}'")
                 break
+        
         if not is_workplace:
             filtered.append(exp)
+    
     return filtered
-
-
-def apply_smart_filters(products, profile):
-    """
-    Apply all smart filters to remove inappropriate gifts
-    
-    Args:
-        products: List of product dicts
-        profile: User profile with interests, location, work details
-    
-    Returns:
-        Filtered product list
-    """
-    
-    # Step 1: Remove work-related items (pass full profile for venue detection)
-    products = WorkExclusionFilter.filter_products(products, profile)
-    
-    # Step 2: Filter by activity type (passive vs active)
-    interests = profile.get('interests', [])
-    products = PassiveActiveFilter.filter_by_activity_type(products, interests)
-    
-    logger.info(f"Smart filters complete: {len(products)} products remaining")
-    
-    return products

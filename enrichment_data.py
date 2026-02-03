@@ -691,7 +691,7 @@ GIFT_INTELLIGENCE = {
             'Generic spiritual items',
             'Overly religious items',
             'Novelty meditation tools',
-            'Crystal sets (unless they're into it)'
+            'Crystal sets (unless they\'re into it)'
         ],
         'trending_2026': [
             'Meditation benches',

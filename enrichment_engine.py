@@ -281,7 +281,7 @@ class EnrichmentEngine:
         strategies.append({
             'priority': 3,
             'approach': 'trending',
-            'categories': TRENDING_2026.keys(),
+            'categories': list(TRENDING_2026.keys()),
             'note': 'Supplement core recommendations with trending items'
         })
         

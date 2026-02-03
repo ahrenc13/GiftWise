@@ -135,29 +135,50 @@ def generate_brand_website_url(product_name):
 
 
 def is_search_url(url):
-    """Check if URL is a search results page (not a product page)"""
-    if not url:
+    """True if URL is a search/category results page, not a direct product page. Stricter so we never show search links as product links."""
+    if not url or not isinstance(url, str):
         return True
-    
-    search_indicators = [
-        '/s?',       # Amazon search
-        '/s/',       # Amazon search path
-        '/search?',  # Generic search
-        '/search/',  # Etsy and others
-        '?q=',       # Query parameter (often search)
-        '?k=',       # Amazon search key
-        '&q=',       # Query param
-        'tbm=shop',  # Google Shopping
-        '/results',  # Search results path
-        '/b/',       # Amazon browse (often category, not product)
-    ]
-    
-    url_lower = url.lower()
-    if any(indicator in url_lower for indicator in search_indicators):
+    url_lower = url.lower().strip()
+    try:
+        parsed = urlparse(url_lower)
+        path = (parsed.path or '/').strip('/')
+        netloc = (parsed.netloc or '')
+        query = (parsed.query or '')
+    except Exception:
         return True
-    # Amazon product pages: /dp/ or /gp/product/ — if path has /s/ or /b/ without /dp/ or /gp/product, treat as search
-    if 'amazon.' in url_lower and ('/dp/' in url_lower or '/gp/product/' in url_lower):
+    # Known search engine domains with search intent
+    if 'google.' in netloc and ('/search' in path or 'tbm=shop' in query or 'tbm=lcl' in query):
+        return True
+    if 'bing.' in netloc and '/search' in path:
+        return True
+    if 'duckduckgo.' in netloc:
+        return True
+    # Amazon: only /dp/ and /gp/product are product pages; /s, /s/, /b/ are search/browse
+    if 'amazon.' in netloc:
+        if '/dp/' in path or '/gp/product' in path or '/gp/aw/d' in path:
+            return False
+        if '/s?' in path or path.startswith('s/') or '/s/' in path or '/b/' in path or 'ref=sr_' in query:
+            return True
+        if 'k=' in query and '/dp/' not in path and '/gp/' not in path:
+            return True
         return False
+    # Etsy: listing/ is product; search is search
+    if 'etsy.com' in netloc:
+        if path.startswith('listing/'):
+            return False
+        if 'search' in path or path.startswith('search') or '?q=' in query:
+            return True
+        return False
+    # eBay: /itm/ is item; /sch/ is search
+    if 'ebay.' in netloc:
+        if '/itm/' in path:
+            return False
+        if '/sch/' in path or '/b/' in path:
+            return True
+        return False
+    # Generic: path clearly indicates search/category (don't use ?q= here—product URLs often have other params)
+    if '/search' in path or path.startswith('search') or '/results' in path or '/browse' in path:
+        return True
     return False
 
 

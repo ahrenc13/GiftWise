@@ -2128,6 +2128,57 @@ def api_places_autocomplete():
         return jsonify([])
 
 
+def _backfill_materials_links(materials_list, products, is_bad_product_url_fn):
+    """
+    Ensure every materials_needed item has a working link: match to products when possible,
+    otherwise add a search link so the user can find the item. Makes experience shopping lists turnkey.
+    """
+    if not materials_list:
+        return materials_list
+    # Build product title -> product map for fuzzy matching (lowercase keywords)
+    product_by_words = {}
+    for p in (products or []):
+        link = (p.get('link') or '').strip()
+        if not link or is_bad_product_url_fn(link):
+            continue
+        title = (p.get('title') or '').lower()
+        words = [w for w in re.split(r'\W+', title) if len(w) >= 2]
+        for w in words:
+            product_by_words.setdefault(w, []).append(p)
+    out = []
+    for m in materials_list:
+        m = dict(m)
+        item_name = (m.get('item') or '').strip()
+        existing_url = (m.get('product_url') or '').strip()
+        if existing_url and not is_bad_product_url_fn(existing_url):
+            out.append(m)
+            continue
+        m['product_url'] = ''
+        m['is_search_link'] = False
+        # Try to match to a product from our list (same pool as product gifts)
+        best = None
+        if item_name and products:
+            item_words = [w for w in re.split(r'\W+', item_name.lower()) if len(w) >= 2]
+            for w in item_words:
+                for p in product_by_words.get(w, []):
+                    title = (p.get('title') or '').lower()
+                    if any(iw in title for iw in item_words) or any(tw in item_name.lower() for tw in title.split()):
+                        best = p
+                        break
+                if best:
+                    break
+        if best:
+            m['product_url'] = (best.get('link') or '').strip()
+            m['where_to_buy'] = best.get('source_domain') or (best.get('where_to_buy') or 'Online')
+        else:
+            # Fallback: give a clickable search link so they can find the item quickly
+            m['product_url'] = 'https://www.amazon.com/s?k=' + quote(item_name or 'gift')
+            m['where_to_buy'] = 'Search Amazon'
+            m['is_search_link'] = True
+        out.append(m)
+    return out
+
+
 @app.route('/api/approve-profile', methods=['POST'])
 def api_approve_profile():
     """Save user-approved profile and redirect to generating (search + curate use this profile)."""
@@ -2242,12 +2293,14 @@ def api_generate_recommendations():
             else:
                 logger.info("Using pre-enriched profile from review step")
             
-            # STEP 2: Search for real products based on profile
-            logger.info("STEP 2: Searching for real products...")
+            # STEP 2: Pull inventory of real products that match the profile.
+            # Inventory must be at least 2-3x the number we will select so the engine can choose carefully.
+            product_rec_count = 10  # number of product gifts we will select
+            logger.info("STEP 2: Pulling product inventory...")
             products = search_real_products(
                 profile,
                 SERPAPI_API_KEY,
-                target_count=40
+                rec_count=product_rec_count
             )
             
             if len(products) == 0:
@@ -2256,10 +2309,10 @@ def api_generate_recommendations():
                     'success': False,
                     'error': "We're having trouble loading gift ideas right now. Please try again in a few minutes."
                 }), 503
-            if len(products) < 10:
-                logger.warning(f"Only found {len(products)} products - may not be enough for good curation")
+            if len(products) < product_rec_count * 2:
+                logger.warning(f"Inventory has {len(products)} products (want at least 2x {product_rec_count} for good selection)")
             
-            logger.info(f"Found {len(products)} real products")
+            logger.info(f"Inventory: {len(products)} products (will select {product_rec_count})")
             
             # APPLY QUALITY FILTERS FROM INTELLIGENCE LAYER
             quality_filters = session.get('quality_filters', [])
@@ -2288,9 +2341,9 @@ def api_generate_recommendations():
                 products = RelationshipRules.filter_by_relationship(products, relationship)
                 logger.info(f"After relationship filter ({relationship}): {len(products)} products")
             
-            # STEP 3: Curate best gifts from real products + generate experiences
-            logger.info("STEP 3: Curating gifts...")
-            curated = curate_gifts(profile, products, recipient_type, relationship, claude_client, rec_count=10)
+            # STEP 3: Select best gifts from inventory (curator chooses from existing products only)
+            logger.info("STEP 3: Selecting best gifts from inventory...")
+            curated = curate_gifts(profile, products, recipient_type, relationship, claude_client, rec_count=product_rec_count)
             
             product_gifts = curated.get('product_gifts', [])
             experience_gifts = curated.get('experience_gifts', [])
@@ -2307,8 +2360,22 @@ def api_generate_recommendations():
             
             logger.info(f"Curated {len(product_gifts)} products + {len(experience_gifts)} experiences")
             
-            # Build product URL -> image map for backfilling thumbnails
-            product_url_to_image = {p.get('link', ''): (p.get('image') or p.get('thumbnail', '')) for p in products if p.get('link')}
+            # Build product URL -> image map for backfilling thumbnails (normalize URL so lookup matches)
+            def _normalize_url_for_image(u):
+                if not u or not isinstance(u, str):
+                    return ''
+                u = u.strip().rstrip('/')
+                return u or ''
+            product_url_to_image = {}
+            for p in products:
+                link = _normalize_url_for_image(p.get('link', ''))
+                if link:
+                    img = (p.get('image') or p.get('thumbnail') or '').strip()
+                    product_url_to_image[link] = img
+                # Also key by raw link so either format matches
+                raw_link = (p.get('link') or '').strip()
+                if raw_link and raw_link not in product_url_to_image:
+                    product_url_to_image[raw_link] = (p.get('image') or p.get('thumbnail') or '').strip()
             
             try:
                 from link_validation import is_bad_product_url
@@ -2322,7 +2389,10 @@ def api_generate_recommendations():
             # Add product gifts only when we have a valid direct link (no broken/no-thumbnail clutter)
             for gift in product_gifts:
                 product_url = (gift.get('product_url') or '').strip()
-                image_url = gift.get('image_url', '') or product_url_to_image.get(product_url, '')
+                # Lookup thumbnail by exact URL and by normalized URL so we match SerpAPI image
+                image_url = (gift.get('image_url') or '').strip()
+                if not image_url:
+                    image_url = product_url_to_image.get(product_url, '') or product_url_to_image.get(_normalize_url_for_image(product_url), '')
                 if is_bad_product_url(product_url):
                     product_url = ''
                     image_url = ''
@@ -2364,7 +2434,9 @@ def api_generate_recommendations():
             if not search_geography:
                 search_geography = 'near me'
             for exp in experience_gifts:
-                materials_list = exp.get('materials_needed', [])
+                materials_list = _backfill_materials_links(
+                    exp.get('materials_needed', []), products, is_bad_product_url
+                )
                 materials_summary = ""
                 if materials_list:
                     materials_items = [f"{m.get('item', 'Item')} ({m.get('estimated_price', '$XX')})" for m in materials_list[:3]]
@@ -2384,8 +2456,11 @@ def api_generate_recommendations():
                     query = quote(f"{exp.get('name', 'experience')} {search_geography}".strip())
                     primary_link = f"https://www.google.com/search?q={query}"
                     experience_search_fallback = True
+                # Only use first material's link as primary if it's a direct product page (not a search link)
                 if not primary_link and materials_list:
-                    primary_link = (materials_list[0].get('product_url', '') or '').strip()
+                    first_url = (materials_list[0].get('product_url') or '').strip()
+                    if first_url and not materials_list[0].get('is_search_link'):
+                        primary_link = first_url
                 all_recommendations.append({
                     'name': exp.get('name', 'Experience Gift'),
                     'description': full_description,
@@ -2422,6 +2497,16 @@ def api_generate_recommendations():
                     logger.info(f"Images: {with_images}/{len(all_recommendations)} with thumbnails")
                 except Exception as img_err:
                     logger.warning(f"Image backfill failed (continuing): {img_err}")
+            # Ensure every product has a thumbnail (placeholder if backfill skipped or failed)
+            for rec in all_recommendations:
+                if rec.get('gift_type') != 'physical':
+                    continue
+                img = (rec.get('image_url') or '').strip()
+                if not img or not img.startswith('http'):
+                    name_safe = (rec.get('name') or 'Gift')[:30].replace(' ', '+')
+                    rec['image_url'] = f"https://via.placeholder.com/400x400/667eea/ffffff?text={quote(name_safe)}"
+                    rec['image_source'] = rec.get('image_source') or 'placeholder_fallback'
+                    rec['image_is_fallback'] = True
             
             # Calculate data quality for compatibility
             quality = check_data_quality(platforms)

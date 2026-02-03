@@ -146,13 +146,13 @@
                 {% endif %}
                 {% if rec.gift_type == 'experience' and rec.materials_needed %}
                 <div style="margin-bottom: 15px; padding: 12px; background: #f8fafc; border-radius: 8px;">
-                    <strong>What you'll need:</strong>
+                    <strong>What you'll need (click to get):</strong>
                     <ul style="margin: 6px 0 0 16px; padding: 0;">
                     {% for m in rec.materials_needed[:5] %}
                         <li style="margin: 4px 0;">
-                            {% if m.product_url %}<a href="{{ m.product_url }}" target="_blank" style="color: #be123c;">{{ m.item }}</a>{% else %}{{ m.item }}{% endif %}
+                            {% if m.product_url %}<a href="{{ m.product_url }}" target="_blank" style="color: #be123c;">{{ m.item }}</a>{% if m.is_search_link %}<span style="color: #6b7280; font-size: 0.9em;"> — find online</span>{% endif %}{% else %}{{ m.item }}{% endif %}
                             {% if m.estimated_price %} ({{ m.estimated_price }}){% endif %}
-                            {% if m.where_to_buy %} — {{ m.where_to_buy }}{% endif %}
+                            {% if m.where_to_buy and not m.is_search_link %} — {{ m.where_to_buy }}{% endif %}
                         </li>
                     {% endfor %}
                     </ul>

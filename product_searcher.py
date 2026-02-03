@@ -27,18 +27,25 @@ SLEEP_BETWEEN_REQUESTS = 0.3
 # Cap total queries for speed
 MAX_SEARCH_QUERIES = 10
 
+# Inventory should be at least this many times the number of gifts we will select,
+# so the curation engine can choose carefully from real options.
+INVENTORY_MULTIPLIER = 3
 
-def search_real_products(profile, serpapi_key, target_count=40):
+
+def search_real_products(profile, serpapi_key, target_count=None, rec_count=10):
     """
-    Search for real products using SerpAPI (Google Search) based on recipient profile.
+    Pull an inventory of real products that match the profile. Caller then selects
+    the best gifts from this inventory (e.g. via curate_gifts). Inventory size should
+    be at least 2-3x the number of selections so the engine can choose carefully.
     
     Args:
         profile: Recipient profile dict from build_recipient_profile()
         serpapi_key: SerpAPI API key
-        target_count: Target number of products to find (default 40)
+        target_count: Target number of products to fetch. If None, uses rec_count * INVENTORY_MULTIPLIER.
+        rec_count: Number of product gifts that will be selected from this inventory (used when target_count is None).
     
     Returns:
-        List of product dicts with:
+        List of product dicts (inventory for curation):
         - title: Product name
         - link: Direct product URL
         - snippet: Product description
@@ -48,6 +55,10 @@ def search_real_products(profile, serpapi_key, target_count=40):
         - search_query: What query found it
         - interest_match: Which interest(s) it matches
     """
+    if target_count is None:
+        target_count = max(rec_count * INVENTORY_MULTIPLIER, 20)
+    target_count = max(target_count, rec_count * 2)  # enforce at least 2x
+    logger.info(f"Inventory target: {target_count} products (selecting {rec_count}; need at least 2-3x)")
     
     if not serpapi_key:
         logger.error("SerpAPI key not configured")

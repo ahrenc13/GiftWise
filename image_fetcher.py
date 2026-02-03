@@ -286,7 +286,7 @@ def get_product_image(recommendation):
         logger.debug("Google Custom Search not configured - skipping image search")
     
     # Strategy 2: Extract from product URL (if it's a direct product page)
-    if product_url and not is_search_url(product_url):
+    if product_url and not _is_search_url(product_url):
         img_url = extract_image_from_url(product_url)
         if img_url:
             logger.info(f"Extracted image from product page for '{product_name}'")
@@ -344,6 +344,14 @@ def process_recommendation_images(recommendations):
         try:
             product_name = rec.get('name', 'Unknown')
             product_url = rec.get('product_url') or rec.get('purchase_link') or ''
+            # Experiences: use simple placeholder (no API call) so quota is reserved for product thumbnails
+            if rec.get('gift_type') == 'experience':
+                rec['image_url'] = generate_placeholder_image(product_name)
+                rec['image_source'] = 'placeholder_experience'
+                rec['image_is_fallback'] = True
+                processed.append(rec)
+                placeholder_count += 1
+                continue
             # If link is search page or bare domain, don't trust any image—use placeholder to avoid mismatched thumb
             if rec.get('gift_type') == 'physical' and is_bad_product_url(product_url):
                 rec['image_url'] = generate_placeholder_image(product_name)

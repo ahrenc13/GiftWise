@@ -15,12 +15,7 @@ UPDATES IN THIS VERSION:
 ✅ TikTok repost intelligence
 ✅ CRITICAL BUG FIXES (Jan 28, 2026)
 
-from enrichment_engine import enrich_profile_simple, should_filter_product
-from experience_architect import create_multiple_experiences
-from payment_model import get_pricing_for_user
-
-from smart_filters import apply_smart_filters, filter_workplace_experiences
-from relationship_rules import RelationshipRules
+Optional intelligence layer: enrichment_engine, experience_architect, payment_model.
 
 Author: Chad + Claude
 Date: January 2026
@@ -42,6 +37,19 @@ from collections import Counter, defaultdict, OrderedDict
 
 # Load environment variables FIRST (before any code that uses them)
 load_dotenv()
+
+# Intelligence layer (enrichment, experience architect, payment model) - optional so app runs if missing
+try:
+    from enrichment_engine import enrich_profile_simple, should_filter_product
+    from experience_architect import create_multiple_experiences
+    from payment_model import get_pricing_for_user
+    INTELLIGENCE_LAYER_AVAILABLE = True
+except ImportError as e:
+    INTELLIGENCE_LAYER_AVAILABLE = False
+    enrich_profile_simple = None
+    should_filter_product = None
+    create_multiple_experiences = None
+    get_pricing_for_user = None
 
 # Import new recommendation architecture (profile → search → curate)
 try:
@@ -216,6 +224,14 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger('giftwise')
+
+if INTELLIGENCE_LAYER_AVAILABLE:
+    logger.info("Intelligence layer loaded successfully (enrichment_engine, experience_architect, payment_model)")
+else:
+    logger.warning(
+        "Intelligence layer NOT loaded - enrichment and quality filters disabled. "
+        "Ensure enrichment_engine.py, enrichment_data.py, experience_architect.py, payment_model.py are present and importable."
+    )
 
 app = Flask(__name__)
 
@@ -2022,23 +2038,24 @@ def review_profile():
     logger.info("Building profile for review step...")
     profile = build_recipient_profile(platforms, recipient_type, relationship, claude_client)
     
-    # ENRICH PROFILE WITH INTELLIGENCE LAYER
-    enriched = enrich_profile_simple(
-        interests=[i.get('name', '') for i in profile.get('interests', [])],
-        relationship=session.get('relationship', 'close_friend'),
-        age=session.get('recipient_age'),
-        gender=session.get('recipient_gender')
-    )
-    
-    # Extract enhanced search terms
-    enhanced_search_terms = []
-    for interest_data in enriched.get('enriched_interests', []):
-        enhanced_search_terms.extend(interest_data.get('search_terms', []))
-    
-    # Store enriched data in session
-    session['enriched_profile'] = enriched
-    session['enhanced_search_terms'] = enhanced_search_terms
-    session['quality_filters'] = enriched.get('quality_filters', [])
+    # ENRICH PROFILE WITH INTELLIGENCE LAYER (optional)
+    if INTELLIGENCE_LAYER_AVAILABLE and enrich_profile_simple:
+        enriched = enrich_profile_simple(
+            interests=[i.get('name', '') for i in profile.get('interests', [])],
+            relationship=session.get('relationship', 'close_friend'),
+            age=session.get('recipient_age'),
+            gender=session.get('recipient_gender')
+        )
+        enhanced_search_terms = []
+        for interest_data in enriched.get('enriched_interests', []):
+            enhanced_search_terms.extend(interest_data.get('search_terms', []))
+        session['enriched_profile'] = enriched
+        session['enhanced_search_terms'] = enhanced_search_terms
+        session['quality_filters'] = enriched.get('quality_filters', [])
+    else:
+        session['enriched_profile'] = None
+        session['enhanced_search_terms'] = []
+        session['quality_filters'] = []
     
     if not profile.get('interests'):
         return redirect('/connect-platforms?error=no_profile')
@@ -2163,26 +2180,27 @@ def api_generate_recommendations():
             
             logger.info(f"Profile built: {len(profile.get('interests', []))} interests, location: {profile.get('location_context', {}).get('city_region')}")
             
-            # ENRICH PROFILE WITH INTELLIGENCE LAYER (if not already enriched from review step)
+            # ENRICH PROFILE WITH INTELLIGENCE LAYER (if available and not already enriched from review step)
             if not session.get('enriched_profile'):
-                logger.info("Enriching profile with intelligence layer...")
-                enriched = enrich_profile_simple(
-                    interests=[i.get('name', '') for i in profile.get('interests', [])],
-                    relationship=relationship or 'close_friend',
-                    age=session.get('recipient_age'),
-                    gender=session.get('recipient_gender')
-                )
-                
-                # Extract enhanced search terms
-                enhanced_search_terms = []
-                for interest_data in enriched.get('enriched_interests', []):
-                    enhanced_search_terms.extend(interest_data.get('search_terms', []))
-                
-                # Store in session
-                session['enriched_profile'] = enriched
-                session['enhanced_search_terms'] = enhanced_search_terms
-                session['quality_filters'] = enriched.get('quality_filters', [])
-                logger.info(f"Profile enriched: {len(enhanced_search_terms)} enhanced search terms")
+                if INTELLIGENCE_LAYER_AVAILABLE and enrich_profile_simple:
+                    logger.info("Enriching profile with intelligence layer...")
+                    enriched = enrich_profile_simple(
+                        interests=[i.get('name', '') for i in profile.get('interests', [])],
+                        relationship=relationship or 'close_friend',
+                        age=session.get('recipient_age'),
+                        gender=session.get('recipient_gender')
+                    )
+                    enhanced_search_terms = []
+                    for interest_data in enriched.get('enriched_interests', []):
+                        enhanced_search_terms.extend(interest_data.get('search_terms', []))
+                    session['enriched_profile'] = enriched
+                    session['enhanced_search_terms'] = enhanced_search_terms
+                    session['quality_filters'] = enriched.get('quality_filters', [])
+                    logger.info(f"Profile enriched: {len(enhanced_search_terms)} enhanced search terms")
+                else:
+                    session['enriched_profile'] = None
+                    session['enhanced_search_terms'] = []
+                    session['quality_filters'] = []
             else:
                 logger.info("Using pre-enriched profile from review step")
             

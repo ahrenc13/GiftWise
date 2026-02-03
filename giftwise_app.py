@@ -15,6 +15,10 @@ UPDATES IN THIS VERSION:
 ✅ TikTok repost intelligence
 ✅ CRITICAL BUG FIXES (Jan 28, 2026)
 
+from enrichment_engine import enrich_profile_simple, should_filter_product
+from experience_architect import create_multiple_experiences
+from payment_model import get_pricing_for_user
+
 from smart_filters import apply_smart_filters, filter_workplace_experiences
 from relationship_rules import RelationshipRules
 
@@ -2017,6 +2021,25 @@ def review_profile():
     # Build profile (one Claude call) so user can review before we search/curate
     logger.info("Building profile for review step...")
     profile = build_recipient_profile(platforms, recipient_type, relationship, claude_client)
+    
+    # ENRICH PROFILE WITH INTELLIGENCE LAYER
+    enriched = enrich_profile_simple(
+        interests=[i.get('name', '') for i in profile.get('interests', [])],
+        relationship=session.get('relationship', 'close_friend'),
+        age=session.get('recipient_age'),
+        gender=session.get('recipient_gender')
+    )
+    
+    # Extract enhanced search terms
+    enhanced_search_terms = []
+    for interest_data in enriched.get('enriched_interests', []):
+        enhanced_search_terms.extend(interest_data.get('search_terms', []))
+    
+    # Store enriched data in session
+    session['enriched_profile'] = enriched
+    session['enhanced_search_terms'] = enhanced_search_terms
+    session['quality_filters'] = enriched.get('quality_filters', [])
+    
     if not profile.get('interests'):
         return redirect('/connect-platforms?error=no_profile')
     # Prepare interests for template (description = evidence for display)
@@ -2140,6 +2163,29 @@ def api_generate_recommendations():
             
             logger.info(f"Profile built: {len(profile.get('interests', []))} interests, location: {profile.get('location_context', {}).get('city_region')}")
             
+            # ENRICH PROFILE WITH INTELLIGENCE LAYER (if not already enriched from review step)
+            if not session.get('enriched_profile'):
+                logger.info("Enriching profile with intelligence layer...")
+                enriched = enrich_profile_simple(
+                    interests=[i.get('name', '') for i in profile.get('interests', [])],
+                    relationship=relationship or 'close_friend',
+                    age=session.get('recipient_age'),
+                    gender=session.get('recipient_gender')
+                )
+                
+                # Extract enhanced search terms
+                enhanced_search_terms = []
+                for interest_data in enriched.get('enriched_interests', []):
+                    enhanced_search_terms.extend(interest_data.get('search_terms', []))
+                
+                # Store in session
+                session['enriched_profile'] = enriched
+                session['enhanced_search_terms'] = enhanced_search_terms
+                session['quality_filters'] = enriched.get('quality_filters', [])
+                logger.info(f"Profile enriched: {len(enhanced_search_terms)} enhanced search terms")
+            else:
+                logger.info("Using pre-enriched profile from review step")
+            
             # STEP 2: Search for real products based on profile
             logger.info("STEP 2: Searching for real products...")
             products = search_real_products(
@@ -2158,6 +2204,20 @@ def api_generate_recommendations():
                 logger.warning(f"Only found {len(products)} products - may not be enough for good curation")
             
             logger.info(f"Found {len(products)} real products")
+            
+            # APPLY QUALITY FILTERS FROM INTELLIGENCE LAYER
+            quality_filters = session.get('quality_filters', [])
+            if quality_filters:
+                logger.info("Applying intelligence quality filters...")
+                original_count = len(products)
+                filtered_products = []
+                for product in products:
+                    product_title = product.get('title', '') or product.get('name', '')
+                    if not should_filter_product(product_title, quality_filters):
+                        filtered_products.append(product)
+                products = filtered_products
+                filtered_count = original_count - len(products)
+                logger.info(f"Intelligence filters removed {filtered_count} inappropriate products ({len(products)} remaining)")
             
             # Apply smart filters BEFORE curation
             from smart_filters import apply_smart_filters, filter_workplace_experiences

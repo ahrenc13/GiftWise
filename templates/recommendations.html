@@ -619,11 +619,34 @@
                     <div class="rec-why">
                         <strong>Why it's perfect for {{ 'you' if user.recipient_type == 'myself' else 'them' }}:</strong> {{ rec.why_perfect }}
                     </div>
+                    {% if rec.gift_type == 'experience' and rec.materials_needed %}
+                    <div class="rec-materials" style="margin: 12px 0; padding: 10px; background: #f8fafc; border-radius: 8px;">
+                        <strong>What you'll need:</strong>
+                        <ul style="margin: 6px 0 0 16px; padding: 0;">
+                        {% for m in rec.materials_needed[:5] %}
+                            <li style="margin: 4px 0;">
+                                {% if m.product_url %}
+                                <a href="{{ m.product_url }}" target="_blank" onclick="event.stopPropagation();" style="color: #be123c;">{{ m.item }}</a>
+                                {% else %}
+                                {{ m.item }}
+                                {% endif %}
+                                {% if m.estimated_price %} ({{ m.estimated_price }}){% endif %}
+                                {% if m.where_to_buy %} — {{ m.where_to_buy }}{% endif %}
+                            </li>
+                        {% endfor %}
+                        </ul>
+                        <a href="/recommendations/experience/{{ loop.index0 }}" onclick="event.stopPropagation();" class="rec-link" style="display: inline-block; margin-top: 8px;">View full experience →</a>
+                    </div>
+                    {% elif rec.gift_type == 'experience' %}
+                    <div style="margin: 8px 0;">
+                        <a href="/recommendations/experience/{{ loop.index0 }}" onclick="event.stopPropagation();" class="rec-link" style="display: inline-block;">View full experience →</a>
+                    </div>
+                    {% endif %}
                     <div class="rec-footer">
                         <div class="rec-price">{{ rec.price_range }}</div>
                         <div class="rec-where">Available at: {{ rec.where_to_buy }}</div>
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            {% if rec.gift_type == 'experience' and (rec.reservation_link or rec.venue_website) %}
+                            {% if rec.gift_type == 'experience' and (rec.reservation_link or rec.venue_website or rec.purchase_link) %}
                             {% if rec.reservation_link %}
                             <a href="{{ rec.reservation_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation();" style="background: #059669;">
                                 Reserve / Book →
@@ -634,10 +657,15 @@
                                 Venue / Website
                             </a>
                             {% endif %}
+                            {% if rec.purchase_link and (rec.experience_search_fallback or (not rec.reservation_link and not rec.venue_website)) %}
+                            <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation();" {% if rec.experience_search_fallback %}style="background: #0ea5e9;"{% endif %}>
+                                {{ 'Find options →' if rec.experience_search_fallback else 'Get started →' }}
+                            </a>
                             {% endif %}
-                            {% if rec.purchase_link %}
+                            {% endif %}
+                            {% if rec.gift_type == 'physical' and rec.purchase_link %}
                             <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation();">
-                                {{ 'View Product →' if rec.gift_type == 'physical' else 'Get started →' }}
+                                View Product →
                             </a>
                             <button onclick="event.stopPropagation(); copyLink('{{ rec.purchase_link }}', this)" class="rec-link" style="background: #6b7280; cursor: pointer; border: none;">
                                 📋 Copy Link

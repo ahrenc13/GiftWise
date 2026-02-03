@@ -134,12 +134,17 @@ EXPERIENCE GIFT CRITERIA (CRITICAL):
 - materials_needed: List concrete items the gift-giver should buy (with where_to_buy and product_url from AVAILABLE PRODUCTS when possible, or "search for X" with estimated_price). This is how the experience becomes actionable.
 - how_to_execute: Step-by-step for the gift-giver (what to book/buy, when, how to present it). Be specific so they can follow it without guessing.
 - how_to_make_it_special: 1-2 sentences—e.g. how to frame it when giving, a small touch that shows thoughtfulness, or why this will feel memorable to the recipient.
-- reservation_link: When the experience involves a restaurant or bookable venue, provide a DIRECT link to reserve: OpenTable, Resy, Tock, or the venue's reservation page. Reduce friction—user should click and book. If no specific venue, leave empty.
-- venue_website: When the experience is at a specific place (restaurant, class, venue), provide the venue's website or booking URL so the user can act immediately.
+- reservation_link: REQUIRED for restaurant/venue experiences. Provide a DIRECT link: OpenTable, Resy, Tock, or the venue's reservation page IN THE RECIPIENT'S AREA (see "Lives in" above). User must be able to click and book. If no bookable venue in their area, leave empty.
+- venue_website: REQUIRED for location-based experiences when reservation_link is not available. Provide the venue's or provider's official website IN THE RECIPIENT'S CITY/REGION. Every location-based experience MUST have at least one of reservation_link or venue_website—no exceptions.
 - Generic suggestions ("book a cooking class", "plan a date night") are NOT acceptable. Every experience must PROVE it came from this profile.
 
+GEOGRAPHY RULES FOR EXPERIENCE LINKS (CRITICAL):
+- reservation_link and venue_website MUST be for venues in the recipient's location only (use "Lives in" and "Specific places" from LOCATION CONTEXT above). Never link to a restaurant, class, or venue in a different city or state—that would be logistically wrong.
+- If you cannot find or specify a real venue link in the recipient's area, leave reservation_link and venue_website empty; we will provide a geography-calibrated search link instead.
+- location_details must match the recipient's city/region when the experience is location-specific.
+
 LOCATION RULES FOR EXPERIENCES:
-- Location-based experiences require geographic context in the profile. Use specific venues from their profile when available.
+- Location-based experiences require geographic context in the profile. Use specific venues from their profile when available (and only those in their area).
 - If no location context, only suggest portable/at-home experiences. DO NOT invent a city or venue.
 
 EXPERIENCE EXAMPLES (specificity + actionable):
@@ -194,7 +199,7 @@ Return ONLY a JSON object with this structure:
 CRITICAL REQUIREMENTS:
 - Product gifts MUST come from the provided product list (use exact URLs and data). product_url = direct product page ONLY—never search or homepage.
 - Experience gifts MUST be hyper-specific, cite 2+ profile data points in why_perfect, and include how_to_execute + how_to_make_it_special.
-- For restaurant/venue experiences: always provide reservation_link (OpenTable, Resy, or venue rez page) and venue_website when possible—reduce friction to user action.
+- Experience links (reservation_link, venue_website) are LOGISTICS-CRITICAL: they must point to venues in the recipient's city/region only (use "Lives in" and "Specific places"). Never link to a venue in another city or state. If you cannot find a real bookable venue in their area, leave both empty—we will supply a geography-calibrated search link.
 - materials_needed for experiences: use product URLs from AVAILABLE PRODUCTS when an item is there
 - If no location context, DO NOT suggest location-specific experiences
 - Each recommendation must have clear evidence from the profile

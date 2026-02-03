@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ rec.name }} - Giftwise Experience</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f9fafb; color: #333; }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 24px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header-content { max-width: 800px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; }
+        .logo { font-size: 1.4em; font-weight: bold; }
+        .back-link { color: white; text-decoration: none; font-weight: 500; opacity: 0.95; }
+        .back-link:hover { text-decoration: underline; }
+        .container { max-width: 800px; margin: 32px auto; padding: 0 24px; }
+        .card {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+            padding: 32px;
+            margin-bottom: 24px;
+        }
+        .badge { display: inline-block; padding: 6px 12px; border-radius: 20px; font-size: 0.85em; font-weight: 600; background: #e0e7ff; color: #4338ca; margin-bottom: 16px; }
+        h1 { font-size: 1.85em; color: #1f2937; margin-bottom: 16px; line-height: 1.3; }
+        .description { color: #4b5563; line-height: 1.6; margin-bottom: 20px; white-space: pre-line; }
+        .section-title { font-size: 1em; font-weight: 700; color: #374151; margin: 20px 0 8px 0; }
+        .section-content { color: #4b5563; line-height: 1.6; }
+        .links { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 20px; }
+        .btn {
+            display: inline-block;
+            padding: 12px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            text-decoration: none;
+            color: white;
+            transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.9; }
+        .btn-reserve { background: #059669; }
+        .btn-venue { background: #6366f1; }
+        .btn-find { background: #0ea5e9; }
+        .btn-secondary { background: #6b7280; color: white; }
+        .shopping-list { list-style: none; margin: 12px 0 0 0; padding: 0; }
+        .shopping-list li {
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            background: #f8fafc;
+            border-radius: 10px;
+            display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+        }
+        .shopping-list a { color: #be123c; font-weight: 500; text-decoration: none; }
+        .shopping-list a:hover { text-decoration: underline; }
+        .shopping-list .price { color: #6b7280; font-size: 0.95em; }
+        .shopping-list .where { color: #9ca3af; font-size: 0.9em; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <span class="logo">Giftwise</span>
+            <a href="{% if shared %}/share/{{ share_id }}{% else %}/recommendations{% endif %}" class="back-link">← Back to recommendations</a>
+        </div>
+    </div>
+    <div class="container">
+        <div class="card">
+            <span class="badge">Experience</span>
+            <h1>{{ rec.name }}</h1>
+            <p class="description">{{ rec.description }}</p>
+            <div class="section-title">Why it's perfect for {{ pronoun_possessive }} recipient</div>
+            <p class="section-content">{{ rec.why_perfect }}</p>
+            {% if rec.how_to_make_it_special %}
+            <div class="section-title">How to make it special</div>
+            <p class="section-content">{{ rec.how_to_make_it_special }}</p>
+            {% endif %}
+            <div class="section-title">Book or explore</div>
+            <div class="links">
+                {% if rec.reservation_link %}
+                <a href="{{ rec.reservation_link }}" target="_blank" class="btn btn-reserve">Reserve / Book →</a>
+                {% endif %}
+                {% if rec.venue_website %}
+                <a href="{{ rec.venue_website }}" target="_blank" class="btn btn-venue">Venue / Website</a>
+                {% endif %}
+                {% if rec.purchase_link and (rec.experience_search_fallback or (not rec.reservation_link and not rec.venue_website)) %}
+                <a href="{{ rec.purchase_link }}" target="_blank" class="btn btn-find">{{ 'Find options →' if rec.experience_search_fallback else 'Get started →' }}</a>
+                {% endif %}
+            </div>
+            {% if rec.materials_needed %}
+            <div class="section-title">What you'll need (shopping list)</div>
+            <ul class="shopping-list">
+                {% for m in rec.materials_needed %}
+                <li>
+                    {% if m.product_url %}
+                    <a href="{{ m.product_url }}" target="_blank">{{ m.item }}</a>
+                    {% else %}
+                    <span>{{ m.item }}</span>
+                    {% endif %}
+                    {% if m.estimated_price %}<span class="price">{{ m.estimated_price }}</span>{% endif %}
+                    {% if m.where_to_buy %}<span class="where">— {{ m.where_to_buy }}</span>{% endif %}
+                </li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            <div style="margin-top: 28px;">
+                <a href="{% if shared %}/share/{{ share_id }}{% else %}/recommendations{% endif %}" class="btn btn-secondary">← Back to all recommendations</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

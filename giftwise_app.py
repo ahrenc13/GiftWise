@@ -29,6 +29,7 @@ import threading
 import re
 import logging
 from datetime import datetime, timedelta
+from urllib.parse import quote
 from flask import Flask, render_template, request, redirect, session, jsonify, url_for, Response
 import stripe
 import anthropic
@@ -2090,6 +2091,43 @@ def review_profile():
                           generation_id=generation_id)
 
 
+@app.route('/api/places-autocomplete')
+def api_places_autocomplete():
+    """Return place suggestions for profile location (city/region). Uses OpenStreetMap Nominatim; no API key required."""
+    q = (request.args.get('q') or '').strip()
+    if len(q) < 2:
+        return jsonify([])
+    try:
+        url = 'https://nominatim.openstreetmap.org/search'
+        params = {'q': q, 'format': 'json', 'addressdetails': 1, 'limit': 6}
+        headers = {'User-Agent': 'GiftWise/1.0 (gift recommendation app; https://github.com/GiftWise)'}
+        r = requests.get(url, params=params, headers=headers, timeout=4)
+        r.raise_for_status()
+        data = r.json()
+        out = []
+        seen = set()
+        for item in data:
+            addr = item.get('address') or {}
+            city = addr.get('city') or addr.get('town') or addr.get('village') or addr.get('municipality') or addr.get('county') or ''
+            state = addr.get('state') or addr.get('state_district') or ''
+            country = addr.get('country') or ''
+            if city and country:
+                if state and country == 'United States':
+                    label = f"{city}, {state}"
+                else:
+                    label = f"{city}, {country}"
+            else:
+                label = item.get('display_name', '')[:80]
+            if not label or label in seen:
+                continue
+            seen.add(label)
+            out.append({'display': label, 'city_region': label})
+        return jsonify(out[:5])
+    except Exception as e:
+        logger.warning("places-autocomplete failed: %s", e)
+        return jsonify([])
+
+
 @app.route('/api/approve-profile', methods=['POST'])
 def api_approve_profile():
     """Save user-approved profile and redirect to generating (search + curate use this profile)."""
@@ -2281,13 +2319,17 @@ def api_generate_recommendations():
             # Combine and format recommendations
             all_recommendations = []
             
-            # Add product gifts (backfill image from search results; sanitize bad links/images)
+            # Add product gifts only when we have a valid direct link (no broken/no-thumbnail clutter)
             for gift in product_gifts:
                 product_url = (gift.get('product_url') or '').strip()
                 image_url = gift.get('image_url', '') or product_url_to_image.get(product_url, '')
                 if is_bad_product_url(product_url):
-                    product_url = ''  # Don't send user to search page or homepage
-                    image_url = ''    # Don't show possibly mismatched thumbnail
+                    product_url = ''
+                    image_url = ''
+                # Skip product recs with no valid link—unacceptable to show "Link Coming Soon" + no thumbnail
+                if not product_url:
+                    logger.debug(f"Skipping product gift (no valid link): {gift.get('name', '')[:50]}")
+                    continue
                 all_recommendations.append({
                     'name': gift.get('name', 'Unknown Product'),
                     'description': gift.get('description', ''),
@@ -2300,11 +2342,27 @@ def api_generate_recommendations():
                     'gift_type': 'physical',
                     'confidence_level': gift.get('confidence_level', 'safe_bet'),
                     'interest_match': gift.get('interest_match', ''),
-                    'is_direct_link': bool(product_url),
+                    'is_direct_link': True,
                     'link_source': 'serpapi_search'
                 })
             
-            # Add experience gifts (with reservation/venue links for low-friction action)
+            # Add experience gifts; ensure every experience has an actionable link (reservation, venue, or search fallback)
+            # Geography: curator-provided reservation_link/venue_website are for recipient's area only (see gift_curator prompt).
+            # Fallback search link must use recipient location so results are logistically feasible.
+            loc_ctx = profile.get('location_context') or {}
+            city_region = (loc_ctx.get('city_region') or '').strip()
+            state = (loc_ctx.get('state') or '').strip()
+            specific_places = loc_ctx.get('specific_places') or []
+            search_geography = city_region or ''
+            if state and state not in search_geography:
+                search_geography = f"{search_geography} {state}".strip()
+            if not search_geography and specific_places:
+                # Use first named place (e.g. neighborhood or city) so fallback search is still location-aware
+                first_place = (specific_places[0] or '').strip()
+                if first_place and len(first_place) > 1:
+                    search_geography = first_place
+            if not search_geography:
+                search_geography = 'near me'
             for exp in experience_gifts:
                 materials_list = exp.get('materials_needed', [])
                 materials_summary = ""
@@ -2319,17 +2377,26 @@ def api_generate_recommendations():
                     location_info = f" | {exp.get('location_details', 'Location-based')}"
                 reservation_link = (exp.get('reservation_link') or '').strip()
                 venue_website = (exp.get('venue_website') or '').strip()
-                primary_link = reservation_link or venue_website or (materials_list[0].get('product_url', '') if materials_list else '')
+                primary_link = reservation_link or venue_website
+                experience_search_fallback = False
+                if not primary_link and exp.get('name'):
+                    # Fallback: geography-calibrated search so results are in recipient's area (logistically feasible)
+                    query = quote(f"{exp.get('name', 'experience')} {search_geography}".strip())
+                    primary_link = f"https://www.google.com/search?q={query}"
+                    experience_search_fallback = True
+                if not primary_link and materials_list:
+                    primary_link = (materials_list[0].get('product_url', '') or '').strip()
                 all_recommendations.append({
                     'name': exp.get('name', 'Experience Gift'),
                     'description': full_description,
                     'why_perfect': exp.get('why_perfect', ''),
                     'price_range': 'Variable',
                     'where_to_buy': f"Experience{location_info}",
-                    'product_url': primary_link,
-                    'purchase_link': primary_link,
+                    'product_url': primary_link or None,
+                    'purchase_link': primary_link or None,
                     'reservation_link': reservation_link or None,
                     'venue_website': venue_website or None,
+                    'experience_search_fallback': experience_search_fallback,
                     'image_url': '',
                     'gift_type': 'experience',
                     'confidence_level': exp.get('confidence_level', 'adventurous'),
@@ -2337,6 +2404,13 @@ def api_generate_recommendations():
                     'location_specific': exp.get('location_specific', False),
                     'how_to_make_it_special': how_special
                 })
+            
+            if not all_recommendations:
+                logger.error("All recommendations dropped (no valid product links and/or no experience links)")
+                return jsonify({
+                    'success': False,
+                    'error': "We couldn't find enough valid recommendations this time. Please try again."
+                }), 503
             
             logger.info(f"Total recommendations: {len(all_recommendations)}")
             
@@ -2416,6 +2490,31 @@ def view_recommendations():
                          user=user,
                          favorites=favorites)
 
+
+@app.route('/recommendations/experience/<int:index>')
+def view_experience_detail(index):
+    """Dedicated page for a single experience gift: full description, links, shopping list."""
+    user = get_session_user()
+    if not user:
+        return redirect('/signup')
+    recommendations = user.get('recommendations', [])
+    if not recommendations:
+        return redirect('/connect-platforms?error=no_recommendations')
+    if index < 0 or index >= len(recommendations):
+        return render_template('error.html', error="Experience not found.", error_code=404), 404
+    rec = recommendations[index]
+    if rec.get('gift_type') != 'experience':
+        return redirect('/recommendations')
+    return render_template('experience_detail.html',
+                         rec=rec,
+                         index=index,
+                         user=user,
+                         pronoun_possessive='your' if user.get('recipient_type') == 'myself' else 'their',
+                         pronoun_subject='you' if user.get('recipient_type') == 'myself' else 'they',
+                         shared=False,
+                         share_id=None)
+
+
 @app.route('/api/favorite/<int:rec_index>', methods=['POST'])
 def toggle_favorite(rec_index):
     """Add or remove favorite"""
@@ -2486,6 +2585,29 @@ def view_shared_recommendations(share_id):
     return render_template('shared_recommendations.html',
                          recommendations=recommendations,
                          share_id=share_id)
+
+
+@app.route('/share/<share_id>/experience/<int:index>')
+def view_shared_experience_detail(share_id, index):
+    """Dedicated page for one experience from a shared link."""
+    share_data = get_share(share_id)
+    if not share_data:
+        return render_template('error.html', error="This share link has expired or doesn't exist.", error_code=404), 404
+    recommendations = share_data.get('recommendations', [])
+    if index < 0 or index >= len(recommendations):
+        return render_template('error.html', error="Experience not found.", error_code=404), 404
+    rec = recommendations[index]
+    if rec.get('gift_type') != 'experience':
+        return redirect(url_for('view_shared_recommendations', share_id=share_id))
+    return render_template('experience_detail.html',
+                         rec=rec,
+                         index=index,
+                         user=None,
+                         pronoun_possessive='their',
+                         pronoun_subject='they',
+                         shared=True,
+                         share_id=share_id)
+
 
 @app.route('/favorites')
 def view_favorites():

@@ -144,25 +144,49 @@
                     <strong>Why it's perfect for them:</strong> {{ rec.why_perfect }}
                 </div>
                 {% endif %}
-                
+                {% if rec.gift_type == 'experience' and rec.materials_needed %}
+                <div style="margin-bottom: 15px; padding: 12px; background: #f8fafc; border-radius: 8px;">
+                    <strong>What you'll need:</strong>
+                    <ul style="margin: 6px 0 0 16px; padding: 0;">
+                    {% for m in rec.materials_needed[:5] %}
+                        <li style="margin: 4px 0;">
+                            {% if m.product_url %}<a href="{{ m.product_url }}" target="_blank" style="color: #be123c;">{{ m.item }}</a>{% else %}{{ m.item }}{% endif %}
+                            {% if m.estimated_price %} ({{ m.estimated_price }}){% endif %}
+                            {% if m.where_to_buy %} — {{ m.where_to_buy }}{% endif %}
+                        </li>
+                    {% endfor %}
+                    </ul>
+                    <a href="/share/{{ share_id }}/experience/{{ loop.index0 }}" class="rec-link" style="display: inline-block; margin-top: 8px;">View full experience →</a>
+                </div>
+                {% elif rec.gift_type == 'experience' %}
+                <div style="margin-bottom: 15px;">
+                    <a href="/share/{{ share_id }}/experience/{{ loop.index0 }}" class="rec-link" style="display: inline-block;">View full experience →</a>
+                </div>
+                {% endif %}
                 <div class="rec-price">{{ rec.price_range }}</div>
                 <div style="color: #6b7280; font-size: 0.9em; margin-bottom: 15px;">
                     Available at: {{ rec.where_to_buy }}
                 </div>
-                
-                {% if rec.gift_type == 'experience' and rec.reservation_link %}
+                {% if rec.gift_type == 'experience' and (rec.reservation_link or rec.venue_website or rec.purchase_link) %}
+                {% if rec.reservation_link %}
                 <a href="{{ rec.reservation_link }}" target="_blank" class="rec-link" style="background: #059669;">
                     Reserve / Book →
                 </a>
                 {% endif %}
-                {% if rec.gift_type == 'experience' and rec.venue_website %}
+                {% if rec.venue_website %}
                 <a href="{{ rec.venue_website }}" target="_blank" class="rec-link">
                     Venue / Website
                 </a>
                 {% endif %}
-                {% if rec.purchase_link %}
+                {% if rec.purchase_link and (rec.experience_search_fallback or not rec.reservation_link and not rec.venue_website) %}
+                <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" {% if rec.experience_search_fallback %}style="background: #0ea5e9;"{% endif %}>
+                    {{ 'Find options →' if rec.experience_search_fallback else 'Get started →' }}
+                </a>
+                {% endif %}
+                {% endif %}
+                {% if rec.gift_type == 'physical' and rec.purchase_link %}
                 <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link">
-                    {{ 'View Product →' if rec.gift_type == 'physical' else 'Get started →' }}
+                    View Product →
                 </a>
                 {% endif %}
             </div>

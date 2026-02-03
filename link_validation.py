@@ -140,16 +140,25 @@ def is_search_url(url):
         return True
     
     search_indicators = [
-        '/s?',  # Amazon search
+        '/s?',       # Amazon search
+        '/s/',       # Amazon search path
         '/search?',  # Generic search
-        '?q=',  # Query parameter
-        '?k=',  # Amazon search key
+        '/search/',  # Etsy and others
+        '?q=',       # Query parameter (often search)
+        '?k=',       # Amazon search key
+        '&q=',       # Query param
         'tbm=shop',  # Google Shopping
-        '/search/',  # Etsy search
+        '/results',  # Search results path
+        '/b/',       # Amazon browse (often category, not product)
     ]
     
     url_lower = url.lower()
-    return any(indicator in url_lower for indicator in search_indicators)
+    if any(indicator in url_lower for indicator in search_indicators):
+        return True
+    # Amazon product pages: /dp/ or /gp/product/ — if path has /s/ or /b/ without /dp/ or /gp/product, treat as search
+    if 'amazon.' in url_lower and ('/dp/' in url_lower or '/gp/product/' in url_lower):
+        return False
+    return False
 
 
 def is_generic_domain_url(url):

@@ -247,6 +247,15 @@
             border-color: #999;
         }
         
+        .location-input-wrap { position: relative; flex: 1; max-width: 320px; }
+        .location-input-wrap input { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; }
+        .location-input-wrap input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 2px rgba(102,126,234,0.2); }
+        .location-autocomplete { position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px; background: white; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10; max-height: 220px; overflow-y: auto; }
+        .location-autocomplete li { list-style: none; padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #333; }
+        .location-autocomplete li:last-child { border-bottom: none; }
+        .location-autocomplete li:hover { background: #f0f4ff; }
+        .location-hint { font-size: 13px; color: #666; margin-top: 6px; }
+        
         button.secondary.small {
             background: #f0f0f0;
             color: #555;
@@ -408,14 +417,17 @@
                 </div>
                 
                 <div class="quick-facts">
-                    {% if profile.location_context and profile.location_context.city_region %}
-                    <div class="fact-row">
+                    <div class="fact-row" id="location-row">
                         <span class="fact-icon">🌎</span>
                         <span class="fact-label">Lives in:</span>
-                        <span class="fact-value">{{ profile.location_context.city_region }}{% if profile.location_context.state %}, {{ profile.location_context.state }}{% endif %}</span>
-                        <button class="small secondary" onclick="editLocation()">Edit</button>
+                        <span class="fact-value" id="location-display" style="{% if not profile.location_context or not profile.location_context.city_region %}display: none;{% endif %}">{% if profile.location_context and profile.location_context.city_region %}{{ profile.location_context.city_region }}{% if profile.location_context.state %}, {{ profile.location_context.state }}{% endif %}{% endif %}</span>
+                        <div class="location-input-wrap" id="location-edit-wrap" style="display: {% if profile.location_context and profile.location_context.city_region %}none{% else %}block{% endif %};">
+                            <input type="text" id="location-input" placeholder="Start typing a city or region…" autocomplete="off" value="{{ profile.location_context.city_region or '' }}">
+                            <ul class="location-autocomplete" id="location-autocomplete" style="display: none;"></ul>
+                            <span class="location-hint">Helps us suggest local experiences (e.g. Indianapolis, Austin TX)</span>
+                        </div>
+                        <button class="small secondary" id="location-edit-btn" onclick="editLocation()" style="{% if not profile.location_context or not profile.location_context.city_region %}display: none;{% endif %}">Edit</button>
                     </div>
-                    {% endif %}
                     
                     {% if profile.pet_details %}
                     <div class="fact-row">
@@ -510,13 +522,83 @@
             location.reload();
         }
         
-        function editLocation() {
-            const newLocation = prompt(pronounSubject === 'you' ? 'Where do you live?' : 'Where do they live?', profileData.location_context.city_region);
-            if (newLocation) {
-                profileData.location_context.city_region = newLocation;
-                alert('Updated!');
-            }
+        let locationAutocompleteTimer = null;
+        function ensureLocationContext() {
+            if (!profileData.location_context) profileData.location_context = {};
+            if (typeof profileData.location_context.city_region === 'undefined') profileData.location_context.city_region = '';
         }
+        ensureLocationContext();
+
+        function showLocationDisplay() {
+            document.getElementById('location-display').textContent = profileData.location_context.city_region || '';
+            document.getElementById('location-display').style.display = profileData.location_context.city_region ? 'inline' : 'none';
+            document.getElementById('location-edit-wrap').style.display = 'none';
+            document.getElementById('location-input').value = profileData.location_context.city_region || '';
+            const editBtn = document.getElementById('location-edit-btn');
+            if (editBtn) editBtn.style.display = profileData.location_context.city_region ? 'inline-block' : 'none';
+        }
+        function showLocationEdit() {
+            document.getElementById('location-display').style.display = 'none';
+            document.getElementById('location-edit-wrap').style.display = 'block';
+            document.getElementById('location-edit-btn').style.display = 'none';
+            document.getElementById('location-input').value = profileData.location_context.city_region || '';
+            document.getElementById('location-input').focus();
+        }
+        function editLocation() {
+            showLocationEdit();
+        }
+
+        (function initLocationAutocomplete() {
+            const input = document.getElementById('location-input');
+            const list = document.getElementById('location-autocomplete');
+            if (!input || !list) return;
+
+            function fetchSuggestions(q) {
+                if (q.length < 2) { list.style.display = 'none'; return; }
+                fetch('/api/places-autocomplete?q=' + encodeURIComponent(q))
+                    .then(function(r) { return r.json(); })
+                    .then(function(items) {
+                        list.innerHTML = '';
+                        if (!items.length) { list.style.display = 'none'; return; }
+                        items.forEach(function(item) {
+                            const li = document.createElement('li');
+                            li.textContent = item.display;
+                            li.onclick = function() {
+                                profileData.location_context.city_region = item.city_region;
+                                input.value = item.city_region;
+                                list.style.display = 'none';
+                                showLocationDisplay();
+                            };
+                            list.appendChild(li);
+                        });
+                        list.style.display = 'block';
+                    })
+                    .catch(function() { list.style.display = 'none'; });
+            }
+
+            input.addEventListener('input', function() {
+                clearTimeout(locationAutocompleteTimer);
+                const q = input.value.trim();
+                locationAutocompleteTimer = setTimeout(function() { fetchSuggestions(q); }, 220);
+            });
+            input.addEventListener('focus', function() {
+                const q = input.value.trim();
+                if (q.length >= 2) fetchSuggestions(q);
+            });
+            input.addEventListener('blur', function() {
+                setTimeout(function() {
+                    list.style.display = 'none';
+                    var v = input.value.trim();
+                    if (v) {
+                        profileData.location_context.city_region = v;
+                        showLocationDisplay();
+                    }
+                }, 180);
+            });
+            document.addEventListener('click', function(e) {
+                if (!input.contains(e.target) && !list.contains(e.target)) list.style.display = 'none';
+            });
+        })();
         
         function editPet() {
             const newPet = prompt('Tell us about {{ pronoun_possessive }} pet:', profileData.pet_details);

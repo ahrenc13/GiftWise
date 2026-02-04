@@ -1,6 +1,6 @@
 # Getting API Keys - Step by Step
 
-This guide will walk you through getting YouTube and Last.fm API keys. Both are **free** and take about 5-10 minutes each.
+This guide will walk you through getting YouTube, Last.fm, and SerpAPI keys. All are **free** (with generous free tiers) and take about 5-10 minutes each.
 
 ---
 
@@ -156,13 +156,52 @@ You won't pay anything for normal usage!
 
 ---
 
+## SerpAPI Key (Real-Time Enrichment)
+
+**What it does:** Provides real-time trending products, Reddit insights, demographic trends, and bestseller data
+
+**Free tier:** 100 searches/month free (should be enough for testing)
+
+### Step-by-Step:
+
+1. **Sign Up**
+   - Go to: https://serpapi.com/
+   - Click "Register" in top right
+   - Enter your email and create a password
+   - Check your email and verify your account
+
+2. **Get Your API Key**
+   - Once logged in, you'll see your dashboard
+   - Your API key is displayed right at the top
+   - It looks like: `a1b2c3d4e5...` (64 characters)
+   - Click "Copy" to copy the entire key
+
+3. **Check Your Usage**
+   - Free tier: 100 searches/month
+   - Each gift recommendation uses ~5-10 searches
+   - So you can generate ~10-20 gift recommendations/month for free
+   - Paid plans start at $50/month for 5,000 searches if you need more
+
+**You're done with SerpAPI!**
+
+### What This Adds to Your Gift Recommendations:
+
+- **Trending products** - What's hot right now in their interest categories
+- **Reddit insights** - Popular gift recommendations from relevant communities
+- **Demographic trends** - What people their age/location are into
+- **Bestsellers** - Top-rated products in each category
+- **Real-time validation** - Ensures recommended products are actually available
+
+---
+
 ## Next Steps
 
-Once both keys are working:
+Once all three keys are working:
 
 1. ✅ YouTube will pull: subscribed channels, playlists, video interests
 2. ✅ Last.fm will pull: top artists, tracks, genres, listening history
-3. ✅ This data feeds into the enrichment engine for better gift recommendations
+3. ✅ SerpAPI will add: trending products, Reddit insights, bestsellers, demographic data
+4. ✅ This all feeds into the enrichment engine for maximum gift recommendation accuracy
 
 These platforms give rich signals about interests without requiring the recipient to authorize anything - perfect for surprise gifts!
 

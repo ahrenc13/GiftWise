@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation'
 import { Gift, Heart, ExternalLink, Sparkles, Package } from 'lucide-react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { BespokePackages } from '@/components/bespoke-packages'
 
 export default async function RecommendationsPage({ 
   params 
@@ -174,66 +175,7 @@ export default async function RecommendationsPage({
         </section>
 
         {/* Bespoke Packages Section */}
-        {bespokePackages.length > 0 && (
-          <section className="mb-20">
-            <div className="text-center max-w-2xl mx-auto mb-12">
-              <div className="inline-flex items-center gap-2 bg-accent/10 text-accent px-4 py-2 rounded-full text-sm font-medium mb-4">
-                <Package className="w-4 h-4" />
-                Curated Experiences
-              </div>
-              <h2 className="text-4xl font-serif font-bold mb-4">Bespoke Gift Packages</h2>
-              <p className="text-lg text-muted-foreground text-balance">
-                Thoughtfully designed combinations of gifts and experiences that create memorable moments
-              </p>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-              {bespokePackages.map((pkg: any, index: number) => (
-                <div 
-                  key={index}
-                  className="border-2 border-border rounded-2xl p-8 bg-gradient-to-br from-card to-muted/20 hover:shadow-2xl hover:border-primary/30 transition-all"
-                >
-                  <div className="flex items-start justify-between mb-4">
-                    <h3 className="text-2xl font-serif font-bold text-balance">
-                      {pkg.title}
-                    </h3>
-                    {pkg.totalPrice && (
-                      <div className="bg-primary/10 text-primary px-4 py-2 rounded-full flex-shrink-0 ml-4">
-                        <span className="font-serif font-bold">${pkg.totalPrice}</span>
-                      </div>
-                    )}
-                  </div>
-                  
-                  <p className="text-muted-foreground leading-relaxed mb-6">
-                    {pkg.description}
-                  </p>
-
-                  {pkg.components && pkg.components.length > 0 && (
-                    <div className="mb-6">
-                      <h4 className="font-semibold text-sm mb-3">What's Included:</h4>
-                      <ul className="space-y-2">
-                        {pkg.components.map((component: string, idx: number) => (
-                          <li key={idx} className="flex items-start gap-2 text-sm">
-                            <Heart className="w-4 h-4 text-primary mt-0.5 flex-shrink-0" />
-                            <span className="text-muted-foreground">{component}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {pkg.why && (
-                    <div className="bg-accent/5 border border-accent/20 rounded-xl p-4">
-                      <p className="text-sm text-muted-foreground italic">
-                        <span className="font-semibold text-foreground not-italic">Perfect because:</span> {pkg.why}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
+        <BespokePackages sessionId={sessionId} />
 
         {/* CTA Section */}
         <section className="text-center py-16 px-4 bg-gradient-to-br from-primary/10 via-accent/5 to-secondary/10 rounded-3xl">

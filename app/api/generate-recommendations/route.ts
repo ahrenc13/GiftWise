@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
+import { enrichSocialProfile } from '@/lib/enrichment-engine'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -34,10 +35,20 @@ export async function POST(request: NextRequest) {
       .eq('user_id', session.user_id)
       .eq('is_active', true)
 
-    // Build profile context from connected platforms
-    const profileContext = buildProfileContext(session.social_profiles, connections || [])
+    // Get scraped social data
+    const { data: scrapedProfiles } = await supabase
+      .from('social_profiles')
+      .select('*')
+      .eq('user_id', session.user_id)
+
+    // Build enriched profile with intelligence layer
+    const profileContext = await buildEnrichedProfileContext(
+      session,
+      connections || [],
+      scrapedProfiles || []
+    )
     
-    console.log('[v0] Profile context built, calling Claude for catalog generation')
+    console.log('[v0] Enriched profile context built, calling Claude for catalog generation')
 
     // STEP 1: Generate catalog of 30 gift products
     const catalogPrompt = `You are an expert gift curator. Based on the profile below, generate a catalog of 30 real, buyable gift products that would be perfect for this person.
@@ -224,32 +235,100 @@ Format as JSON array:
   }
 }
 
-function buildProfileContext(socialProfile: any, connections: any[]): string {
-  const connectedPlatforms = connections.map(c => c.platform).join(', ')
-  
-  let context = `RECIPIENT: ${socialProfile.recipient_name}\n`
-  
-  if (socialProfile.raw_data?.relationship) {
-    context += `RELATIONSHIP: ${socialProfile.raw_data.relationship}\n`
+/**
+ * Build enriched profile context using scraped data + enrichment intelligence
+ */
+async function buildEnrichedProfileContext(
+  session: any,
+  connections: any[],
+  scrapedProfiles: any[]
+): Promise<string> {
+  // Organize scraped data by platform
+  const socialData: any = {}
+  for (const profile of scrapedProfiles) {
+    if (profile.profile_data) {
+      if (profile.platform === 'instagram') {
+        socialData.instagram = {
+          hashtags: profile.profile_data.hashtags || {},
+          captions: profile.profile_data.captions || [],
+          mentions: profile.profile_data.mentions || [],
+        }
+      } else if (profile.platform === 'tiktok') {
+        socialData.tiktok = {
+          hashtags: profile.profile_data.hashtags || {},
+          music: profile.profile_data.music || [],
+          captions: profile.profile_data.captions || [],
+        }
+      } else if (profile.platform === 'pinterest') {
+        socialData.pinterest = {
+          boards: profile.profile_data.boards || [],
+        }
+      }
+    }
   }
+
+  // Run enrichment engine
+  const enriched = await enrichSocialProfile(socialData, {
+    name: session.recipient_name || 'Recipient',
+    age: session.recipient_age,
+    location: session.recipient_location,
+    relationship: session.relationship || 'friend',
+    gender: session.recipient_gender,
+  })
+
+  // Build detailed context for Claude
+  let context = `RECIPIENT PROFILE:\n`
+  context += `Name: ${session.recipient_name || 'Recipient'}\n`
   
-  if (socialProfile.location) {
-    context += `LOCATION: ${socialProfile.location}\n`
-  }
+  if (session.recipient_age) context += `Age: ${session.recipient_age}\n`
+  if (session.recipient_location) context += `Location: ${session.recipient_location}\n`
+  if (session.relationship) context += `Relationship: ${session.relationship}\n`
   
-  if (socialProfile.raw_data?.budget_min || socialProfile.raw_data?.budget_max) {
-    context += `BUDGET: $${socialProfile.raw_data.budget_min || 0} - $${socialProfile.raw_data.budget_max || 500}\n`
-  }
-  
-  context += `CONNECTED PLATFORMS: ${connectedPlatforms}\n`
-  
-  if (connections.length > 0) {
-    context += '\nSOCIAL INSIGHTS:\n'
-    connections.forEach(conn => {
-      context += `- ${conn.platform}: @${conn.platform_username}\n`
+  context += `\nCORE INTERESTS (${enriched.coreInterests.length}):\n`
+  enriched.coreInterests.forEach((interest, i) => {
+    context += `${i + 1}. ${interest}\n`
+  })
+
+  if (enriched.aestheticPreferences.length > 0) {
+    context += `\nAESTHETIC PREFERENCES:\n`
+    enriched.aestheticPreferences.forEach(aesthetic => {
+      context += `- ${aesthetic}\n`
     })
-    context += '\nNote: Use the connected usernames to infer interests, style preferences, music taste, and personality traits.\n'
   }
+
+  if (enriched.lifestyleSignals.length > 0) {
+    context += `\nLIFESTYLE SIGNALS:\n`
+    enriched.lifestyleSignals.forEach(signal => {
+      context += `- ${signal.replace(/_/g, ' ')}\n`
+    })
+  }
+
+  if (enriched.deepSignals.current_investments && enriched.deepSignals.current_investments.length > 0) {
+    context += `\nCURRENT BRANDS/INVESTMENTS:\n`
+    enriched.deepSignals.current_investments.forEach(brand => {
+      context += `- ${brand}\n`
+    })
+    context += `(Avoid duplicating items they already own from these brands)\n`
+  }
+
+  if (enriched.deepSignals.aspirational && enriched.deepSignals.aspirational.length > 0) {
+    context += `\nASPIRATIONAL INTERESTS (from Pinterest):\n`
+    enriched.deepSignals.aspirational.forEach(item => {
+      context += `- ${item}\n`
+    })
+  }
+
+  if (enriched.demographicTrends.length > 0) {
+    context += `\nRELEVANT TRENDS FOR THEIR DEMOGRAPHIC:\n`
+    enriched.demographicTrends.forEach(trend => {
+      context += `- ${trend}\n`
+    })
+  }
+
+  context += `\nDATA CONFIDENCE: ${enriched.confidence}%\n`
   
+  const platformNames = connections.map(c => c.platform).join(', ')
+  context += `CONNECTED PLATFORMS: ${platformNames}\n`
+
   return context
 }

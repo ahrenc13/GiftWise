@@ -12,23 +12,23 @@ export const PRODUCTS: Product[] = [
   {
     id: 'giftwise-basic',
     name: 'Basic',
-    description: 'Perfect for regular gift givers',
-    priceInCents: 900, // $9/month
-    credits: 10,
+    description: 'Perfect for thoughtful gift giving',
+    priceInCents: 799, // $7.99/month
+    credits: 5,
     tier: 'basic',
     features: [
-      '10 recommendations per month',
+      '5 recommendations per month',
       'All social integrations',
-      'Premium product catalog',
+      'AI-curated gift catalog',
       'Custom experience packages',
-      'Priority support',
+      'Email support',
     ],
   },
   {
     id: 'giftwise-premium',
-    name: 'Premium',
+    name: 'Unlimited',
     description: 'For the ultimate gifter',
-    priceInCents: 1900, // $19/month
+    priceInCents: 1499, // $14.99/month
     credits: 999, // Unlimited (represented as high number)
     tier: 'premium',
     features: [
@@ -36,8 +36,25 @@ export const PRODUCTS: Product[] = [
       'All social integrations',
       'Premium product catalog',
       'Luxury experience packages',
-      'White-glove support',
+      'Priority support',
       'Early access to features',
+    ],
+  },
+  {
+    id: 'giftwise-annual',
+    name: 'Annual',
+    description: 'Best value - save 55%',
+    priceInCents: 7999, // $79.99/year
+    credits: 999,
+    tier: 'premium',
+    features: [
+      'Unlimited recommendations',
+      'All social integrations',
+      'Premium product catalog',
+      'Luxury experience packages',
+      'Priority support',
+      'Early access to features',
+      'Gift reminder calendar',
     ],
   },
 ]

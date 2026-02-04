@@ -1,331 +1,328 @@
-# 🎁 GIFTWISE - COMPLETE OAUTH SYSTEM
+# 🎁 GiftWise - AI-Powered Gift Recommendations
 
-## ✅ YOU NOW HAVE A PRODUCTION-READY GIFT RECOMMENDATION PLATFORM!
+## Modern Next.js App with Claude AI
 
-This is a complete, working multi-platform OAuth system with:
-- Instagram OAuth integration
-- Spotify OAuth integration  
-- Pinterest OAuth integration
-- TikTok public scraping (OAuth coming later)
-- Multi-platform AI recommendation engine
-- Beautiful responsive UI
-- Stripe payment integration ready
-- Amazon affiliate monetization ready
+A beautiful, production-ready gift recommendation platform that uses AI to analyze social profiles and suggest thoughtful, personalized gifts. Built with Next.js 16, Supabase, Stripe, and Claude AI.
 
----
-
-## 📁 Complete File Structure
-
-```
-giftwise/
-├── SETUP_GUIDE.md              # ⭐ START HERE - Complete setup instructions
-├── giftwise_app.py             # Main Flask application with all OAuth flows
-├── platform_integrations.py   # Data fetching from each platform
-├── recommendation_engine.py    # Claude-powered recommendation generation
-├── requirements.txt            # Python dependencies
-├── .env.template               # Template for environment variables
-├── .gitignore                  # Prevents committing secrets
-│
-└── templates/                  # HTML templates
-    ├── index.html              # Landing page with demo
-    ├── signup.html             # Email signup page
-    ├── connect_platforms.html  # OAuth connection dashboard
-    ├── generating.html         # Loading screen
-    └── recommendations.html    # Results display
-```
+### Core Features
+- Multi-platform profile analysis (Instagram, TikTok, Pinterest, Spotify)
+- Claude AI-powered gift curation (~30 products → top 10-15 selections)
+- Bespoke experience packages (experiences + complementary gifts)
+- Freemium model with Stripe subscriptions
+- Beautiful, human-feeling design (warm colors, serif typography)
 
 ---
 
-## 🚀 Quick Start (5 Minutes)
+## 🚀 Tech Stack
 
-### 1. Install Dependencies
-```bash
-pip install -r requirements.txt
-```
-
-### 2. Create Environment File
-```bash
-cp .env.template .env
-# Edit .env with your API keys (see SETUP_GUIDE.md)
-```
-
-### 3. Run Locally
-```bash
-python giftwise_app.py
-```
-
-Visit: **http://localhost:5000**
+- **Framework**: Next.js 16 with App Router and React 19
+- **Database**: Supabase (PostgreSQL with Row Level Security)
+- **AI**: Anthropic Claude 3.5 Sonnet
+- **Payments**: Stripe Checkout & Subscriptions
+- **Styling**: Tailwind CSS with custom design tokens
+- **Typography**: DM Serif Display (headings) + Inter (body)
+- **Deployment**: Optimized for Vercel
 
 ---
 
-## 🎯 What This System Does
+## 📁 Project Structure
 
-### User Experience:
-1. **Lands on homepage** → Sees demo recommendations
-2. **Signs up** → Enters email (no password yet)
-3. **Connects platforms** → Chooses Instagram/Spotify/Pinterest/TikTok
-4. **OAuth flow** → Authorizes access to each platform
-5. **Generates recs** → AI analyzes all connected platforms
-6. **Gets results** → 10 ultra-specific product recommendations
+```
+app/
+├── page.tsx                           # Landing page with pricing
+├── dashboard/page.tsx                 # Connect platforms & start recs
+├── recommendations/[sessionId]/       # Display curated gifts
+├── pricing/                           # Stripe checkout flow
+├── auth/                              # Supabase authentication
+└── api/
+    ├── generate-recommendations/      # Claude recommendation engine
+    └── generate-bespoke-packages/     # Experience package creation
 
-### Behind The Scenes:
-```python
-# When user connects Instagram:
-1. Redirect to Instagram OAuth
-2. User approves access
-3. Instagram sends back authorization code
-4. Exchange code for access token
-5. Store token securely
-6. Fetch user's posts, hashtags, interests
-7. Same for Spotify, Pinterest, TikTok
+components/
+├── connect-platform-button.tsx        # OAuth connection UI
+├── start-recommendation-button.tsx    # Start recommendation flow
+├── bespoke-packages.tsx              # Display experience packages
+└── checkout.tsx                      # Stripe checkout embed
 
-# When generating recommendations:
-1. Fetch data from all connected platforms
-2. Build comprehensive context
-3. Send to Claude with specific prompt
-4. Claude analyzes cross-platform signals
-5. Returns 10 ultra-specific products
-6. Add Amazon affiliate links
-7. Display to user
+lib/
+├── supabase/                         # Supabase clients (server/client)
+├── products.ts                       # Stripe product catalog
+└── stripe.ts                         # Stripe server client
+
+scripts/
+└── 001_giftwise_schema.sql           # Database schema migration
 ```
 
 ---
 
-## 🔑 What You Need to Get
+## 🚀 Quick Start
 
-### Required API Keys:
+### 1. Set Up Integrations (v0 Sidebar)
 
-1. **Anthropic API Key** (for Claude recommendations)
-   - Get at: https://console.anthropic.com
-   - Free tier: 5K tokens/month
-   - Cost: ~$1 per analysis after that
+**Connect Supabase:**
+1. Go to "Connect" in the sidebar
+2. Add Supabase integration
+3. This creates your database and adds env vars automatically
 
-2. **Apify API Token** (for TikTok scraping)
-   - Get at: https://console.apify.com
+**Connect Stripe:**
+1. Go to "Connect" in the sidebar  
+2. Add Stripe integration
+3. Get test API keys for development
+
+### 2. Add Environment Variables (v0 Sidebar)
+
+Go to "Vars" in the sidebar and add:
+- `ANTHROPIC_API_KEY` - Get from https://console.anthropic.com
+- `NEXT_PUBLIC_SITE_URL` - Your site URL (e.g., https://giftwise.vercel.app)
+
+### 3. Run Database Migration
+
+Execute `scripts/001_giftwise_schema.sql` via the Supabase dashboard or v0 sidebar.
+
+### 4. Deploy
+
+Click "Publish" in v0 to deploy to Vercel automatically!
+
+---
+
+## 🎯 How It Works
+
+### User Flow:
+1. **Sign up** → Create account with Supabase auth
+2. **Connect platforms** → Link Instagram, TikTok, Pinterest, Spotify via OAuth/Apify
+3. **Enter recipient info** → Name, age, location, relationship
+4. **Start generation** → Trigger AI analysis (processing takes ~30-60 seconds)
+5. **View recommendations** → See 10-15 curated gifts with reasoning
+6. **Explore bespoke packages** → Experience + gift combinations tailored to them
+7. **Upgrade for more** → Free tier (1/month) → Paid plans (unlimited)
+
+### AI Recommendation Process:
+
+**Step 1: Profile Building**
+- Scrape connected social platforms for interests, aesthetics, locations
+- Extract: music taste, visual style, hobbies, aspirations, existing items
+- Build comprehensive recipient profile with cross-platform validation
+
+**Step 2: Catalog Generation (Claude)**
+- Prompt Claude to generate ~30 real, buyable gift ideas
+- Include: exact product names, brands, models, retailers, prices
+- Ensure products exist, have images, and are purchasable online
+- Mix categories: experiences, gadgets, fashion, home, books, etc.
+
+**Step 3: Selection & Curation (Claude)**
+- From the 30-item catalog, select the best 10-15 gifts
+- Provide personalized reasoning for each selection
+- Score confidence levels and match percentages
+- Avoid items they likely already own (from social data)
+
+**Step 4: Bespoke Packages (Claude)**
+- Create 3 unique experience + gift combinations
+- Personalized to their location, interests, personality
+- Include realistic pricing and shopping links
+- Each package tells a cohesive story
+
+---
+
+## 🔑 Required API Keys
+
+### Core (Required):
+1. **Anthropic API Key** - Get from https://console.anthropic.com
+   - Free tier available, then ~$0.03 per recommendation
+2. **Supabase Project** - Auto-configured via v0 integration
+3. **Stripe Account** - Auto-configured via v0 integration (optional but recommended)
+
+### OAuth Platforms (Recommended):
+For best results, set up OAuth apps for social platforms:
+
+1. **Apify** - For Instagram/TikTok scraping
+   - https://console.apify.com
    - Free tier: $5/month credit
-   - Cost: ~$0.30 per 100 TikTok posts
+   
+2. **Spotify API** - For music taste analysis
+   - https://developer.spotify.com/dashboard
+   - Free, takes 10 minutes to set up
 
-3. **Instagram OAuth App**
-   - Create at: https://developers.facebook.com
-   - Takes: 15-20 minutes to set up
-   - Free forever
+3. **Pinterest API** - For visual/aspiration analysis  
+   - https://developers.pinterest.com
+   - Free, takes 15 minutes to set up
 
-4. **Spotify OAuth App**
-   - Create at: https://developer.spotify.com
-   - Takes: 10 minutes to set up
-   - Free forever
-
-5. **Pinterest OAuth App**
-   - Create at: https://developers.pinterest.com
-   - Takes: 15 minutes to set up
-   - Free forever
-
-### Optional (for monetization):
-
-6. **Stripe Account** (for payments)
-   - Sign up at: https://stripe.com
-   - 2.9% + $0.30 per transaction
-
-7. **Amazon Associates ID** (for affiliate revenue)
-   - Sign up at: https://affiliate-program.amazon.com
-   - 1-10% commission on purchases
+*Note: OAuth setup is optional for MVP - you can start with manual profile input and add OAuth later.*
 
 ---
 
-## 💡 Key Features
+## ✨ Key Features
 
-### Multi-Platform OAuth
-- ✅ Full Instagram access (posts, hashtags, engagement)
-- ✅ Full Spotify access (top artists, playlists, listening history)
-- ✅ Full Pinterest access (boards, pins, aspirational content)
-- ✅ TikTok public scraping (posts, hashtags, music)
+### AI-Powered Curation
+- Two-step Claude process: catalog generation → intelligent selection
+- Product validation with real URLs, prices, and images
+- Avoids hallucinations by requiring specific brands/models
+- Personalized reasoning for each recommendation
+- Cross-platform signal validation for accuracy
 
-### AI Recommendation Engine
-- ✅ Cross-platform signal validation
-- ✅ Identifies existing investments (won't duplicate)
-- ✅ Finds adjacent/complementary gifts
-- ✅ Ultra-specific product names (brands, models, editions)
-- ✅ Confidence scoring (safe, balanced, stretch)
-- ✅ Match percentages (85-95% for safe items)
+### Bespoke Experience Packages
+- Combines experiences (dinners, concerts, classes) with complementary gifts
+- Location-aware suggestions based on recipient's city
+- Cohesive themes that tell a story
+- Realistic pricing with shopping links
+- 3 unique packages per recommendation session
 
-### User Experience
-- ✅ Beautiful, responsive design
-- ✅ Platform connection dashboard
-- ✅ Progress tracking
-- ✅ Loading animations
-- ✅ Direct Amazon links
-- ✅ Platform badge indicators
+### Beautiful, Human Design
+- Warm color palette (rose, terracotta, sage green, cream)
+- DM Serif Display for personality, Inter for readability
+- Personal language ("for them", "thoughtfully curated")
+- Generous spacing and breathing room
+- No generic AI aesthetic - feels like a thoughtful friend
 
-### Monetization Ready
-- ✅ Stripe integration built-in
-- ✅ Amazon affiliate link structure
-- ✅ $4.99/month subscription model
-- ✅ 7-day free trial support
-
----
-
-## 📊 Business Model
-
-### Revenue Streams:
-1. **Subscriptions:** $4.99/month per user
-2. **Affiliate commissions:** ~$4/user from Amazon clicks
-
-### Costs Per User:
-- Scraping: $1.00 (Instagram + Spotify + Pinterest + TikTok)
-- Claude API: $0.03 (10 recommendations)
-- **Total: $1.03 per user**
-
-### Margins:
-- Subscription revenue: $4.99
-- Affiliate revenue: $4.00
-- Total revenue: $8.99
-- Total costs: $1.03
-- **Net profit: $7.96 per user (87% margin)** 💰
-
-### Scale Projections:
-- 10 users: $89.90/month profit
-- 100 users: $796/month profit
-- 1,000 users: $7,960/month profit
-- 10,000 users: $79,600/month profit 🚀
+### Freemium Monetization
+- Free tier: 1 recommendation per month
+- Basic ($9/mo): 5 recommendations  
+- Pro ($19/mo): Unlimited recommendations
+- Stripe-powered subscriptions with automatic billing
+- Valentine's Day timing for seasonal boost
 
 ---
 
-## 🛠️ Technology Stack
+## 💰 Business Model
 
-### Backend:
-- **Flask** - Web framework
-- **requests-oauthlib** - OAuth 2.0 handling
-- **Anthropic Python SDK** - Claude API
-- **Stripe** - Payment processing
-- **shelve** - Simple database (upgrade to PostgreSQL for scale)
+**Freemium Subscription:**
+- Free: 1 recommendation/month
+- Basic ($9/mo): 5 recommendations/month  
+- Pro ($19/mo): Unlimited recommendations
 
-### Frontend:
-- **Vanilla HTML/CSS** - No framework needed
-- **Responsive design** - Works on mobile
-- **Modern gradients** - Beautiful UI
+**Cost Structure:**
+- Claude API: ~$0.03 per recommendation
+- Apify scraping: ~$0.30 per recipient (optional)
+- Stripe fees: 2.9% + $0.30
+- Hosting: Free on Vercel (hobby tier)
 
-### Integrations:
-- **Instagram Basic Display API** - OAuth
-- **Spotify Web API** - OAuth
-- **Pinterest API v5** - OAuth
-- **Apify** - TikTok public scraping
+**Potential Revenue Streams:**
+- Subscriptions (primary)
+- Amazon affiliate links (secondary)
+- Gift concierge service for high-value users (future)
 
 ---
 
-## 🔒 Security Features
+## 🔒 Security & Best Practices
 
-- ✅ Environment variables for all secrets
-- ✅ OAuth 2.0 with CSRF protection
-- ✅ Secure token storage
-- ✅ .gitignore prevents credential leaks
-- ✅ HTTPS required in production
-
----
-
-## 📈 Next Steps
-
-### This Week:
-1. Read `SETUP_GUIDE.md` (complete walkthrough)
-2. Set up OAuth apps (Instagram, Spotify, Pinterest)
-3. Get API keys (Anthropic, Apify)
-4. Test locally with your own accounts
-5. Get 3 friends to test
-
-### Next Week:
-1. Deploy to Railway or Heroku
-2. Update OAuth redirect URIs for production
-3. Set up Stripe payment
-4. Get Amazon Associates account
-5. Launch to 10 beta users
-
-### Month 2:
-1. Collect feedback and iterate
-2. Add more platforms (Goodreads, YouTube, etc.)
-3. Build shareable gift profiles (viral growth)
-4. Post to Reddit/Product Hunt
-5. Scale to 100+ users
+- Row Level Security (RLS) on all Supabase tables
+- Server-side price validation for Stripe
+- HTTP-only cookies for sessions
+- OAuth 2.0 for social platform connections
+- Environment variables for all secrets
+- Input validation and sanitization
+- Proper error handling throughout
 
 ---
 
-## 🎯 Why This is Special
+## 🚀 Deployment
 
-### Competitive Advantages:
-1. **ONLY multi-platform gift AI** (Instagram + Spotify + Pinterest + TikTok)
-2. **User controls data** (choose what to connect)
-3. **Cross-platform validation** (interests on 3+ platforms = 95% confidence)
-4. **Avoids duplicates** (identifies existing investments)
-5. **Ultra-specific recommendations** (brands, models, not categories)
+### Deploy to Vercel (Recommended):
+1. Click "Publish" in v0 (deploys automatically)
+2. Or: Connect your GitHub repo to Vercel
+3. Add environment variables in Vercel dashboard
+4. Deploy!
 
-### Network Effects:
-- More users = more shareable profiles
-- Shareable profiles = viral growth
-- Multi-platform connection = high switching costs
-- Data moat deepens with every user
+### Database Setup:
+1. Connect Supabase integration in v0
+2. Execute `scripts/001_giftwise_schema.sql` 
+3. Verify tables created successfully
 
----
-
-## 📚 Documentation
-
-### Read These in Order:
-1. **This README** - Overview (you are here)
-2. **SETUP_GUIDE.md** - Step-by-step setup instructions
-3. **File comments** - Each .py file has detailed comments
-
-### Key Files to Understand:
-- `giftwise_app.py` - All the routes and OAuth flows
-- `platform_integrations.py` - How data is fetched from each platform
-- `recommendation_engine.py` - How Claude generates recommendations
+### Production Checklist:
+- ✅ Supabase project connected
+- ✅ Stripe account configured (or use test mode)
+- ✅ Anthropic API key added
+- ✅ Database migration executed
+- ✅ Test signup → connect platforms → generate recommendations
+- ✅ Verify Stripe checkout works
 
 ---
 
-## 🐛 Common Issues
+## 🎯 Next Steps
 
-### "Redirect URI mismatch"
-→ Make sure `.env` redirect URI EXACTLY matches OAuth app settings
+### Immediate (This Week):
+1. **Test the full flow** - Sign up, connect platforms (manually for now), generate recommendations
+2. **Set up Anthropic API** - Get API key from https://console.anthropic.com
+3. **Deploy to production** - Click Publish in v0
+4. **Test with 3-5 friends** - Get real user feedback
 
-### "Invalid client"
-→ Check your client ID and secret are correct
+### Short-term (Next 2 Weeks):
+1. **Set up OAuth apps** - Apify, Spotify, Pinterest for real social data
+2. **Refine prompts** - Improve Claude's recommendations based on feedback
+3. **Add more gift sources** - Etsy, specialty retailers beyond Amazon
+4. **Valentine's launch** - Soft launch to capture seasonal demand
 
-### "No recommendations generated"
-→ Make sure at least 2 platforms are connected
+### Medium-term (Month 2):
+1. **Collect feedback** - Iterate on UI/UX and recommendation quality
+2. **Add sharing** - Let users share their recommendations ("Wish List")
+3. **Build waitlist/referrals** - Viral growth mechanics
+4. **Scale marketing** - Reddit, Product Hunt, Instagram ads
 
-### OAuth works locally but not in production
-→ Update redirect URIs in OAuth apps to use your production domain
-
----
-
-## 💪 You Have Everything You Need
-
-This is a **complete, production-ready system**. Not a prototype. Not a demo. A real product you can launch today.
-
-### What You Can Do Right Now:
-✅ Accept real payments (Stripe)
-✅ Handle real users (OAuth)
-✅ Generate real recommendations (Claude)
-✅ Earn real money (Amazon affiliates)
-
-### Timeline to Launch:
-- **Today:** Set up OAuth apps
-- **Tomorrow:** Test with friends
-- **This weekend:** Deploy to production
-- **Next week:** Launch publicly
-
-You're ready. Let's go! 🚀
+### Future Features:
+- Gift history tracking (avoid re-gifting)
+- Collaboration mode (split costs with others)
+- Occasion reminders (birthdays, anniversaries)
+- Group gifting pools
+- AI chat interface for refinement
 
 ---
 
-## 📞 Support
+## 🐛 Troubleshooting
 
-If you get stuck:
-1. Check `SETUP_GUIDE.md` first
-2. Review error messages carefully
-3. Check OAuth app settings (90% of issues)
-4. Test each platform separately
+**"Session not found" errors:**
+- Check that Supabase is properly connected
+- Verify database migration ran successfully
+
+**Recommendations not generating:**
+- Confirm ANTHROPIC_API_KEY is set correctly
+- Check API quota hasn't been exceeded
+- Verify Claude API endpoint is accessible
+
+**Stripe checkout not working:**
+- Make sure Stripe integration is connected
+- Check that products are configured in lib/products.ts
+- Verify STRIPE_SECRET_KEY is present
 
 ---
 
-**Built by:** Chad + Claude  
-**Date:** January 2026  
-**Version:** 1.0 (Production Ready)
+## 📝 Database Schema
 
-Let's build something amazing! 🎁✨
+Key tables (see `scripts/001_giftwise_schema.sql`):
+- **profiles** - User profiles with subscription tier
+- **oauth_connections** - Platform connection tokens
+- **social_profiles** - Scraped recipient data
+- **recommendation_sessions** - Each recommendation generation
+- **gift_products** - Individual gift recommendations
+- **bespoke_packages** - Experience + gift packages
+- **purchases** - Stripe payment records
+
+All tables have Row Level Security (RLS) enabled for data protection.
+
+---
+
+## 💡 Design Philosophy
+
+**Why it doesn't look AI-generated:**
+- Warm, human color palette (no purple/cyan/tech colors)
+- Serif headings add personality and warmth
+- Personal language throughout ("for them", "perfect because...")
+- Real product reasoning shown, not hidden
+- Generous whitespace and breathing room
+- Thoughtful micro-interactions
+
+**Core values reflected in design:**
+- **Thoughtfulness** - Every detail considered
+- **Warmth** - Inviting, not clinical
+- **Clarity** - Easy to understand and use
+- **Delight** - Small moments of joy
+
+---
+
+## 📄 License
+
+MIT License - feel free to fork and adapt!
+
+---
+
+**Built with:** Next.js 16, Supabase, Claude AI, Stripe, and care  
+**Version:** 1.0 (Next.js migration)  
+**Ready for:** Valentine's Day 2026 launch 🎁

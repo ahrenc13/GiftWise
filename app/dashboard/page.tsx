@@ -91,12 +91,12 @@ export default async function DashboardPage() {
                 </div>
               </div>
 
-              <div className="grid sm:grid-cols-2 gap-4">
+              <div className="grid sm:grid-cols-2 gap-4 mb-6">
                 {[
                   { platform: 'instagram', name: 'Instagram', icon: Instagram, color: 'from-purple-500 to-pink-500' },
-                  { platform: 'spotify', name: 'Spotify', icon: Music, color: 'from-green-500 to-emerald-500' },
                   { platform: 'tiktok', name: 'TikTok', icon: TrendingUp, color: 'from-black to-red-500' },
                   { platform: 'pinterest', name: 'Pinterest', icon: Sparkles, color: 'from-red-500 to-rose-500' },
+                  { platform: 'spotify', name: 'Spotify', icon: Music, color: 'from-green-500 to-emerald-500', disabled: true, note: 'Coming soon' },
                 ].map((item) => {
                   const isConnected = connectedPlatforms.has(item.platform)
                   return (
@@ -117,6 +117,8 @@ export default async function DashboardPage() {
                           <div className="w-2 h-2 rounded-full bg-primary" />
                           <span>Connected</span>
                         </div>
+                      ) : item.disabled ? (
+                        <p className="text-sm text-muted-foreground">{item.note}</p>
                       ) : (
                         <ConnectPlatformButton platform={item.platform} name={item.name} />
                       )}
@@ -124,6 +126,33 @@ export default async function DashboardPage() {
                   )
                 })}
               </div>
+
+              {/* Additional Platforms */}
+              <details className="group">
+                <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground flex items-center gap-2 mb-4">
+                  <span>Additional Platforms (Optional)</span>
+                  <TrendingUp className="w-4 h-4 transition-transform group-open:rotate-90" />
+                </summary>
+                <div className="grid sm:grid-cols-3 gap-3">
+                  {[
+                    { platform: 'youtube', name: 'YouTube', color: 'from-red-500 to-red-600', note: 'Coming soon' },
+                    { platform: 'goodreads', name: 'Goodreads', color: 'from-yellow-600 to-amber-600', note: 'Coming soon' },
+                    { platform: 'letterboxd', name: 'Letterboxd', color: 'from-blue-500 to-cyan-500', note: 'Coming soon' },
+                    { platform: 'etsy', name: 'Etsy', color: 'from-orange-500 to-orange-600', note: 'Coming soon' },
+                    { platform: 'strava', name: 'Strava', color: 'from-orange-600 to-red-500', note: 'Coming soon' },
+                    { platform: 'linkedin', name: 'LinkedIn', color: 'from-blue-600 to-blue-700', note: 'Coming soon' },
+                  ].map((item) => (
+                    <div
+                      key={item.platform}
+                      className="relative border border-border rounded-lg p-4 bg-muted/30"
+                    >
+                      <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${item.color} mb-2`} />
+                      <h4 className="text-sm font-medium mb-1">{item.name}</h4>
+                      <p className="text-xs text-muted-foreground">{item.note}</p>
+                    </div>
+                  ))}
+                </div>
+              </details>
             </section>
 
             {/* Start New Recommendation */}

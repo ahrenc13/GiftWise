@@ -404,7 +404,29 @@
                 </div>
                 {% endfor %}
                 
-                <button class="secondary" onclick="addInterest()" style="margin-top: 15px;">+ Add Something We Missed</button>
+                <div id="add-interest-form" style="display: none; margin-top: 15px; padding: 20px; background: #f8f9fa; border-radius: 12px; border: 1px solid #e0e0e0;">
+                    <h4 style="margin-bottom: 12px;">Add an interest</h4>
+                    <p style="font-size: 14px; color: #555; margin-bottom: 12px;">We'll include it when finding gifts.</p>
+                    <label style="display: block; font-weight: 600; margin-bottom: 4px;">Interest name</label>
+                    <input type="text" id="new-interest-name" placeholder="e.g. Vintage vinyl" style="width: 100%; max-width: 320px; padding: 10px; margin-bottom: 12px; border-radius: 8px; border: 1px solid #ccc;">
+                    <label style="display: block; font-weight: 600; margin-bottom: 4px;">What do {{ pronoun_subject }} like about it? (optional)</label>
+                    <textarea id="new-interest-desc" placeholder="e.g. Collects 70s rock" style="width: 100%; max-width: 320px; padding: 10px; margin-bottom: 12px; border-radius: 8px; border: 1px solid #ccc; min-height: 60px;"></textarea>
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px;">Is this related to {{ pronoun_possessive }} job/work?</label>
+                    <div style="margin-bottom: 12px;">
+                        <label style="margin-right: 16px;"><input type="radio" name="new-interest-work" id="new-interest-work-no" value="no" checked> No, it's a hobby</label>
+                        <label><input type="radio" name="new-interest-work" id="new-interest-work-yes" value="yes"> Yes, it's work</label>
+                    </div>
+                    <label style="display: block; font-weight: 600; margin-bottom: 8px;">Do {{ pronoun_subject }} actively do this?</label>
+                    <div style="margin-bottom: 16px;">
+                        <label style="margin-right: 16px;"><input type="radio" name="new-interest-active" id="new-interest-active-yes" value="yes" checked> Yes, {{ pronoun_subject }} do it</label>
+                        <label><input type="radio" name="new-interest-active" id="new-interest-active-no" value="no"> No, {{ pronoun_subject }} mostly watch/enjoy</label>
+                    </div>
+                    <button type="button" class="small primary" onclick="submitAddInterest()">Add to profile</button>
+                    <button type="button" class="small secondary" onclick="cancelAddInterest()" style="margin-left: 8px;">Cancel</button>
+                </div>
+                <div id="add-interest-btn-wrap">
+                    <button class="secondary" onclick="showAddInterestForm()" style="margin-top: 15px;">+ Add Something We Missed</button>
+                </div>
             </div>
         </div>
         
@@ -454,7 +476,7 @@
         <div class="personality-card">
             <div class="validation-prompt">
                 <h3>Ready to find gifts?</h3>
-                <p>If something is wrong—work vs. hobby, or we got the wrong interest—use the buttons on each card to fix it. When it looks good, click the green button below.</p>
+                <p>Fix anything that's wrong—edit names, mark work vs. hobby, add or remove interests. <strong>Changes apply immediately</strong> and will be used when you click Find my gifts.</p>
             </div>
             
             <div class="actions">
@@ -479,47 +501,125 @@
         }
         
         function saveEdit(index) {
-            const name = document.getElementById(`name-${index}`).value;
-            const desc = document.getElementById(`desc-${index}`).value;
-            
+            const name = document.getElementById(`name-${index}`).value.trim();
+            const desc = document.getElementById(`desc-${index}`).value.trim();
+            if (!name) return;
             profileData.interests[index].name = name;
             profileData.interests[index].description = desc;
-            
-            alert('Saved! Changes will apply when you continue.');
+            const card = document.querySelector(`[data-interest-id="${index}"]`);
+            if (card) {
+                card.querySelector('.vibe-title').textContent = name;
+                card.querySelector('.vibe-description').textContent = desc || (pronounSubject === 'you' ? "You're into " + name : "They're into " + name);
+            }
             cancelEdit(index);
+            alert('Updated.');
         }
         
         function toggleWork(index) {
             profileData.interests[index].is_work = !profileData.interests[index].is_work;
-            location.reload();
-        }
-        
-        function removeInterest(index) {
-            if (confirm('Remove this from {{ pronoun_possessive }} profile?')) {
-                profileData.interests.splice(index, 1);
-                alert('Removed! Page will refresh.');
-                location.reload();
+            const card = document.querySelector('[data-interest-id="' + index + '"]');
+            if (!card) return;
+            const tags = card.querySelector('.vibe-tags');
+            const workTag = card.querySelector('.tag.work');
+            const toggleBtn = card.querySelector('.work-toggle') || Array.prototype.find.call(card.querySelectorAll('button'), function(b) { return b.textContent.indexOf('Mark as') !== -1; });
+            if (profileData.interests[index].is_work) {
+                if (!workTag && tags) {
+                    const span = document.createElement('span');
+                    span.className = 'tag work';
+                    span.textContent = '🏢 Work Thing (won\'t suggest gifts here)';
+                    tags.insertBefore(span, tags.firstChild);
+                }
+                if (toggleBtn) toggleBtn.textContent = "Mark as hobby (we'll suggest gifts)";
+                if (toggleBtn) toggleBtn.className = 'small work-toggle';
+            } else {
+                if (workTag) workTag.remove();
+                if (toggleBtn) toggleBtn.textContent = "Mark as work (we won't suggest gifts here)";
+                if (toggleBtn) toggleBtn.className = 'small secondary';
             }
         }
         
-        function addInterest() {
-            const name = prompt('What interest did we miss?');
-            if (!name) return;
-            
-            const desc = prompt(`What do ${pronounSubject} like about ${name}?`);
-            const isWork = confirm('Is this related to ' + pronounPossessive + ' job/work?');
-            const isActive = confirm('Do ' + pronounSubject + ' actively DO this? (vs just watching/enjoying)');
-            
-            profileData.interests.push({
+        function removeInterest(index) {
+            if (!confirm('Remove this from ' + pronounPossessive + ' profile?')) return;
+            profileData.interests.splice(index, 1);
+            var card = document.querySelector('[data-interest-id="' + index + '"]');
+            if (card) card.remove();
+            var cards = document.querySelectorAll('.vibe-card[data-interest-id]');
+            for (var i = 0; i < cards.length; i++) {
+                cards[i].setAttribute('data-interest-id', i);
+                var editDiv = cards[i].querySelector('.edit-inline');
+                if (editDiv) {
+                    editDiv.id = 'edit-' + i;
+                    var inp = editDiv.querySelector('input[id^="name-"]');
+                    var ta = editDiv.querySelector('textarea[id^="desc-"]');
+                    if (inp) inp.id = 'name-' + i;
+                    if (ta) ta.id = 'desc-' + i;
+                }
+                cards[i].querySelectorAll('button').forEach(function(btn) {
+                    var on = btn.getAttribute('onclick');
+                    if (!on) return;
+                    on = on.replace(/editInterest\(\d+\)/, 'editInterest(' + i + ')').replace(/removeInterest\(\d+\)/, 'removeInterest(' + i + ')').replace(/toggleWork\(\d+\)/, 'toggleWork(' + i + ')').replace(/saveEdit\(\d+\)/, 'saveEdit(' + i + ')').replace(/cancelEdit\(\d+\)/, 'cancelEdit(' + i + ')');
+                    btn.setAttribute('onclick', on);
+                });
+            }
+            alert('Removed.');
+        }
+        
+        function showAddInterestForm() {
+            document.getElementById('add-interest-form').style.display = 'block';
+            document.getElementById('add-interest-btn-wrap').style.display = 'none';
+            document.getElementById('new-interest-name').focus();
+        }
+        function cancelAddInterest() {
+            document.getElementById('add-interest-form').style.display = 'none';
+            document.getElementById('add-interest-btn-wrap').style.display = 'block';
+            document.getElementById('new-interest-name').value = '';
+            document.getElementById('new-interest-desc').value = '';
+        }
+        function submitAddInterest() {
+            const name = document.getElementById('new-interest-name').value.trim();
+            if (!name) { alert('Please enter an interest name.'); return; }
+            const desc = document.getElementById('new-interest-desc').value.trim();
+            const isWork = document.getElementById('new-interest-work-yes').checked;
+            const isActive = document.getElementById('new-interest-active-yes').checked;
+            const newInterest = {
                 name: name,
-                description: desc || (pronounSubject === 'you' ? `You're into ${name}` : `They're into ${name}`),
+                description: desc || (pronounSubject === 'you' ? "You're into " + name : "They're into " + name),
                 is_work: isWork,
                 activity_type: isActive ? 'active' : 'passive',
                 confidence: 1.0
-            });
-            
-            alert('Added! Page will refresh.');
-            location.reload();
+            };
+            profileData.interests.push(newInterest);
+            const index = profileData.interests.length - 1;
+            const container = document.querySelector('.personality-section');
+            const addBtnWrap = document.getElementById('add-interest-btn-wrap');
+            const cardHtml = '<div class="vibe-card" data-interest-id="' + index + '">' +
+                '<div class="vibe-title">' + escapeHtml(name) + '</div>' +
+                '<div class="vibe-description">' + escapeHtml(newInterest.description) + '</div>' +
+                '<div class="vibe-tags">' +
+                (isWork ? '<span class="tag work">🏢 Work Thing (won\'t suggest gifts here)</span>' : '') +
+                (isActive ? '<span class="tag active">🏃 Actually Does This</span>' : '<span class="tag">👀 Watches/Enjoys This</span>') +
+                '<span class="confidence-indicator confidence-high">100% sure</span></div>' +
+                '<div class="correction-buttons">' +
+                '<button class="small secondary" onclick="editInterest(' + index + ')">✏️ Edit</button>' +
+                '<button class="small secondary" onclick="removeInterest(' + index + ')">❌ Remove</button>' +
+                (isWork ? '<button class="small work-toggle" onclick="toggleWork(' + index + ')">Mark as hobby (we\'ll suggest gifts)</button>' : '<button class="small secondary" onclick="toggleWork(' + index + ')">Mark as work (we won\'t suggest gifts here)</button>') +
+                '</div>' +
+                '<div class="edit-inline" id="edit-' + index + '">' +
+                '<input type="text" id="name-' + index + '" value="' + escapeHtml(name) + '" placeholder="Interest name">' +
+                '<textarea id="desc-' + index + '" placeholder="What ' + pronounSubject + ' like about it">' + escapeHtml(newInterest.description) + '</textarea>' +
+                '<button class="small" onclick="saveEdit(' + index + ')">💾 Save</button>' +
+                '<button class="small secondary" onclick="cancelEdit(' + index + ')">Cancel</button></div></div>';
+            const div = document.createElement('div');
+            div.innerHTML = cardHtml;
+            container.insertBefore(div.firstChild, addBtnWrap);
+            cancelAddInterest();
+            alert('Added. It\'s in your profile above.');
+        }
+        function escapeHtml(s) {
+            if (!s) return '';
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
         }
         
         let locationAutocompleteTimer = null;

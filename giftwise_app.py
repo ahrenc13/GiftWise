@@ -2367,13 +2367,16 @@ def api_generate_recommendations():
                 u = u.strip().rstrip('/')
                 return u or ''
             product_url_to_image = {}
+            valid_product_urls = set()  # only gifts with URLs in this set—no invented products
             for p in products:
-                link = _normalize_url_for_image(p.get('link', ''))
+                raw_link = (p.get('link') or '').strip()
+                if raw_link:
+                    valid_product_urls.add(raw_link)
+                    valid_product_urls.add(_normalize_url_for_image(raw_link))
+                link = _normalize_url_for_image(raw_link)
                 if link:
                     img = (p.get('image') or p.get('thumbnail') or '').strip()
                     product_url_to_image[link] = img
-                # Also key by raw link so either format matches
-                raw_link = (p.get('link') or '').strip()
                 if raw_link and raw_link not in product_url_to_image:
                     product_url_to_image[raw_link] = (p.get('image') or p.get('thumbnail') or '').strip()
             
@@ -2383,22 +2386,22 @@ def api_generate_recommendations():
                 def is_bad_product_url(url):
                     return False
             
-            # Combine and format recommendations
+            # Combine and format recommendations: only product gifts from inventory (real buyable links)
             all_recommendations = []
             
-            # Add product gifts only when we have a valid direct link (no broken/no-thumbnail clutter)
             for gift in product_gifts:
                 product_url = (gift.get('product_url') or '').strip()
-                # Lookup thumbnail by exact URL and by normalized URL so we match SerpAPI image
+                # Must be from inventory—never show invented or search-page gifts
+                if product_url not in valid_product_urls and _normalize_url_for_image(product_url) not in valid_product_urls:
+                    logger.debug(f"Dropping product gift not in inventory: {gift.get('name', '')[:50]}")
+                    continue
                 image_url = (gift.get('image_url') or '').strip()
                 if not image_url:
                     image_url = product_url_to_image.get(product_url, '') or product_url_to_image.get(_normalize_url_for_image(product_url), '')
                 if is_bad_product_url(product_url):
                     product_url = ''
                     image_url = ''
-                # Skip product recs with no valid link—unacceptable to show "Link Coming Soon" + no thumbnail
                 if not product_url:
-                    logger.debug(f"Skipping product gift (no valid link): {gift.get('name', '')[:50]}")
                     continue
                 all_recommendations.append({
                     'name': gift.get('name', 'Unknown Product'),

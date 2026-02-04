@@ -114,6 +114,7 @@ TASTE CALIBRATION (CRITICAL):
 
 PRODUCT SELECTION CRITERIA:
 - Match products to specific interests with evidence
+- DIVERSITY IS MANDATORY: Do not pick more than 2 products that match the SAME single interest (e.g. for a music enthusiast, max 2 per band/artist; spread across at least 5+ different interests). Avoid clustering around one theme—the user should see variety, not 6 items for the same band.
 - Ensure diverse coverage (don't pick 10 similar items)
 - Prioritize GAPS and ASPIRATIONAL interests (things they want but don't have)
 - Consider relationship appropriateness
@@ -203,8 +204,9 @@ CRITICAL REQUIREMENTS:
 - materials_needed for experiences: when an item matches a product in AVAILABLE PRODUCTS, copy that product's URL exactly into product_url and set where_to_buy to its domain. Never use search URLs—only direct product page URLs from the list. Empty product_url is OK when no match; we will add a find-it link.
 - If no location context, DO NOT suggest location-specific experiences
 - Each recommendation must have clear evidence from the profile
-- Maintain variety - don't pick 10 similar products
+- DIVERSITY: Max 2 products per single interest/theme (e.g. max 2 per band). Spread across at least 5+ interests.
 - Total: {rec_count} product gifts + 2-3 experience gifts
+- Every product gift product_url MUST be an exact copy of a URL from the INVENTORY list above—no invented products, no search pages.
 - Return ONLY the JSON object, no markdown, no backticks"""
     
     try:

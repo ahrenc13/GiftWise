@@ -320,8 +320,29 @@ async function buildEnrichedProfileContext(
 
   if (enriched.demographicTrends.length > 0) {
     context += `\nRELEVANT TRENDS FOR THEIR DEMOGRAPHIC:\n`
-    enriched.demographicTrends.forEach(trend => {
+    enriched.demographicTrends.slice(0, 10).forEach(trend => {
       context += `- ${trend}\n`
+    })
+  }
+
+  if (enriched.trendingProducts && enriched.trendingProducts.length > 0) {
+    context += `\nTRENDING PRODUCTS IN THEIR INTEREST AREAS (Real-time data):\n`
+    enriched.trendingProducts.slice(0, 15).forEach(product => {
+      context += `- ${product}\n`
+    })
+  }
+
+  if (enriched.redditCommunities && enriched.redditCommunities.length > 0) {
+    context += `\nRELEVANT REDDIT COMMUNITIES:\n`
+    enriched.redditCommunities.forEach(community => {
+      context += `- ${community} (check for popular recommendations)\n`
+    })
+  }
+
+  if (enriched.categoryBestsellers && enriched.categoryBestsellers.length > 0) {
+    context += `\nCATEGORY BESTSELLERS:\n`
+    enriched.categoryBestsellers.slice(0, 10).forEach(bestseller => {
+      context += `- ${bestseller}\n`
     })
   }
 

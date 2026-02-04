@@ -50,6 +50,9 @@ interface EnrichedProfile {
   lifestyleSignals: string[]
   demographicTrends: string[]
   relevantSubreddits: string[]
+  trendingProducts: string[]
+  redditCommunities: string[]
+  categoryBestsellers: string[]
   deepSignals: {
     aspirational?: string[]
     current_investments?: string[]
@@ -61,8 +64,17 @@ interface EnrichedProfile {
 }
 
 /**
- * Main enrichment function - the intelligence layer
+ * Enrichment Intelligence Layer
+ * Takes raw social data and enriches it with cross-platform insights, 
+ * demographic trends, and validation to maximize gift recommendation accuracy
  */
+
+import {
+  getTrendingProducts,
+  getRedditInsights,
+  getDemographicTrends,
+  getCategoryBestsellers,
+} from './serpapi-enrichment'
 export async function enrichSocialProfile(
   social: SocialProfile,
   recipient: RecipientInfo
@@ -87,12 +99,37 @@ export async function enrichSocialProfile(
   // Step 6: Deep signal extraction (aspirations, existing items, etc.)
   const deepSignals = extractDeepSignals(social, coreInterests)
 
-  // Step 7: Calculate confidence score
+  // Step 7: Get real-time trending products (SerpAPI)
+  const trendingProducts = await getTrendingProducts(coreInterests)
+  const trendingTitles = trendingProducts.map(p => p.title)
+
+  // Step 8: Get Reddit community insights (SerpAPI)
+  const redditInsights = await getRedditInsights(coreInterests)
+  const redditCommunities = redditInsights.map(r => `r/${r.subreddit}`)
+
+  // Step 9: Get demographic trends (SerpAPI)
+  const serpDemographicTrends = await getDemographicTrends(
+    recipient.age,
+    recipient.location,
+    coreInterests
+  )
+  const serpTrends = serpDemographicTrends.map(t => t.trend)
+
+  // Step 10: Get category bestsellers
+  const categoryBestsellers: string[] = []
+  for (const interest of coreInterests.slice(0, 3)) {
+    const bestsellers = await getCategoryBestsellers(interest)
+    categoryBestsellers.push(...bestsellers.slice(0, 5))
+  }
+
+  // Step 11: Calculate confidence score
   const confidence = calculateConfidenceScore(social, coreInterests)
 
-  console.log('[v0] Enrichment complete:', {
+  console.log('[v0] Enrichment complete with SerpAPI:', {
     coreInterests: coreInterests.length,
     aesthetics: aestheticPreferences.length,
+    trendingProducts: trendingTitles.length,
+    redditCommunities: redditCommunities.length,
     confidence,
   })
 
@@ -100,8 +137,11 @@ export async function enrichSocialProfile(
     coreInterests,
     aestheticPreferences,
     lifestyleSignals,
-    demographicTrends,
+    demographicTrends: [...demographicTrends, ...serpTrends],
     relevantSubreddits,
+    trendingProducts: trendingTitles,
+    redditCommunities,
+    categoryBestsellers,
     deepSignals,
     confidence,
   }

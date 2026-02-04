@@ -135,22 +135,35 @@ export default async function DashboardPage() {
                 </summary>
                 <div className="grid sm:grid-cols-3 gap-3">
                   {[
-                    { platform: 'youtube', name: 'YouTube', color: 'from-red-500 to-red-600', note: 'Coming soon' },
-                    { platform: 'goodreads', name: 'Goodreads', color: 'from-yellow-600 to-amber-600', note: 'Coming soon' },
+                    { platform: 'youtube', name: 'YouTube', color: 'from-red-500 to-red-600', active: true },
+                    { platform: 'goodreads', name: 'Goodreads', color: 'from-yellow-600 to-amber-600', active: true },
+                    { platform: 'lastfm', name: 'Last.fm', color: 'from-red-600 to-red-700', active: true },
                     { platform: 'letterboxd', name: 'Letterboxd', color: 'from-blue-500 to-cyan-500', note: 'Coming soon' },
-                    { platform: 'etsy', name: 'Etsy', color: 'from-orange-500 to-orange-600', note: 'Coming soon' },
                     { platform: 'strava', name: 'Strava', color: 'from-orange-600 to-red-500', note: 'Coming soon' },
-                    { platform: 'linkedin', name: 'LinkedIn', color: 'from-blue-600 to-blue-700', note: 'Coming soon' },
-                  ].map((item) => (
-                    <div
-                      key={item.platform}
-                      className="relative border border-border rounded-lg p-4 bg-muted/30"
-                    >
-                      <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${item.color} mb-2`} />
-                      <h4 className="text-sm font-medium mb-1">{item.name}</h4>
-                      <p className="text-xs text-muted-foreground">{item.note}</p>
-                    </div>
-                  ))}
+                    { platform: 'reddit', name: 'Reddit', color: 'from-orange-500 to-orange-600', note: 'Coming soon' },
+                  ].map((item) => {
+                    const isConnected = connections?.some(c => c.platform === item.platform)
+                    
+                    return (
+                      <div
+                        key={item.platform}
+                        className="relative border border-border rounded-lg p-4 bg-muted/30"
+                      >
+                        <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${item.color} mb-2`} />
+                        <h4 className="text-sm font-medium mb-1">{item.name}</h4>
+                        {isConnected ? (
+                          <div className="flex items-center gap-1 text-xs text-primary">
+                            <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                            <span>Connected</span>
+                          </div>
+                        ) : item.active ? (
+                          <ConnectPlatformButton platform={item.platform} name={item.name} />
+                        ) : (
+                          <p className="text-xs text-muted-foreground">{item.note}</p>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               </details>
             </section>

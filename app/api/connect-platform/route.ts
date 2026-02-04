@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { scrapeInstagram, scrapeTikTok } from '@/lib/apify-scraper'
+import { scrapeYouTube, scrapeGoodreads, scrapeLastFm } from '@/lib/additional-scrapers'
 
 export async function POST(request: NextRequest) {
   try {
@@ -60,6 +61,15 @@ export async function POST(request: NextRequest) {
       } else if (platform === 'tiktok') {
         console.log('[v0] Starting TikTok scrape...')
         scrapedData = await scrapeTikTok(username)
+      } else if (platform === 'youtube') {
+        console.log('[v0] Starting YouTube scrape...')
+        scrapedData = await scrapeYouTube(username)
+      } else if (platform === 'goodreads') {
+        console.log('[v0] Starting Goodreads scrape...')
+        scrapedData = await scrapeGoodreads(username)
+      } else if (platform === 'lastfm') {
+        console.log('[v0] Starting Last.fm scrape...')
+        scrapedData = await scrapeLastFm(username)
       } else {
         return NextResponse.json({ error: 'Platform not supported for scraping' }, { status: 400 })
       }

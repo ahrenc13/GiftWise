@@ -19,6 +19,21 @@ interface SocialProfile {
   pinterest?: {
     boards: Array<{ name: string; pins: Array<{ title: string; description: string }> }>
   }
+  youtube?: {
+    channels: string[]
+    interests: string[]
+    playlists: { name: string; videos: string[] }[]
+  }
+  goodreads?: {
+    read: { title: string; author: string; rating: number }[]
+    toRead: { title: string; author: string }[]
+    genres: string[]
+  }
+  lastfm?: {
+    topArtists: { name: string; playcount: number }[]
+    topTracks: { name: string; artist: string }[]
+    genres: string[]
+  }
 }
 
 interface RecipientInfo {
@@ -93,10 +108,31 @@ export async function enrichSocialProfile(
 }
 
 /**
- * Extract core interests from all social platforms
+ * Extract core interests from all social platforms including YouTube, Goodreads, Last.fm
  */
 function extractCoreInterests(social: SocialProfile): string[] {
   const interests = new Set<string>()
+
+  // YouTube interests - explicit from channel categories
+  if (social.youtube?.interests) {
+    social.youtube.interests.forEach(interest => interests.add(interest))
+  }
+
+  // Goodreads interests - book genres reveal deep interests
+  if (social.goodreads?.genres) {
+    social.goodreads.genres.forEach(genre => {
+      interests.add(`Reading: ${genre}`)
+    })
+  }
+
+  // Last.fm music taste
+  if (social.lastfm?.topArtists && social.lastfm.topArtists.length > 0) {
+    interests.add('Music')
+    // Add specific genres if available
+    social.lastfm.genres?.forEach(genre => {
+      interests.add(`Music: ${genre}`)
+    })
+  }
 
   // From Instagram hashtags
   if (social.instagram) {

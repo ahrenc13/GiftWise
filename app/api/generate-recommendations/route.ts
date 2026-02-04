@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { enrichSocialProfile } from '@/lib/enrichment-engine'
+import { canUserGenerate, FEATURES } from '@/lib/feature-flags'
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -27,6 +28,34 @@ export async function POST(request: NextRequest) {
     if (!session) {
       return NextResponse.json({ error: 'Session not found' }, { status: 404 })
     }
+
+    console.log('[v0] Payments enabled:', FEATURES.PAYMENTS_ENABLED)
+
+    // Check if user can generate (respects feature flag)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('subscription_tier')
+      .eq('id', session.user_id)
+      .single()
+
+    const usageCheck = await canUserGenerate(
+      session.user_id,
+      profile?.subscription_tier || null,
+      supabase
+    )
+
+    if (!usageCheck.allowed) {
+      return NextResponse.json(
+        { 
+          error: usageCheck.reason,
+          upgradeRequired: true,
+          remainingCount: usageCheck.remainingCount,
+        },
+        { status: 403 }
+      )
+    }
+
+    console.log('[v0] Usage check passed. Remaining:', usageCheck.remainingCount)
 
     // Get connected social platforms
     const { data: connections } = await supabase

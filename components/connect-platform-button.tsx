@@ -76,20 +76,34 @@ export default function ConnectPlatformButton({
 
   return (
     <div className="space-y-2">
+      <div className="text-xs text-muted-foreground mb-1">
+        Enter their public {name} username (e.g., @username)
+      </div>
       <input
         type="text"
         value={username}
         onChange={(e) => setUsername(e.target.value)}
-        placeholder={`${name} username`}
+        placeholder={`@username`}
         className="w-full px-3 py-2 text-sm border border-border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
         disabled={isConnecting}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            handleConnect()
+          }
+        }}
       />
       <button
         onClick={handleConnect}
         disabled={isConnecting}
         className="w-full text-sm bg-primary text-primary-foreground rounded-lg py-2 hover:bg-primary/90 transition-colors disabled:opacity-50"
       >
-        {isConnecting ? 'Connecting...' : 'Confirm'}
+        {isConnecting ? 'Analyzing profile...' : 'Add Profile'}
+      </button>
+      <button
+        onClick={() => setShowUsernameInput(false)}
+        className="w-full text-xs text-muted-foreground hover:text-foreground"
+      >
+        Cancel
       </button>
     </div>
   )

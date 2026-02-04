@@ -87,7 +87,23 @@ export default async function DashboardPage() {
                 </div>
                 <div>
                   <h2 className="text-2xl font-serif font-semibold">Connect Platforms</h2>
-                  <p className="text-sm text-muted-foreground">Link social accounts to personalize recommendations</p>
+                  <p className="text-sm text-muted-foreground">
+                    Add their public profiles - perfect for surprise gifts!
+                  </p>
+                </div>
+              </div>
+
+              {/* Info callout */}
+              <div className="bg-accent/10 border border-accent/20 rounded-xl p-4 mb-6">
+                <div className="flex gap-3">
+                  <Gift className="w-5 h-5 text-accent flex-shrink-0 mt-0.5" />
+                  <div className="text-sm text-muted-foreground">
+                    <p className="font-medium text-foreground mb-1">Surprise Gift Mode</p>
+                    <p>
+                      Just enter their public usernames - no login required! We analyze what they post, 
+                      like, and share to find gifts they'll love. They'll never know you're using this.
+                    </p>
+                  </div>
                 </div>
               </div>
 

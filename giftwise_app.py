@@ -2300,8 +2300,9 @@ def api_generate_recommendations():
             products = search_real_products(
                 profile,
                 SERPAPI_API_KEY,
-                rec_count=product_rec_count
-            )
+                rec_count=product_rec_count,
+                validate_realtime=False  
+)
             
             if len(products) == 0:
                 logger.warning("Product search returned no results - may be misconfigured or rate limited")

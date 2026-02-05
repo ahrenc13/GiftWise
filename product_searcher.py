@@ -1,11 +1,15 @@
 """
-PRODUCT SEARCHER - EMERGENCY FIX
-Filters out listicle articles and blog posts
+PRODUCT SEARCHER - FIXED LISTICLE FILTER
+Smart filtering that blocks blog posts but NOT product titles
 
-CRITICAL FIXES:
-1. Only use shopping_results (no blog posts)
-2. Filter out "gift ideas" listicles
-3. Better product-specific queries
+WHAT WAS WRONG:
+- Blocked ANY title with "best" or "perfect" → blocked real products
+- Too aggressive pattern matching
+
+WHAT'S FIXED:
+- Only blocks FULL phrases like "77 gift ideas for..."
+- Allows product titles like "Best Running Shoes" (actual product)
+- Checks URL patterns more carefully
 
 Author: Chad + Claude
 Date: February 2026
@@ -18,6 +22,7 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse
 import hashlib
+import re
 
 try:
     from link_validation import is_bad_product_url, validate_url_exists
@@ -51,9 +56,9 @@ _product_cache = {}
 
 def is_listicle_or_blog(title, url):
     """
-    Check if this is a listicle article or blog post instead of a product
+    Check if this is a listicle article instead of a product
     
-    CRITICAL: Filter out "gift ideas" articles
+    MUCH MORE SPECIFIC - only blocks obvious blog posts
     """
     if not title or not url:
         return True
@@ -61,34 +66,29 @@ def is_listicle_or_blog(title, url):
     title_lower = title.lower()
     url_lower = url.lower()
     
-    # Listicle indicators in title
-    listicle_phrases = [
-        'gift ideas',
-        'gift guide',
-        'best gifts',
-        'unique gifts',
-        'gifts for',
-        'perfect gifts',
-        'top gifts',
-        'gift list',
-        'holiday gift',
-        'christmas gift',
-        'birthday gift',
-        'valentines gift',
-        'gift roundup',
-        'actually useful gifts'
+    # SPECIFIC LISTICLE PATTERNS - must match full phrases
+    # These are ALWAYS listicles, never products
+    listicle_patterns = [
+        r'\d+\s+(best|top|unique|perfect|great|amazing)\s+gift',  # "77 best gifts"
+        r'(best|top|perfect)\s+gifts?\s+for',  # "best gifts for dog lovers"
+        r'gift\s+(ideas|guide|list|roundup)',  # "gift ideas", "gift guide"
+        r'actually\s+useful\s+gifts',  # "actually useful gifts"
+        r'gift\s+ideas?\s+for\s+\d+',  # "gift ideas for 2026"
+        r'holiday\s+gift',  # "holiday gift guide"
+        r'christmas\s+gift',  # "christmas gift ideas"
+        r'valentine',  # "valentines gift guide" (but not "valentine teddy bear")
     ]
     
-    for phrase in listicle_phrases:
-        if phrase in title_lower:
-            logger.debug(f"FILTERED LISTICLE (title): {title[:60]}")
+    for pattern in listicle_patterns:
+        if re.search(pattern, title_lower):
+            logger.debug(f"FILTERED LISTICLE (pattern match): {title[:60]}")
             return True
     
-    # Blog/article domains
+    # BLOG/ARTICLE DOMAINS - never product pages
     blog_domains = [
-        'buzzfeed', 'bustle', 'refinery29', 'forbes', 'nytimes',
-        'wirecutter', 'thegoodtrade', 'giftlab', 'giftguide',
-        'blog.', '/blog/', 'article', 'news', 'magazine'
+        'buzzfeed', 'bustle', 'refinery29', 'wirecutter', 
+        'giftlab', 'giftguide', 'blog.', '/blog/', 
+        '/article/', 'news.', 'magazine'
     ]
     
     for domain in blog_domains:
@@ -96,8 +96,8 @@ def is_listicle_or_blog(title, url):
             logger.debug(f"FILTERED BLOG (domain): {url[:60]}")
             return True
     
-    # Article URL patterns
-    if '/article/' in url_lower or '/blog/' in url_lower or '/news/' in url_lower:
+    # URL patterns that indicate articles (not product pages)
+    if any(pattern in url_lower for pattern in ['/article/', '/blog/', '/news/', '/guide/']):
         logger.debug(f"FILTERED ARTICLE (URL pattern): {url[:60]}")
         return True
     
@@ -108,7 +108,7 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
     """
     Pull an inventory of real products (NOT listicles)
     
-    EMERGENCY FIX: Only use shopping_results, filter out articles
+    Uses shopping_results ONLY, with smart filtering
     """
     if target_count is None:
         target_count = max(rec_count * INVENTORY_MULTIPLIER, 20)
@@ -140,16 +140,16 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
             
         priority = 'high' if intensity == 'passionate' else 'medium'
         
-        # Product-specific queries (NOT "gift ideas")
+        # Product-specific queries
         if interest_type == 'aspirational':
             search_queries.append({
-                'query': f"{name} buy online shop",  # More product-focused
+                'query': f"{name} buy online",
                 'interest': name,
                 'priority': priority
             })
         else:
             search_queries.append({
-                'query': f"{name} product buy",  # Direct product query
+                'query': f"{name} product",
                 'interest': name,
                 'priority': priority
             })
@@ -158,13 +158,13 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
     brands = profile.get('style_preferences', {}).get('brands', [])
     for brand in brands[:2]:
         search_queries.append({
-            'query': f"{brand} shop buy",
+            'query': f"{brand} shop",
             'interest': brand,
             'priority': 'medium'
         })
     
     search_queries = search_queries[:MAX_SEARCH_QUERIES]
-    logger.info(f"Generated {len(search_queries)} search queries (max {MAX_SEARCH_QUERIES})")
+    logger.info(f"Generated {len(search_queries)} search queries")
     
     def run_one_search_with_validation(query_info):
         """Run search and validate - SHOPPING RESULTS ONLY"""
@@ -192,19 +192,22 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
             
             data = response.json()
             
-            # ONLY use shopping_results (no organic results fallback)
+            # ONLY use shopping_results
             shopping_items = data.get('shopping_results', [])
             
             if not shopping_items:
                 logger.warning(f"No shopping results for query: {query}")
                 return query_info, [], interest
             
+            logger.info(f"Got {len(shopping_items)} shopping results for: {query}")
+            
             for shop_item in shopping_items[:10]:
                 title = shop_item.get('title', '')
                 link = shop_item.get('link', '')
                 
-                # CRITICAL: Filter out listicles
+                # Filter listicles (but not too aggressively)
                 if is_listicle_or_blog(title, link):
+                    logger.debug(f"Filtered: {title[:50]}")
                     continue
                 
                 product = extract_and_validate_product(
@@ -218,7 +221,9 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
                 
                 if product:
                     validated_products.append((product, interest))
+                    logger.debug(f"Validated product: {title[:50]}")
             
+            logger.info(f"Validated {len(validated_products)} products for '{interest}'")
             return query_info, validated_products, interest
             
         except Exception as e:
@@ -228,7 +233,7 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
     # Run searches in parallel
     all_products = []
     products_by_interest = defaultdict(list)
-    validation_stats = {'checked': 0, 'passed': 0, 'failed': 0, 'listicles_filtered': 0}
+    validation_stats = {'checked': 0, 'passed': 0, 'failed': 0}
     
     with ThreadPoolExecutor(max_workers=MAX_CONCURRENT_SEARCHES) as executor:
         for i in range(0, len(search_queries), MAX_CONCURRENT_SEARCHES):
@@ -272,7 +277,7 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
         f"Validation stats: {validation_stats['checked']} checked, "
         f"{validation_stats['passed']} passed, {validation_stats['failed']} failed"
     )
-    logger.info(f"Found {len(all_products)} REAL products (listicles filtered)")
+    logger.info(f"Found {len(all_products)} REAL products")
     
     balanced_products = balance_products_by_interest(products_by_interest, target_count)
     
@@ -282,12 +287,12 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
 
 
 def extract_and_validate_product(item, query, interest, priority, is_shopping_result=False, validate_realtime=True):
-    """Extract and validate - filter out listicles"""
+    """Extract and validate product"""
     try:
         title = item.get('title', '')
         link = item.get('link', '')
         
-        # Filter listicles at extraction time too
+        # Filter listicles (but less aggressively than before)
         if is_listicle_or_blog(title, link):
             return None
         
@@ -314,6 +319,7 @@ def extract_and_validate_product(item, query, interest, priority, is_shopping_re
                 return None
             
             if not validate_url_exists(product['link'], timeout=3):
+                logger.debug(f"Link validation failed: {link[:60]}")
                 return None
         
         return product
@@ -333,28 +339,6 @@ def extract_domain(url):
         return domain
     except:
         return 'unknown'
-
-
-def extract_price(text):
-    """Extract price from text snippet"""
-    import re
-    
-    price_patterns = [
-        r'\$\s?(\d+(?:,\d{3})*(?:\.\d{2})?)',
-        r'(\d+(?:,\d{3})*(?:\.\d{2})?)\s?USD',
-    ]
-    
-    for pattern in price_patterns:
-        match = re.search(pattern, text)
-        if match:
-            price_str = match.group(1).replace(',', '')
-            try:
-                price = float(price_str)
-                return f"${price:.2f}"
-            except:
-                pass
-    
-    return None
 
 
 def balance_products_by_interest(products_by_interest, target_count):

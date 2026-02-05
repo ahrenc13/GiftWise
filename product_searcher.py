@@ -123,8 +123,75 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
             response = requests.get(url, params=params, timeout=10)
             
             if response.status_code != 200:
-                logger.warning(f"Search failed for: {query}")
+                logger.warning(f"Search failed for: {query} status={response.status_code}")
                 return query_info, [], interest
             
-            data = response.json()
-            shopping_ite
+            try:
+                data = response.json()
+            except Exception as parse_err:
+                logger.warning(f"Search response not JSON for: {query} err={parse_err}")
+                return query_info, [], interest
+            if not isinstance(data, dict):
+                logger.warning(f"Unexpected search response for: {query}")
+                return query_info, [], interest
+            shopping_items = data.get('shopping_results') or data.get('organic_results') or []
+            if not isinstance(shopping_items, list):
+                shopping_items = []
+            for item in shopping_items:
+                if not isinstance(item, dict):
+                    continue
+                link = (item.get('link') or '').strip()
+                if not link:
+                    continue
+                title = (item.get('title') or '').strip()
+                if is_listicle_or_blog(title, link):
+                    continue
+                if is_bad_product_url(link):
+                    continue
+                if validate_realtime and not validate_url_exists(link, timeout=3):
+                    continue
+                product = {
+                    'title': title,
+                    'link': link,
+                    'snippet': item.get('snippet', ''),
+                    'image': item.get('thumbnail', '') or item.get('image', ''),
+                    'source_domain': (urlparse(link).netloc or '').replace('www.', ''),
+                    'search_query': query,
+                    'interest_match': interest,
+                    'priority': query_info.get('priority', 'medium'),
+                    'price': item.get('price', ''),
+                }
+                validated_products.append(product)
+            return query_info, validated_products, interest
+        except Exception as e:
+            q = query_info.get('query', '?')
+            logger.warning(f"Search error for {q}: {e}", exc_info=True)
+            return query_info, [], interest
+
+    all_products = []
+    products_by_interest = defaultdict(list)
+    for q in search_queries:
+        _qinfo, results, interest = run_one_search_with_validation(q)
+        for p in results:
+            if not any(x.get('link') == p.get('link') for x in all_products):
+                all_products.append(p)
+                products_by_interest[interest].append(p)
+    if not all_products:
+        logger.warning("No products collected from search")
+        return []
+    num_interests = len(products_by_interest) or 1
+    per_interest = max(2, target_count // num_interests)
+    balanced = []
+    for interest, prods in products_by_interest.items():
+        balanced.extend(prods[:per_interest])
+    if len(balanced) < target_count:
+        for interest, prods in products_by_interest.items():
+            for p in prods:
+                if p not in balanced:
+                    balanced.append(p)
+                    if len(balanced) >= target_count:
+                        break
+            if len(balanced) >= target_count:
+                break
+    logger.info(f"Found {len(balanced)} products (validate_realtime={validate_realtime})")
+    return balanced[:target_count]

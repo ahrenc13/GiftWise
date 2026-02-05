@@ -78,10 +78,9 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
                     'q': query,
                     'api_key': serpapi_key,
                     'num': 10,
-                    'engine': 'google',
+                    'engine': 'google_shopping',
                     'gl': 'us',
-                    'hl': 'en',
-                    'tbm': 'shop'
+                    'hl': 'en'
                 },
                 timeout=10
             )
@@ -102,6 +101,11 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
                 link = (item.get('link') or item.get('product_link') or '').strip()
                 
                 if not title or not link:
+                    continue
+                
+                # Skip Google search/shopping page URLs - we need direct product links
+                if 'google.com/search' in link.lower() or 'google.com/shopping' in link.lower():
+                    logger.debug(f"Skipping Google search URL: {link[:80]}")
                     continue
                 
                 if is_listicle_or_blog(title, link):
@@ -153,4 +157,9 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
     
     elapsed = time.time() - start_time
     logger.info(f"Found {len(balanced)} products in {elapsed:.1f}s")
+    
+    if balanced:
+        sample_urls = [p['link'][:80] for p in balanced[:3]]
+        logger.info(f"Sample product URLs: {sample_urls}")
+    
     return balanced[:target_count]

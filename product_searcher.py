@@ -39,10 +39,11 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# SerpAPI rate limit: avoid 429 by doing fewer searches and waiting between requests
+# SerpAPI: balance UX speed with rate-limit safety (one retry on 429)
 MAX_SEARCH_QUERIES = 5
-SLEEP_BETWEEN_REQUESTS = 2.0
-SLEEP_ON_RATE_LIMIT = 15
+SLEEP_BETWEEN_REQUESTS = 1.5
+SLEEP_ON_RATE_LIMIT = 12
+MAX_429_RETRIES = 1
 INVENTORY_MULTIPLIER = 3
 
 _product_cache = {}
@@ -79,6 +80,8 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
     if not serpapi_key:
         logger.error("SerpAPI key not configured")
         return []
+    serpapi_key = serpapi_key.strip()
+    logger.info(f"SerpAPI key present (len={len(serpapi_key)})")
     
     search_queries = []
     interests = profile.get('interests', [])
@@ -120,11 +123,20 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
                 'hl': 'en',
                 'tbm': 'shop'
             }
-            
-            response = requests.get(url, params=params, timeout=10)
-            
+            response = None
+            for attempt in range(MAX_429_RETRIES + 1):
+                response = requests.get(url, params=params, timeout=10)
+                if response.status_code == 429 and attempt < MAX_429_RETRIES:
+                    logger.warning(f"Rate limited (429) for: {query}, waiting {SLEEP_ON_RATE_LIMIT}s before retry {attempt + 1}/{MAX_429_RETRIES}")
+                    time.sleep(SLEEP_ON_RATE_LIMIT)
+                    continue
+                break
             if response.status_code != 200:
-                logger.warning(f"Search failed for: {query} status={response.status_code}")
+                try:
+                    body = response.text[:500] if response.text else ""
+                    logger.warning(f"Search failed for: {query} status={response.status_code} body={body}")
+                except Exception:
+                    logger.warning(f"Search failed for: {query} status={response.status_code}")
                 return query_info, [], interest
             
             try:
@@ -138,10 +150,14 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
             shopping_items = data.get('shopping_results') or data.get('organic_results') or []
             if not isinstance(shopping_items, list):
                 shopping_items = []
+            if not shopping_items and isinstance(data, dict):
+                logger.info(f"SerpAPI response keys for '{query}': {list(data.keys())}")
+            raw_count = len(shopping_items)
             for item in shopping_items:
                 if not isinstance(item, dict):
                     continue
-                link = (item.get('link') or '').strip()
+                # SerpAPI Shopping can use 'link' (retailer) or 'product_link' (Google Shopping URL)
+                link = (item.get('link') or item.get('product_link') or '').strip()
                 if not link:
                     continue
                 title = (item.get('title') or '').strip()
@@ -163,6 +179,12 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
                     'price': item.get('price', ''),
                 }
                 validated_products.append(product)
+            logger.info(f"Search '{query}': {raw_count} raw -> {len(validated_products)} products")
+            if raw_count > 0 and len(validated_products) == 0:
+                first = shopping_items[0] if shopping_items else {}
+                link = (first.get('link') or first.get('product_link') or '').strip()
+                title = (first.get('title') or '').strip()
+                logger.info(f"All filtered: sample link={link[:60]}... title={title[:50]}... (listicle={is_listicle_or_blog(title, link)}, bad_url={is_bad_product_url(link)})")
             return query_info, validated_products, interest
         except Exception as e:
             q = query_info.get('query', '?')

@@ -1,13 +1,11 @@
 """
-PRODUCT SEARCHER - FIXED VERSION
-Find Real Products Using SerpAPI with REAL-TIME VALIDATION
+PRODUCT SEARCHER - EMERGENCY FIX
+Filters out listicle articles and blog posts
 
-KEY FIXES:
-1. Validates links exist DURING fetch (not after)
-2. Skips dead links immediately
-3. Validates thumbnails are accessible
-4. Adds Amazon/Etsy fallback searches
-5. Caches validated products
+CRITICAL FIXES:
+1. Only use shopping_results (no blog posts)
+2. Filter out "gift ideas" listicles
+3. Better product-specific queries
 
 Author: Chad + Claude
 Date: February 2026
@@ -43,33 +41,74 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-# Max concurrent SerpAPI requests (stay within rate limits)
 MAX_CONCURRENT_SEARCHES = 5
-# Sleep between batches to avoid rate limits
 SLEEP_BETWEEN_REQUESTS = 0.3
-# Cap total queries for speed
 MAX_SEARCH_QUERIES = 10
-# Inventory should be at least this many times the number of gifts
 INVENTORY_MULTIPLIER = 3
 
-# In-memory cache for validated products (session-scoped)
 _product_cache = {}
+
+
+def is_listicle_or_blog(title, url):
+    """
+    Check if this is a listicle article or blog post instead of a product
+    
+    CRITICAL: Filter out "gift ideas" articles
+    """
+    if not title or not url:
+        return True
+    
+    title_lower = title.lower()
+    url_lower = url.lower()
+    
+    # Listicle indicators in title
+    listicle_phrases = [
+        'gift ideas',
+        'gift guide',
+        'best gifts',
+        'unique gifts',
+        'gifts for',
+        'perfect gifts',
+        'top gifts',
+        'gift list',
+        'holiday gift',
+        'christmas gift',
+        'birthday gift',
+        'valentines gift',
+        'gift roundup',
+        'actually useful gifts'
+    ]
+    
+    for phrase in listicle_phrases:
+        if phrase in title_lower:
+            logger.debug(f"FILTERED LISTICLE (title): {title[:60]}")
+            return True
+    
+    # Blog/article domains
+    blog_domains = [
+        'buzzfeed', 'bustle', 'refinery29', 'forbes', 'nytimes',
+        'wirecutter', 'thegoodtrade', 'giftlab', 'giftguide',
+        'blog.', '/blog/', 'article', 'news', 'magazine'
+    ]
+    
+    for domain in blog_domains:
+        if domain in url_lower:
+            logger.debug(f"FILTERED BLOG (domain): {url[:60]}")
+            return True
+    
+    # Article URL patterns
+    if '/article/' in url_lower or '/blog/' in url_lower or '/news/' in url_lower:
+        logger.debug(f"FILTERED ARTICLE (URL pattern): {url[:60]}")
+        return True
+    
+    return False
 
 
 def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, validate_realtime=True):
     """
-    Pull an inventory of real products that match the profile.
-    NOW WITH REAL-TIME VALIDATION.
+    Pull an inventory of real products (NOT listicles)
     
-    Args:
-        profile: Recipient profile dict from build_recipient_profile()
-        serpapi_key: SerpAPI API key
-        target_count: Target number of products to fetch
-        rec_count: Number of product gifts that will be selected
-        validate_realtime: If True, validates links exist during fetch (RECOMMENDED)
-    
-    Returns:
-        List of VALIDATED product dicts
+    EMERGENCY FIX: Only use shopping_results, filter out articles
     """
     if target_count is None:
         target_count = max(rec_count * INVENTORY_MULTIPLIER, 20)
@@ -81,9 +120,8 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
         logger.error("SerpAPI key not configured")
         return []
     
-    logger.info(f"Searching for real products with real-time validation...")
+    logger.info(f"Searching for real products (SHOPPING RESULTS ONLY)...")
     
-    # Build search queries from interests
     search_queries = []
     interests = profile.get('interests', [])
     
@@ -91,7 +129,7 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
         logger.warning("No interests in profile - cannot search for products")
         return []
     
-    # Generate targeted search queries
+    # BETTER SEARCH QUERIES - More product-specific
     for interest in interests:
         name = interest.get('name', '')
         intensity = interest.get('intensity', 'moderate')
@@ -102,34 +140,25 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
             
         priority = 'high' if intensity == 'passionate' else 'medium'
         
+        # Product-specific queries (NOT "gift ideas")
         if interest_type == 'aspirational':
             search_queries.append({
-                'query': f"thoughtful gift for someone who loves {name}",
-                'interest': name,
-                'priority': priority
-            })
-            search_queries.append({
-                'query': f"{name} starter kit unique",
+                'query': f"{name} buy online shop",  # More product-focused
                 'interest': name,
                 'priority': priority
             })
         else:
             search_queries.append({
-                'query': f"thoughtful gift for someone who loves {name}",
-                'interest': name,
-                'priority': priority
-            })
-            search_queries.append({
-                'query': f"unusual {name} gift not generic",
+                'query': f"{name} product buy",  # Direct product query
                 'interest': name,
                 'priority': priority
             })
     
-    # Add brand queries
+    # Brand queries
     brands = profile.get('style_preferences', {}).get('brands', [])
     for brand in brands[:2]:
         search_queries.append({
-            'query': f"{brand} gift",
+            'query': f"{brand} shop buy",
             'interest': brand,
             'priority': 'medium'
         })
@@ -138,13 +167,12 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
     logger.info(f"Generated {len(search_queries)} search queries (max {MAX_SEARCH_QUERIES})")
     
     def run_one_search_with_validation(query_info):
-        """Run search and validate results in real-time"""
+        """Run search and validate - SHOPPING RESULTS ONLY"""
         query = query_info['query']
         interest = query_info['interest']
         validated_products = []
         
         try:
-            # Search with SerpAPI
             url = "https://serpapi.com/search"
             params = {
                 'q': query,
@@ -152,48 +180,44 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
                 'num': 10,
                 'engine': 'google',
                 'gl': 'us',
-                'hl': 'en'
+                'hl': 'en',
+                'tbm': 'shop'  # FORCE shopping results
             }
             
             response = requests.get(url, params=params, timeout=10)
             
             if response.status_code != 200:
-                logger.warning(
-                    f"Product search failed: status={response.status_code} query={query[:50]}"
-                )
+                logger.warning(f"Search failed: status={response.status_code} query={query[:50]}")
                 return query_info, [], interest
             
             data = response.json()
-            items = data.get('organic_results', [])
+            
+            # ONLY use shopping_results (no organic results fallback)
             shopping_items = data.get('shopping_results', [])
             
-            # Process shopping results first (better product data)
-            if shopping_items:
-                for shop_item in shopping_items[:10]:
-                    product = extract_and_validate_product(
-                        shop_item,
-                        query,
-                        interest,
-                        query_info['priority'],
-                        is_shopping_result=True,
-                        validate_realtime=validate_realtime
-                    )
-                    if product:
-                        validated_products.append((product, interest))
+            if not shopping_items:
+                logger.warning(f"No shopping results for query: {query}")
+                return query_info, [], interest
             
-            # If not enough shopping results, use organic results
-            if len(validated_products) < 5:
-                for item in items[:10]:
-                    product = extract_and_validate_product(
-                        item,
-                        query,
-                        interest,
-                        query_info['priority'],
-                        is_shopping_result=False,
-                        validate_realtime=validate_realtime
-                    )
-                    if product:
-                        validated_products.append((product, interest))
+            for shop_item in shopping_items[:10]:
+                title = shop_item.get('title', '')
+                link = shop_item.get('link', '')
+                
+                # CRITICAL: Filter out listicles
+                if is_listicle_or_blog(title, link):
+                    continue
+                
+                product = extract_and_validate_product(
+                    shop_item,
+                    query,
+                    interest,
+                    query_info['priority'],
+                    is_shopping_result=True,
+                    validate_realtime=validate_realtime
+                )
+                
+                if product:
+                    validated_products.append((product, interest))
             
             return query_info, validated_products, interest
             
@@ -204,7 +228,7 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
     # Run searches in parallel
     all_products = []
     products_by_interest = defaultdict(list)
-    validation_stats = {'checked': 0, 'passed': 0, 'failed': 0}
+    validation_stats = {'checked': 0, 'passed': 0, 'failed': 0, 'listicles_filtered': 0}
     
     with ThreadPoolExecutor(max_workers=MAX_CONCURRENT_SEARCHES) as executor:
         for i in range(0, len(search_queries), MAX_CONCURRENT_SEARCHES):
@@ -217,27 +241,23 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
                 for product, intr in results:
                     link = product.get('link', '')
                     
-                    # Check cache first
                     cache_key = hashlib.md5(link.encode()).hexdigest()[:16]
                     
                     if cache_key in _product_cache:
-                        cached_valid = _product_cache[cache_key]
-                        if cached_valid:
+                        if _product_cache[cache_key]:
                             if not any(p['link'] == link for p in all_products):
                                 all_products.append(product)
                                 products_by_interest[intr].append(product)
                         continue
                     
-                    # Validate if not in cache
                     validation_stats['checked'] += 1
                     
                     if is_bad_product_url(link):
-                        logger.debug(f"Skipping bad product URL: {link[:60]}...")
+                        logger.debug(f"Bad URL pattern: {link[:60]}")
                         _product_cache[cache_key] = False
                         validation_stats['failed'] += 1
                         continue
                     
-                    # Product passed validation
                     validation_stats['passed'] += 1
                     _product_cache[cache_key] = True
                     
@@ -252,71 +272,48 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
         f"Validation stats: {validation_stats['checked']} checked, "
         f"{validation_stats['passed']} passed, {validation_stats['failed']} failed"
     )
-    logger.info(f"Found {len(all_products)} validated products across {len(products_by_interest)} interests")
+    logger.info(f"Found {len(all_products)} REAL products (listicles filtered)")
     
-    # Ensure diverse representation
     balanced_products = balance_products_by_interest(products_by_interest, target_count)
     
-    logger.info(f"Balanced to {len(balanced_products)} products with diverse interest coverage")
+    logger.info(f"Balanced to {len(balanced_products)} products")
     
     return balanced_products
 
 
 def extract_and_validate_product(item, query, interest, priority, is_shopping_result=False, validate_realtime=True):
-    """
-    Extract product from SerpAPI result and validate in real-time
-    
-    Returns:
-        Product dict if valid, None if invalid
-    """
+    """Extract and validate - filter out listicles"""
     try:
-        # Extract basic data
-        if is_shopping_result:
-            product = {
-                'title': item.get('title', ''),
-                'link': item.get('link', ''),
-                'snippet': item.get('snippet', ''),
-                'image': item.get('thumbnail', ''),  # SerpAPI thumbnail - may expire
-                'source_domain': extract_domain(item.get('link', '')),
-                'search_query': query,
-                'interest_match': interest,
-                'priority': priority,
-                'price': item.get('price', '')
-            }
-        else:
-            product = {
-                'title': item.get('title', ''),
-                'link': item.get('link', ''),
-                'snippet': item.get('snippet', ''),
-                'image': item.get('thumbnail', ''),
-                'source_domain': extract_domain(item.get('link', '')),
-                'search_query': query,
-                'interest_match': interest,
-                'priority': priority
-            }
-            
-            # Try to extract price from snippet
-            price = extract_price(item.get('snippet', ''))
-            if price:
-                product['price'] = price
+        title = item.get('title', '')
+        link = item.get('link', '')
         
-        # Quick validation checks (no network calls yet)
+        # Filter listicles at extraction time too
+        if is_listicle_or_blog(title, link):
+            return None
+        
+        product = {
+            'title': title,
+            'link': link,
+            'snippet': item.get('snippet', ''),
+            'image': item.get('thumbnail', ''),
+            'source_domain': extract_domain(link),
+            'search_query': query,
+            'interest_match': interest,
+            'priority': priority,
+            'price': item.get('price', '')
+        }
+        
         if not product['title'] or not product['link']:
             return None
         
-        if len(product['title']) < 10:  # Too short, probably not real
+        if len(product['title']) < 10:
             return None
         
-        # Real-time validation (optional but recommended)
         if validate_realtime:
-            # Quick check - is this a bad URL pattern?
             if is_bad_product_url(product['link']):
-                logger.debug(f"Bad URL pattern: {product['link'][:60]}")
                 return None
             
-            # Validate link exists (with timeout)
             if not validate_url_exists(product['link'], timeout=3):
-                logger.debug(f"Dead link: {product['link'][:60]}")
                 return None
         
         return product
@@ -343,8 +340,8 @@ def extract_price(text):
     import re
     
     price_patterns = [
-        r'\$\s?(\d+(?:,\d{3})*(?:\.\d{2})?)',  # $XX.XX or $XX
-        r'(\d+(?:,\d{3})*(?:\.\d{2})?)\s?USD',  # XX.XX USD
+        r'\$\s?(\d+(?:,\d{3})*(?:\.\d{2})?)',
+        r'(\d+(?:,\d{3})*(?:\.\d{2})?)\s?USD',
     ]
     
     for pattern in price_patterns:
@@ -361,9 +358,7 @@ def extract_price(text):
 
 
 def balance_products_by_interest(products_by_interest, target_count):
-    """
-    Balance products to ensure diverse coverage across interests
-    """
+    """Balance products across interests"""
     if not products_by_interest:
         return []
     
@@ -372,7 +367,6 @@ def balance_products_by_interest(products_by_interest, target_count):
     
     balanced = []
     
-    # Take products from each interest, prioritizing high-priority queries
     for interest, products in products_by_interest.items():
         sorted_products = sorted(
             products,
@@ -380,7 +374,6 @@ def balance_products_by_interest(products_by_interest, target_count):
         )
         balanced.extend(sorted_products[:products_per_interest])
     
-    # If we haven't hit target, add more from high-priority
     if len(balanced) < target_count:
         all_remaining = []
         for interest, products in products_by_interest.items():

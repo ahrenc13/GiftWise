@@ -1,6 +1,6 @@
 """
-PRODUCT SEARCHER - SIMPLE VERSION
-No rate limiting. No validation. Just get products.
+PRODUCT SEARCHER - DEBUG VERSION
+Shows exactly what's being filtered and why
 
 Author: Chad + Claude  
 Date: February 2026
@@ -97,14 +97,19 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
             
             logger.info(f"Got {len(shopping_items)} results for: {query}")
             
-            for item in shopping_items[:10]:
+            for i, item in enumerate(shopping_items[:10]):
                 title = item.get('title', '').strip()
                 link = item.get('link', '').strip()
                 
+                logger.info(f"  [{i+1}] Checking: {title[:60]}...")
+                logger.info(f"       Link: {link[:80]}...")
+                
                 if not title or not link:
+                    logger.info(f"  [{i+1}] ❌ SKIPPED: Missing title or link")
                     continue
                 
                 if is_listicle_or_blog(title, link):
+                    logger.info(f"  [{i+1}] ❌ SKIPPED: Listicle/blog filter")
                     continue
                 
                 product = {
@@ -122,9 +127,12 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
                 if not any(p['link'] == link for p in all_products):
                     all_products.append(product)
                     products_by_interest[interest].append(product)
+                    logger.info(f"  [{i+1}] ✅ ADDED product")
+                else:
+                    logger.info(f"  [{i+1}] ❌ SKIPPED: Duplicate link")
             
-            logger.info(f"Added {len(products_by_interest[interest])} products for '{interest}'")
-            time.sleep(0.5)  # Small delay between searches
+            logger.info(f"Total added for '{interest}': {len(products_by_interest[interest])} products")
+            time.sleep(0.5)
             
         except Exception as e:
             logger.error(f"Error searching '{query}': {e}")
@@ -134,7 +142,6 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
         logger.warning("No products collected")
         return []
     
-    # Balance products across interests
     num_interests = len(products_by_interest)
     per_interest = max(2, target_count // num_interests)
     
@@ -142,7 +149,6 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
     for interest, prods in products_by_interest.items():
         balanced.extend(prods[:per_interest])
     
-    # Fill remaining slots
     if len(balanced) < target_count:
         for interest, prods in products_by_interest.items():
             for p in prods:
@@ -151,5 +157,5 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
                     if len(balanced) >= target_count:
                         break
     
-    logger.info(f"Found {len(balanced)} products")
+    logger.info(f"Found {len(balanced)} products total")
     return balanced[:target_count]

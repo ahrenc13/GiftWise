@@ -2427,6 +2427,11 @@ def api_generate_recommendations():
                 if raw_link and raw_link not in product_url_to_image:
                     product_url_to_image[raw_link] = (p.get('image') or p.get('thumbnail') or '').strip()
             
+            logger.info(f"Built valid_product_urls set with {len(valid_product_urls)} URLs")
+            if valid_product_urls:
+                sample_urls = list(valid_product_urls)[:3]
+                logger.info(f"Sample valid URLs: {[u[:80] for u in sample_urls]}")
+            
             try:
                 from link_validation import is_bad_product_url
             except ImportError:
@@ -2436,11 +2441,14 @@ def api_generate_recommendations():
             # Combine and format recommendations: only product gifts from inventory (real buyable links)
             all_recommendations = []
             
+            logger.info(f"Valid product URLs in inventory: {len(valid_product_urls)} URLs")
+            logger.info(f"Product gifts from curator: {len(product_gifts)} gifts")
+            
             for gift in product_gifts:
                 product_url = (gift.get('product_url') or '').strip()
                 # Must be from inventory—never show invented or search-page gifts
                 if product_url not in valid_product_urls and _normalize_url_for_image(product_url) not in valid_product_urls:
-                    logger.debug(f"Dropping product gift not in inventory: {gift.get('name', '')[:50]}")
+                    logger.warning(f"DROPPED product not in inventory: {gift.get('name', '')[:50]} | URL: {product_url[:100]}")
                     continue
                 image_url = (gift.get('image_url') or '').strip()
                 if not image_url:

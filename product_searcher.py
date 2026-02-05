@@ -54,10 +54,37 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
         name = interest.get('name', '')
         if not name:
             continue
+        
+        # Skip work interests - we don't want to search for work-related products
+        if interest.get('is_work', False):
+            logger.info(f"Skipping work interest: {name}")
+            continue
+        
         intensity = interest.get('intensity', 'moderate')
         priority = 'high' if intensity == 'passionate' else 'medium'
+        
+        # Make query more gift-oriented
+        # Instead of "{name} buy", use gift-related terms
+        name_lower = name.lower()
+        
+        # For artists/musicians/celebrities: use "merchandise" or "merch"
+        if any(term in name_lower for term in ['artist', 'musician', 'singer', 'band', 'celebrity', 'roan', 'swift', 'nicks']):
+            query = f"{name} merchandise gifts"
+        # For sports teams/athletes: use "memorabilia" or "merchandise"
+        elif any(term in name_lower for term in ['team', 'sports', 'basketball', 'football', 'baseball', 'pacers', 'indycar']):
+            query = f"{name} memorabilia gifts"
+        # For hobbies/activities: use "gifts for"
+        elif any(term in name_lower for term in ['owner', 'enthusiast', 'lover', 'fan']):
+            query = f"gifts for {name}"
+        # For locations/travel: use "souvenirs" or "gifts"
+        elif any(term in name_lower for term in ['wisconsin', 'michigan', 'travel', 'cruise', 'vacation']):
+            query = f"{name} souvenirs gifts"
+        # Default: just add "gifts"
+        else:
+            query = f"{name} gifts"
+        
         search_queries.append({
-            'query': f"{name} buy",
+            'query': query,
             'interest': name,
             'priority': priority
         })

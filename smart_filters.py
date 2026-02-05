@@ -27,6 +27,14 @@ class WorkExclusionFilter:
         'continuing education', 'ceu', 'ce credits'
     ]
     
+    # Indicators of professional reference materials
+    PROFESSIONAL_BOOK_INDICATORS = [
+        'handbook', 'manual', 'textbook', 'reference', 'guide',
+        'clinical', 'medical reference', 'professional guide',
+        'certification prep', 'exam prep', 'study guide',
+        'encyclopedia', 'compendium', 'protocols', 'procedures'
+    ]
+    
     @staticmethod
     def is_work_related_gift(product, interest_name, profile):
         """
@@ -52,11 +60,68 @@ class WorkExclusionFilter:
         interests = profile.get('interests', [])
         work_interests = [i for i in interests if i.get('is_work', False)]
         
-        # If no work interests, nothing to exclude
+        # Check if no work interests, nothing to exclude
         if not work_interests:
             return False
         
-        # Check if product matches work interest
+        # Build key terms from work interests (not just full names)
+        work_terms = set()
+        for work_interest in work_interests:
+            work_name = (work_interest.get('name') or '').lower()
+            work_desc = (work_interest.get('description') or '').lower()
+            
+            # Add full name
+            work_terms.add(work_name)
+            
+            # Extract key terms (words that are likely unique to the work domain)
+            # Split on common separators and add significant terms
+            for term in work_name.split():
+                if len(term) > 3 and term not in ['and', 'the', 'for', 'with']:
+                    work_terms.add(term)
+            
+            # Extract work venues if present
+            if 'works at' in work_desc or 'work at' in work_desc:
+                try:
+                    match = re.search(r'works? (?:at|for) ([a-z0-9\s]+?)(?:\.|,|;|$)', work_desc)
+                    if match:
+                        venue = match.group(1).strip()
+                        work_terms.add(venue)
+                        # Add individual words from venue name
+                        for word in venue.split():
+                            if len(word) > 3:
+                                work_terms.add(word)
+                except:
+                    pass
+        
+        # Check 1: Professional books/reference materials about work topics
+        is_reference_book = any(
+            indicator in product_title or indicator in product_snippet 
+            for indicator in WorkExclusionFilter.PROFESSIONAL_BOOK_INDICATORS
+        )
+        
+        if is_reference_book:
+            # Check if book topic overlaps with work interests
+            work_term_matches = sum(1 for term in work_terms if term in product_title or term in product_snippet)
+            if work_term_matches >= 2:  # At least 2 work-related terms = professional book about their job
+                logger.info(f"EXCLUDED work item: {product.get('title', 'Unknown')[:60]} - Professional reference about work topic")
+                return True
+        
+        # Check 2: Products with professional/work keywords + work topic overlap
+        has_work_keywords = any(
+            keyword in product_title or keyword in product_snippet
+            for keyword in ['professional', 'safety', 'medical', 'emergency', 'clinical', 
+                          'training', 'certification', 'equipment', 'gear', 'tools']
+        )
+        
+        if has_work_keywords:
+            work_term_matches = sum(1 for term in work_terms if term in product_title or term in product_snippet)
+            if work_term_matches >= 2:  # Professional item + work topic = work-related
+                logger.info(f"EXCLUDED work item: {product.get('title', 'Unknown')[:60]} - Professional item about work topic")
+                return True
+        
+        # Check 3: Experiences at workplace (original logic)
+        for work_interest in work_interests:
+        # Check 3: Experiences at workplace (original logic)
         for work_interest in work_interests:
             work_name = (work_interest.get('name') or '').lower()
             work_desc = (work_interest.get('description') or '').lower()
@@ -75,13 +140,6 @@ class WorkExclusionFilter:
                             work_venues.extend(['ims', 'indianapolis motor speedway', 'indy 500', 'indianapolis 500'])
                 except:
                     pass  # Fail gracefully if parsing fails
-            
-            # Check for work tools/equipment
-            work_tools = ['tools', 'equipment', 'safety', 'professional', 'workplace']
-            if any(tool in product_title or tool in product_snippet for tool in work_tools):
-                if work_name in product_title or work_name in product_snippet:
-                    logger.info(f"EXCLUDED work item: {product.get('title', 'Unknown')[:60]} - Work tools/equipment")
-                    return True
             
             # Check for experiences at workplace
             experience_indicators = ['tour', 'visit', 'behind the scenes', 'backstage', 'vip access']

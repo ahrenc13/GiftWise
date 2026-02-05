@@ -99,7 +99,7 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
             
             for i, item in enumerate(shopping_items[:10]):
                 title = item.get('title', '').strip()
-                link = item.get('link', '').strip()
+                link = (item.get('link') or item.get('product_link') or '').strip()
                 
                 logger.info(f"  [{i+1}] Checking: {title[:60]}...")
                 logger.info(f"       Link: {link[:80]}...")

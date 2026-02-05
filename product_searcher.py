@@ -78,9 +78,10 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
                     'q': query,
                     'api_key': serpapi_key,
                     'num': 10,
-                    'engine': 'google_shopping',
+                    'engine': 'google',
                     'gl': 'us',
-                    'hl': 'en'
+                    'hl': 'en',
+                    'tbm': 'shop'
                 },
                 timeout=10
             )
@@ -92,6 +93,11 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
             data = response.json()
             shopping_items = data.get('shopping_results', [])
             
+            # Debug: log first item structure to understand response format
+            if shopping_items and len(all_products) == 0:
+                logger.info(f"Sample SerpAPI response keys: {list(shopping_items[0].keys())}")
+                logger.info(f"Sample link field: {shopping_items[0].get('link', '')[:100]}")
+            
             if not shopping_items:
                 logger.warning(f"No shopping results for: {query}")
                 continue
@@ -101,11 +107,6 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
                 link = (item.get('link') or item.get('product_link') or '').strip()
                 
                 if not title or not link:
-                    continue
-                
-                # Skip Google search/shopping page URLs - we need direct product links
-                if 'google.com/search' in link.lower() or 'google.com/shopping' in link.lower():
-                    logger.debug(f"Skipping Google search URL: {link[:80]}")
                     continue
                 
                 if is_listicle_or_blog(title, link):
@@ -126,6 +127,10 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
                 if not any(p['link'] == link for p in all_products):
                     all_products.append(product)
                     products_by_interest[interest].append(product)
+                    
+                    # Log first few products to verify URL quality
+                    if len(all_products) <= 3:
+                        logger.info(f"Collected product: {title[:50]} | URL: {link[:100]}")
             
             logger.info(f"Added {len(products_by_interest[interest])} products for '{interest}'")
             time.sleep(0.3)
@@ -159,7 +164,7 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
     logger.info(f"Found {len(balanced)} products in {elapsed:.1f}s")
     
     if balanced:
-        sample_urls = [p['link'][:80] for p in balanced[:3]]
-        logger.info(f"Sample product URLs: {sample_urls}")
+        sample_urls = [p['link'][:100] for p in balanced[:3]]
+        logger.info(f"Final sample product URLs: {sample_urls}")
     
     return balanced[:target_count]

@@ -15,7 +15,7 @@ from urllib.parse import urlparse
 logger = logging.getLogger(__name__)
 
 MAX_SEARCH_QUERIES = 10
-INVENTORY_MULTIPLIER = 3
+INVENTORY_MULTIPLIER = 2  # Changed from 3 to reduce curation time
 
 
 def is_listicle_or_blog(title, url):

@@ -9,6 +9,7 @@ Date: February 2026
 import requests
 import logging
 import time
+import re
 from collections import defaultdict
 from urllib.parse import urlparse
 
@@ -75,13 +76,12 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
             response = requests.get(
                 "https://serpapi.com/search",
                 params={
-                    'q': query,
+                    'q': f"{query} site:amazon.com OR site:etsy.com OR site:ebay.com",
                     'api_key': serpapi_key,
                     'num': 10,
                     'engine': 'google',
                     'gl': 'us',
-                    'hl': 'en',
-                    'tbm': 'shop'
+                    'hl': 'en'
                 },
                 timeout=10
             )
@@ -91,37 +91,54 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
                 continue
             
             data = response.json()
-            shopping_items = data.get('shopping_results', [])
+            shopping_items = data.get('organic_results', [])
             
             # Debug: log first item structure to understand response format
             if shopping_items and len(all_products) == 0:
                 logger.info(f"Sample SerpAPI response keys: {list(shopping_items[0].keys())}")
-                logger.info(f"Sample link field: {shopping_items[0].get('link', '')[:100]}")
+                sample_link = shopping_items[0].get('link', '')
+                logger.info(f"Sample link field: {sample_link[:100]}")
             
             if not shopping_items:
-                logger.warning(f"No shopping results for: {query}")
+                logger.warning(f"No results for: {query}")
                 continue
             
             for item in shopping_items[:10]:
                 title = item.get('title', '').strip()
-                link = (item.get('link') or item.get('product_link') or '').strip()
+                link = item.get('link', '').strip()
+                snippet = item.get('snippet', '').strip()
                 
                 if not title or not link:
+                    continue
+                
+                # Filter out non-product pages
+                link_lower = link.lower()
+                if not any(retailer in link_lower for retailer in ['amazon.com', 'etsy.com', 'ebay.com']):
+                    continue
+                    
+                # Skip listing/search pages - we want specific product pages
+                if any(bad in link_lower for bad in ['/s?', '/search', '/sr?', '/sch/i.html']):
                     continue
                 
                 if is_listicle_or_blog(title, link):
                     continue
                 
+                # Try to extract price from snippet (basic attempt)
+                price = ''
+                price_match = re.search(r'\$[\d,]+\.?\d*', snippet)
+                if price_match:
+                    price = price_match.group(0)
+                
                 product = {
                     'title': title,
                     'link': link,
-                    'snippet': item.get('snippet', ''),
-                    'image': item.get('thumbnail', ''),
+                    'snippet': snippet,
+                    'image': '',  # Organic results don't have thumbnails
                     'source_domain': urlparse(link).netloc.replace('www.', ''),
                     'search_query': query,
                     'interest_match': interest,
                     'priority': query_info['priority'],
-                    'price': item.get('price', '')
+                    'price': price
                 }
                 
                 if not any(p['link'] == link for p in all_products):

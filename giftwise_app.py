@@ -59,6 +59,7 @@ try:
     from profile_analyzer import build_recipient_profile
     from product_searcher import search_real_products
     from gift_curator import curate_gifts
+    from post_curation_validator import validate_and_fix_recommendations
     NEW_RECOMMENDATION_FLOW = True
 except ImportError:
     NEW_RECOMMENDATION_FLOW = False
@@ -2382,10 +2383,11 @@ def api_generate_recommendations():
             products = apply_smart_filters(products, profile)
             logger.info(f"After smart filters: {len(products)} products")
             
+            # TEMPORARILY DISABLED - relationship filter too aggressive (kills 18 of 27 products)
             # Filter by relationship appropriateness
-            if recipient_type == 'someone_else' and relationship:
-                products = RelationshipRules.filter_by_relationship(products, relationship)
-                logger.info(f"After relationship filter ({relationship}): {len(products)} products")
+            # if recipient_type == 'someone_else' and relationship:
+            #     products = RelationshipRules.filter_by_relationship(products, relationship)
+            #     logger.info(f"After relationship filter ({relationship}): {len(products)} products")
             
             # STEP 3: Select best gifts from inventory (curator chooses from existing products only)
             logger.info("STEP 3: Selecting best gifts from inventory...")
@@ -2405,6 +2407,22 @@ def api_generate_recommendations():
                 }), 500
             
             logger.info(f"Curated {len(product_gifts)} products + {len(experience_gifts)} experiences")
+            # STEP 3.5: Validate final product links (Option A)
+            logger.info("STEP 3.5: Validating final product links...")
+            product_gifts = validate_and_fix_recommendations(
+                curated_products=product_gifts,
+                backup_products=products,
+                target_count=product_rec_count
+            )
+
+if not product_gifts and not experience_gifts:
+    logger.warning("No valid products after validation")
+    return jsonify({
+        'success': False,
+        'error': "We had trouble finding available products. Please try again."
+    }), 500
+
+logger.info(f"Final validated: {len(product_gifts)} products")
             
             # Build product URL -> image map for backfilling thumbnails (normalize URL so lookup matches)
             def _normalize_url_for_image(u):

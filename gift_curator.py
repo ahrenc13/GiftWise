@@ -141,16 +141,18 @@ Return JSON:
       "gift_type": "experience"
     }}
   ]
-}}"""
-- Product gifts MUST be selected FROM THE INVENTORY ABOVE ONLY. Every product gift must be one of the {len(products)} listed products (use exact URLs and image URLs from that line). Never invent or reference a product not in the inventory. product_url = direct product page ONLY—never search or homepage.
+}}
+
+REQUIREMENTS:
+- Product gifts MUST be selected FROM THE INVENTORY ABOVE ONLY. Every product gift must be one of the {len(products)} listed products (use exact URLs and image URLs from that line). Never invent or reference a product not in the inventory. product_url = direct product page ONLY - never search or homepage.
 - Experience gifts MUST be hyper-specific, cite 2+ profile data points in why_perfect, and include how_to_execute + how_to_make_it_special.
-- Experience links (reservation_link, venue_website) are LOGISTICS-CRITICAL: they must point to venues in the recipient's city/region only (use "Lives in" and "Specific places"). Never link to a venue in another city or state. If you cannot find a real bookable venue in their area, leave both empty—we will supply a geography-calibrated search link.
-- materials_needed for experiences: when an item matches a product in AVAILABLE PRODUCTS, copy that product's URL exactly into product_url and set where_to_buy to its domain. Never use search URLs—only direct product page URLs from the list. Empty product_url is OK when no match; we will add a find-it link.
+- Experience links (reservation_link, venue_website) are LOGISTICS-CRITICAL: they must point to venues in the recipient's city/region only (use "Lives in" and "Specific places"). Never link to a venue in another city or state. If you cannot find a real bookable venue in their area, leave both empty - we will supply a geography-calibrated search link.
+- materials_needed for experiences: when an item matches a product in AVAILABLE PRODUCTS, copy that product's URL exactly into product_url and set where_to_buy to its domain. Never use search URLs - only direct product page URLs from the list. Empty product_url is OK when no match; we will add a find-it link.
 - If no location context, DO NOT suggest location-specific experiences
 - Each recommendation must have clear evidence from the profile
 - DIVERSITY: Max 2 products per single interest/theme (e.g. max 2 per band). Spread across at least 5+ interests.
 - Total: {rec_count} product gifts + 2-3 experience gifts
-- Every product gift product_url MUST be an exact copy of a URL from the INVENTORY list above—no invented products, no search pages.
+- Every product gift product_url MUST be an exact copy of a URL from the INVENTORY list above - no invented products, no search pages.
 - Return ONLY the JSON object, no markdown, no backticks"""
     
     try:

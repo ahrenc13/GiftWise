@@ -1,6 +1,6 @@
 """
 PRODUCT SEARCHER - FAST VERSION
-No validation. Gets products in 30 seconds.
+Gets products quickly, no validation
 
 Author: Chad + Claude  
 Date: February 2026
@@ -124,7 +124,7 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
                     products_by_interest[interest].append(product)
             
             logger.info(f"Added {len(products_by_interest[interest])} products for '{interest}'")
-            time.sleep(0.3)  # Small delay between searches
+            time.sleep(0.3)
             
         except Exception as e:
             logger.error(f"Error searching '{query}': {e}")

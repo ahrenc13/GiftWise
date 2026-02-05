@@ -115,6 +115,7 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
     logger.info(f"Running {len(search_queries)} searches")
     
     def run_one_search_with_validation(query_info):
+        global _serpapi_last_call
         query = query_info['query']
         interest = query_info['interest']
         validated_products = []

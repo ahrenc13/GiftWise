@@ -39,9 +39,10 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
-MAX_CONCURRENT_SEARCHES = 5
-SLEEP_BETWEEN_REQUESTS = 0.3
-MAX_SEARCH_QUERIES = 10
+# SerpAPI rate limit: avoid 429 by doing fewer searches and waiting between requests
+MAX_SEARCH_QUERIES = 5
+SLEEP_BETWEEN_REQUESTS = 2.0
+SLEEP_ON_RATE_LIMIT = 15
 INVENTORY_MULTIPLIER = 3
 
 _product_cache = {}
@@ -170,7 +171,9 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
 
     all_products = []
     products_by_interest = defaultdict(list)
-    for q in search_queries:
+    for i, q in enumerate(search_queries):
+        if i > 0:
+            time.sleep(SLEEP_BETWEEN_REQUESTS)
         _qinfo, results, interest = run_one_search_with_validation(q)
         for p in results:
             if not any(x.get('link') == p.get('link') for x in all_products):

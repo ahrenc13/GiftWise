@@ -13,6 +13,7 @@ Date: February 2026
 import requests
 import logging
 import time
+import threading
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from urllib.parse import urlparse
@@ -45,6 +46,11 @@ SLEEP_BETWEEN_REQUESTS = 1.5
 SLEEP_ON_RATE_LIMIT = 12
 MAX_429_RETRIES = 1
 INVENTORY_MULTIPLIER = 3
+
+# At scale: minimum gap between ANY SerpAPI call (all users). Raise when you upgrade SerpAPI plan.
+_serpapi_lock = threading.Lock()
+_serpapi_last_call = 0.0
+MIN_GAP_BETWEEN_SERPAPI_CALLS = float(os.environ.get('SERPAPI_MIN_GAP_SECONDS', '2.0'))
 
 _product_cache = {}
 
@@ -125,7 +131,16 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
             }
             response = None
             for attempt in range(MAX_429_RETRIES + 1):
-                response = requests.get(url, params=params, timeout=10)
+                # Global rate limit: space out SerpAPI calls across all users so we don't 429 at scale
+                with _serpapi_lock:
+                    now = time.time()
+                    wait = _serpapi_last_call + MIN_GAP_BETWEEN_SERPAPI_CALLS - now
+                    if wait > 0:
+                        if wait >= 1.0:
+                            logger.info(f"SerpAPI: waiting {wait:.1f}s (another user just used the API)")
+                        time.sleep(wait)
+                    response = requests.get(url, params=params, timeout=10)
+                    _serpapi_last_call = time.time()
                 if response.status_code == 429 and attempt < MAX_429_RETRIES:
                     logger.warning(f"Rate limited (429) for: {query}, waiting {SLEEP_ON_RATE_LIMIT}s before retry {attempt + 1}/{MAX_429_RETRIES}")
                     time.sleep(SLEEP_ON_RATE_LIMIT)
@@ -218,5 +233,6 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
                         break
             if len(balanced) >= target_count:
                 break
-    logger.info(f"Found {len(balanced)} products (validate_realtime={validate_realtime})")
+    _elapsed = time.time() - _start
+    logger.info(f"Found {len(balanced)} products in {_elapsed:.1f}s (validate_realtime={validate_realtime})")
     return balanced[:target_count]

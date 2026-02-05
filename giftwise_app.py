@@ -22,10 +22,12 @@ Date: January 2026
 """
 
 import os
+import sys
 import json
 import time
 import uuid
 import threading
+import signal
 import re
 import logging
 from datetime import datetime, timedelta
@@ -225,6 +227,30 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger('giftwise')
+
+# Scrape threads: on SIGTERM we wait for these to finish (graceful shutdown)
+_scrape_threads = []
+# At scale: cap concurrent scrape threads. Raise MAX_CONCURRENT_SCRAPERS when you upgrade Apify/limits.
+_max_concurrent_scrapers = int(os.environ.get('MAX_CONCURRENT_SCRAPERS', '8'))
+_scrape_semaphore = threading.Semaphore(_max_concurrent_scrapers)
+
+def _graceful_shutdown(signum, frame):
+    """On SIGTERM, wait for active scrape threads (max 90s total) before exiting."""
+    sig = getattr(signal, 'SIGTERM', None)
+    if signum != sig:
+        return
+    logger.info("SIGTERM received, waiting for scrape threads to finish (max 90s)...")
+    deadline = time.time() + 90
+    for t in list(_scrape_threads):
+        remaining = max(0, deadline - time.time())
+        if remaining <= 0:
+            break
+        t.join(timeout=remaining)
+    logger.info("Exiting after graceful shutdown")
+    sys.exit(0)
+
+if getattr(signal, 'SIGTERM', None) is not None:
+    signal.signal(signal.SIGTERM, _graceful_shutdown)
 
 if INTELLIGENCE_LAYER_AVAILABLE:
     logger.info("Intelligence layer loaded successfully (enrichment_engine, experience_architect, payment_model)")
@@ -1720,19 +1746,25 @@ def start_scraping():
         username = platforms['instagram']['username']
         
         def scrape_ig():
-            # Keep at least 40–50 posts for profile analyzer; lower limits reduce inferential depth
-            data = scrape_instagram_profile(username, max_posts=50, task_id=task_id)
-            if data:
-                user = get_user(user_id)
-                if user:
-                    platforms = user.get('platforms', {})
-                    platforms['instagram']['data'] = data
-                    platforms['instagram']['status'] = 'complete'
-                    platforms['instagram']['connected_at'] = datetime.now().isoformat()
-                    save_user(user_id, {'platforms': platforms})
+            if not _scrape_semaphore.acquire(blocking=False):
+                logger.info("Scrape slots full (8 in use), waiting for a slot for Instagram...")
+                _scrape_semaphore.acquire()
+            try:
+                data = scrape_instagram_profile(username, max_posts=50, task_id=task_id)
+                if data:
+                    user = get_user(user_id)
+                    if user:
+                        platforms = user.get('platforms', {})
+                        platforms['instagram']['data'] = data
+                        platforms['instagram']['status'] = 'complete'
+                        platforms['instagram']['connected_at'] = datetime.now().isoformat()
+                        save_user(user_id, {'platforms': platforms})
+            finally:
+                _scrape_semaphore.release()
         
         thread = threading.Thread(target=scrape_ig)
-        thread.daemon = True
+        thread.daemon = False
+        _scrape_threads.append(thread)
         thread.start()
     
     if 'tiktok' in platforms and platforms['tiktok'].get('status') in ['ready', 'connected']:
@@ -1741,18 +1773,25 @@ def start_scraping():
         username = platforms['tiktok']['username']
         
         def scrape_tt():
-            data = scrape_tiktok_profile(username, max_videos=50, task_id=task_id)
-            if data:
-                user = get_user(user_id)
-                if user:
-                    platforms = user.get('platforms', {})
-                    platforms['tiktok']['data'] = data
-                    platforms['tiktok']['status'] = 'complete'
-                    platforms['tiktok']['connected_at'] = datetime.now().isoformat()
-                    save_user(user_id, {'platforms': platforms})
+            if not _scrape_semaphore.acquire(blocking=False):
+                logger.info("Scrape slots full (8 in use), waiting for a slot for TikTok...")
+                _scrape_semaphore.acquire()
+            try:
+                data = scrape_tiktok_profile(username, max_videos=50, task_id=task_id)
+                if data:
+                    user = get_user(user_id)
+                    if user:
+                        platforms = user.get('platforms', {})
+                        platforms['tiktok']['data'] = data
+                        platforms['tiktok']['status'] = 'complete'
+                        platforms['tiktok']['connected_at'] = datetime.now().isoformat()
+                        save_user(user_id, {'platforms': platforms})
+            finally:
+                _scrape_semaphore.release()
         
         thread = threading.Thread(target=scrape_tt)
-        thread.daemon = True
+        thread.daemon = False
+        _scrape_threads.append(thread)
         thread.start()
     
     # Pinterest scraping (if using scraping method, not OAuth)
@@ -1765,6 +1804,9 @@ def start_scraping():
             username = pinterest_data['username']
             
             def scrape_pin():
+                if not _scrape_semaphore.acquire(blocking=False):
+                    logger.info("Scrape slots full (8 in use), waiting for a slot for Pinterest...")
+                    _scrape_semaphore.acquire()
                 try:
                     data = scrape_pinterest_profile(username, max_pins=100, task_id=task_id)
                     if data:
@@ -1793,9 +1835,12 @@ def start_scraping():
                         platforms['pinterest']['status'] = 'failed'
                         platforms['pinterest']['error'] = f'Scraping error: {str(e)}'
                         save_user(user_id, {'platforms': platforms})
+                finally:
+                    _scrape_semaphore.release()
             
             thread = threading.Thread(target=scrape_pin)
-            thread.daemon = True
+            thread.daemon = False
+            _scrape_threads.append(thread)
             thread.start()
             logger.info(f"Started Pinterest scraping thread for @{username}")
     

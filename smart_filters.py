@@ -121,8 +121,6 @@ class WorkExclusionFilter:
         
         # Check 3: Experiences at workplace (original logic)
         for work_interest in work_interests:
-        # Check 3: Experiences at workplace (original logic)
-        for work_interest in work_interests:
             work_name = (work_interest.get('name') or '').lower()
             work_desc = (work_interest.get('description') or '').lower()
             

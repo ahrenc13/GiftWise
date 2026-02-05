@@ -130,6 +130,9 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
                 logger.warning(f"No results for: {query}")
                 continue
             
+            collected_count = 0
+            filtered_count = 0
+            
             for item in shopping_items[:10]:
                 title = item.get('title', '').strip()
                 link = item.get('link', '').strip()
@@ -142,12 +145,33 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
                 link_lower = link.lower()
                 if not any(retailer in link_lower for retailer in ['amazon.com', 'etsy.com', 'ebay.com']):
                     continue
-                    
-                # Skip listing/search pages - we want specific product pages
-                if any(bad in link_lower for bad in ['/s?', '/search', '/sr?', '/sch/i.html']):
+                
+                # CRITICAL: Only accept DIRECT PRODUCT PAGES, reject category/search/listing pages
+                is_product_page = False
+                
+                if 'amazon.com' in link_lower:
+                    # Amazon: Must have /dp/ (direct product) or /gp/product/
+                    if '/dp/' in link_lower or '/gp/product/' in link_lower:
+                        is_product_page = True
+                
+                elif 'etsy.com' in link_lower:
+                    # Etsy: Must have /listing/ (specific product listing)
+                    if '/listing/' in link_lower:
+                        is_product_page = True
+                
+                elif 'ebay.com' in link_lower:
+                    # eBay: Must have /itm/ (item page)
+                    if '/itm/' in link_lower:
+                        is_product_page = True
+                
+                if not is_product_page:
+                    filtered_count += 1
+                    if filtered_count <= 2:  # Log first 2 filtered for debugging
+                        logger.info(f"FILTERED non-product page: {link[:100]}")
                     continue
                 
                 if is_listicle_or_blog(title, link):
+                    filtered_count += 1
                     continue
                 
                 # Try to extract price from snippet (basic attempt)
@@ -171,12 +195,13 @@ def search_real_products(profile, serpapi_key, target_count=None, rec_count=10, 
                 if not any(p['link'] == link for p in all_products):
                     all_products.append(product)
                     products_by_interest[interest].append(product)
+                    collected_count += 1
                     
                     # Log first few products to verify URL quality
                     if len(all_products) <= 3:
                         logger.info(f"Collected product: {title[:50]} | URL: {link[:100]}")
             
-            logger.info(f"Added {len(products_by_interest[interest])} products for '{interest}'")
+            logger.info(f"Added {len(products_by_interest[interest])} products for '{interest}' (filtered {filtered_count} non-product pages)")
             time.sleep(0.3)
             
         except Exception as e:

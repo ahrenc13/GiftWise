@@ -10,6 +10,7 @@ Author: Chad + Claude
 Date: February 2026
 """
 
+import os
 import requests
 import logging
 import time

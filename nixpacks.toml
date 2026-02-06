@@ -1,0 +1,10 @@
+# Nixpacks config for Railway: make pip install more reliable (timeout, memory)
+# Build was failing during pip install; log stopped at "Collecting Jinja2..."
+
+[variables]
+# Reduce memory use during install (no pip cache)
+PIP_NO_CACHE_DIR = "1"
+
+# Give pip longer timeout for slow PyPI/build network (default 15s can be too low)
+# Override install so we can pass --timeout to pip
+NIXPACKS_INSTALL_CMD = "python -m venv --copies /opt/venv && . /opt/venv/bin/activate && pip install --timeout 300 --no-cache-dir -r requirements.txt"

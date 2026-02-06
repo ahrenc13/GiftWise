@@ -92,6 +92,9 @@ def _stream_feed_and_match(feed_url, search_queries, max_results_from_feed, seen
         logger.warning("Awin feed stream failed: %s", e)
         return
 
+    # Required for gzip-compressed feeds: decompress on read (else "I/O operation on closed file")
+    r.raw.decode_content = True
+
     count = 0
     scanned = 0
     text_stream = None
@@ -147,6 +150,7 @@ def _stream_feed_first_n(feed_url, n, seen_ids):
     except requests.RequestException as e:
         logger.warning("Awin feed stream failed: %s", e)
         return
+    r.raw.decode_content = True
     count = 0
     text_stream = None
     try:
@@ -184,7 +188,7 @@ def _download_feed_csv(feed_url):
     except requests.RequestException as e:
         logger.warning("Awin feed download failed: %s", e)
         return []
-
+    r.raw.decode_content = True
     rows = []
     text_stream = None
     try:

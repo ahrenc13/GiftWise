@@ -1275,6 +1275,111 @@ def parse_tiktok_data(data, username):
     }
 
 # ============================================================================
+# DEBUG: Awin feed diagnostic (remove or protect in production)
+# ============================================================================
+
+@app.route('/debug/awin-test')
+def debug_awin():
+    """Diagnostic endpoint to test Awin feed download. Visit /debug/awin-test and paste output to diagnose streaming failures."""
+    import csv
+    import io
+
+    api_key = os.environ.get('AWIN_DATA_FEED_API_KEY', '')
+    if not api_key:
+        return "<pre>AWIN_DATA_FEED_API_KEY not set</pre>", 500
+
+    output = []
+    output.append("=== AWIN DIAGNOSTIC ===\n")
+
+    # Step 1: Get feed list
+    try:
+        r = requests.get(
+            f"https://productdata.awin.com/datafeed/list/apikey/{api_key}",
+            timeout=30,
+        )
+        output.append(f"Feed list status: {r.status_code}\n")
+
+        reader = csv.DictReader(io.StringIO(r.text))
+        feeds = list(reader)
+        output.append(f"Found {len(feeds)} feeds\n")
+
+        if not feeds:
+            return "<pre>" + "".join(output) + "\nNo feeds found</pre>", 500
+
+        first_feed = feeds[0]
+        feed_url = first_feed.get("URL") or first_feed.get("url")
+        advertiser = first_feed.get("Advertiser Name") or first_feed.get("advertiser_name")
+
+        output.append(f"First feed: {advertiser}\n")
+        output.append(f"Feed URL (first 100 chars): {feed_url[:100]}...\n\n")
+    except Exception as e:
+        return "<pre>" + "".join(output) + f"\nERROR: {e}</pre>", 500
+
+    # Step 2: Test direct download (no stream)
+    output.append("=== TESTING DIRECT DOWNLOAD (no stream) ===\n")
+    try:
+        r = requests.get(feed_url, timeout=30)
+        output.append(f"Status: {r.status_code}\n")
+        output.append(f"Content-Type: {r.headers.get('content-type')}\n")
+        output.append(f"Content-Encoding: {r.headers.get('content-encoding', 'none')}\n")
+        output.append(f"Response length: {len(r.content)} bytes\n")
+        output.append(f"First 500 chars:\n{r.text[:500]}\n\n")
+
+        if r.text.startswith("<!DOCTYPE") or r.text.startswith("<html"):
+            output.append("WARNING: Response is HTML, not CSV!\n")
+        elif "," in r.text[:200] or "\t" in r.text[:200]:
+            output.append("Response looks like CSV\n")
+        else:
+            output.append("Response may be compressed or not CSV\n")
+    except Exception as e:
+        output.append(f"ERROR: {e}\n")
+
+    output.append("\n")
+
+    # Step 3: Test streaming (what production does)
+    output.append("=== TESTING STREAMING (PRODUCTION METHOD) ===\n")
+    try:
+        r = requests.get(feed_url, timeout=30, stream=True)
+        output.append(f"Status: {r.status_code}\n")
+        output.append(f"r.raw exists: {r.raw is not None}\n")
+        output.append(f"r.raw type: {type(r.raw).__name__}\n")
+        output.append(f"Content-Encoding: {r.headers.get('content-encoding', 'none')}\n\n")
+
+        output.append("Setting r.raw.decode_content = True (required for gzip)...\n")
+        r.raw.decode_content = True
+
+        output.append("Wrapping in TextIOWrapper and reading CSV...\n")
+        text_stream = io.TextIOWrapper(r.raw, encoding="utf-8", errors="replace")
+        reader = csv.DictReader(text_stream)
+
+        rows_read = 0
+        for i, row in enumerate(reader):
+            rows_read += 1
+            if i == 0:
+                output.append(f"First row keys: {list(row.keys())[:10]}\n")
+                output.append(f"First row sample: {dict(list(row.items())[:3])}\n")
+            if i >= 4:
+                break
+
+        output.append(f"Successfully read {rows_read} rows via streaming\n")
+        try:
+            text_stream.close()
+        except Exception:
+            pass
+        try:
+            r.close()
+        except Exception:
+            pass
+    except Exception as e:
+        output.append(f"ERROR: {e}\n")
+        output.append(f"Error type: {type(e).__name__}\n")
+        import traceback
+        output.append(f"Traceback:\n{traceback.format_exc()}\n")
+
+    return "<pre>" + "".join(output) + "</pre>"
+
+
+# ============================================================================
 # API ROUTES
 # ============================================================================
 

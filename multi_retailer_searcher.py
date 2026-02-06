@@ -93,7 +93,29 @@ def search_products_multi_retailer(
     elif remaining > 0:
         logger.info("Awin data feed API key not set - skipping Awin")
 
-    # 3. ShareASale (fill remaining)
+    # 3. eBay (Browse API)
+    remaining = target_count - len(all_products)
+    if remaining > 0 and ebay_client_id and ebay_client_secret:
+        try:
+            from ebay_searcher import search_products_ebay
+
+            logger.info(f"Searching eBay for {remaining} products...")
+            ebay_products = search_products_ebay(
+                profile,
+                ebay_client_id,
+                ebay_client_secret,
+                target_count=remaining,
+            )
+            all_products.extend(ebay_products)
+            logger.info(f"Got {len(ebay_products)} products from eBay")
+        except ImportError as e:
+            logger.warning(f"ebay_searcher not available: {e}")
+        except Exception as e:
+            logger.error(f"eBay search failed: {e}")
+    elif remaining > 0:
+        logger.info("eBay credentials not set - skipping eBay")
+
+    # 4. ShareASale (fill remaining)
     remaining = target_count - len(all_products)
     if remaining > 0 and all([shareasale_id, shareasale_token, shareasale_secret]):
         try:
@@ -116,7 +138,7 @@ def search_products_multi_retailer(
     elif remaining > 0:
         logger.info("ShareASale credentials not set - skipping ShareASale")
 
-    # 5. Amazon fill-in only when meaningfully short (deprioritized vs Etsy/Awin/eBay/ShareASale)
+    # 5. Amazon fill-in only when meaningfully short (deprioritized vs Etsy/Awin/eBay/ShareASale) (deprioritized vs Etsy/Awin/eBay/ShareASale)
     remaining = target_count - len(all_products)
     amazon_min_remaining = min(5, max(1, target_count // 2))  # only fetch Amazon if we need at least this many
     if remaining >= amazon_min_remaining and amazon_key:

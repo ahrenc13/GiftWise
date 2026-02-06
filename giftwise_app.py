@@ -57,7 +57,7 @@ except ImportError as e:
 # Import new recommendation architecture (profile → search → curate)
 try:
     from profile_analyzer import build_recipient_profile
-    from product_searcher import search_real_products
+    from google_cse_searcher import search_products_google_cse
     from gift_curator import curate_gifts
     NEW_RECOMMENDATION_FLOW = True
 except ImportError:
@@ -2342,11 +2342,11 @@ def api_generate_recommendations():
             # Inventory must be at least 2-3x the number we will select so the engine can choose carefully.
             product_rec_count = 10  # number of product gifts we will select
             logger.info("STEP 2: Pulling product inventory...")
-            products = search_real_products(
+            products = search_products_google_cse(
                 profile,
-                SERPAPI_API_KEY,
-                rec_count=product_rec_count,
-                validate_realtime=False
+                os.environ.get('GOOGLE_CSE_API_KEY', ''),
+                os.environ.get('GOOGLE_CUSTOM_SEARCH_ENGINE_ID', ''),
+                target_count=product_rec_count
             )
             
             if len(products) == 0:
@@ -2427,11 +2427,6 @@ def api_generate_recommendations():
                 if raw_link and raw_link not in product_url_to_image:
                     product_url_to_image[raw_link] = (p.get('image') or p.get('thumbnail') or '').strip()
             
-            logger.info(f"Built valid_product_urls set with {len(valid_product_urls)} URLs")
-            if valid_product_urls:
-                sample_urls = list(valid_product_urls)[:3]
-                logger.info(f"Sample valid URLs: {[u[:80] for u in sample_urls]}")
-            
             try:
                 from link_validation import is_bad_product_url
             except ImportError:
@@ -2441,14 +2436,11 @@ def api_generate_recommendations():
             # Combine and format recommendations: only product gifts from inventory (real buyable links)
             all_recommendations = []
             
-            logger.info(f"Valid product URLs in inventory: {len(valid_product_urls)} URLs")
-            logger.info(f"Product gifts from curator: {len(product_gifts)} gifts")
-            
             for gift in product_gifts:
                 product_url = (gift.get('product_url') or '').strip()
                 # Must be from inventory—never show invented or search-page gifts
                 if product_url not in valid_product_urls and _normalize_url_for_image(product_url) not in valid_product_urls:
-                    logger.warning(f"DROPPED product not in inventory: {gift.get('name', '')[:50]} | URL: {product_url[:100]}")
+                    logger.debug(f"Dropping product gift not in inventory: {gift.get('name', '')[:50]}")
                     continue
                 image_url = (gift.get('image_url') or '').strip()
                 if not image_url:

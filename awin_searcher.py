@@ -94,6 +94,7 @@ def _stream_feed_and_match(feed_url, search_queries, max_results_from_feed, seen
 
     count = 0
     scanned = 0
+    text_stream = None
     try:
         text_stream = io.TextIOWrapper(r.raw, encoding="utf-8", errors="replace")
         reader = csv.DictReader(text_stream)
@@ -124,6 +125,12 @@ def _stream_feed_and_match(feed_url, search_queries, max_results_from_feed, seen
     except Exception as e:
         logger.warning("Awin feed stream parse failed: %s", e)
     finally:
+        # Close text_stream first (it wraps r.raw), then close r
+        if text_stream:
+            try:
+                text_stream.close()
+            except Exception:
+                pass
         try:
             r.close()
         except Exception:
@@ -141,6 +148,7 @@ def _stream_feed_first_n(feed_url, n, seen_ids):
         logger.warning("Awin feed stream failed: %s", e)
         return
     count = 0
+    text_stream = None
     try:
         text_stream = io.TextIOWrapper(r.raw, encoding="utf-8", errors="replace")
         reader = csv.DictReader(text_stream)
@@ -156,6 +164,12 @@ def _stream_feed_first_n(feed_url, n, seen_ids):
     except Exception as e:
         logger.warning("Awin feed stream parse failed: %s", e)
     finally:
+        # Close text_stream first (it wraps r.raw), then close r
+        if text_stream:
+            try:
+                text_stream.close()
+            except Exception:
+                pass
         try:
             r.close()
         except Exception:
@@ -172,6 +186,7 @@ def _download_feed_csv(feed_url):
         return []
 
     rows = []
+    text_stream = None
     try:
         text_stream = io.TextIOWrapper(r.raw, encoding="utf-8", errors="replace")
         reader = csv.DictReader(text_stream)
@@ -183,6 +198,12 @@ def _download_feed_csv(feed_url):
         logger.warning("Awin feed parse failed: %s", e)
         return []
     finally:
+        # Close text_stream first (it wraps r.raw), then close r
+        if text_stream:
+            try:
+                text_stream.close()
+            except Exception:
+                pass
         try:
             r.close()
         except Exception:

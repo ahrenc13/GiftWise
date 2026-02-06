@@ -12,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def curate_gifts(profile, products, recipient_type, relationship, claude_client, rec_count=10):
+def curate_gifts(profile, products, recipient_type, relationship, claude_client, rec_count=10, enhanced_search_terms=None):
     """
     Curate gift recommendations from real products and profile.
     
@@ -23,6 +23,7 @@ def curate_gifts(profile, products, recipient_type, relationship, claude_client,
         relationship: Relationship type if someone_else
         claude_client: Anthropic client for AI curation
         rec_count: Number of product recommendations (default 10)
+        enhanced_search_terms: Optional list of enhanced search terms from intelligence layer
     
     Returns:
         Dict with:
@@ -45,9 +46,47 @@ def curate_gifts(profile, products, recipient_type, relationship, claude_client,
         # Get detailed relationship-specific rules
         relationship_context = get_relationship_guidance(relationship)
     
-    # Format profile for prompt
+    # Extract aspirational/current/gaps for emphasis
+    asp_curr = profile.get('aspirational_vs_current', {})
+    gaps = asp_curr.get('gaps', [])[:5]
+    aspirational = asp_curr.get('aspirational', [])[:5]
+    current = asp_curr.get('current', [])[:5]
+    
+    # Build GIFT SWEET SPOTS section (lead with this!)
+    sweet_spots = ""
+    if gaps:
+        sweet_spots = f"""
+🎯 GIFT SWEET SPOTS - THE BEST OPPORTUNITIES (PRIORITIZE THESE):
+{chr(10).join([f"- {gap}" for gap in gaps])}
+
+These represent things they're interested in but don't have yet - the perfect gift zone where you can help them level up or try something new. Products matching these gaps should be HEAVILY WEIGHTED in your selection.
+
+Context:
+- What they currently have/do: {', '.join(current)}
+- What they're aspiring to: {', '.join(aspirational)}
+"""
+    else:
+        sweet_spots = f"""
+🎯 WHAT THEY'RE INTO:
+- Current interests: {', '.join(current + aspirational)[:8]}
+"""
+    
+    # Add enhanced search terms if available
+    enhanced_terms_section = ""
+    if enhanced_search_terms:
+        enhanced_terms_section = f"""
+🔍 INTELLIGENCE-ENHANCED SEARCH TERMS (prefer products matching these):
+{', '.join(enhanced_search_terms[:10])}
+
+These are refined search terms from deep profile analysis - products matching these are likely to be especially good fits.
+"""
+    
+    # Format profile for prompt (gaps moved to top, rest supporting)
     profile_summary = f"""
 RECIPIENT PROFILE:
+
+{sweet_spots}
+{enhanced_terms_section}
 
 INTERESTS ({len(profile.get('interests', []))} identified):
 {format_interests(profile.get('interests', []))}
@@ -66,14 +105,7 @@ PRICE SIGNALS:
 - Comfortable range: {profile.get('price_signals', {}).get('estimated_range', 'Unknown')}
 - Budget category: {profile.get('price_signals', {}).get('budget_category', 'Unknown')}
 
-ASPIRATIONAL VS. CURRENT:
-- Aspirational (wants): {', '.join(profile.get('aspirational_vs_current', {}).get('aspirational', [])[:5])}
-- Current (has): {', '.join(profile.get('aspirational_vs_current', {}).get('current', [])[:5])}
-- Gaps to fill (prioritize these): {', '.join(profile.get('aspirational_vs_current', {}).get('gaps', [])[:5])}
-
 GIFT_AVOID (do not suggest): {', '.join(profile.get('gift_avoid', [])[:8]) or 'None specified'}
-
-WORK INTERESTS (do NOT base experience gifts on these—only personal/leisure): {', '.join([i.get('name', '') for i in profile.get('interests', []) if i.get('is_work')]) or 'None'}
 
 WORKPLACE (NEVER suggest experiences or "behind the scenes" at these - they work there!):
 {_format_work_venues(profile)}
@@ -97,32 +129,29 @@ RECIPIENT CONTEXT: This is for {"the user themselves (gifts for you)" if recipie
     
     prompt = f"""You are selecting {rec_count} product gifts from a real inventory.
 
-RECIPIENT: {len(profile.get('interests', []))} interests including {', '.join([i.get('name', '') for i in profile.get('interests', [])[:3]])}
-Location: {profile.get('location_context', {}).get('city_region', 'Unknown')}
-Avoid: {', '.join(profile.get('gift_avoid', [])[:3]) or 'None'}
+{pronoun_context}
+
+{profile_summary}
 
 {products_summary}
 
 SELECT {rec_count} BEST PRODUCTS from above. Requirements:
-- Match interests with profile evidence
+- PRIORITIZE products matching GIFT SWEET SPOTS (gaps/aspirational interests) - these are the best opportunities
+- Match interests with SPECIFIC profile evidence (cite posts, behaviors, venues)
 - Max 2 products per interest (spread across 5+ interests)
 - Use exact URLs and image URLs from product list
 - Only direct product links (no search URLs)
-- SOURCE PRIORITY: Prefer gifts from Etsy, Awin, eBay, and ShareASale (see "Domain" in each product). Only choose products from Amazon (domain amazon.com) when you cannot find strong interest matches from other platforms—use Amazon only to fill in if needed.
+- SOURCE PRIORITY: Prefer Etsy/eBay/Awin over Amazon when quality is comparable (Amazon is fallback only)
 
-ALSO: Generate exactly 3 hyper-specific experience gifts synthesizing 2+ profile elements each. You MUST return at least 2 experience gifts (3 preferred). EXPERIENCE GIFTS must be based ONLY on personal/leisure interests—never on work interests (see WORK INTERESTS above). Do not suggest IndyCar, EMS, nursing, healthcare, or any job-related experiences; experiences should feel like escape from work, not extension of it.
-
-NAMING: For products from Amazon (where_to_buy amazon.com), set "name" to a short, human-friendly rephrase of the product (e.g. "Wireless Dog Activity Tracker")—not the full long listing title. For Etsy/Awin/eBay/ShareASale, use exact name from list.
-
-NARRATIVES: Write why_perfect so it shows we really analyzed who they are. For product gifts: 2–4 sentences, citing specific profile details (their interests, evidence, location, style). For experience gifts: 2–4 sentences, citing 2+ profile points. Avoid one-liners; the narrative should demonstrate GiftWise understood the person.
+ALSO: Generate 3 hyper-specific experience gifts synthesizing 2+ profile elements.
 
 Return JSON:
 {{
   "product_gifts": [
     {{
-      "name": "short rephrased title (for Amazon) or exact name from list",
+      "name": "exact name from list",
       "description": "what it is",
-      "why_perfect": "2–4 sentences: why it fits, citing specific interests/evidence/style so it’s clear we get them",
+      "why_perfect": "DETAILED explanation citing SPECIFIC profile evidence (e.g., 'Based on {pronoun_possessive} 47 Taylor Swift TikToks and visits to Eras Tour watch parties, this captures {pronoun_possessive} Swiftie obsession' not just 'perfect for someone who loves Taylor Swift')",
       "price": "from product",
       "where_to_buy": "domain",
       "product_url": "exact URL from list",
@@ -136,12 +165,12 @@ Return JSON:
     {{
       "name": "specific experience",
       "description": "what/why",
-      "why_perfect": "2–4 sentences citing 2+ profile points so it’s clear we get them",
+      "why_perfect": "DETAILED explanation citing SPECIFIC profile evidence from 2+ interests/behaviors",
       "location_specific": true/false,
       "location_details": "venue/city or N/A",
       "materials_needed": [{{"item": "", "where_to_buy": "", "product_url": "", "estimated_price": ""}}],
-      "how_to_execute": "steps",
-      "how_to_make_it_special": "touch",
+      "how_to_execute": "detailed steps",
+      "how_to_make_it_special": "personal touch",
       "reservation_link": "URL or empty",
       "venue_website": "URL or empty",
       "confidence_level": "safe_bet|adventurous",
@@ -150,19 +179,36 @@ Return JSON:
   ]
 }}
 
-REQUIREMENTS:
-- Product gifts MUST be selected FROM THE INVENTORY ABOVE ONLY. Every product gift must be one of the {len(products)} listed products (use exact URLs and image URLs from that line). Never invent or reference a product not in the inventory. product_url = direct product page ONLY - never search or homepage.
-- Experience gifts MUST be hyper-specific; why_perfect must be 2–4 sentences citing 2+ profile data points. Include how_to_execute + how_to_make_it_special. They must NOT be based on work interests—only personal/leisure (see WORK INTERESTS).
-- why_perfect for BOTH product and experience gifts: 2–4 sentences minimum. Show that we analyzed who they are; cite specific interests, evidence, location, or style. No one-line blurbs.
-- Experience links (reservation_link, venue_website) are LOGISTICS-CRITICAL: they must point to venues in the recipient's city/region only (use "Lives in" and "Specific places"). Never link to a venue in another city or state. If you cannot find a real bookable venue in their area, leave both empty - we will supply a geography-calibrated search link.
-- materials_needed for experiences: when an item matches a product in AVAILABLE PRODUCTS, copy that product's URL exactly into product_url and set where_to_buy to its domain. Never use search URLs - only direct product page URLs from the list. Empty product_url is OK when no match; we will add a find-it link.
+CRITICAL REQUIREMENTS:
+
+PRODUCT GIFTS:
+- Product gifts MUST be selected FROM THE INVENTORY ABOVE ONLY. Every product gift must be one of the {len(products)} listed products (use exact URLs and image URLs from that line). Never invent or reference a product not in the inventory.
+- product_url = direct product page ONLY - never search or homepage URLs
+- why_perfect MUST cite SPECIFIC evidence from the profile (post counts, venue names, specific behaviors) not generic statements
+- PRIORITIZE products matching gaps/aspirational interests over current interests
+
+EXPERIENCE GIFTS:
+- Experience gifts MUST be hyper-specific, cite 2+ profile data points in why_perfect with SPECIFIC evidence
+- Experience gifts MUST be personal/leisure ONLY - never work-themed, never professional development
+- Experience links (reservation_link, venue_website) are LOGISTICS-CRITICAL:
+  * MUST be real, bookable venue websites in recipient's city/region ONLY (use "Lives in" and "Specific places")
+  * DO NOT INVENT URLs. DO NOT use search pages, generic event finder sites, or placeholder URLs
+  * Examples of INVALID links: "https://search.com/venue", "https://eventfinder.com/events", "https://example.com/book", any URL with "search", "find", "discover", "events" in domain
+  * If you cannot find a REAL venue website in their area (e.g., "https://bluedoorjazzclub.com", "https://indianapolismuseum.org"), leave reservation_link AND venue_website EMPTY
+  * Empty is better than fake - we will supply a geography-calibrated search link
+  * For national experiences (not tied to a venue), leave both empty and explain in how_to_execute
+- materials_needed: when an item matches a product in AVAILABLE PRODUCTS, copy that product's URL exactly into product_url. Never use search URLs - only direct product page URLs from the list. Empty product_url is OK when no match; we will add a find-it link.
 - If no location context, DO NOT suggest location-specific experiences
-- Each recommendation must have clear evidence from the profile
-- DIVERSITY: Max 2 products per single interest/theme (e.g. max 2 per band). Spread across at least 5+ interests.
-- Total: {rec_count} product gifts + exactly 3 experience gifts (at least 2 required; fewer than 2 is not acceptable)
+
+DIVERSITY & EVIDENCE:
+- DIVERSITY: Max 2 products per single interest/theme (e.g., max 2 per band). Spread across at least 5+ interests.
+- Each recommendation must have SPECIFIC evidence from the profile (not generic "they'll love this")
+- Total: {rec_count} product gifts + 3 experience gifts (we will filter to keep 2-3)
 - Every product gift product_url MUST be an exact copy of a URL from the INVENTORY list above - no invented products, no search pages.
-- AMAZON DEPRIORITIZED: Treat Amazon as fill-in only. Prefer Etsy, Awin, eBay, ShareASale; select Amazon products only when there aren't good matches from those sources.
-- Return ONLY the JSON object, no markdown, no backticks"""
+
+{relationship_context}
+
+Return ONLY the JSON object, no markdown, no backticks"""
     
     try:
         # Call Claude for curation
@@ -269,7 +315,7 @@ def format_products(products):
         price = p.get('price', 'Price unknown')
         domain = p.get('source_domain', 'unknown')
         interest = p.get('interest_match', 'general')
-        image_url = p.get('image', '') or p.get('thumbnail', '') or p.get('image_url', '')
+        image_url = p.get('image', '') or p.get('thumbnail', '')
         formatted.append(f"{idx}. {title}\n   Price: {price} | Domain: {domain} | Interest match: {interest}\n   Description: {snippet[:150]}\n   URL: {link}\n   Image: {image_url}")
     
     return '\n\n'.join(formatted[:50])  # Limit to 50 products in prompt

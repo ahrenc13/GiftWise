@@ -373,22 +373,49 @@ def get_work_theme_keywords(profile):
     """
     Keywords that indicate an experience is work-themed (IndyCar, EMS, nursing, etc.).
     Used to drop experiences based on work even when not at a specific venue.
+    
+    FIXED: Only extracts SPECIFIC work domain keywords, not generic hobby words.
+    This prevents filtering out experiences about hobbies (travel, music, concerts) 
+    when the user's work happens to be in those industries.
     """
     if not profile:
         return []
+    
     keywords = []
+    
+    # List of unambiguous work-specific terms
+    # These are industries/professions that are clearly work contexts, not hobbies
+    specific_work_terms = [
+        'indycar', 'indy 500', 'indianapolis motor speedway', 'ims', 'racing team', 'motorsport',
+        'ems', 'paramedic', 'emergency medical', 'ambulance', 'first responder',
+        'nursing', 'healthcare administration', 'hospital operations', 'medical staff',
+        'firefighter', 'fire department', 'fire station',
+        'police', 'law enforcement', 'police department',
+    ]
+    
     for i in profile.get('interests', []):
         if not i.get('is_work'):
             continue
         name = (i.get('name') or '').lower()
         if not name:
             continue
-        keywords.append(name)
-        # Common variants
-        if 'indy' in name or 'indianapolis' in name or 'ims' in name or 'racing' in name:
-            keywords.extend(['indycar', 'indy 500', 'indianapolis motor speedway', 'ims', 'racing experience'])
+        
+        # FIXED: Only add the full work interest name if it contains clearly work-specific terms
+        # This prevents "Travel industry consulting" from adding "travel" as a work keyword
+        # and "Music venue operations" from adding "music venue" as a work keyword
+        if any(term in name for term in specific_work_terms):
+            keywords.append(name)
+        
+        # Add specific variants for known work domains
+        if 'indy' in name or 'indianapolis' in name or 'ims' in name or 'racing' in name or 'motorsport' in name:
+            keywords.extend(['indycar', 'indy 500', 'indianapolis motor speedway', 'ims', 'racing experience', 'motorsport'])
         if 'ems' in name or 'nursing' in name or 'healthcare' in name or 'paramedic' in name or 'medical' in name:
             keywords.extend(['ems', 'nursing', 'healthcare', 'paramedic', 'medical', 'hospital', 'er ', 'emergency medical'])
+        if 'firefighter' in name or 'fire department' in name:
+            keywords.extend(['firefighter', 'fire department', 'fire station', 'fire service'])
+        if 'police' in name or 'law enforcement' in name:
+            keywords.extend(['police', 'law enforcement', 'police department', 'officer'])
+    
     return list(set(kw for kw in keywords if len(kw) > 1))
 
 
@@ -396,6 +423,9 @@ def filter_work_themed_experiences(experience_gifts, profile):
     """
     Remove experience gifts that are themed around work (IndyCar, EMS, nursing, etc.).
     Call after filter_workplace_experiences so we drop any work-themed experience regardless of venue.
+    
+    FIXED: Now uses improved get_work_theme_keywords() that only extracts specific work terms,
+    not generic hobby words that happen to appear in work interest names.
     """
     if not experience_gifts or not profile:
         return experience_gifts

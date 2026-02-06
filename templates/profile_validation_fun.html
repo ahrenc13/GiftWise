@@ -167,6 +167,32 @@
             flex: 1;
         }
         
+        .gift-strategy {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .strategy-block {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 14px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+
+        .strategy-icon {
+            font-size: 20px;
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+
+        .strategy-hint {
+            font-size: 13px;
+            color: #888;
+        }
+
         .validation-prompt {
             background: #fff3cd;
             border-left: 4px solid #ffc107;
@@ -430,27 +456,59 @@
             </div>
         </div>
         
-        <!-- Quick Facts -->
+        <!-- About Them (consolidated: location, style, brands, budget, pet, family, venues) -->
         <div class="personality-card">
             <div class="personality-section">
                 <div class="section-header">
-                    <span class="section-emoji">📍</span>
-                    <h2 class="section-title">Quick Facts</h2>
+                    <span class="section-emoji">📋</span>
+                    <h2 class="section-title">About {{ recipient_name }}</h2>
                 </div>
-                
+
                 <div class="quick-facts">
+                    <!-- Location -->
                     <div class="fact-row" id="location-row">
                         <span class="fact-icon">🌎</span>
-                        <span class="fact-label">Lives in:</span>
+                        <span class="fact-label">Location:</span>
                         <span class="fact-value" id="location-display" style="{% if not profile.location_context or not profile.location_context.city_region %}display: none;{% endif %}">{% if profile.location_context and profile.location_context.city_region %}{{ profile.location_context.city_region }}{% if profile.location_context.state %}, {{ profile.location_context.state }}{% endif %}{% endif %}</span>
                         <div class="location-input-wrap" id="location-edit-wrap" style="display: {% if profile.location_context and profile.location_context.city_region %}none{% else %}block{% endif %};">
                             <input type="text" id="location-input" placeholder="Start typing a city or region…" autocomplete="off" value="{{ profile.location_context.city_region or '' }}">
                             <ul class="location-autocomplete" id="location-autocomplete" style="display: none;"></ul>
-                            <span class="location-hint">Helps us suggest local experiences (e.g. Indianapolis, Austin TX)</span>
+                            <span class="location-hint">Helps us suggest local experiences</span>
                         </div>
                         <button class="small secondary" id="location-edit-btn" onclick="editLocation()" style="{% if not profile.location_context or not profile.location_context.city_region %}display: none;{% endif %}">Edit</button>
                     </div>
-                    
+
+                    <!-- Style -->
+                    {% if profile.style_preferences and profile.style_preferences.visual_style %}
+                    <div class="fact-row">
+                        <span class="fact-icon">🎨</span>
+                        <span class="fact-label">Style:</span>
+                        <span class="fact-value" id="style-display">{{ profile.style_preferences.visual_style }}{% if profile.style_preferences.quality_level %} · {{ profile.style_preferences.quality_level }}{% endif %}</span>
+                        <button class="small secondary" onclick="editStyle()">Edit</button>
+                    </div>
+                    {% endif %}
+
+                    <!-- Brands -->
+                    {% if profile.style_preferences and profile.style_preferences.brands %}
+                    <div class="fact-row">
+                        <span class="fact-icon">🏷️</span>
+                        <span class="fact-label">Brands:</span>
+                        <span class="fact-value" id="brands-display">{{ profile.style_preferences.brands | join(', ') }}</span>
+                        <button class="small secondary" onclick="editBrands()">Edit</button>
+                    </div>
+                    {% endif %}
+
+                    <!-- Budget -->
+                    {% if profile.price_signals and (profile.price_signals.estimated_range or profile.price_signals.budget_category) %}
+                    <div class="fact-row">
+                        <span class="fact-icon">💰</span>
+                        <span class="fact-label">Budget:</span>
+                        <span class="fact-value" id="budget-display">{{ profile.price_signals.estimated_range or '' }}{% if profile.price_signals.budget_category %} ({{ profile.price_signals.budget_category }}){% endif %}</span>
+                        <button class="small secondary" onclick="editBudget()">Edit</button>
+                    </div>
+                    {% endif %}
+
+                    <!-- Pet -->
                     {% if profile.pet_details %}
                     <div class="fact-row">
                         <span class="fact-icon">🐾</span>
@@ -459,7 +517,8 @@
                         <button class="small secondary" onclick="editPet()">Edit</button>
                     </div>
                     {% endif %}
-                    
+
+                    <!-- Family -->
                     {% if profile.family_context %}
                     <div class="fact-row">
                         <span class="fact-icon">👨‍👩‍👧‍👦</span>
@@ -468,20 +527,29 @@
                         <button class="small secondary" onclick="editFamily()">Edit</button>
                     </div>
                     {% endif %}
+
+                    <!-- Venues -->
+                    {% if profile.specific_venues %}
+                    <div class="fact-row">
+                        <span class="fact-icon">📍</span>
+                        <span class="fact-label">Hangouts:</span>
+                        <span class="fact-value">{{ profile.specific_venues | map(attribute='name') | select('string') | join(', ') }}</span>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
         </div>
 
-        {% if intelligence_summary %}
-        <!-- Intelligence Summary -->
+        {% if gift_strategy %}
+        <!-- Gift Strategy -->
         <div class="personality-card">
             <div class="personality-section">
                 <div class="section-header">
-                    <span class="section-emoji">🧠</span>
-                    <h2 class="section-title">What We Learned</h2>
+                    <span class="section-emoji">🎁</span>
+                    <h2 class="section-title">Gift Strategy</h2>
                 </div>
-                <div class="intelligence-summary" style="line-height: 1.6; font-size: 0.95rem;">
-                    {{ intelligence_summary | safe }}
+                <div class="gift-strategy">
+                    {{ gift_strategy | safe }}
                 </div>
             </div>
         </div>
@@ -728,6 +796,39 @@
             if (newFamily) {
                 profileData.family_context = newFamily;
                 alert('Updated!');
+            }
+        }
+
+        function editStyle() {
+            if (!profileData.style_preferences) profileData.style_preferences = {};
+            const cur = profileData.style_preferences.visual_style || '';
+            const newStyle = prompt('Describe ' + pronounPossessive + ' style (e.g. "minimalist", "boho", "classic"):', cur);
+            if (newStyle !== null && newStyle.trim()) {
+                profileData.style_preferences.visual_style = newStyle.trim();
+                const el = document.getElementById('style-display');
+                if (el) el.textContent = newStyle.trim() + (profileData.style_preferences.quality_level ? ' · ' + profileData.style_preferences.quality_level : '');
+            }
+        }
+
+        function editBrands() {
+            if (!profileData.style_preferences) profileData.style_preferences = {};
+            const cur = (profileData.style_preferences.brands || []).join(', ');
+            const newBrands = prompt('Brands ' + pronounSubject + ' like (comma-separated):', cur);
+            if (newBrands !== null && newBrands.trim()) {
+                profileData.style_preferences.brands = newBrands.split(',').map(function(b) { return b.trim(); }).filter(Boolean);
+                const el = document.getElementById('brands-display');
+                if (el) el.textContent = profileData.style_preferences.brands.join(', ');
+            }
+        }
+
+        function editBudget() {
+            if (!profileData.price_signals) profileData.price_signals = {};
+            const cur = profileData.price_signals.estimated_range || '';
+            const newBudget = prompt('Budget range (e.g. "$25-75", "$50-150"):', cur);
+            if (newBudget !== null && newBudget.trim()) {
+                profileData.price_signals.estimated_range = newBudget.trim();
+                const el = document.getElementById('budget-display');
+                if (el) el.textContent = newBudget.trim() + (profileData.price_signals.budget_category ? ' (' + profileData.price_signals.budget_category + ')' : '');
             }
         }
         

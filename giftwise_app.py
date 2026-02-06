@@ -59,7 +59,7 @@ try:
     from profile_analyzer import build_recipient_profile
     from multi_retailer_searcher import search_products_multi_retailer
     from gift_curator import curate_gifts
-    from profile_display_helper import format_intelligence_summary
+    from profile_display_helper import format_gift_strategy
     NEW_RECOMMENDATION_FLOW = True
 except ImportError:
     NEW_RECOMMENDATION_FLOW = False
@@ -2249,8 +2249,8 @@ def review_profile():
     profile_for_template.setdefault('pet_details', '')
     profile_for_template.setdefault('family_context', '')
 
-    # Generate conversational intelligence summary for profile display
-    intelligence_summary = format_intelligence_summary(profile)
+    # Generate gift strategy summary (gaps, aspirational, avoid)
+    gift_strategy = format_gift_strategy(profile)
 
     generation_id = str(uuid.uuid4())
     session['review_generation_id'] = generation_id
@@ -2259,7 +2259,7 @@ def review_profile():
                           interests=interests,
                           profile=profile_for_template,
                           profile_json=json.dumps(profile_for_template),
-                          intelligence_summary=intelligence_summary,
+                          gift_strategy=gift_strategy,
                           generation_id=generation_id)
 
 

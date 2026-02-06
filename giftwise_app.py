@@ -59,6 +59,7 @@ try:
     from profile_analyzer import build_recipient_profile
     from multi_retailer_searcher import search_products_multi_retailer
     from gift_curator import curate_gifts
+    from profile_display_helper import format_intelligence_summary
     NEW_RECOMMENDATION_FLOW = True
 except ImportError:
     NEW_RECOMMENDATION_FLOW = False
@@ -2247,6 +2248,10 @@ def review_profile():
     profile_for_template['location_context'] = loc
     profile_for_template.setdefault('pet_details', '')
     profile_for_template.setdefault('family_context', '')
+
+    # Generate conversational intelligence summary for profile display
+    intelligence_summary = format_intelligence_summary(profile)
+
     generation_id = str(uuid.uuid4())
     session['review_generation_id'] = generation_id
     return render_template('profile_validation_fun.html',
@@ -2254,6 +2259,7 @@ def review_profile():
                           interests=interests,
                           profile=profile_for_template,
                           profile_json=json.dumps(profile_for_template),
+                          intelligence_summary=intelligence_summary,
                           generation_id=generation_id)
 
 
@@ -2540,7 +2546,7 @@ def api_generate_recommendations():
             # IMPORTANT: Final recommendations come ONLY from curator output. We never pass inventory
             # straight through—even if one vendor dominates the pool, the curator must select from it.
             logger.info("STEP 3: Selecting best gifts from inventory...")
-            curated = curate_gifts(profile_for_backend, products, recipient_type, relationship, claude_client, rec_count=product_rec_count)
+            curated = curate_gifts(profile_for_backend, products, recipient_type, relationship, claude_client, rec_count=product_rec_count, enhanced_search_terms=enhanced_search_terms)
             
             product_gifts = curated.get('product_gifts', [])
             experience_gifts = curated.get('experience_gifts', [])

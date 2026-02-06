@@ -69,8 +69,12 @@ def _get_feed_list(api_key):
     return out
 
 
+# Max rows to read per feed to avoid OOM on Railway (feeds can be 100k+ rows)
+MAX_ROWS_PER_FEED = 800
+
+
 def _download_feed_csv(feed_url):
-    """Download feed CSV; handle gzip if needed. Returns list of dicts (one per product row)."""
+    """Download feed CSV; stream-read and cap at MAX_ROWS_PER_FEED to avoid OOM on large feeds."""
     try:
         r = requests.get(feed_url, timeout=60, stream=True)
         r.raise_for_status()
@@ -78,23 +82,24 @@ def _download_feed_csv(feed_url):
         logger.warning("Awin feed download failed: %s", e)
         return []
 
-    raw = r.content
-    if r.headers.get("Content-Encoding") == "gzip" or raw[:2] == b"\x1f\x8b":
-        try:
-            raw = zlib.decompress(raw, 16 + zlib.MAX_WBITS)
-        except Exception as e:
-            logger.warning("Awin feed gzip decompress failed: %s", e)
-            return []
-
+    rows = []
     try:
-        text = raw.decode("utf-8", errors="replace")
+        # r.raw streams decompressed bytes; we only read until we have MAX_ROWS_PER_FEED rows
+        text_stream = io.TextIOWrapper(r.raw, encoding="utf-8", errors="replace")
+        reader = csv.DictReader(text_stream)
+        for i, row in enumerate(reader):
+            if i >= MAX_ROWS_PER_FEED:
+                break
+            rows.append(row)
     except Exception as e:
-        logger.warning("Awin feed decode failed: %s", e)
+        logger.warning("Awin feed parse failed: %s", e)
         return []
-
-    reader = csv.DictReader(io.StringIO(text))
-    rows = list(reader)
-    logger.info("Awin feed parsed: %s product rows", len(rows))
+    finally:
+        try:
+            r.close()
+        except Exception:
+            pass
+    logger.info("Awin feed parsed: %s product rows (max %s per feed)", len(rows), MAX_ROWS_PER_FEED)
     return rows
 
 
@@ -209,8 +214,8 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
     general = [f for f in candidates if not _is_likely_florist(f.get("advertiser_name", ""))]
     florists = [f for f in candidates if _is_likely_florist(f.get("advertiser_name", ""))]
     ordered_feeds = general + florists
-    # Use more feeds for full breadth (up to 8), cap products per feed so we get variety
-    max_feeds = 8
+    # Use up to 3 feeds to balance breadth vs memory (Railway OOM if too many large feeds cached)
+    max_feeds = 3
     per_feed_target = max((target_count + max_feeds - 1) // max_feeds, 2)
 
     global _awin_products_ts, _awin_products_cache

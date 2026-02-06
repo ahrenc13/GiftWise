@@ -99,10 +99,16 @@ def _download_feed_csv(feed_url):
 
 
 def _row_to_product(row, interest, query, priority):
-    """Map Awin feed row to our product dict."""
+    """Map Awin feed row to our product dict. Supports multiple Awin feed column naming conventions."""
     title = (row.get("product_name") or row.get("product name") or "").strip()
-    link = (row.get("aw_deep_link") or row.get("merchant_deep_link") or "").strip()
-    image = (row.get("merchant_image_url") or row.get("aw_image_url") or row.get("aw_thumb_url") or "").strip()
+    link = (row.get("aw_deep_link") or row.get("merchant_deep_link") or row.get("deep_link") or "").strip()
+    # Awin feeds use various image column names; check all common variants for thumbnails
+    image = (
+        (row.get("merchant_image_url") or row.get("aw_image_url") or row.get("aw_thumb_url")
+         or row.get("image_url") or row.get("merchant_thumb") or row.get("product_image")
+         or row.get("thumb_url") or row.get("image_link") or row.get("thumbnail_url"))
+        or ""
+    ).strip()
     price = (row.get("search_price") or row.get("store_price") or "").strip()
     merchant = (row.get("merchant_name") or "").strip()
     if not title:
@@ -131,21 +137,22 @@ def _row_to_product(row, interest, query, priority):
 
 
 def _matches_query(row, query_terms):
-    """True if product_name or keywords contain any of the query terms (e.g. hiking, gift)."""
+    """True if product_name or keywords/description contain any of the query terms."""
     name = (row.get("product_name") or row.get("product name") or "").lower()
-    keywords = (row.get("keywords") or row.get("product_short_description") or "").lower()
+    keywords = (row.get("keywords") or row.get("product_short_description") or row.get("description") or "").lower()
     text = name + " " + keywords
     for term in query_terms:
-        if term and term.lower() in text:
+        if term and len(term) > 1 and term.lower() in text:
             return True
     return False
 
 
-def search_products_awin(profile, data_feed_api_key, target_count=20):
+def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_search_terms=None):
     """
-    Search Awin product feeds by profile interests.
+    Search Awin product feeds by profile interests and intelligence-layer search terms.
 
-    Uses feed list + one feed CSV (cached). Prefers Joined advertisers.
+    Uses feed list + multiple feed CSVs (cached) for full breadth. Prefers Joined advertisers.
+    If enhanced_search_terms (from enrichment) are provided, also matches products against those.
     Returns list of product dicts in our standard format.
     """
     if not (data_feed_api_key and data_feed_api_key.strip()):
@@ -153,12 +160,14 @@ def search_products_awin(profile, data_feed_api_key, target_count=20):
         return []
 
     api_key = data_feed_api_key.strip()
-    logger.info("Searching Awin feeds for %s products", target_count)
+    logger.info("Searching Awin feeds for %s products (full breadth)", target_count)
 
     interests = profile.get("interests", [])
-    if not interests:
+    enhanced = list(enhanced_search_terms or [])
+    if not interests and not enhanced:
         return []
 
+    # Build search queries from profile interests (skip work)
     search_queries = []
     for interest in interests:
         name = interest.get("name", "")
@@ -172,7 +181,15 @@ def search_products_awin(profile, data_feed_api_key, target_count=20):
             "interest": name,
             "priority": "high" if interest.get("intensity") == "passionate" else "medium",
         })
-    search_queries = search_queries[:10]
+    # Add intelligence-layer enhanced search terms as extra queries (broaden match)
+    for term in enhanced[:15]:
+        if term and isinstance(term, str) and term.strip() and term.strip() not in {q["query"] for q in search_queries}:
+            search_queries.append({
+                "query": f"{term.strip()} gift",
+                "interest": term.strip(),
+                "priority": "medium",
+            })
+    search_queries = search_queries[:20]
     if not search_queries:
         return []
 
@@ -181,45 +198,65 @@ def search_products_awin(profile, data_feed_api_key, target_count=20):
         logger.warning("Awin feed list empty or failed")
         return []
 
-    # Prefer Joined; then take first feed we can use
+    # Prefer Joined; deprioritize single-category retailers (e.g. florists) for diversity
+    _florist_keywords = ("bunch", "flower", "florist", "roses", "bouquet")
+    def _is_likely_florist(advertiser_name):
+        name = (advertiser_name or "").lower()
+        return any(k in name for k in _florist_keywords)
+
     joined = [f for f in feed_list if (f.get("membership_status") or "").lower() == "joined"]
-    to_use = joined[:1] if joined else feed_list[:1]
-    feed_url = to_use[0].get("url")
-    advertiser = to_use[0].get("advertiser_name", "Awin")
+    candidates = joined if joined else feed_list
+    general = [f for f in candidates if not _is_likely_florist(f.get("advertiser_name", ""))]
+    florists = [f for f in candidates if _is_likely_florist(f.get("advertiser_name", ""))]
+    ordered_feeds = general + florists
+    # Use more feeds for full breadth (up to 8), cap products per feed so we get variety
+    max_feeds = 8
+    per_feed_target = max((target_count + max_feeds - 1) // max_feeds, 2)
 
     global _awin_products_ts, _awin_products_cache
-    cache_key = api_key + "|" + (to_use[0].get("feed_id") or "")
     now = time.time()
-    if now - _awin_products_ts < AWIN_CACHE_TTL and cache_key in _awin_products_cache:
-        all_rows = _awin_products_cache[cache_key]
-    else:
-        all_rows = _download_feed_csv(feed_url)
-        if all_rows:
-            _awin_products_cache[cache_key] = all_rows
-            _awin_products_ts = now
-
-    if not all_rows:
-        return []
-
     all_products = []
     seen_ids = set()
-    for q in search_queries:
-        query = q["query"]
-        interest = q["interest"]
-        priority = q["priority"]
-        terms = re.split(r"\s+", query)
-        for row in all_rows:
-            if len(all_products) >= target_count:
-                break
-            if not _matches_query(row, terms):
-                continue
-            product = _row_to_product(row, interest, query, priority)
-            if not product or product["product_id"] in seen_ids:
-                continue
-            seen_ids.add(product["product_id"])
-            all_products.append(product)
+    feeds_used = []
+
+    for feed_info in ordered_feeds[:max_feeds]:
         if len(all_products) >= target_count:
             break
+        feed_url = feed_info.get("url")
+        feed_id = feed_info.get("feed_id") or ""
+        advertiser = feed_info.get("advertiser_name", "Awin")
+        cache_key = api_key + "|" + feed_id
+        if now - _awin_products_ts < AWIN_CACHE_TTL and cache_key in _awin_products_cache:
+            all_rows = _awin_products_cache[cache_key]
+        else:
+            all_rows = _download_feed_csv(feed_url)
+            if all_rows:
+                _awin_products_cache[cache_key] = all_rows
+                _awin_products_ts = now
+        if not all_rows:
+            continue
 
-    logger.info("Found %s Awin products from %s", len(all_products), advertiser)
+        feed_count = 0
+        for q in search_queries:
+            if feed_count >= per_feed_target:
+                break
+            query = q["query"]
+            interest = q["interest"]
+            priority = q["priority"]
+            terms = re.split(r"\s+", query)
+            for row in all_rows:
+                if feed_count >= per_feed_target or len(all_products) >= target_count:
+                    break
+                if not _matches_query(row, terms):
+                    continue
+                product = _row_to_product(row, interest, query, priority)
+                if not product or product["product_id"] in seen_ids:
+                    continue
+                seen_ids.add(product["product_id"])
+                all_products.append(product)
+                feed_count += 1
+        if feed_count > 0:
+            feeds_used.append(advertiser)
+
+    logger.info("Found %s Awin products from %s", len(all_products), ", ".join(feeds_used) or "Awin")
     return all_products[:target_count]

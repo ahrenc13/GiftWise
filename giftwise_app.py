@@ -2289,17 +2289,18 @@ def api_generate_recommendations():
             relationship = user.get('relationship', '')
             user_id = session['user_id']
             
-            # At least one product source (Etsy, Awin, ShareASale, or Amazon/RapidAPI) must be configured
+            # At least one product source (Etsy, Awin, eBay, ShareASale, or Amazon/RapidAPI) must be configured
             has_etsy = bool(os.environ.get('ETSY_API_KEY', '').strip())
             has_awin = bool(os.environ.get('AWIN_DATA_FEED_API_KEY', '').strip())
+            has_ebay = bool(os.environ.get('EBAY_CLIENT_ID', '').strip()) and bool(os.environ.get('EBAY_CLIENT_SECRET', '').strip())
             has_shareasale = all([
                 os.environ.get('SHAREASALE_AFFILIATE_ID', '').strip(),
                 os.environ.get('SHAREASALE_API_TOKEN', '').strip(),
                 os.environ.get('SHAREASALE_API_SECRET', '').strip(),
             ])
             has_amazon = bool(os.environ.get('RAPIDAPI_KEY', '').strip())
-            if not (has_etsy or has_awin or has_shareasale or has_amazon):
-                logger.error("No product API configured (set ETSY_API_KEY, AWIN_DATA_FEED_API_KEY, SHAREASALE_*, or RAPIDAPI_KEY)")
+            if not (has_etsy or has_awin or has_ebay or has_shareasale or has_amazon):
+                logger.error("No product API configured (set ETSY_API_KEY, AWIN_DATA_FEED_API_KEY, EBAY_CLIENT_*, SHAREASALE_*, or RAPIDAPI_KEY)")
                 return jsonify({
                     'success': False,
                     'error': "We're having trouble loading gift ideas right now. Please try again in a few minutes."
@@ -2346,19 +2347,23 @@ def api_generate_recommendations():
             else:
                 logger.info("Using pre-enriched profile from review step")
             
-            # STEP 2: Pull inventory of real products (Etsy → Awin → ShareASale → Amazon fallback).
+            # STEP 2: Pull inventory of real products (Etsy → Awin → eBay → ShareASale → Amazon fallback).
             # Inventory must be at least 2-3x the number we will select so the engine can choose carefully.
             product_rec_count = 10  # number of product gifts we will select
             logger.info("STEP 2: Pulling product inventory...")
+            enhanced_search_terms = session.get('enhanced_search_terms', [])
             products = search_products_multi_retailer(
                 profile,
                 etsy_key=os.environ.get('ETSY_API_KEY', ''),
                 awin_data_feed_api_key=os.environ.get('AWIN_DATA_FEED_API_KEY', ''),
+                ebay_client_id=os.environ.get('EBAY_CLIENT_ID', ''),
+                ebay_client_secret=os.environ.get('EBAY_CLIENT_SECRET', ''),
                 shareasale_id=os.environ.get('SHAREASALE_AFFILIATE_ID', ''),
                 shareasale_token=os.environ.get('SHAREASALE_API_TOKEN', ''),
                 shareasale_secret=os.environ.get('SHAREASALE_API_SECRET', ''),
                 amazon_key=os.environ.get('RAPIDAPI_KEY', ''),
                 target_count=product_rec_count,
+                enhanced_search_terms=enhanced_search_terms,
             )
             
             if len(products) == 0:

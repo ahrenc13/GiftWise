@@ -235,15 +235,16 @@ def get_product_image(recommendation, prioritize_stability=True):
     """
     product_name = recommendation.get('name', '')
     product_url = recommendation.get('product_url', '') or recommendation.get('purchase_link', '')
-    serpapi_thumbnail = recommendation.get('image', '')  # May be temporary
-    
+    # Existing thumbnail from feed (Awin, Etsy, etc.) or backfill
+    existing_image = (recommendation.get('image_url') or recommendation.get('image') or '').strip()
+
     try:
         from link_validation import is_bad_product_url
     except ImportError:
         def is_bad_product_url(url):
             return False
-    
-    # Strategy 1: Extract from product URL (MOST STABLE)
+
+    # Strategy 1: Extract from product URL (most stable)
     if product_url and not is_bad_product_url(product_url) and prioritize_stability:
         img_url = extract_image_from_url(product_url)
         if img_url:
@@ -253,8 +254,19 @@ def get_product_image(recommendation, prioritize_stability=True):
                 'image_source': 'product_page',
                 'fallback': False
             }
-    
-    # Strategy 2: Google Image Search (if configured - very stable)
+
+    # Strategy 2: Validate existing feed/backfill image (Awin, Etsy, etc.)
+    if existing_image and existing_image.startswith('http'):
+        if validate_image_url(existing_image):
+            logger.info(f"Feed/backfill thumbnail validated for '{product_name[:40]}'")
+            return {
+                'image_url': existing_image,
+                'image_source': 'feed_validated',
+                'fallback': False
+            }
+        logger.debug(f"Feed image failed validation for '{product_name[:40]}'")
+
+    # Strategy 3: Google Image Search (if configured)
     if GOOGLE_CUSTOM_SEARCH_API_KEY and GOOGLE_CUSTOM_SEARCH_ENGINE_ID:
         image_result = get_google_image_search(product_name)
         if image_result and image_result.get('url'):
@@ -264,19 +276,7 @@ def get_product_image(recommendation, prioritize_stability=True):
                 'image_source': 'google_image_search',
                 'fallback': False
             }
-    
-    # Strategy 3: Validate SerpAPI thumbnail (if it exists)
-    if serpapi_thumbnail and serpapi_thumbnail.startswith('http'):
-        if validate_image_url(serpapi_thumbnail):
-            logger.info(f"SerpAPI thumbnail validated for '{product_name[:40]}'")
-            return {
-                'image_url': serpapi_thumbnail,
-                'image_source': 'serpapi_validated',
-                'fallback': False
-            }
-        else:
-            logger.warning(f"SerpAPI thumbnail FAILED validation for '{product_name[:40]}' - using fallback")
-    
+
     # Strategy 4: Placeholder (last resort)
     logger.warning(f"Using placeholder for '{product_name[:40]}' - no stable image source")
     return {
@@ -348,10 +348,10 @@ def process_recommendation_images(recommendations, prioritize_stability=True):
             source = image_info['image_source']
             if source == 'product_page':
                 product_page_count += 1
+            elif source == 'feed_validated':
+                serpapi_validated_count += 1  # reuse counter for feed/backfill validated
             elif source == 'google_image_search':
                 google_count += 1
-            elif source == 'serpapi_validated':
-                serpapi_validated_count += 1
             elif source == 'placeholder':
                 placeholder_count += 1
             
@@ -369,7 +369,7 @@ def process_recommendation_images(recommendations, prioritize_stability=True):
         f"Image validation complete: "
         f"{product_page_count} from product pages, "
         f"{google_count} from Google, "
-        f"{serpapi_validated_count} SerpAPI validated, "
+        f"{serpapi_validated_count} feed validated, "
         f"{placeholder_count} placeholders"
     )
     

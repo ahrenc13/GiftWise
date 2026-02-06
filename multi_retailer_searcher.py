@@ -1,12 +1,13 @@
 """
 MULTI-RETAILER PRODUCT ORCHESTRATOR
-Combines Etsy + Awin + ShareASale + Amazon fallback
+Combines Etsy + Awin + eBay + ShareASale + Amazon fallback
 
 Priority order:
 1. Etsy (handmade/personalized)
 2. Awin (product feeds; use AWIN_DATA_FEED_API_KEY)
-3. ShareASale (legacy brand products)
-4. Amazon (fallback if others fail)
+3. eBay (Browse API; use EBAY_CLIENT_ID + EBAY_CLIENT_SECRET)
+4. ShareASale (legacy brand products)
+5. Amazon (fallback if others fail)
 
 Returns diverse product mix from multiple sources.
 Graceful degradation: works with any combination of available APIs.
@@ -22,6 +23,8 @@ def search_products_multi_retailer(
     profile,
     etsy_key=None,
     awin_data_feed_api_key=None,
+    ebay_client_id=None,
+    ebay_client_secret=None,
     shareasale_id=None,
     shareasale_token=None,
     shareasale_secret=None,
@@ -34,6 +37,7 @@ def search_products_multi_retailer(
     Strategy:
     - Try Etsy first (best for personalized gifts)
     - Add Awin products (feed-based)
+    - Add eBay products (Browse API)
     - Add ShareASale products (brand names, legacy)
     - Use Amazon as fallback if needed
 
@@ -42,7 +46,7 @@ def search_products_multi_retailer(
     """
     logger.info(f"Multi-retailer search: target {target_count} products")
     logger.info(
-        f"Available: Etsy={bool(etsy_key)}, Awin={bool(awin_data_feed_api_key)}, ShareASale={bool(shareasale_id)}, Amazon={bool(amazon_key)}"
+        f"Available: Etsy={bool(etsy_key)}, Awin={bool(awin_data_feed_api_key)}, eBay={bool(ebay_client_id and ebay_client_secret)}, ShareASale={bool(shareasale_id)}, Amazon={bool(amazon_key)}"
     )
 
     all_products = []
@@ -77,6 +81,7 @@ def search_products_multi_retailer(
                 profile,
                 awin_data_feed_api_key,
                 target_count=remaining,
+                enhanced_search_terms=enhanced_search_terms,
             )
             all_products.extend(awin_products)
             logger.info(f"Got {len(awin_products)} products from Awin")
@@ -110,7 +115,7 @@ def search_products_multi_retailer(
     elif remaining > 0:
         logger.info("ShareASale credentials not set - skipping ShareASale")
 
-    # 4. Amazon fallback (only if still short)
+    # 5. Amazon fallback (only if still short)
     remaining = target_count - len(all_products)
     if remaining > 0 and amazon_key:
         try:

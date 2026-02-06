@@ -30,6 +30,7 @@ def search_products_multi_retailer(
     shareasale_secret=None,
     amazon_key=None,
     target_count=20,
+    enhanced_search_terms=None,
 ):
     """
     Search across multiple retailers.
@@ -115,24 +116,27 @@ def search_products_multi_retailer(
     elif remaining > 0:
         logger.info("ShareASale credentials not set - skipping ShareASale")
 
-    # 5. Amazon fallback (only if still short)
+    # 5. Amazon fill-in only when meaningfully short (deprioritized vs Etsy/Awin/eBay/ShareASale)
     remaining = target_count - len(all_products)
-    if remaining > 0 and amazon_key:
+    amazon_min_remaining = min(5, max(1, target_count // 2))  # only fetch Amazon if we need at least this many
+    if remaining >= amazon_min_remaining and amazon_key:
         try:
             from rapidapi_amazon_searcher import search_products_rapidapi_amazon
 
-            logger.info(f"Using Amazon fallback for {remaining} products...")
+            logger.info(f"Using Amazon fill-in for {remaining} products (other sources short)...")
             amazon_products = search_products_rapidapi_amazon(
                 profile, amazon_key, target_count=remaining
             )
             all_products.extend(amazon_products)
             logger.info(f"Got {len(amazon_products)} products from Amazon")
         except ImportError:
-            logger.warning("rapidapi_amazon_searcher not found - Amazon fallback skipped")
+            logger.warning("rapidapi_amazon_searcher not found - Amazon fill-in skipped")
         except Exception as e:
-            logger.error(f"Amazon fallback failed: {e}")
+            logger.error(f"Amazon fill-in failed: {e}")
+    elif remaining > 0 and amazon_key:
+        logger.info("Amazon fill-in skipped - enough from other sources (remaining=%s < threshold %s)", remaining, amazon_min_remaining)
     elif remaining > 0:
-        logger.info("Amazon key not set - skipping Amazon fallback")
+        logger.info("Amazon key not set - skipping Amazon fill-in")
 
     # Log source breakdown
     source_counts = defaultdict(int)

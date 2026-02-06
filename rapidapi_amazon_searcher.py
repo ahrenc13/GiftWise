@@ -1,31 +1,149 @@
 """
-RAPIDAPI AMAZON PRODUCT SEARCHER (STUB)
-Fallback when Etsy/ShareASale are not enough.
+RapidAPI Amazon product search – Real-Time Amazon Data API.
 
-Replace this stub with a real RapidAPI Amazon implementation when you have:
-- RAPIDAPI_KEY set in Railway
-- Real-time Amazon Data API or similar from RapidAPI
+Uses the "Real-Time Amazon Data" API on RapidAPI (OpenWeb Ninja).
+- Subscribe: https://rapidapi.com/letscrape-6bRBa3QguO5/api/real-time-amazon-data
+- Endpoint: GET /search (Product Search)
+- Env: RAPIDAPI_KEY (your RapidAPI key; same key works for any RapidAPI API you subscribe to)
 
-Until then, returns empty list so multi_retailer_searcher continues without crashing.
+Returns products in our standard format (title, link, image, price, source_domain, etc.).
 """
 
 import logging
+import requests
 
 logger = logging.getLogger(__name__)
+
+# Real-Time Amazon Data API (OpenWeb Ninja)
+RAPIDAPI_AMAZON_HOST = "real-time-amazon-data.p.rapidapi.com"
+RAPIDAPI_SEARCH_URL = "https://real-time-amazon-data.p.rapidapi.com/search"
 
 
 def search_products_rapidapi_amazon(profile, api_key, target_count=20):
     """
-    Search Amazon via RapidAPI (stub).
+    Search Amazon via RapidAPI Real-Time Amazon Data (product search).
 
-    Returns empty list until you implement or plug in a real RapidAPI Amazon searcher.
+    Builds queries from profile interests (e.g. "dog gift", "basketball fan merchandise"),
+    calls the search endpoint, and maps results to our product format.
     """
-    if not api_key:
+    if not (api_key and api_key.strip()):
         logger.warning("RapidAPI key not configured - skipping Amazon search")
         return []
 
-    logger.warning(
-        "rapidapi_amazon_searcher is a stub - returning no products. "
-        "Add a real RapidAPI Amazon implementation for Phase 1 Amazon-only."
-    )
-    return []
+    key = api_key.strip()
+    interests = profile.get("interests", [])
+    if not interests:
+        return []
+
+    search_queries = []
+    for interest in interests:
+        name = interest.get("name", "")
+        if not name:
+            continue
+        if interest.get("is_work", False):
+            logger.info("Skipping work interest for Amazon: %s", name)
+            continue
+        name_lower = name.lower()
+        if any(term in name_lower for term in ["music", "band", "singer", "artist"]):
+            query = f"{name} fan gift"
+        elif any(term in name_lower for term in ["sports", "basketball", "team"]):
+            query = f"{name} fan merchandise"
+        else:
+            query = f"{name} gift"
+        search_queries.append({
+            "query": query,
+            "interest": name,
+            "priority": "high" if interest.get("intensity") == "passionate" else "medium",
+        })
+    search_queries = search_queries[:8]
+    if not search_queries:
+        return []
+
+    all_products = []
+    seen_asins = set()
+    per_query = max(3, (target_count // len(search_queries)) + 1)
+
+    headers = {
+        "X-RapidAPI-Key": key,
+        "X-RapidAPI-Host": RAPIDAPI_AMAZON_HOST,
+    }
+
+    for q in search_queries:
+        if len(all_products) >= target_count:
+            break
+        query = q["query"]
+        interest = q["interest"]
+        priority = q["priority"]
+        params = {
+            "query": query[:100],
+            "country": "US",
+            "page": 1,
+        }
+        try:
+            r = requests.get(
+                RAPIDAPI_SEARCH_URL,
+                headers=headers,
+                params=params,
+                timeout=15,
+            )
+            r.raise_for_status()
+            data = r.json()
+        except requests.RequestException as e:
+            logger.warning("RapidAPI Amazon search failed for '%s': %s", query, e)
+            continue
+
+        # Response: { "status": "OK", "request_id": "...", "data": { "products": [...] } or "data": [...] }
+        if data.get("status") != "OK":
+            logger.warning("RapidAPI Amazon returned status: %s", data.get("status"))
+            continue
+
+        raw = data.get("data")
+        if isinstance(raw, dict):
+            products_list = raw.get("products", raw.get("results", []))
+        elif isinstance(raw, list):
+            products_list = raw
+        else:
+            products_list = []
+
+        for item in products_list:
+            if len(all_products) >= target_count:
+                break
+            asin = item.get("asin") or item.get("product_id") or ""
+            if asin and asin in seen_asins:
+                continue
+            title = (item.get("title") or item.get("product_title") or "").strip()
+            if not title:
+                continue
+            link = (item.get("product_url") or item.get("url") or item.get("link") or "").strip()
+            if not link:
+                link = f"https://www.amazon.com/dp/{asin}" if asin else ""
+            if not link:
+                continue
+            image = (item.get("thumbnail") or item.get("image") or item.get("product_thumbnail") or "").strip()
+            price_obj = item.get("price") or item.get("current_price") or {}
+            if isinstance(price_obj, dict):
+                price_val = price_obj.get("value") or price_obj.get("raw") or price_obj.get("current_price")
+            else:
+                price_val = price_obj
+            price = f"${price_val}" if price_val is not None and str(price_val).strip() else ""
+            if not price and item.get("price"):
+                price = str(item.get("price", "")).strip()
+
+            product = {
+                "title": title[:200],
+                "link": link,
+                "snippet": title[:100],
+                "image": image,
+                "source_domain": "amazon.com",
+                "search_query": query,
+                "interest_match": interest,
+                "priority": priority,
+                "price": price or "",
+                "product_id": asin or str(hash(title + link))[:16],
+            }
+            if asin:
+                seen_asins.add(asin)
+            all_products.append(product)
+
+    logger.info("Found %s Amazon products (RapidAPI Real-Time Amazon Data)", len(all_products))
+    return all_products[:target_count]

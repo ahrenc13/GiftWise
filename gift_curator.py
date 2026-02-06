@@ -106,6 +106,7 @@ SELECT {rec_count} BEST PRODUCTS from above. Requirements:
 - Max 2 products per interest (spread across 5+ interests)
 - Use exact URLs and image URLs from product list
 - Only direct product links (no search URLs)
+- SOURCE PRIORITY: Prefer gifts from Etsy, Awin, eBay, and ShareASale (see "Domain" in each product). Only choose products from Amazon (domain amazon.com) when you cannot find strong interest matches from other platforms—use Amazon only to fill in if needed.
 
 ALSO: Generate 2 hyper-specific experience gifts synthesizing 2+ profile elements.
 
@@ -153,6 +154,7 @@ REQUIREMENTS:
 - DIVERSITY: Max 2 products per single interest/theme (e.g. max 2 per band). Spread across at least 5+ interests.
 - Total: {rec_count} product gifts + 2-3 experience gifts
 - Every product gift product_url MUST be an exact copy of a URL from the INVENTORY list above - no invented products, no search pages.
+- AMAZON DEPRIORITIZED: Treat Amazon as fill-in only. Prefer Etsy, Awin, eBay, ShareASale; select Amazon products only when there aren't good matches from those sources.
 - Return ONLY the JSON object, no markdown, no backticks"""
     
     try:

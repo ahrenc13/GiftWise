@@ -159,6 +159,8 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
                 "link": link,
                 "snippet": snippet,
                 "image": image,
+                "thumbnail": image,
+                "image_url": image,
                 "source_domain": "ebay.com",
                 "search_query": query,
                 "interest_match": interest,

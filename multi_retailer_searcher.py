@@ -1,22 +1,26 @@
 """
 MULTI-RETAILER PRODUCT ORCHESTRATOR
-Combines Etsy + Awin + eBay + ShareASale + Amazon fallback
+Combines Etsy + Awin + eBay + ShareASale + Amazon
 
-Priority order:
-1. Etsy (handmade/personalized)
-2. Awin (product feeds; use AWIN_DATA_FEED_API_KEY)
-3. eBay (Browse API; use EBAY_CLIENT_ID + EBAY_CLIENT_SECRET)
-4. ShareASale (legacy brand products)
-5. Amazon (fallback if others fail)
-
-Returns diverse product mix from multiple sources.
-Graceful degradation: works with any combination of available APIs.
+Strategy:
+- Build a large inventory from every available vendor (request target_count from each
+  and merge). We want hundreds of choices across many sellers so the curator has
+  real options.
+- Returns INVENTORY POOL ONLY. The caller must pass this list to the curator; the
+  final recommendations come ONLY from curator output. Never use this return value
+  as the final list—no bypass, no "if one vendor filled the pool use it as-is."
+- Curator picks the best N from that pool—no forced vendor mix. If all 10 best fits
+  are from Amazon (or one vendor), that's fine.
+Order: Etsy → Awin → eBay → ShareASale → Amazon.
 """
 
 import logging
 from collections import defaultdict
 
 logger = logging.getLogger(__name__)
+
+# Max products in the merged inventory (so curator prompt stays manageable)
+MAX_INVENTORY_SIZE = 100
 
 
 def search_products_multi_retailer(
@@ -51,16 +55,18 @@ def search_products_multi_retailer(
     )
 
     all_products = []
+    # Request target_count from each vendor and merge into one large pool (no per-vendor cap).
+    # Curator will pick the best N; if they're all from one vendor, that's fine.
+    per_vendor_target = min(target_count, MAX_INVENTORY_SIZE // 5)  # so 5 vendors don't exceed MAX
 
-    # 1. Etsy (aim for ~60% of target)
-    etsy_target = max(int(target_count * 0.6), 5)
+    # 1. Etsy
     if etsy_key:
         try:
             from etsy_searcher import search_products_etsy
 
-            logger.info(f"Searching Etsy for {etsy_target} products...")
+            logger.info(f"Searching Etsy for {per_vendor_target} products...")
             etsy_products = search_products_etsy(
-                profile, etsy_key, target_count=etsy_target
+                profile, etsy_key, target_count=per_vendor_target
             )
             all_products.extend(etsy_products)
             logger.info(f"Got {len(etsy_products)} products from Etsy")
@@ -71,17 +77,16 @@ def search_products_multi_retailer(
     else:
         logger.info("Etsy API key not set - skipping Etsy")
 
-    # 2. Awin (product feeds)
-    remaining = target_count - len(all_products)
-    if remaining > 0 and awin_data_feed_api_key:
+    # 2. Awin
+    if awin_data_feed_api_key:
         try:
             from awin_searcher import search_products_awin
 
-            logger.info(f"Searching Awin for {remaining} products...")
+            logger.info(f"Searching Awin for {per_vendor_target} products...")
             awin_products = search_products_awin(
                 profile,
                 awin_data_feed_api_key,
-                target_count=remaining,
+                target_count=per_vendor_target,
                 enhanced_search_terms=enhanced_search_terms,
             )
             all_products.extend(awin_products)
@@ -90,21 +95,20 @@ def search_products_multi_retailer(
             logger.warning(f"awin_searcher not available: {e}")
         except Exception as e:
             logger.error(f"Awin search failed: {e}")
-    elif remaining > 0:
+    else:
         logger.info("Awin data feed API key not set - skipping Awin")
 
-    # 3. eBay (Browse API)
-    remaining = target_count - len(all_products)
-    if remaining > 0 and ebay_client_id and ebay_client_secret:
+    # 3. eBay
+    if ebay_client_id and ebay_client_secret:
         try:
             from ebay_searcher import search_products_ebay
 
-            logger.info(f"Searching eBay for {remaining} products...")
+            logger.info(f"Searching eBay for {per_vendor_target} products...")
             ebay_products = search_products_ebay(
                 profile,
                 ebay_client_id,
                 ebay_client_secret,
-                target_count=remaining,
+                target_count=per_vendor_target,
             )
             all_products.extend(ebay_products)
             logger.info(f"Got {len(ebay_products)} products from eBay")
@@ -112,22 +116,21 @@ def search_products_multi_retailer(
             logger.warning(f"ebay_searcher not available: {e}")
         except Exception as e:
             logger.error(f"eBay search failed: {e}")
-    elif remaining > 0:
+    else:
         logger.info("eBay credentials not set - skipping eBay")
 
-    # 4. ShareASale (fill remaining)
-    remaining = target_count - len(all_products)
-    if remaining > 0 and all([shareasale_id, shareasale_token, shareasale_secret]):
+    # 4. ShareASale
+    if all([shareasale_id, shareasale_token, shareasale_secret]):
         try:
             from affiliate_searcher import search_products_shareasale
 
-            logger.info(f"Searching ShareASale for {remaining} products...")
+            logger.info(f"Searching ShareASale for {per_vendor_target} products...")
             shareasale_products = search_products_shareasale(
                 profile,
                 shareasale_id,
                 shareasale_token,
                 shareasale_secret,
-                target_count=remaining,
+                target_count=per_vendor_target,
             )
             all_products.extend(shareasale_products)
             logger.info(f"Got {len(shareasale_products)} products from ShareASale")
@@ -135,37 +138,37 @@ def search_products_multi_retailer(
             logger.warning(f"affiliate_searcher not available: {e}")
         except Exception as e:
             logger.error(f"ShareASale search failed: {e}")
-    elif remaining > 0:
+    else:
         logger.info("ShareASale credentials not set - skipping ShareASale")
 
-    # 5. Amazon fill-in only when meaningfully short (deprioritized vs Etsy/Awin/eBay/ShareASale) (deprioritized vs Etsy/Awin/eBay/ShareASale)
-    remaining = target_count - len(all_products)
-    amazon_min_remaining = min(5, max(1, target_count // 2))  # only fetch Amazon if we need at least this many
-    if remaining >= amazon_min_remaining and amazon_key:
+    # 5. Amazon
+    if amazon_key:
         try:
             from rapidapi_amazon_searcher import search_products_rapidapi_amazon
 
-            logger.info(f"Using Amazon fill-in for {remaining} products (other sources short)...")
+            logger.info(f"Searching Amazon for {per_vendor_target} products...")
             amazon_products = search_products_rapidapi_amazon(
-                profile, amazon_key, target_count=remaining
+                profile, amazon_key, target_count=per_vendor_target
             )
             all_products.extend(amazon_products)
             logger.info(f"Got {len(amazon_products)} products from Amazon")
         except ImportError:
-            logger.warning("rapidapi_amazon_searcher not found - Amazon fill-in skipped")
+            logger.warning("rapidapi_amazon_searcher not found - Amazon skipped")
         except Exception as e:
-            logger.error(f"Amazon fill-in failed: {e}")
-    elif remaining > 0 and amazon_key:
-        logger.info("Amazon fill-in skipped - enough from other sources (remaining=%s < threshold %s)", remaining, amazon_min_remaining)
-    elif remaining > 0:
-        logger.info("Amazon key not set - skipping Amazon fill-in")
+            logger.error(f"Amazon search failed: {e}")
+    else:
+        logger.info("Amazon key not set - skipping Amazon")
 
-    # Log source breakdown
+    # Cap total inventory size so curator prompt stays manageable
+    if len(all_products) > MAX_INVENTORY_SIZE:
+        all_products = all_products[:MAX_INVENTORY_SIZE]
+        logger.info(f"Inventory capped at {MAX_INVENTORY_SIZE} for curation")
+
     source_counts = defaultdict(int)
     for p in all_products:
         source_counts[p.get("source_domain", "unknown")] += 1
 
     logger.info(f"Product source breakdown: {dict(source_counts)}")
-    logger.info(f"Total products found: {len(all_products)}")
+    logger.info(f"Total products in pool: {len(all_products)}")
 
     return all_products

@@ -142,6 +142,51 @@ def _stream_feed_and_match(feed_url, search_queries, max_results_from_feed, seen
         logger.debug("Awin stream: scanned %s rows, matched %s", scanned, count)
 
 
+def _fetch_feed_nonstream(feed_url, search_queries, max_results_from_feed, seen_ids):
+    """
+    Fallback: fetch feed with requests.get (no stream), parse CSV from r.text.
+    Use when streaming fails with 'I/O operation on closed file' (e.g. gzip/connection issues).
+    """
+    try:
+        r = requests.get(feed_url, timeout=90)
+        r.raise_for_status()
+    except requests.RequestException as e:
+        logger.warning("Awin feed non-stream fetch failed: %s", e)
+        return
+    count = 0
+    scanned = 0
+    try:
+        reader = csv.DictReader(io.StringIO(r.text))
+        for row in reader:
+            scanned += 1
+            if count >= max_results_from_feed or scanned > MAX_ROWS_TO_SCAN_PER_FEED:
+                break
+            for q in search_queries:
+                if count >= max_results_from_feed:
+                    break
+                terms = list(re.split(r"\s+", q["query"]))
+                if q.get("primary_term") and q["primary_term"] not in (t.lower() for t in terms):
+                    terms.append(q["primary_term"])
+                if not _matches_query(row, terms):
+                    continue
+                product = _row_to_product(
+                    row,
+                    q.get("interest", "general"),
+                    q.get("query", "gift"),
+                    q.get("priority", "medium"),
+                )
+                if not product or product["product_id"] in seen_ids:
+                    continue
+                seen_ids.add(product["product_id"])
+                count += 1
+                yield product
+                break
+    except Exception as e:
+        logger.warning("Awin feed non-stream parse failed: %s", e)
+    if scanned > 0:
+        logger.debug("Awin non-stream: scanned %s rows, matched %s", scanned, count)
+
+
 def _stream_feed_first_n(feed_url, n, seen_ids):
     """Yield first n valid products from feed (no query match). Used when matching returns 0."""
     try:
@@ -245,6 +290,8 @@ def _row_to_product(row, interest, query, priority):
         "link": link,
         "snippet": snippet,
         "image": image,
+        "thumbnail": image,
+        "image_url": image,
         "source_domain": source_domain,
         "search_query": query,
         "interest_match": interest,
@@ -388,6 +435,14 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
             feed_count += 1
             if len(all_products) >= target_count:
                 break
+        if feed_count == 0:
+            for product in _fetch_feed_nonstream(feed_url, search_queries, need, seen_ids):
+                all_products.append(product)
+                feed_count += 1
+                if len(all_products) >= target_count:
+                    break
+            if feed_count > 0:
+                logger.info("Awin used non-stream fallback for %s", advertiser)
         if feed_count > 0:
             feeds_used.append(advertiser)
 

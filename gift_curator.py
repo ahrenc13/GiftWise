@@ -110,7 +110,7 @@ SELECT {rec_count} BEST PRODUCTS from above. Requirements:
 - Only direct product links (no search URLs)
 - SOURCE PRIORITY: Prefer gifts from Etsy, Awin, eBay, and ShareASale (see "Domain" in each product). Only choose products from Amazon (domain amazon.com) when you cannot find strong interest matches from other platforms—use Amazon only to fill in if needed.
 
-ALSO: Generate 2 hyper-specific experience gifts synthesizing 2+ profile elements. EXPERIENCE GIFTS must be based ONLY on personal/leisure interests—never on work interests (see WORK INTERESTS above). Do not suggest IndyCar, EMS, nursing, healthcare, or any job-related experiences; experiences should feel like escape from work, not extension of it.
+ALSO: Generate exactly 3 hyper-specific experience gifts synthesizing 2+ profile elements each. You MUST return at least 2 experience gifts (3 preferred). EXPERIENCE GIFTS must be based ONLY on personal/leisure interests—never on work interests (see WORK INTERESTS above). Do not suggest IndyCar, EMS, nursing, healthcare, or any job-related experiences; experiences should feel like escape from work, not extension of it.
 
 NAMING: For products from Amazon (where_to_buy amazon.com), set "name" to a short, human-friendly rephrase of the product (e.g. "Wireless Dog Activity Tracker")—not the full long listing title. For Etsy/Awin/eBay/ShareASale, use exact name from list.
 
@@ -159,7 +159,7 @@ REQUIREMENTS:
 - If no location context, DO NOT suggest location-specific experiences
 - Each recommendation must have clear evidence from the profile
 - DIVERSITY: Max 2 products per single interest/theme (e.g. max 2 per band). Spread across at least 5+ interests.
-- Total: {rec_count} product gifts + 2-3 experience gifts
+- Total: {rec_count} product gifts + exactly 3 experience gifts (at least 2 required; fewer than 2 is not acceptable)
 - Every product gift product_url MUST be an exact copy of a URL from the INVENTORY list above - no invented products, no search pages.
 - AMAZON DEPRIORITIZED: Treat Amazon as fill-in only. Prefer Etsy, Awin, eBay, ShareASale; select Amazon products only when there aren't good matches from those sources.
 - Return ONLY the JSON object, no markdown, no backticks"""

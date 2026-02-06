@@ -2537,11 +2537,14 @@ def api_generate_recommendations():
             #     logger.info(f"After relationship filter ({relationship}): {len(products)} products")
             
             # STEP 3: Select best gifts from inventory (curator chooses from existing products only)
+            # IMPORTANT: Final recommendations come ONLY from curator output. We never pass inventory
+            # straight through—even if one vendor dominates the pool, the curator must select from it.
             logger.info("STEP 3: Selecting best gifts from inventory...")
             curated = curate_gifts(profile_for_backend, products, recipient_type, relationship, claude_client, rec_count=product_rec_count)
             
             product_gifts = curated.get('product_gifts', [])
             experience_gifts = curated.get('experience_gifts', [])
+            assert isinstance(product_gifts, list) and isinstance(experience_gifts, list), "Curator must return lists"
             # Remove experience gifts at recipient's workplace (e.g. behind-the-scenes IMS when they work at IMS)
             experience_gifts = filter_workplace_experiences(experience_gifts, profile)
             # Remove experience gifts themed on work (IndyCar, EMS, nursing, etc.) even when not at a venue
@@ -2586,6 +2589,7 @@ def api_generate_recommendations():
             # Combine and format recommendations: only product gifts from inventory (real buyable links)
             all_recommendations = []
             
+            # Build final list ONLY from curator output; never slice or use raw inventory as recommendations
             for gift in product_gifts:
                 product_url = (gift.get('product_url') or '').strip()
                 # Must be from inventory—never show invented or search-page gifts

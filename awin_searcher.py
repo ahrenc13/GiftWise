@@ -141,13 +141,28 @@ def _row_to_product(row, interest, query, priority):
     }
 
 
+def _product_text(row):
+    """All searchable text from a feed row; supports multiple column naming conventions."""
+    name = (
+        row.get("product_name") or row.get("product name") or row.get("Product Name")
+        or row.get("Name") or row.get("Title") or row.get("product_title") or ""
+    ).strip().lower()
+    keywords = (
+        row.get("keywords") or row.get("product_short_description") or row.get("description")
+        or row.get("Description") or row.get("product_description") or ""
+    ).strip().lower()
+    return name + " " + keywords
+
+
 def _matches_query(row, query_terms):
-    """True if product_name or keywords/description contain any of the query terms."""
-    name = (row.get("product_name") or row.get("product name") or "").lower()
-    keywords = (row.get("keywords") or row.get("product_short_description") or row.get("description") or "").lower()
-    text = name + " " + keywords
+    """True if product name/keywords/description contain any of the query terms (skip stopwords)."""
+    text = _product_text(row)
+    stopwords = {"and", "the", "or", "with", "from"}  # allow "gift" and "for" to match
     for term in query_terms:
-        if term and len(term) > 1 and term.lower() in text:
+        t = (term or "").strip().lower()
+        if len(t) <= 1 or t in stopwords:
+            continue
+        if t in text:
             return True
     return False
 
@@ -172,7 +187,7 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
     if not interests and not enhanced:
         return []
 
-    # Build search queries from profile interests (skip work)
+    # Build search queries from profile interests (skip work); include primary term for relaxed matching
     search_queries = []
     for interest in interests:
         name = interest.get("name", "")
@@ -181,9 +196,13 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
         if interest.get("is_work", False):
             logger.info("Skipping work interest: %s", name)
             continue
+        # Primary term = first significant word (e.g. "dog" from "Dog ownership and care") for broader Awin matching
+        words = [w for w in re.split(r"\s+", name) if len(w) > 1 and w.lower() not in ("and", "the", "or", "for")]
+        primary = words[0].lower() if words else name.lower()[:20]
         search_queries.append({
             "query": f"{name} gift",
             "interest": name,
+            "primary_term": primary,
             "priority": "high" if interest.get("intensity") == "passionate" else "medium",
         })
     # Add intelligence-layer enhanced search terms as extra queries (broaden match)
@@ -248,7 +267,9 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
             query = q["query"]
             interest = q["interest"]
             priority = q["priority"]
-            terms = re.split(r"\s+", query)
+            terms = list(re.split(r"\s+", query))
+            if q.get("primary_term") and q["primary_term"] not in (t.lower() for t in terms):
+                terms.append(q["primary_term"])
             for row in all_rows:
                 if feed_count >= per_feed_target or len(all_products) >= target_count:
                     break
@@ -262,6 +283,18 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
                 feed_count += 1
         if feed_count > 0:
             feeds_used.append(advertiser)
+        # Fallback: if this feed had no interest matches, take first few products for diversity
+        elif len(all_products) < target_count:
+            for row in all_rows[:5]:
+                if len(all_products) >= target_count:
+                    break
+                product = _row_to_product(row, "general", "gift", "medium")
+                if product and product["product_id"] not in seen_ids:
+                    seen_ids.add(product["product_id"])
+                    all_products.append(product)
+                    feed_count += 1
+            if feed_count > 0:
+                feeds_used.append(advertiser)
 
     logger.info("Found %s Awin products from %s", len(all_products), ", ".join(feeds_used) or "Awin")
     return all_products[:target_count]

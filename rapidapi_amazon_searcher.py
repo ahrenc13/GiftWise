@@ -61,7 +61,8 @@ def search_products_rapidapi_amazon(profile, api_key, target_count=20):
 
     all_products = []
     seen_asins = set()
-    per_query = max(3, (target_count // len(search_queries)) + 1)
+    # Cap at 2 per query so results span multiple interests (avoid "all dog" or "all one interest")
+    per_query = min(2, max(1, (target_count + len(search_queries) - 1) // len(search_queries)))
 
     headers = {
         "X-RapidAPI-Key": key,
@@ -105,8 +106,9 @@ def search_products_rapidapi_amazon(profile, api_key, target_count=20):
         else:
             products_list = []
 
+        added_this_query = 0
         for item in products_list:
-            if len(all_products) >= target_count:
+            if added_this_query >= per_query or len(all_products) >= target_count:
                 break
             asin = item.get("asin") or item.get("product_id") or ""
             if asin and asin in seen_asins:
@@ -119,7 +121,15 @@ def search_products_rapidapi_amazon(profile, api_key, target_count=20):
                 link = f"https://www.amazon.com/dp/{asin}" if asin else ""
             if not link:
                 continue
-            image = (item.get("thumbnail") or item.get("image") or item.get("product_thumbnail") or "").strip()
+            image = (
+                item.get("thumbnail") or item.get("image") or item.get("product_thumbnail")
+                or item.get("product_image") or item.get("main_image") or item.get("image_url")
+            )
+            if not image and isinstance(item.get("images"), list) and item["images"]:
+                image = item["images"][0]
+            if isinstance(image, dict):
+                image = image.get("url") or image.get("link") or ""
+            image = (image or "").strip()
             price_obj = item.get("price") or item.get("current_price") or {}
             if isinstance(price_obj, dict):
                 price_val = price_obj.get("value") or price_obj.get("raw") or price_obj.get("current_price")
@@ -134,6 +144,8 @@ def search_products_rapidapi_amazon(profile, api_key, target_count=20):
                 "link": link,
                 "snippet": title[:100],
                 "image": image,
+                "thumbnail": image,
+                "image_url": image,
                 "source_domain": "amazon.com",
                 "search_query": query,
                 "interest_match": interest,
@@ -144,6 +156,7 @@ def search_products_rapidapi_amazon(profile, api_key, target_count=20):
             if asin:
                 seen_asins.add(asin)
             all_products.append(product)
+            added_this_query += 1
 
     logger.info("Found %s Amazon products (RapidAPI Real-Time Amazon Data)", len(all_products))
     return all_products[:target_count]

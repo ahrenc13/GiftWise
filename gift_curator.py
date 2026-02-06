@@ -73,6 +73,8 @@ ASPIRATIONAL VS. CURRENT:
 
 GIFT_AVOID (do not suggest): {', '.join(profile.get('gift_avoid', [])[:8]) or 'None specified'}
 
+WORK INTERESTS (do NOT base experience gifts on these—only personal/leisure): {', '.join([i.get('name', '') for i in profile.get('interests', []) if i.get('is_work')]) or 'None'}
+
 WORKPLACE (NEVER suggest experiences or "behind the scenes" at these - they work there!):
 {_format_work_venues(profile)}
 
@@ -108,7 +110,7 @@ SELECT {rec_count} BEST PRODUCTS from above. Requirements:
 - Only direct product links (no search URLs)
 - SOURCE PRIORITY: Prefer gifts from Etsy, Awin, eBay, and ShareASale (see "Domain" in each product). Only choose products from Amazon (domain amazon.com) when you cannot find strong interest matches from other platforms—use Amazon only to fill in if needed.
 
-ALSO: Generate 2 hyper-specific experience gifts synthesizing 2+ profile elements.
+ALSO: Generate 2 hyper-specific experience gifts synthesizing 2+ profile elements. EXPERIENCE GIFTS must be based ONLY on personal/leisure interests—never on work interests (see WORK INTERESTS above). Do not suggest IndyCar, EMS, nursing, healthcare, or any job-related experiences; experiences should feel like escape from work, not extension of it.
 
 Return JSON:
 {{
@@ -146,7 +148,7 @@ Return JSON:
 
 REQUIREMENTS:
 - Product gifts MUST be selected FROM THE INVENTORY ABOVE ONLY. Every product gift must be one of the {len(products)} listed products (use exact URLs and image URLs from that line). Never invent or reference a product not in the inventory. product_url = direct product page ONLY - never search or homepage.
-- Experience gifts MUST be hyper-specific, cite 2+ profile data points in why_perfect, and include how_to_execute + how_to_make_it_special.
+- Experience gifts MUST be hyper-specific, cite 2+ profile data points in why_perfect, and include how_to_execute + how_to_make_it_special. They must NOT be based on work interests—only personal/leisure (see WORK INTERESTS).
 - Experience links (reservation_link, venue_website) are LOGISTICS-CRITICAL: they must point to venues in the recipient's city/region only (use "Lives in" and "Specific places"). Never link to a venue in another city or state. If you cannot find a real bookable venue in their area, leave both empty - we will supply a geography-calibrated search link.
 - materials_needed for experiences: when an item matches a product in AVAILABLE PRODUCTS, copy that product's URL exactly into product_url and set where_to_buy to its domain. Never use search URLs - only direct product page URLs from the list. Empty product_url is OK when no match; we will add a find-it link.
 - If no location context, DO NOT suggest location-specific experiences
@@ -262,7 +264,7 @@ def format_products(products):
         price = p.get('price', 'Price unknown')
         domain = p.get('source_domain', 'unknown')
         interest = p.get('interest_match', 'general')
-        image_url = p.get('image', '') or p.get('thumbnail', '')
+        image_url = p.get('image', '') or p.get('thumbnail', '') or p.get('image_url', '')
         formatted.append(f"{idx}. {title}\n   Price: {price} | Domain: {domain} | Interest match: {interest}\n   Description: {snippet[:150]}\n   URL: {link}\n   Image: {image_url}")
     
     return '\n\n'.join(formatted[:50])  # Limit to 50 products in prompt

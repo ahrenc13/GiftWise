@@ -89,3 +89,14 @@ He asked for **steps only** when he reports back – no “check the MD.” So w
 - **Env vars:** `SERPAPI_MIN_GAP_SECONDS`, `MAX_CONCURRENT_SCRAPERS` – read in product_searcher and giftwise_app at module load.
 
 If you need to relax or remove the rate limiter or scrape cap, the above tells you where to look and what env vars exist.
+
+---
+
+## Claude Multi-Retailer Handoff (Received)
+
+Claude’s full handoff for **multi-retailer product integration** (Etsy → ShareASale → Amazon fallback, replacing SerpAPI/Google CSE) was pasted by Chad and is summarized in **CLAUDE_HANDOFF_MULTI_RETAILER.md**.
+
+- **Current product search in app:** `giftwise_app.py` calls `search_products_google_cse()` (from `google_cse_searcher.py`) with `GOOGLE_CSE_API_KEY` and `GOOGLE_CUSTOM_SEARCH_ENGINE_ID`. SerpAPI work is in `product_searcher.py` (rate-limited) but the main rec flow uses Google CSE.
+- **Handoff asks for:** New files `etsy_searcher.py`, `affiliate_searcher.py`, `multi_retailer_searcher.py`; update `giftwise_app.py` to use `search_products_multi_retailer(...)` with env vars for Etsy, ShareASale, and RapidAPI/Amazon. Phase 1 = Amazon only; Phase 2 = Etsy + Amazon; Phase 3 = Etsy + ShareASale + Amazon.
+- **Not in repo yet:** `rapidapi_amazon_searcher.py` (handoff assumes it exists). No `etsy_searcher.py`, `affiliate_searcher.py`, or `multi_retailer_searcher.py` yet.
+- **For Claude:** See **CLAUDE_HANDOFF_MULTI_RETAILER.md** for short index, current codebase state, and concrete next steps to implement the handoff. Full code for the three searchers and orchestrator is in Claude’s original message.

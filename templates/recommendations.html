@@ -53,6 +53,22 @@
         .page-subtitle {
             color: #6b7280;
             margin-bottom: 40px;
+        }
+        .retailer-attribution {
+            margin: 0 0 24px 0;
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-left: 3px solid #0066cc;
+            border-radius: 4px;
+        }
+        .retailer-note {
+            color: #666;
+            font-size: 0.9em;
+            font-style: italic;
+        }
+        .retailer-note strong {
+            color: #333;
+            font-weight: 600;
             font-size: 1.15em;
             text-align: center;
         }
@@ -516,6 +532,9 @@
     <div class="container">
         <h1 class="page-title">Your Gift Recommendations</h1>
         <p class="page-subtitle">Based on social media insights • {{ recommendations|length }} gifts found</p>
+        <div class="retailer-attribution">
+            <span class="retailer-note">Powered by Etsy, Awin & Amazon • More retailers coming soon!</span>
+        </div>
         
         <!-- Filters Section -->
         <div class="filters-section">

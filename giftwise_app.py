@@ -57,7 +57,7 @@ except ImportError as e:
 # Import new recommendation architecture (profile → search → curate)
 try:
     from profile_analyzer import build_recipient_profile
-    from google_cse_searcher import search_products_google_cse
+    from multi_retailer_searcher import search_products_multi_retailer
     from gift_curator import curate_gifts
     NEW_RECOMMENDATION_FLOW = True
 except ImportError:
@@ -2289,14 +2289,22 @@ def api_generate_recommendations():
             relationship = user.get('relationship', '')
             user_id = session['user_id']
             
-            # Check if SerpAPI is configured
-            if not SERPAPI_API_KEY:
-                logger.error("SerpAPI not configured")
+            # At least one product source (Etsy, Awin, ShareASale, or Amazon/RapidAPI) must be configured
+            has_etsy = bool(os.environ.get('ETSY_API_KEY', '').strip())
+            has_awin = bool(os.environ.get('AWIN_DATA_FEED_API_KEY', '').strip())
+            has_shareasale = all([
+                os.environ.get('SHAREASALE_AFFILIATE_ID', '').strip(),
+                os.environ.get('SHAREASALE_API_TOKEN', '').strip(),
+                os.environ.get('SHAREASALE_API_SECRET', '').strip(),
+            ])
+            has_amazon = bool(os.environ.get('RAPIDAPI_KEY', '').strip())
+            if not (has_etsy or has_awin or has_shareasale or has_amazon):
+                logger.error("No product API configured (set ETSY_API_KEY, AWIN_DATA_FEED_API_KEY, SHAREASALE_*, or RAPIDAPI_KEY)")
                 return jsonify({
                     'success': False,
                     'error': "We're having trouble loading gift ideas right now. Please try again in a few minutes."
                 }), 503
-            
+
             # STEP 1: Build or use approved recipient profile
             if session.get('approved_profile'):
                 profile = session.pop('approved_profile')
@@ -2338,15 +2346,19 @@ def api_generate_recommendations():
             else:
                 logger.info("Using pre-enriched profile from review step")
             
-            # STEP 2: Pull inventory of real products that match the profile.
+            # STEP 2: Pull inventory of real products (Etsy → Awin → ShareASale → Amazon fallback).
             # Inventory must be at least 2-3x the number we will select so the engine can choose carefully.
             product_rec_count = 10  # number of product gifts we will select
             logger.info("STEP 2: Pulling product inventory...")
-            products = search_products_google_cse(
+            products = search_products_multi_retailer(
                 profile,
-                os.environ.get('GOOGLE_CSE_API_KEY', ''),
-                os.environ.get('GOOGLE_CUSTOM_SEARCH_ENGINE_ID', ''),
-                target_count=product_rec_count
+                etsy_key=os.environ.get('ETSY_API_KEY', ''),
+                awin_data_feed_api_key=os.environ.get('AWIN_DATA_FEED_API_KEY', ''),
+                shareasale_id=os.environ.get('SHAREASALE_AFFILIATE_ID', ''),
+                shareasale_token=os.environ.get('SHAREASALE_API_TOKEN', ''),
+                shareasale_secret=os.environ.get('SHAREASALE_API_SECRET', ''),
+                amazon_key=os.environ.get('RAPIDAPI_KEY', ''),
+                target_count=product_rec_count,
             )
             
             if len(products) == 0:

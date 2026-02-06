@@ -367,3 +367,46 @@ def filter_workplace_experiences(experience_gifts, profile):
             filtered.append(exp)
     
     return filtered
+
+
+def get_work_theme_keywords(profile):
+    """
+    Keywords that indicate an experience is work-themed (IndyCar, EMS, nursing, etc.).
+    Used to drop experiences based on work even when not at a specific venue.
+    """
+    if not profile:
+        return []
+    keywords = []
+    for i in profile.get('interests', []):
+        if not i.get('is_work'):
+            continue
+        name = (i.get('name') or '').lower()
+        if not name:
+            continue
+        keywords.append(name)
+        # Common variants
+        if 'indy' in name or 'indianapolis' in name or 'ims' in name or 'racing' in name:
+            keywords.extend(['indycar', 'indy 500', 'indianapolis motor speedway', 'ims', 'racing experience'])
+        if 'ems' in name or 'nursing' in name or 'healthcare' in name or 'paramedic' in name or 'medical' in name:
+            keywords.extend(['ems', 'nursing', 'healthcare', 'paramedic', 'medical', 'hospital', 'er ', 'emergency medical'])
+    return list(set(kw for kw in keywords if len(kw) > 1))
+
+
+def filter_work_themed_experiences(experience_gifts, profile):
+    """
+    Remove experience gifts that are themed around work (IndyCar, EMS, nursing, etc.).
+    Call after filter_workplace_experiences so we drop any work-themed experience regardless of venue.
+    """
+    if not experience_gifts or not profile:
+        return experience_gifts
+    work_keywords = get_work_theme_keywords(profile)
+    if not work_keywords:
+        return experience_gifts
+    filtered = []
+    for exp in experience_gifts:
+        combined = f"{exp.get('name', '')} {exp.get('description', '')} {exp.get('why_perfect', '')} {exp.get('location_details', '')}".lower()
+        if any(kw in combined for kw in work_keywords):
+            logger.info(f"EXCLUDED work-themed experience: {exp.get('name', 'Unknown')[:60]}")
+            continue
+        filtered.append(exp)
+    return filtered

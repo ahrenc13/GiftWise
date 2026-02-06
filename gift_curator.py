@@ -112,13 +112,17 @@ SELECT {rec_count} BEST PRODUCTS from above. Requirements:
 
 ALSO: Generate 2 hyper-specific experience gifts synthesizing 2+ profile elements. EXPERIENCE GIFTS must be based ONLY on personal/leisure interests—never on work interests (see WORK INTERESTS above). Do not suggest IndyCar, EMS, nursing, healthcare, or any job-related experiences; experiences should feel like escape from work, not extension of it.
 
+NAMING: For products from Amazon (where_to_buy amazon.com), set "name" to a short, human-friendly rephrase of the product (e.g. "Wireless Dog Activity Tracker")—not the full long listing title. For Etsy/Awin/eBay/ShareASale, use exact name from list.
+
+NARRATIVES: Write why_perfect so it shows we really analyzed who they are. For product gifts: 2–4 sentences, citing specific profile details (their interests, evidence, location, style). For experience gifts: 2–4 sentences, citing 2+ profile points. Avoid one-liners; the narrative should demonstrate GiftWise understood the person.
+
 Return JSON:
 {{
   "product_gifts": [
     {{
-      "name": "exact name from list",
+      "name": "short rephrased title (for Amazon) or exact name from list",
       "description": "what it is",
-      "why_perfect": "why it fits (cite interest)",
+      "why_perfect": "2–4 sentences: why it fits, citing specific interests/evidence/style so it’s clear we get them",
       "price": "from product",
       "where_to_buy": "domain",
       "product_url": "exact URL from list",
@@ -132,7 +136,7 @@ Return JSON:
     {{
       "name": "specific experience",
       "description": "what/why",
-      "why_perfect": "cite 2+ profile points",
+      "why_perfect": "2–4 sentences citing 2+ profile points so it’s clear we get them",
       "location_specific": true/false,
       "location_details": "venue/city or N/A",
       "materials_needed": [{{"item": "", "where_to_buy": "", "product_url": "", "estimated_price": ""}}],
@@ -148,7 +152,8 @@ Return JSON:
 
 REQUIREMENTS:
 - Product gifts MUST be selected FROM THE INVENTORY ABOVE ONLY. Every product gift must be one of the {len(products)} listed products (use exact URLs and image URLs from that line). Never invent or reference a product not in the inventory. product_url = direct product page ONLY - never search or homepage.
-- Experience gifts MUST be hyper-specific, cite 2+ profile data points in why_perfect, and include how_to_execute + how_to_make_it_special. They must NOT be based on work interests—only personal/leisure (see WORK INTERESTS).
+- Experience gifts MUST be hyper-specific; why_perfect must be 2–4 sentences citing 2+ profile data points. Include how_to_execute + how_to_make_it_special. They must NOT be based on work interests—only personal/leisure (see WORK INTERESTS).
+- why_perfect for BOTH product and experience gifts: 2–4 sentences minimum. Show that we analyzed who they are; cite specific interests, evidence, location, or style. No one-line blurbs.
 - Experience links (reservation_link, venue_website) are LOGISTICS-CRITICAL: they must point to venues in the recipient's city/region only (use "Lives in" and "Specific places"). Never link to a venue in another city or state. If you cannot find a real bookable venue in their area, leave both empty - we will supply a geography-calibrated search link.
 - materials_needed for experiences: when an item matches a product in AVAILABLE PRODUCTS, copy that product's URL exactly into product_url and set where_to_buy to its domain. Never use search URLs - only direct product page URLs from the list. Empty product_url is OK when no match; we will add a find-it link.
 - If no location context, DO NOT suggest location-specific experiences

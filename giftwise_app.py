@@ -64,6 +64,20 @@ except ImportError:
     NEW_RECOMMENDATION_FLOW = False
     pass
 
+
+def profile_for_search_and_curation(profile):
+    """
+    Return a copy of profile with work interests removed.
+    Use for search and curation so work never drives queries or recommendations.
+    Full profile is still used for filtering (e.g. exclude work-related products, workplace experiences).
+    """
+    if not profile or not isinstance(profile, dict):
+        return profile
+    import copy
+    p = copy.deepcopy(profile)
+    p['interests'] = [i for i in p.get('interests', []) if not i.get('is_work')]
+    return p
+
 # Import enhanced recommendation engine (legacy fallback)
 try:
     from enhanced_recommendation_engine import (
@@ -2083,11 +2097,13 @@ def review_profile():
     # Build profile (one Claude call) so user can review before we search/curate
     logger.info("Building profile for review step...")
     profile = build_recipient_profile(platforms, recipient_type, relationship, claude_client)
+    # Enrich using only non-work interests so cached enrichment is correct for search/curation
+    profile_for_backend = profile_for_search_and_curation(profile)
     
     # ENRICH PROFILE WITH INTELLIGENCE LAYER (optional)
     if INTELLIGENCE_LAYER_AVAILABLE and enrich_profile_simple:
         enriched = enrich_profile_simple(
-            interests=[i.get('name', '') for i in profile.get('interests', [])],
+            interests=[i.get('name', '') for i in profile_for_backend.get('interests', [])],
             relationship=session.get('relationship', 'close_friend'),
             age=session.get('recipient_age'),
             gender=session.get('recipient_gender')
@@ -2321,14 +2337,24 @@ def api_generate_recommendations():
                     'error': 'Unable to extract enough information from social media. Please connect more platforms or ensure profiles are public.'
                 }), 422
             
-            logger.info(f"Profile built: {len(profile.get('interests', []))} interests, location: {profile.get('location_context', {}).get('city_region')}")
+            # Work interests stay visible on profile page but are excluded from search/curation
+            profile_for_backend = profile_for_search_and_curation(profile)
+            if len(profile_for_backend.get('interests', [])) < len(profile.get('interests', [])):
+                logger.info("Excluded work interests from search/curation (still shown on profile)")
+            if not profile_for_backend.get('interests'):
+                return jsonify({
+                    'success': False,
+                    'error': 'No personal interests to base recommendations on. Add hobbies or interests that aren\'t work-related.'
+                }), 422
+            
+            logger.info(f"Profile built: {len(profile.get('interests', []))} interests ({len(profile_for_backend.get('interests', []))} non-work), location: {profile.get('location_context', {}).get('city_region')}")
             
             # ENRICH PROFILE WITH INTELLIGENCE LAYER (if available and not already enriched from review step)
             if not session.get('enriched_profile'):
                 if INTELLIGENCE_LAYER_AVAILABLE and enrich_profile_simple:
                     logger.info("Enriching profile with intelligence layer...")
                     enriched = enrich_profile_simple(
-                        interests=[i.get('name', '') for i in profile.get('interests', [])],
+                        interests=[i.get('name', '') for i in profile_for_backend.get('interests', [])],
                         relationship=relationship or 'close_friend',
                         age=session.get('recipient_age'),
                         gender=session.get('recipient_gender')
@@ -2353,7 +2379,7 @@ def api_generate_recommendations():
             logger.info("STEP 2: Pulling product inventory...")
             enhanced_search_terms = session.get('enhanced_search_terms', [])
             products = search_products_multi_retailer(
-                profile,
+                profile_for_backend,
                 etsy_key=os.environ.get('ETSY_API_KEY', ''),
                 awin_data_feed_api_key=os.environ.get('AWIN_DATA_FEED_API_KEY', ''),
                 ebay_client_id=os.environ.get('EBAY_CLIENT_ID', ''),
@@ -2392,7 +2418,7 @@ def api_generate_recommendations():
                 logger.info(f"Intelligence filters removed {filtered_count} inappropriate products ({len(products)} remaining)")
             
             # Apply smart filters BEFORE curation
-            from smart_filters import apply_smart_filters, filter_workplace_experiences
+            from smart_filters import apply_smart_filters, filter_workplace_experiences, filter_work_themed_experiences
             from relationship_rules import RelationshipRules
             
             # Filter out work-related and wrong activity type items
@@ -2407,13 +2433,15 @@ def api_generate_recommendations():
             
             # STEP 3: Select best gifts from inventory (curator chooses from existing products only)
             logger.info("STEP 3: Selecting best gifts from inventory...")
-            curated = curate_gifts(profile, products, recipient_type, relationship, claude_client, rec_count=product_rec_count)
+            curated = curate_gifts(profile_for_backend, products, recipient_type, relationship, claude_client, rec_count=product_rec_count)
             
             product_gifts = curated.get('product_gifts', [])
             experience_gifts = curated.get('experience_gifts', [])
             # Remove experience gifts at recipient's workplace (e.g. behind-the-scenes IMS when they work at IMS)
             experience_gifts = filter_workplace_experiences(experience_gifts, profile)
-            logger.info(f"After workplace-experience filter: {len(experience_gifts)} experiences")
+            # Remove experience gifts themed on work (IndyCar, EMS, nursing, etc.) even when not at a venue
+            experience_gifts = filter_work_themed_experiences(experience_gifts, profile)
+            logger.info(f"After workplace/work-themed experience filter: {len(experience_gifts)} experiences")
             
             if not product_gifts and not experience_gifts:
                 logger.error("Curation returned no gifts")
@@ -2439,10 +2467,10 @@ def api_generate_recommendations():
                     valid_product_urls.add(_normalize_url_for_image(raw_link))
                 link = _normalize_url_for_image(raw_link)
                 if link:
-                    img = (p.get('image') or p.get('thumbnail') or '').strip()
+                    img = (p.get('image_url') or p.get('image') or p.get('thumbnail') or '').strip()
                     product_url_to_image[link] = img
                 if raw_link and raw_link not in product_url_to_image:
-                    product_url_to_image[raw_link] = (p.get('image') or p.get('thumbnail') or '').strip()
+                    product_url_to_image[raw_link] = (p.get('image_url') or p.get('image') or p.get('thumbnail') or '').strip()
             
             try:
                 from link_validation import is_bad_product_url
@@ -2476,6 +2504,7 @@ def api_generate_recommendations():
                     'product_url': product_url,
                     'purchase_link': product_url,  # Compatibility
                     'image_url': image_url,
+                    'image': image_url,  # So image_fetcher can validate feed/backfill thumbnail
                     'gift_type': 'physical',
                     'confidence_level': gift.get('confidence_level', 'safe_bet'),
                     'interest_match': gift.get('interest_match', ''),

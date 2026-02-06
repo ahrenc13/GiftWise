@@ -49,19 +49,23 @@ def _get_feed_list(api_key):
 
     reader = csv.DictReader(io.StringIO(text))
     rows = list(reader)
-    # Normalize column names (could be with/without spaces)
+    # Normalize column names (could be with/without spaces); include Vertical and Feed Name for relevance
     out = []
     for row in rows:
         url_val = (row.get("URL") or row.get("url") or "").strip()
         feed_id = (row.get("Feed ID") or row.get("Feed Id") or row.get("feed_id") or "").strip()
         advertiser = (row.get("Advertiser Name") or row.get("advertiser_name") or "").strip()
         status = (row.get("Membership Status") or row.get("membership_status") or "").strip()
+        feed_name = (row.get("Feed Name") or row.get("feed_name") or "").strip()
+        vertical = (row.get("Vertical") or row.get("vertical") or "").strip()
         if url_val:
             out.append({
                 "url": url_val,
                 "feed_id": feed_id,
                 "advertiser_name": advertiser,
                 "membership_status": status,
+                "feed_name": feed_name,
+                "vertical": vertical,
             })
     _awin_feed_list_cache[api_key] = out
     _awin_feed_list_ts = now
@@ -69,8 +73,93 @@ def _get_feed_list(api_key):
     return out
 
 
-# Max rows to read per feed to avoid OOM on Railway (feeds can be 100k+ rows)
+# Max rows to read per feed when loading full feed (legacy path)
 MAX_ROWS_PER_FEED = 800
+# When streaming: max rows to scan per feed before moving to next (finds matches without loading full feed)
+MAX_ROWS_TO_SCAN_PER_FEED = 3500
+
+
+def _stream_feed_and_match(feed_url, search_queries, max_results_from_feed, seen_ids):
+    """
+    Stream a feed CSV and yield only rows that match any search query (terms or primary_term).
+    Stops when we have max_results_from_feed matches or after MAX_ROWS_TO_SCAN_PER_FEED rows.
+    Keeps memory small so we can afford to open many feeds.
+    """
+    try:
+        r = requests.get(feed_url, timeout=90, stream=True)
+        r.raise_for_status()
+    except requests.RequestException as e:
+        logger.warning("Awin feed stream failed: %s", e)
+        return
+
+    count = 0
+    scanned = 0
+    try:
+        text_stream = io.TextIOWrapper(r.raw, encoding="utf-8", errors="replace")
+        reader = csv.DictReader(text_stream)
+        for row in reader:
+            scanned += 1
+            if count >= max_results_from_feed or scanned > MAX_ROWS_TO_SCAN_PER_FEED:
+                break
+            for q in search_queries:
+                if count >= max_results_from_feed:
+                    break
+                terms = list(re.split(r"\s+", q["query"]))
+                if q.get("primary_term") and q["primary_term"] not in (t.lower() for t in terms):
+                    terms.append(q["primary_term"])
+                if not _matches_query(row, terms):
+                    continue
+                product = _row_to_product(
+                    row,
+                    q.get("interest", "general"),
+                    q.get("query", "gift"),
+                    q.get("priority", "medium"),
+                )
+                if not product or product["product_id"] in seen_ids:
+                    continue
+                seen_ids.add(product["product_id"])
+                count += 1
+                yield product
+                break
+    except Exception as e:
+        logger.warning("Awin feed stream parse failed: %s", e)
+    finally:
+        try:
+            r.close()
+        except Exception:
+            pass
+    if scanned > 0:
+        logger.debug("Awin stream: scanned %s rows, matched %s", scanned, count)
+
+
+def _stream_feed_first_n(feed_url, n, seen_ids):
+    """Yield first n valid products from feed (no query match). Used when matching returns 0."""
+    try:
+        r = requests.get(feed_url, timeout=90, stream=True)
+        r.raise_for_status()
+    except requests.RequestException as e:
+        logger.warning("Awin feed stream failed: %s", e)
+        return
+    count = 0
+    try:
+        text_stream = io.TextIOWrapper(r.raw, encoding="utf-8", errors="replace")
+        reader = csv.DictReader(text_stream)
+        for row in reader:
+            if count >= n:
+                break
+            product = _row_to_product(row, "general", "gift", "medium")
+            if not product or product["product_id"] in seen_ids:
+                continue
+            seen_ids.add(product["product_id"])
+            count += 1
+            yield product
+    except Exception as e:
+        logger.warning("Awin feed stream parse failed: %s", e)
+    finally:
+        try:
+            r.close()
+        except Exception:
+            pass
 
 
 def _download_feed_csv(feed_url):
@@ -84,7 +173,6 @@ def _download_feed_csv(feed_url):
 
     rows = []
     try:
-        # r.raw streams decompressed bytes; we only read until we have MAX_ROWS_PER_FEED rows
         text_stream = io.TextIOWrapper(r.raw, encoding="utf-8", errors="replace")
         reader = csv.DictReader(text_stream)
         for i, row in enumerate(reader):
@@ -105,8 +193,8 @@ def _download_feed_csv(feed_url):
 
 def _row_to_product(row, interest, query, priority):
     """Map Awin feed row to our product dict. Supports multiple Awin feed column naming conventions."""
-    title = (row.get("product_name") or row.get("product name") or "").strip()
-    link = (row.get("aw_deep_link") or row.get("merchant_deep_link") or row.get("deep_link") or "").strip()
+    title = (row.get("product_name") or row.get("product name") or row.get("title") or row.get("product_title") or "").strip()
+    link = (row.get("aw_deep_link") or row.get("merchant_deep_link") or row.get("deep_link") or row.get("link") or "").strip()
     # Awin feeds use various image column names; check all common variants for thumbnails
     image = (
         (row.get("merchant_image_url") or row.get("aw_image_url") or row.get("aw_thumb_url")
@@ -145,7 +233,7 @@ def _product_text(row):
     """All searchable text from a feed row; supports multiple column naming conventions."""
     name = (
         row.get("product_name") or row.get("product name") or row.get("Product Name")
-        or row.get("Name") or row.get("Title") or row.get("product_title") or ""
+        or row.get("Name") or row.get("Title") or row.get("title") or row.get("product_title") or ""
     ).strip().lower()
     keywords = (
         row.get("keywords") or row.get("product_short_description") or row.get("description")
@@ -208,9 +296,13 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
     # Add intelligence-layer enhanced search terms as extra queries (broaden match)
     for term in enhanced[:15]:
         if term and isinstance(term, str) and term.strip() and term.strip() not in {q["query"] for q in search_queries}:
+            t = term.strip()
+            words = [w for w in re.split(r"\s+", t) if len(w) > 1 and w.lower() not in ("and", "the", "or", "for")]
+            primary = words[0].lower() if words else t.lower()[:20]
             search_queries.append({
-                "query": f"{term.strip()} gift",
-                "interest": term.strip(),
+                "query": f"{t} gift",
+                "interest": t,
+                "primary_term": primary,
                 "priority": "medium",
             })
     search_queries = search_queries[:20]
@@ -233,12 +325,28 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
     general = [f for f in candidates if not _is_likely_florist(f.get("advertiser_name", ""))]
     florists = [f for f in candidates if _is_likely_florist(f.get("advertiser_name", ""))]
     ordered_feeds = general + florists
-    # Use up to 3 feeds to balance breadth vs memory (Railway OOM if too many large feeds cached)
-    max_feeds = 3
-    per_feed_target = max((target_count + max_feeds - 1) // max_feeds, 2)
 
-    global _awin_products_ts, _awin_products_cache
-    now = time.time()
+    # Relevance: prefer feeds whose vertical, feed_name, or advertiser_name mention any interest
+    interest_keywords = set()
+    for q in search_queries:
+        pt = q.get("primary_term")
+        if pt:
+            interest_keywords.add(pt)
+        for w in re.split(r"\s+", (q.get("interest") or "")):
+            if len(w) > 2:
+                interest_keywords.add(w.lower())
+    def _feed_relevance(feed_info):
+        text = " ".join([
+            (feed_info.get("vertical") or "").lower(),
+            (feed_info.get("feed_name") or "").lower(),
+            (feed_info.get("advertiser_name") or "").lower(),
+        ])
+        return sum(1 for k in interest_keywords if k in text)
+    ordered_feeds = sorted(ordered_feeds, key=lambda f: -_feed_relevance(f))
+
+    # Stream-and-match: use more feeds (8), scan up to MAX_ROWS_TO_SCAN_PER_FEED per feed, only keep matches
+    max_feeds = 8
+    per_feed_target = max((target_count + max_feeds - 1) // max_feeds, 3)
     all_products = []
     seen_ids = set()
     feeds_used = []
@@ -247,54 +355,25 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
         if len(all_products) >= target_count:
             break
         feed_url = feed_info.get("url")
-        feed_id = feed_info.get("feed_id") or ""
         advertiser = feed_info.get("advertiser_name", "Awin")
-        cache_key = api_key + "|" + feed_id
-        if now - _awin_products_ts < AWIN_CACHE_TTL and cache_key in _awin_products_cache:
-            all_rows = _awin_products_cache[cache_key]
-        else:
-            all_rows = _download_feed_csv(feed_url)
-            if all_rows:
-                _awin_products_cache[cache_key] = all_rows
-                _awin_products_ts = now
-        if not all_rows:
-            continue
-
+        need = min(per_feed_target, target_count - len(all_products))
         feed_count = 0
-        for q in search_queries:
-            if feed_count >= per_feed_target:
+        for product in _stream_feed_and_match(feed_url, search_queries, need, seen_ids):
+            all_products.append(product)
+            feed_count += 1
+            if len(all_products) >= target_count:
                 break
-            query = q["query"]
-            interest = q["interest"]
-            priority = q["priority"]
-            terms = list(re.split(r"\s+", query))
-            if q.get("primary_term") and q["primary_term"] not in (t.lower() for t in terms):
-                terms.append(q["primary_term"])
-            for row in all_rows:
-                if feed_count >= per_feed_target or len(all_products) >= target_count:
-                    break
-                if not _matches_query(row, terms):
-                    continue
-                product = _row_to_product(row, interest, query, priority)
-                if not product or product["product_id"] in seen_ids:
-                    continue
-                seen_ids.add(product["product_id"])
-                all_products.append(product)
-                feed_count += 1
         if feed_count > 0:
             feeds_used.append(advertiser)
-        # Fallback: if this feed had no interest matches, take first few products for diversity
-        elif len(all_products) < target_count:
-            for row in all_rows[:5]:
-                if len(all_products) >= target_count:
-                    break
-                product = _row_to_product(row, "general", "gift", "medium")
-                if product and product["product_id"] not in seen_ids:
-                    seen_ids.add(product["product_id"])
-                    all_products.append(product)
-                    feed_count += 1
-            if feed_count > 0:
-                feeds_used.append(advertiser)
+
+    # Fallback: if no matches from any feed, take first few products from first feed for diversity
+    if not all_products and ordered_feeds:
+        first_feed = ordered_feeds[0]
+        for product in _stream_feed_first_n(first_feed.get("url"), 5, seen_ids):
+            all_products.append(product)
+        if all_products:
+            feeds_used.append(first_feed.get("advertiser_name", "Awin"))
+            logger.info("Awin fallback: took first %s products from %s", len(all_products), first_feed.get("advertiser_name"))
 
     logger.info("Found %s Awin products from %s", len(all_products), ", ".join(feeds_used) or "Awin")
     return all_products[:target_count]

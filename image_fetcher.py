@@ -246,7 +246,9 @@ def get_product_image(recommendation, prioritize_stability=True):
 
     # Strategy 1: Extract from product URL (most stable)
     if product_url and not is_bad_product_url(product_url) and prioritize_stability:
-        img_url = extract_image_from_url(product_url)
+        # Amazon pages can be slow; use longer timeout to improve thumbnail success
+        extract_timeout = 8 if 'amazon.' in (product_url or '').lower() else 5
+        img_url = extract_image_from_url(product_url, timeout=extract_timeout)
         if img_url:
             logger.info(f"Extracted stable image from product page for '{product_name[:40]}'")
             return {

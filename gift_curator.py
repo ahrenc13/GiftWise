@@ -149,7 +149,7 @@ Return JSON:
 {{
   "product_gifts": [
     {{
-      "name": "exact name from list",
+      "name": "SHORT human-friendly name (e.g. 'Taylor Swift Eras Tour Poster' NOT 'Taylor Swift The Eras Tour Official Merch Concert Poster Wall Art Home Decor 24x36 Unframed')",
       "description": "what it is",
       "why_perfect": "DETAILED explanation citing SPECIFIC profile evidence (e.g., 'Based on {pronoun_possessive} 47 Taylor Swift TikToks and visits to Eras Tour watch parties, this captures {pronoun_possessive} Swiftie obsession' not just 'perfect for someone who loves Taylor Swift')",
       "price": "from product",
@@ -183,6 +183,10 @@ CRITICAL REQUIREMENTS:
 
 PRODUCT GIFTS:
 - Product gifts MUST be selected FROM THE INVENTORY ABOVE ONLY. Every product gift must be one of the {len(products)} listed products (use exact URLs and image URLs from that line). Never invent or reference a product not in the inventory.
+- "name" field: Write a SHORT, clean, human-friendly title (3-8 words). Strip model numbers, SEO spam, size specs, and keyword stuffing from marketplace titles. Examples:
+  * "DEWALT 20V MAX Cordless Drill/Driver Kit, 1/2-Inch (DCD771C2)" → "DeWalt Cordless Drill Kit"
+  * "Breville BES870XL Barista Express Espresso Machine, Brushed Stainless Steel" → "Breville Barista Express Espresso Machine"
+  * "Taylor Swift The Eras Tour Official Merch Poster Wall Art 24x36 Unframed" → "Taylor Swift Eras Tour Poster"
 - product_url = direct product page ONLY - never search or homepage URLs
 - why_perfect MUST cite SPECIFIC evidence from the profile (post counts, venue names, specific behaviors) not generic statements
 - PRIORITIZE products matching gaps/aspirational interests over current interests

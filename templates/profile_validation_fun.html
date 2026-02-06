@@ -471,7 +471,22 @@
                 </div>
             </div>
         </div>
-        
+
+        {% if intelligence_summary %}
+        <!-- Intelligence Summary -->
+        <div class="personality-card">
+            <div class="personality-section">
+                <div class="section-header">
+                    <span class="section-emoji">🧠</span>
+                    <h2 class="section-title">What We Learned</h2>
+                </div>
+                <div class="intelligence-summary" style="line-height: 1.6; font-size: 0.95rem;">
+                    {{ intelligence_summary | safe }}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Validation Prompt -->
         <div class="personality-card">
             <div class="validation-prompt">

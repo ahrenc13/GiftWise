@@ -2309,10 +2309,12 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn):
         return materials_list
     # Build product title -> product map for fuzzy matching (lowercase keywords)
     product_by_words = {}
+    inventory_urls = set()
     for p in (products or []):
         link = (p.get('link') or '').strip()
         if not link or is_bad_product_url_fn(link):
             continue
+        inventory_urls.add(link)
         title = (p.get('title') or '').lower()
         words = [w for w in re.split(r'\W+', title) if len(w) >= 2]
         for w in words:
@@ -2322,7 +2324,9 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn):
         m = dict(m)
         item_name = (m.get('item') or '').strip()
         existing_url = (m.get('product_url') or '').strip()
-        if existing_url and not is_bad_product_url_fn(existing_url):
+        # Only trust URLs that actually exist in our product inventory
+        # The curator often invents plausible-looking Amazon URLs that lead to wrong products
+        if existing_url and existing_url in inventory_urls:
             out.append(m)
             continue
         m['product_url'] = ''

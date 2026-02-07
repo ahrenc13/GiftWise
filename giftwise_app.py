@@ -2205,9 +2205,13 @@ def _build_intel_report(profile, enriched_profile, session):
     # 1. Data sources analysed
     sources = []
     platforms = (get_session_user() or {}).get('platforms', {})
-    ig_data = platforms.get('instagram', {})
-    tt_data = platforms.get('tiktok', {})
-    pt_data = platforms.get('pinterest', {})
+    # Scraped data is nested: platforms['instagram']['data'] = {posts: [...], bio: '...', ...}
+    ig_platform = platforms.get('instagram', {})
+    tt_platform = platforms.get('tiktok', {})
+    pt_platform = platforms.get('pinterest', {})
+    ig_data = ig_platform.get('data', {}) if ig_platform else {}
+    tt_data = tt_platform.get('data', {}) if tt_platform else {}
+    pt_data = pt_platform.get('data', {}) if pt_platform else {}
     if ig_data:
         post_count = len(ig_data.get('posts', []))
         bio = ig_data.get('bio', '')
@@ -2219,9 +2223,10 @@ def _build_intel_report(profile, enriched_profile, session):
             src += ", bio extracted"
         sources.append(src)
     if tt_data:
-        post_count = len(tt_data.get('posts', []))
-        src = f"TikTok: {post_count} videos analysed"
-        music_count = sum(1 for p in tt_data.get('posts', []) if p.get('music_artist'))
+        videos = tt_data.get('videos', []) or tt_data.get('posts', [])
+        reposts = tt_data.get('reposts', [])
+        src = f"TikTok: {len(videos)} videos, {len(reposts)} reposts analysed"
+        music_count = sum(1 for p in videos if p.get('music_artist'))
         if music_count:
             src += f", {music_count} music tracks identified"
         sources.append(src)
@@ -2668,6 +2673,16 @@ def api_generate_recommendations():
             product_gifts = curated.get('product_gifts', [])
             experience_gifts = curated.get('experience_gifts', [])
             assert isinstance(product_gifts, list) and isinstance(experience_gifts, list), "Curator must return lists"
+
+            # PROGRAMMATIC POST-CURATION CLEANUP — enforces brand/category diversity,
+            # URL validation, interest spread, and title cleanup with CODE, not prompts.
+            try:
+                from post_curation_cleanup import cleanup_curated_gifts
+                product_gifts = cleanup_curated_gifts(product_gifts, products, rec_count=product_rec_count)
+                logger.info(f"After post-curation cleanup: {len(product_gifts)} products")
+            except Exception as e:
+                logger.error(f"Post-curation cleanup failed (using raw curator output): {e}")
+
             # Remove experience gifts at recipient's workplace (e.g. behind-the-scenes IMS when they work at IMS)
             experience_gifts = filter_workplace_experiences(experience_gifts, profile)
             # Remove experience gifts themed on work (IndyCar, EMS, nursing, etc.) even when not at a venue

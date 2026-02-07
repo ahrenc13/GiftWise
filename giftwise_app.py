@@ -2231,7 +2231,9 @@ def _build_intel_report(profile, enriched_profile, session):
     if tt_data:
         videos = tt_data.get('videos', []) or tt_data.get('posts', [])
         reposts = tt_data.get('reposts', [])
-        src = f"TikTok: {len(videos)} videos, {len(reposts)} reposts analysed"
+        src = f"TikTok: {len(videos)} videos analysed"
+        if reposts:
+            src += f", {len(reposts)} reposts analysed"
         music_count = sum(1 for p in videos if p.get('music_artist'))
         if music_count:
             src += f", {music_count} music tracks identified"

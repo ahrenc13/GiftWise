@@ -1,5 +1,5 @@
 """
-Tests for _backfill_materials_links() — the experience shopping list URL resolver.
+Tests for experience link validation and materials_needed URL resolver.
 
 Verifies:
 - Curator URLs validated against inventory (with normalization)
@@ -7,7 +7,9 @@ Verifies:
 - Minimum overlap requirements prevent false matches
 - Multi-retailer search fallback (not just Amazon)
 - Stopwords excluded from matching
-- Logging output for debugging
+- Non-purchasable items skip inventory matching
+- Experience reservation/venue URL validation
+- Smart search link generation for experiences
 """
 
 import sys
@@ -15,8 +17,13 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import pytest
-from unittest.mock import patch
-from giftwise_app import _backfill_materials_links, _normalize_url_for_matching
+from unittest.mock import patch, MagicMock
+from giftwise_app import (
+    _backfill_materials_links,
+    _normalize_url_for_matching,
+    _validate_experience_url,
+    _make_experience_search_link,
+)
 
 
 # Helper: never reject any URL
@@ -216,3 +223,95 @@ class TestEdgeCases:
         original_url = materials[0]["product_url"]
         _backfill_materials_links(materials, [], _no_bad_urls)
         assert materials[0]["product_url"] == original_url
+
+
+# ---------------------------------------------------------------------------
+# Non-purchasable item detection
+# ---------------------------------------------------------------------------
+
+class TestNonPurchasableItems:
+    def test_playlist_skips_matching(self):
+        """Items like 'custom playlist' should not match any product."""
+        products = [
+            {"link": "https://amazon.com/dp/A1", "title": "Taylor Swift Eras Tour Book"},
+        ]
+        materials = [{"item": "Custom playlist of Taylor Swift songs"}]
+        result = _backfill_materials_links(materials, products, _no_bad_urls)
+        assert result[0]["is_search_link"] is True
+
+    def test_handwritten_letter_skips_matching(self):
+        products = [{"link": "https://amazon.com/dp/A1", "title": "Letter Writing Stationery"}]
+        materials = [{"item": "Handwritten letter to your friend"}]
+        result = _backfill_materials_links(materials, products, _no_bad_urls)
+        assert result[0]["is_search_link"] is True
+
+    def test_diy_item_skips_matching(self):
+        products = [{"link": "https://amazon.com/dp/A1", "title": "DIY Craft Kit"}]
+        materials = [{"item": "DIY photo collage"}]
+        result = _backfill_materials_links(materials, products, _no_bad_urls)
+        assert result[0]["is_search_link"] is True
+
+    def test_purchasable_item_still_matches(self):
+        """Regular purchasable items should still match normally."""
+        products = [{"link": "https://amazon.com/dp/A1", "title": "Watercolor Paint Brushes"}]
+        materials = [{"item": "Watercolor Paint Brushes"}]
+        result = _backfill_materials_links(materials, products, _no_bad_urls)
+        assert result[0]["product_url"] == "https://amazon.com/dp/A1"
+        assert result[0].get("is_search_link") is not True
+
+
+# ---------------------------------------------------------------------------
+# Experience URL validation
+# ---------------------------------------------------------------------------
+
+class TestExperienceUrlValidation:
+    def test_empty_url_invalid(self):
+        assert _validate_experience_url("") is False
+        assert _validate_experience_url(None) is False
+
+    def test_non_http_invalid(self):
+        assert _validate_experience_url("ftp://venue.com") is False
+
+    @patch('giftwise_app.requests.head')
+    def test_valid_url_passes(self, mock_head):
+        mock_head.return_value = MagicMock(status_code=200)
+        assert _validate_experience_url("https://realvenue.com/events") is True
+
+    @patch('giftwise_app.requests.head')
+    def test_404_url_fails(self, mock_head):
+        mock_head.return_value = MagicMock(status_code=404)
+        assert _validate_experience_url("https://hallucinated-venue.com/book") is False
+
+    @patch('giftwise_app.requests.head', side_effect=Exception("timeout"))
+    @patch('giftwise_app.requests.get', side_effect=Exception("timeout"))
+    def test_timeout_fails(self, mock_get, mock_head):
+        assert _validate_experience_url("https://slow-venue.com") is False
+
+    @patch('giftwise_app.requests.head')
+    def test_redirect_to_valid_page_passes(self, mock_head):
+        mock_head.return_value = MagicMock(status_code=301)
+        # 301 < 400, so should pass
+        assert _validate_experience_url("https://venue.com/old-page") is True
+
+
+# ---------------------------------------------------------------------------
+# Experience search link generation
+# ---------------------------------------------------------------------------
+
+class TestExperienceSearchLinks:
+    def test_book_link(self):
+        link = _make_experience_search_link("Taylor Swift Concert", "Indianapolis, Indiana", "book")
+        assert "google.com/search" in link
+        assert "Taylor" in link
+        assert "tickets" in link
+        assert "Indianapolis" in link
+
+    def test_venue_link(self):
+        link = _make_experience_search_link("Gainbridge Fieldhouse", "Indianapolis", "venue")
+        assert "google.com/search" in link
+        assert "Gainbridge" in link
+        assert "tickets" not in link  # venue type doesn't add "tickets book"
+
+    def test_empty_location_still_works(self):
+        link = _make_experience_search_link("Cooking Class", "", "book")
+        assert "Cooking" in link

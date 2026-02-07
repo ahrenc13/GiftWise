@@ -2412,11 +2412,62 @@ def _normalize_url_for_matching(u):
     return u or ''
 
 
+def _validate_experience_url(url, timeout=3):
+    """
+    Validate a curator-provided experience URL (reservation_link, venue_website).
+    Returns True only if URL is structurally valid AND responds with a non-error status.
+    The curator frequently hallucinates plausible-looking venue URLs that 404.
+    """
+    if not url or not isinstance(url, str):
+        return False
+    url = url.strip()
+    if not url.startswith(('http://', 'https://')):
+        return False
+    # Reject obvious search pages and bare domains
+    try:
+        from link_validation import is_search_url, is_generic_domain_url
+        if is_search_url(url) or is_generic_domain_url(url):
+            return False
+    except ImportError:
+        pass
+    # Quick HEAD check — if it 404s or times out, it's hallucinated
+    try:
+        resp = requests.head(url, timeout=timeout, allow_redirects=True, headers={
+            'User-Agent': 'Mozilla/5.0 (compatible; Giftwise/1.0)'
+        })
+        return resp.status_code < 400
+    except Exception:
+        # If HEAD is blocked, try GET (some servers reject HEAD)
+        try:
+            resp = requests.get(url, timeout=timeout, stream=True, allow_redirects=True, headers={
+                'User-Agent': 'Mozilla/5.0 (compatible; Giftwise/1.0)'
+            })
+            return resp.status_code < 400
+        except Exception:
+            return False
+
+
+def _make_experience_search_link(experience_name, location, link_type='book'):
+    """Generate a Google search link for booking/finding an experience in a location."""
+    if link_type == 'venue':
+        query = f"{experience_name} {location}".strip()
+    else:
+        query = f"{experience_name} tickets book {location}".strip()
+    return f"https://www.google.com/search?q={quote(query)}"
+
+
 # Words too common to be useful for matching materials to products
 _STOPWORDS = {
     'the', 'a', 'an', 'and', 'or', 'for', 'of', 'to', 'in', 'on', 'with',
     'set', 'kit', 'pack', 'new', 'premium', 'deluxe', 'best', 'great',
     'gift', 'item', 'product', 'buy', 'from', 'by', 'size', 'color',
+}
+
+# Materials that describe actions/DIY tasks rather than purchasable products
+_NON_PURCHASABLE_SIGNALS = {
+    'custom', 'homemade', 'handwritten', 'diy', 'playlist', 'letter',
+    'itinerary', 'plan', 'schedule', 'reservation', 'booking', 'subscription',
+    'membership', 'download', 'printable', 'coupon', 'voucher',
 }
 
 
@@ -2472,6 +2523,11 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn):
         best_score = 0
         if item_name and products:
             item_words = {w for w in re.split(r'\W+', item_name.lower()) if len(w) >= 2 and w not in _STOPWORDS}
+            # Skip matching for non-purchasable items (playlists, DIY tasks, etc.)
+            is_non_purchasable = bool(item_words & _NON_PURCHASABLE_SIGNALS)
+            if is_non_purchasable:
+                item_words = set()  # Force search fallback
+                logger.info(f"MATERIALS: '{item_name[:40]}' is non-purchasable, skipping inventory match")
             min_overlap = 1 if len(item_words) <= 1 else 2
 
             # Collect unique candidate products from word index
@@ -2849,8 +2905,27 @@ def api_generate_recommendations():
                 location_info = ""
                 if exp.get('location_specific'):
                     location_info = f" | {exp.get('location_details', 'Location-based')}"
+                # Validate curator-provided URLs — the LLM frequently hallucinates plausible venue URLs
                 reservation_link = (exp.get('reservation_link') or '').strip()
                 venue_website = (exp.get('venue_website') or '').strip()
+                exp_name = exp.get('name', 'experience')
+                location_details = (exp.get('location_details') or '').strip()
+                search_loc = location_details or search_geography
+
+                if reservation_link:
+                    if _validate_experience_url(reservation_link):
+                        logger.info(f"EXP LINK: Validated reservation_link for '{exp_name[:40]}': {reservation_link[:80]}")
+                    else:
+                        logger.info(f"EXP LINK: Rejected bad reservation_link for '{exp_name[:40]}': {reservation_link[:80]}")
+                        reservation_link = _make_experience_search_link(exp_name, search_loc, 'book')
+
+                if venue_website:
+                    if _validate_experience_url(venue_website):
+                        logger.info(f"EXP LINK: Validated venue_website for '{exp_name[:40]}': {venue_website[:80]}")
+                    else:
+                        logger.info(f"EXP LINK: Rejected bad venue_website for '{exp_name[:40]}': {venue_website[:80]}")
+                        venue_website = _make_experience_search_link(location_details or exp_name, search_loc, 'venue')
+
                 primary_link = reservation_link or venue_website
                 experience_search_fallback = False
                 if not primary_link and exp.get('name'):

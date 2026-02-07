@@ -2323,14 +2323,21 @@ def review_profile():
     if not profile.get('interests'):
         return redirect('/connect-platforms?error=no_profile')
     # Prepare interests for template (description = evidence for display)
+    # Map intensity from profile analyzer to a numeric confidence for display
+    _intensity_to_confidence = {
+        'passionate': 0.95,
+        'moderate': 0.75,
+        'casual': 0.55,
+    }
     interests = []
     for i in profile.get('interests', []):
+        intensity = (i.get('intensity') or 'moderate').lower()
         interests.append({
             'name': i.get('name', ''),
             'description': i.get('description') or i.get('evidence', ''),
             'is_work': i.get('is_work', False),
             'activity_type': i.get('activity_type', 'both'),
-            'confidence': 0.8
+            'confidence': _intensity_to_confidence.get(intensity, 0.7)
         })
     # Ensure location_context has state for template (optional)
     loc = profile.get('location_context', {})
@@ -2556,7 +2563,11 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn):
             logger.info(f"MATERIALS: Matched '{item_name[:40]}' → '{best.get('title', '')[:50]}' (score={best_score})")
         else:
             # Fallback: search link — use the retailer most likely to have the item
-            search_query = quote(item_name or 'gift')
+            # Clean the item name for search: strip qualifiers like "for group", "for the trip"
+            # that make sense in a description but pollute search results
+            clean_name = re.sub(r'\b(for\s+(the\s+)?(group|trip|class|event|party|everyone|them|her|him|you))\b', '', item_name, flags=re.IGNORECASE).strip()
+            clean_name = re.sub(r'\s{2,}', ' ', clean_name).strip(' ,')
+            search_query = quote(clean_name or item_name or 'gift')
             where = (m.get('where_to_buy') or '').lower()
             if 'etsy' in where:
                 m['product_url'] = f'https://www.etsy.com/search?q={search_query}'

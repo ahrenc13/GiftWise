@@ -13,6 +13,12 @@ from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
+try:
+    from enhanced_data_extraction import combine_all_signals
+    ENHANCED_EXTRACTION_AVAILABLE = True
+except ImportError:
+    ENHANCED_EXTRACTION_AVAILABLE = False
+
 # How much scraped data we use for inference. Higher = more signal, less "on the nose" (tradeoff: prompt size/cost).
 INSTAGRAM_POSTS_FOR_ANALYSIS = 40   # Use top 40 by engagement (was 20)
 INSTAGRAM_CAPTIONS_IN_SUMMARY = 28  # Captions sent to Claude (was 15)
@@ -62,15 +68,17 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
     if instagram_data:
         posts = instagram_data.get('posts', [])
         username = instagram_data.get('username', 'unknown')
-        
+        bio = instagram_data.get('bio', '')
+        followers = instagram_data.get('followers', 0)
+
         # Get high-engagement posts (strongest signals)
         sorted_posts = sorted(posts, key=lambda p: (p.get('likes', 0) + p.get('comments', 0) * 2), reverse=True)
         high_engagement = [p for p in sorted_posts if (p.get('likes', 0) + p.get('comments', 0) * 2) > 50]
-        
+
         # Use top posts for analysis (more = better inference, less "on the nose")
         n_posts = min(INSTAGRAM_POSTS_FOR_ANALYSIS, len(sorted_posts))
         priority_posts = (high_engagement[:n_posts] if high_engagement else sorted_posts[:n_posts])
-        
+
         # Extract captions, hashtags, locations
         captions = [p.get('caption', '')[:200] for p in priority_posts if p.get('caption')]
         hashtags_all = []
@@ -79,11 +87,21 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
             hashtags_all.extend(p.get('hashtags', []))
             if p.get('location'):
                 locations.append(p.get('location'))
-        
+
         top_hashtags = [tag for tag, count in Counter(hashtags_all).most_common(INSTAGRAM_TOP_HASHTAGS)]
-        
+
+        # Bio section - direct self-description is high-value signal
+        bio_section = ""
+        if bio:
+            bio_section = f"\nBIO (self-described identity - strong signal): {bio}"
+
+        # Follower context
+        follower_section = ""
+        if followers and followers > 0:
+            follower_section = f"\n- Followers: {followers:,}"
+
         data_summary.append(f"""
-INSTAGRAM PROFILE (@{username} - {len(posts)} posts analyzed):
+INSTAGRAM PROFILE (@{username} - {len(posts)} posts analyzed):{bio_section}
 
 HIGH ENGAGEMENT POSTS ({len(high_engagement)} posts with 50+ engagement):
 {chr(10).join(['- ' + c for c in captions[:INSTAGRAM_CAPTIONS_IN_SUMMARY]])}
@@ -95,7 +113,7 @@ LOCATIONS MENTIONED: {', '.join(set(locations[:15]))}
 POST PATTERNS:
 - Average likes: {sum(p.get('likes', 0) for p in priority_posts) / len(priority_posts) if priority_posts else 0:.0f}
 - Average comments: {sum(p.get('comments', 0) for p in priority_posts) / len(priority_posts) if priority_posts else 0:.0f}
-- Posting frequency: {len(posts)} posts in recent history
+- Posting frequency: {len(posts)} posts in recent history{follower_section}
 """)
     
     # TikTok analysis
@@ -122,7 +140,18 @@ POST PATTERNS:
             repost_hashtags.extend(r.get('hashtags', []))
         top_repost_hashtags = [tag for tag, count in Counter(repost_hashtags).most_common(30)]
         favorite_creators = tiktok_data.get('favorite_creators', [])
-        
+        top_music = tiktok_data.get('top_music', {})
+
+        # Music taste section - strong signal for experiences and style
+        music_section = ""
+        if top_music:
+            music_items = list(top_music.items())[:10]
+            music_lines = [f"- {track} ({count}x)" for track, count in music_items]
+            music_section = f"""
+MUSIC TASTE (songs used in their videos - indicates music preferences, concert interests, aesthetic):
+{chr(10).join(music_lines)}
+"""
+
         data_summary.append(f"""
 TIKTOK PROFILE (@{username} - {len(videos)} videos, {len(reposts)} reposts):
 
@@ -130,7 +159,7 @@ OWN VIDEO CONTENT (What they POST - use this for current interests and variety):
 {chr(10).join(['- ' + d for d in own_descriptions[:n_own]]) if own_descriptions else '(no captions)'}
 
 VIDEO HASHTAGS (all videos): {', '.join(top_video_hashtags) if top_video_hashtags else 'none'}
-
+{music_section}
 ASPIRATIONAL CONTENT (REPOSTS - What they WANT):
 {chr(10).join(['- ' + d for d in repost_descriptions[:TIKTOK_REPOST_DESCRIPTIONS_IN_SUMMARY]]) if repost_descriptions else '(no repost captions)'}
 
@@ -168,6 +197,82 @@ PIN DESCRIPTIONS (Explicit wishlist signals):
 CRITICAL NOTE: Pinterest boards are explicit wishlists - they're pinning exactly what they want.
 """)
     
+    # Enhanced signal extraction (brands, aesthetics, activities, engagement patterns)
+    if ENHANCED_EXTRACTION_AVAILABLE:
+        try:
+            platform_bundle = {}
+            if instagram_data:
+                platform_bundle['instagram'] = instagram_data
+            if tiktok_data:
+                platform_bundle['tiktok'] = tiktok_data
+            if pinterest_data:
+                platform_bundle['pinterest'] = pinterest_data
+
+            signals = combine_all_signals(platform_bundle)
+            combined = signals.get('combined', {})
+
+            enhanced_sections = []
+
+            # Brand mentions across all platforms
+            all_brands = combined.get('all_brands', {})
+            if all_brands:
+                brand_items = list(all_brands.items())[:12]
+                enhanced_sections.append(
+                    "BRAND MENTIONS (across all platforms): " +
+                    ", ".join(f"{b} ({c}x)" for b, c in brand_items)
+                )
+
+            # Aesthetic/style keywords
+            all_aesthetics = combined.get('all_aesthetics', {})
+            if all_aesthetics:
+                aes_items = list(all_aesthetics.items())[:10]
+                enhanced_sections.append(
+                    "AESTHETIC PREFERENCES: " +
+                    ", ".join(f"{a} ({c}x)" for a, c in aes_items)
+                )
+
+            # Activity types
+            all_activities = combined.get('all_activities', {})
+            if all_activities:
+                act_items = list(all_activities.items())[:12]
+                enhanced_sections.append(
+                    "ACTIVITY PATTERNS: " +
+                    ", ".join(f"{a} ({c}x)" for a, c in act_items)
+                )
+
+            # High engagement topics
+            high_engagement_topics = combined.get('high_engagement_topics', [])
+            if high_engagement_topics:
+                enhanced_sections.append(
+                    "HIGH ENGAGEMENT TOPICS (what resonates most): " +
+                    ", ".join(high_engagement_topics[:15])
+                )
+
+            # Aspirational vs current from cross-platform analysis
+            aspirational = combined.get('aspirational_interests', [])
+            current = combined.get('current_interests', [])
+            if aspirational:
+                enhanced_sections.append(
+                    "CROSS-PLATFORM ASPIRATIONAL SIGNALS: " +
+                    ", ".join(aspirational[:10])
+                )
+            if current:
+                enhanced_sections.append(
+                    "CROSS-PLATFORM CURRENT INTERESTS: " +
+                    ", ".join(current[:10])
+                )
+
+            if enhanced_sections:
+                data_summary.append(f"""
+CROSS-PLATFORM INTELLIGENCE (extracted patterns across all platforms):
+
+{chr(10).join(enhanced_sections)}
+
+Use these signals to inform style preferences, brand affinities, and interest intensity.
+""")
+        except Exception as e:
+            logger.warning(f"Enhanced data extraction failed (continuing without): {e}")
+
     # Build the analysis prompt
     relationship_context = ""
     if recipient_type == 'someone_else' and relationship:

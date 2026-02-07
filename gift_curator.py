@@ -259,11 +259,15 @@ Return ONLY the JSON object, no markdown, no backticks"""
         
         message = claude_client.messages.create(
             model="claude-sonnet-4-20250514",
-            max_tokens=6000,
+            max_tokens=12000,
             messages=[{"role": "user", "content": prompt}],
             timeout=120.0
         )
-        
+
+        # Check if response was truncated (would lose experience gifts at end of JSON)
+        if message.stop_reason == 'max_tokens':
+            logger.warning("Curator response was TRUNCATED (hit max_tokens) — experiences may be missing")
+
         # Extract response
         response_text = ""
         for block in message.content:

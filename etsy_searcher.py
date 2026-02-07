@@ -112,15 +112,26 @@ def search_products_etsy(profile, etsy_api_key, target_count=20):
                 price = f"${amount / divisor:.2f}" if divisor else ""
 
                 # Get shop name for snippet
+                description = (listing.get("description") or "").strip()
+                tags = listing.get("tags") or []
                 shop = listing.get("shop", {}) or {}
                 shop_name = shop.get("shop_name", "")
-                snippet = f"By {shop_name}" if shop_name else title[:100]
+                if description:
+                    snippet = description[:150]
+                elif tags:
+                    snippet = "Tags: " + ", ".join(tags[:6])
+                elif shop_name:
+                    snippet = f"Handmade by {shop_name}"
+                else:
+                    snippet = title[:120]
 
                 product = {
                     "title": title,
                     "link": link,
                     "snippet": snippet,
                     "image": image,
+                    "thumbnail": image,
+                    "image_url": image,
                     "source_domain": "etsy.com",
                     "search_query": query,
                     "interest_match": interest,

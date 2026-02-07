@@ -16,6 +16,7 @@ Date: February 2026
 
 import re
 import logging
+from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
@@ -194,6 +195,8 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
     used_brands = set()
     used_categories = set()
     interest_counts = {}
+    source_counts = defaultdict(int)
+    MAX_PER_SOURCE_PCT = 0.6  # No more than 60% from one source
 
     cleaned = []
     deferred = []  # Products that violated rules (might be used as replacements if needed)
@@ -246,6 +249,15 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
                 continue
             interest_counts[interest] = count + 1
 
+        # Rule 6: Source diversity — no more than 60% from one source
+        inv_product = inventory_by_url.get(url) or inventory_by_url.get(normalized_url) or {}
+        source = inv_product.get('source_domain', gift.get('where_to_buy', 'unknown')).lower()
+        max_from_source = max(2, int(rec_count * MAX_PER_SOURCE_PCT))
+        if source_counts[source] >= max_from_source:
+            logger.info(f"CLEANUP: Deferred (source cap '{source}'): {name[:50]}")
+            deferred.append(gift)
+            continue
+
         # Passed all checks
         used_urls.add(url)
         used_urls.add(normalized_url)
@@ -253,6 +265,7 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
             used_brands.add(brand)
         if category:
             used_categories.add(category)
+        source_counts[source] += 1
         cleaned.append(gift)
 
     logger.info(f"After rules: {len(cleaned)} passed, {len(deferred)} deferred")
@@ -270,7 +283,7 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
                 continue
             brand = extract_brand(p.get('title', ''))
             category = detect_category(p.get('title', ''), p.get('snippet', ''))
-            # Prefer products that bring new brands and categories
+            # Prefer products that bring new brands, categories, and source diversity
             score = 0
             if brand and brand not in used_brands:
                 score += 2
@@ -278,6 +291,11 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
                 score += 2
             interest = (p.get('interest_match') or '').lower()
             if interest and interest_counts.get(interest, 0) < 2:
+                score += 1
+            p_source = p.get('source_domain', 'unknown').lower()
+            if source_counts.get(p_source, 0) == 0:
+                score += 3  # Strongly prefer unrepresented sources
+            elif source_counts.get(p_source, 0) < max(2, int(rec_count * MAX_PER_SOURCE_PCT)):
                 score += 1
             candidates.append((score, p))
 
@@ -311,6 +329,8 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
                 used_categories.add(category)
             if interest:
                 interest_counts[interest] = interest_counts.get(interest, 0) + 1
+            r_source = p.get('source_domain', 'unknown').lower()
+            source_counts[r_source] = source_counts.get(r_source, 0) + 1
             logger.info(f"CLEANUP: Added replacement from pool: {replacement['name'][:50]}")
 
     logger.info(f"Post-curation cleanup complete: {len(cleaned)} products "

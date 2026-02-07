@@ -159,6 +159,20 @@ def search_products_multi_retailer(
     else:
         logger.info("Amazon key not set - skipping Amazon")
 
+    # Interleave products by source so no single vendor dominates early positions
+    if len(all_products) > 1:
+        by_source = defaultdict(list)
+        for p in all_products:
+            by_source[p.get("source_domain", "unknown")].append(p)
+        interleaved = []
+        source_lists = list(by_source.values())
+        max_len = max(len(lst) for lst in source_lists) if source_lists else 0
+        for i in range(max_len):
+            for lst in source_lists:
+                if i < len(lst):
+                    interleaved.append(lst[i])
+        all_products = interleaved
+
     # Cap total inventory size so curator prompt stays manageable
     if len(all_products) > MAX_INVENTORY_SIZE:
         all_products = all_products[:MAX_INVENTORY_SIZE]

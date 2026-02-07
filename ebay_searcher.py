@@ -157,9 +157,12 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
             price_val = price_obj.get("value", "")
             currency = price_obj.get("currency", "USD")
             price = f"${price_val} {currency}" if price_val else ""
-            seller = item.get("seller") or {}
-            seller_name = seller.get("username", "")
-            snippet = f"From {seller_name}" if seller_name else title[:100]
+            short_desc = (item.get("shortDescription") or "").strip()
+            categories = item.get("categories") or []
+            category_name = categories[0].get("categoryName", "") if categories else ""
+            condition = (item.get("condition") or "").strip()
+            snippet_parts = [s for s in [short_desc[:120], category_name, condition] if s]
+            snippet = " | ".join(snippet_parts) if snippet_parts else title[:120]
 
             product = {
                 "title": title[:200],

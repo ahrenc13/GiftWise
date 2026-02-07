@@ -114,6 +114,23 @@ These are refined search terms from deep profile analysis - products matching th
         if price_g and price_g.get('guidance'):
             parts.append(f"💰 PRICE GUIDANCE: {price_g['guidance']}")
 
+        enriched_interests = enrichment_context.get('enriched_interests', [])
+        if enriched_interests:
+            interest_intel = []
+            for ei in enriched_interests[:8]:
+                name = ei.get('interest', '')
+                do_buy = ei.get('do_buy', [])[:3]
+                dont_buy = ei.get('dont_buy', [])[:3]
+                if do_buy or dont_buy:
+                    line = f"  {name}:"
+                    if do_buy:
+                        line += f" BUY [{', '.join(do_buy)}]"
+                    if dont_buy:
+                        line += f" AVOID [{', '.join(dont_buy)}]"
+                    interest_intel.append(line)
+            if interest_intel:
+                parts.append("🎁 PER-INTEREST GUIDANCE:\n" + chr(10).join(interest_intel))
+
         if parts:
             enrichment_section = "\n\n" + "\n\n".join(parts) + "\n"
     
@@ -175,7 +192,7 @@ SELECT {rec_count} BEST PRODUCTS from above. Requirements:
 - PRIORITIZE products matching GIFT SWEET SPOTS (gaps/aspirational interests) - these are the best opportunities
 - Match interests with SPECIFIC profile evidence (cite posts, behaviors, venues)
 - Max 2 products per interest (spread across 5+ interests)
-- Use exact URLs and image URLs from product list
+- Use exact URLs from product list
 - Only direct product links (no search URLs)
 - SOURCE PRIORITY: Prefer Etsy/eBay/Awin over Amazon when quality is comparable (Amazon is fallback only)
 
@@ -191,7 +208,6 @@ Return JSON:
       "price": "from product",
       "where_to_buy": "domain",
       "product_url": "exact URL from list",
-      "image_url": "exact image URL from list",
       "confidence_level": "safe_bet|adventurous",
       "gift_type": "physical",
       "interest_match": "interest name"
@@ -218,7 +234,7 @@ Return JSON:
 CRITICAL REQUIREMENTS:
 
 PRODUCT GIFTS:
-- Product gifts MUST be selected FROM THE INVENTORY ABOVE ONLY. Every product gift must be one of the {len(products)} listed products (use exact URLs and image URLs from that line). Never invent or reference a product not in the inventory.
+- Product gifts MUST be selected FROM THE INVENTORY ABOVE ONLY. Every product gift must be one of the {len(products)} listed products (use exact URLs from that line). Never invent or reference a product not in the inventory.
 - "name" field: Write a SHORT, clean, human-friendly title (3-8 words). Strip model numbers, SEO spam, size specs, and keyword stuffing from marketplace titles. Examples:
   * "DEWALT 20V MAX Cordless Drill/Driver Kit, 1/2-Inch (DCD771C2)" → "DeWalt Cordless Drill Kit"
   * "Breville BES870XL Barista Express Espresso Machine, Brushed Stainless Steel" → "Breville Barista Express Espresso Machine"
@@ -362,7 +378,6 @@ def format_products(products):
         price = p.get('price', 'Price unknown')
         domain = p.get('source_domain', 'unknown')
         interest = p.get('interest_match', 'general')
-        image_url = p.get('image', '') or p.get('thumbnail', '')
-        formatted.append(f"{idx}. {title}\n   Price: {price} | Domain: {domain} | Interest match: {interest}\n   Description: {snippet[:150]}\n   URL: {link}\n   Image: {image_url}")
+        formatted.append(f"{idx}. {title}\n   Price: {price} | Domain: {domain} | Interest match: {interest}\n   Description: {snippet[:150]}\n   URL: {link}")
     
     return '\n\n'.join(formatted[:50])  # Limit to 50 products in prompt

@@ -70,6 +70,7 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
 
     token = _get_app_token(client_id.strip(), client_secret.strip())
     if not token:
+        logger.warning("eBay OAuth token acquisition failed — returning 0 products")
         return []
 
     interests = profile.get("interests", [])
@@ -134,11 +135,13 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
             )
             r.raise_for_status()
             data = r.json()
-        except requests.RequestException as e:
+        except (requests.RequestException, ValueError, KeyError) as e:
             logger.warning("eBay search failed for '%s': %s", query, e)
             continue
 
         summaries = data.get("itemSummaries") or []
+        if not summaries:
+            logger.info("eBay returned 0 results for '%s' (response keys: %s)", query, list(data.keys())[:10])
         for item in summaries:
             if len(all_products) >= target_count:
                 break

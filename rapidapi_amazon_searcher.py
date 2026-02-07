@@ -138,6 +138,9 @@ def search_products_rapidapi_amazon(profile, api_key, target_count=20):
             if isinstance(image, dict):
                 image = image.get("url") or image.get("link") or ""
             image = (image or "").strip()
+            if not image and added_this_query == 0:
+                # Log first item's keys to diagnose missing images
+                logger.info("Amazon item missing image. Keys available: %s", list(item.keys())[:20])
             price_obj = item.get("price") or item.get("current_price") or {}
             if isinstance(price_obj, dict):
                 price_val = price_obj.get("value") or price_obj.get("raw") or price_obj.get("current_price")

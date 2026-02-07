@@ -158,7 +158,8 @@
     <div class="container">
         <div class="logo">🎁</div>
         <h1>Analyzing {% if recipient_type == 'someone_else' %}Their{% else %}Your{% endif %} Interests...</h1>
-        <p class="subtitle">Hang tight — this takes about a minute</p>
+        <p class="subtitle">This takes a few minutes...but it's worth the wait.</p>
+        <p class="quote-message" id="quoteMessage"></p>
 
         <div class="platforms-analyzing">
             <h3 style="margin-bottom: 20px;">Getting to know {% if recipient_type == 'someone_else' %}them{% else %}you{% endif %} from:</h3>
@@ -178,7 +179,6 @@
             <div class="progress-bar" id="progressBar"></div>
         </div>
         <p class="status-message" id="statusMessage">Building a personality profile from their posts...</p>
-        <p class="quote-message" id="quoteMessage"></p>
     </div>
     
     <script>

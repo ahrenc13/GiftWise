@@ -2323,14 +2323,21 @@ def review_profile():
     if not profile.get('interests'):
         return redirect('/connect-platforms?error=no_profile')
     # Prepare interests for template (description = evidence for display)
+    # Map intensity from profile analyzer to a numeric confidence for display
+    _intensity_to_confidence = {
+        'passionate': 0.95,
+        'moderate': 0.75,
+        'casual': 0.55,
+    }
     interests = []
     for i in profile.get('interests', []):
+        intensity = (i.get('intensity') or 'moderate').lower()
         interests.append({
             'name': i.get('name', ''),
             'description': i.get('description') or i.get('evidence', ''),
             'is_work': i.get('is_work', False),
             'activity_type': i.get('activity_type', 'both'),
-            'confidence': 0.8
+            'confidence': _intensity_to_confidence.get(intensity, 0.7)
         })
     # Ensure location_context has state for template (optional)
     loc = profile.get('location_context', {})

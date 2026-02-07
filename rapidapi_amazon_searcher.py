@@ -122,8 +122,9 @@ def search_products_rapidapi_amazon(profile, api_key, target_count=20):
             if not link:
                 continue
             image = (
-                item.get("thumbnail") or item.get("image") or item.get("product_thumbnail")
-                or item.get("product_image") or item.get("main_image") or item.get("image_url")
+                item.get("product_photo") or item.get("thumbnail") or item.get("image")
+                or item.get("product_thumbnail") or item.get("product_image")
+                or item.get("main_image") or item.get("image_url") or item.get("photo")
             )
             if not image and isinstance(item.get("images"), list) and item["images"]:
                 image = item["images"][0]

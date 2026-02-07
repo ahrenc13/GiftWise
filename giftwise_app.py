@@ -2668,6 +2668,16 @@ def api_generate_recommendations():
             product_gifts = curated.get('product_gifts', [])
             experience_gifts = curated.get('experience_gifts', [])
             assert isinstance(product_gifts, list) and isinstance(experience_gifts, list), "Curator must return lists"
+
+            # PROGRAMMATIC POST-CURATION CLEANUP — enforces brand/category diversity,
+            # URL validation, interest spread, and title cleanup with CODE, not prompts.
+            try:
+                from post_curation_cleanup import cleanup_curated_gifts
+                product_gifts = cleanup_curated_gifts(product_gifts, products, rec_count=product_rec_count)
+                logger.info(f"After post-curation cleanup: {len(product_gifts)} products")
+            except Exception as e:
+                logger.error(f"Post-curation cleanup failed (using raw curator output): {e}")
+
             # Remove experience gifts at recipient's workplace (e.g. behind-the-scenes IMS when they work at IMS)
             experience_gifts = filter_workplace_experiences(experience_gifts, profile)
             # Remove experience gifts themed on work (IndyCar, EMS, nursing, etc.) even when not at a venue

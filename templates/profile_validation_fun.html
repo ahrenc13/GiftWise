@@ -193,6 +193,128 @@
             color: #888;
         }
 
+        .intel-section {
+            margin-bottom: 20px;
+        }
+
+        .intel-toggle {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 14px 18px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #a0e7ff;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            user-select: none;
+            transition: all 0.2s;
+        }
+
+        .intel-toggle:hover {
+            background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
+        }
+
+        .intel-toggle .chevron {
+            transition: transform 0.3s;
+            font-size: 12px;
+            margin-left: auto;
+        }
+
+        .intel-toggle.open .chevron {
+            transform: rotate(90deg);
+        }
+
+        .intel-body {
+            display: none;
+            padding: 16px 0 0 0;
+        }
+
+        .intel-body.open {
+            display: block;
+        }
+
+        .intel-card {
+            background: #f0f4ff;
+            border-radius: 10px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            border-left: 3px solid #667eea;
+        }
+
+        .intel-card-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .intel-card-body {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.5;
+        }
+
+        .intel-tag {
+            display: inline-block;
+            background: white;
+            border: 1px solid #ddd;
+            padding: 3px 10px;
+            border-radius: 14px;
+            font-size: 12px;
+            margin: 2px 3px;
+            color: #444;
+        }
+
+        .intel-tag.good { border-color: #10b981; color: #065f46; background: #ecfdf5; }
+        .intel-tag.bad { border-color: #ef4444; color: #991b1b; background: #fef2f2; }
+        .intel-tag.trend { border-color: #8b5cf6; color: #5b21b6; background: #f5f3ff; }
+
+        .intel-interest-row {
+            cursor: pointer;
+            padding: 10px 14px;
+            background: white;
+            border-radius: 8px;
+            margin-bottom: 6px;
+            border: 1px solid #e5e7eb;
+            transition: background 0.15s;
+        }
+
+        .intel-interest-row:hover {
+            background: #f8faff;
+        }
+
+        .intel-interest-name {
+            font-weight: 600;
+            font-size: 14px;
+            color: #333;
+        }
+
+        .intel-interest-detail {
+            display: none;
+            padding-top: 8px;
+            margin-top: 8px;
+            border-top: 1px solid #f0f0f0;
+        }
+
+        .intel-interest-detail.open {
+            display: block;
+        }
+
+        .intel-detail-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 6px;
+            margin-bottom: 3px;
+        }
+
         .validation-prompt {
             background: #fff3cd;
             border-left: 4px solid #ffc107;
@@ -555,6 +677,114 @@
         </div>
         {% endif %}
 
+        {% if intel_report %}
+        <!-- Intelligence Report (collapsible showpiece) -->
+        <div class="personality-card">
+            <div class="intel-section">
+                <div class="intel-toggle" onclick="toggleIntel()" id="intel-toggle">
+                    <span>🔬</span>
+                    <span>Under the Hood — Our Analysis</span>
+                    <span class="chevron">▶</span>
+                </div>
+                <div class="intel-body" id="intel-body">
+
+                    {% if intel_report.sources %}
+                    <div class="intel-card">
+                        <div class="intel-card-title">📊 Data Sources</div>
+                        <div class="intel-card-body">
+                            {% for src in intel_report.sources %}
+                            <div style="margin-bottom: 4px;">{{ src }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if intel_report.demographic %}
+                    <div class="intel-card">
+                        <div class="intel-card-title">👤 Demographic Insight</div>
+                        <div class="intel-card-body">
+                            {% if intel_report.demographic.gift_style %}
+                            <div>Gift style: <strong>{{ intel_report.demographic.gift_style }}</strong></div>
+                            {% endif %}
+                            {% if intel_report.demographic.popular_categories %}
+                            <div style="margin-top: 6px;">Trending for this demo:
+                                {% for cat in intel_report.demographic.popular_categories %}<span class="intel-tag trend">{{ cat }}</span>{% endfor %}
+                            </div>
+                            {% endif %}
+                            {% if intel_report.demographic.avoid %}
+                            <div style="margin-top: 6px;">Skip for this demo:
+                                {% for a in intel_report.demographic.avoid %}<span class="intel-tag bad">{{ a }}</span>{% endfor %}
+                            </div>
+                            {% endif %}
+                            {% if intel_report.demographic.price_preference %}
+                            <div style="margin-top: 6px;">Typical budget: ${{ intel_report.demographic.price_preference[0] }}–${{ intel_report.demographic.price_preference[1] }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if intel_report.cross_platform %}
+                    <div class="intel-card">
+                        <div class="intel-card-title">🔗 Cross-Platform Signals</div>
+                        <div class="intel-card-body">
+                            {% if intel_report.cross_platform.brands %}
+                            <div>Brands detected: {% for b in intel_report.cross_platform.brands %}<span class="intel-tag">{{ b }}</span>{% endfor %}</div>
+                            {% endif %}
+                            {% if intel_report.cross_platform.music %}
+                            <div style="margin-top: 6px;">Music taste: {% for m in intel_report.cross_platform.music %}<span class="intel-tag">{{ m }}</span>{% endfor %}</div>
+                            {% endif %}
+                            {% if intel_report.cross_platform.aspirational %}
+                            <div style="margin-top: 6px;">Aspiring to: {% for a in intel_report.cross_platform.aspirational %}<span class="intel-tag good">{{ a }}</span>{% endfor %}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if intel_report.interest_intel %}
+                    <div class="intel-card" style="border-left-color: #8b5cf6;">
+                        <div class="intel-card-title">🧠 Per-Interest Intelligence</div>
+                        <div class="intel-card-body">
+                            {% for ii in intel_report.interest_intel %}
+                            <div class="intel-interest-row" onclick="toggleInterestIntel(this)">
+                                <div class="intel-interest-name">{{ ii.name }} <span class="chevron" style="font-size: 10px; color: #999;">▶</span></div>
+                                <div class="intel-interest-detail">
+                                    {% if ii.search_terms %}
+                                    <div class="intel-detail-label">Search Strategy</div>
+                                    <div>{% for t in ii.search_terms %}<span class="intel-tag">{{ t }}</span>{% endfor %}</div>
+                                    {% endif %}
+                                    {% if ii.do_buy %}
+                                    <div class="intel-detail-label">Good Gift Types</div>
+                                    <div>{% for d in ii.do_buy %}<span class="intel-tag good">{{ d }}</span>{% endfor %}</div>
+                                    {% endif %}
+                                    {% if ii.dont_buy %}
+                                    <div class="intel-detail-label">Avoid</div>
+                                    <div>{% for d in ii.dont_buy %}<span class="intel-tag bad">{{ d }}</span>{% endfor %}</div>
+                                    {% endif %}
+                                    {% if ii.trending %}
+                                    <div class="intel-detail-label">Trending 2026</div>
+                                    <div>{% for t in ii.trending %}<span class="intel-tag trend">{{ t }}</span>{% endfor %}</div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    {% if intel_report.quality_filters %}
+                    <div class="intel-card" style="border-left-color: #ef4444;">
+                        <div class="intel-card-title">🛡️ Quality Filters Active</div>
+                        <div class="intel-card-body">
+                            {% for f in intel_report.quality_filters %}<span class="intel-tag bad">{{ f }}</span>{% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
         <!-- Validation Prompt -->
         <div class="personality-card">
             <div class="validation-prompt">
@@ -705,6 +935,22 @@
             return d.innerHTML;
         }
         
+        function toggleIntel() {
+            const toggle = document.getElementById('intel-toggle');
+            const body = document.getElementById('intel-body');
+            toggle.classList.toggle('open');
+            body.classList.toggle('open');
+        }
+
+        function toggleInterestIntel(row) {
+            const detail = row.querySelector('.intel-interest-detail');
+            const chevron = row.querySelector('.chevron');
+            if (detail) {
+                detail.classList.toggle('open');
+                if (chevron) chevron.textContent = detail.classList.contains('open') ? '▼' : '▶';
+            }
+        }
+
         let locationAutocompleteTimer = null;
         function ensureLocationContext() {
             if (!profileData.location_context) profileData.location_context = {};

@@ -2400,14 +2400,42 @@ def api_places_autocomplete():
         return jsonify([])
 
 
+def _normalize_url_for_matching(u):
+    """Normalize a URL for inventory matching: strip whitespace, trailing slash, tracking params."""
+    if not u or not isinstance(u, str):
+        return ''
+    u = u.strip().rstrip('/')
+    if '?' in u:
+        base, _, qs = u.partition('?')
+        if '/dp/' in base or '/listing/' in base or '/itm/' in base:
+            u = base
+    return u or ''
+
+
+# Words too common to be useful for matching materials to products
+_STOPWORDS = {
+    'the', 'a', 'an', 'and', 'or', 'for', 'of', 'to', 'in', 'on', 'with',
+    'set', 'kit', 'pack', 'new', 'premium', 'deluxe', 'best', 'great',
+    'gift', 'item', 'product', 'buy', 'from', 'by', 'size', 'color',
+}
+
+
 def _backfill_materials_links(materials_list, products, is_bad_product_url_fn):
     """
     Ensure every materials_needed item has a working link: match to products when possible,
     otherwise add a search link so the user can find the item. Makes experience shopping lists turnkey.
+
+    Matching strategy (scored, best-match wins):
+    1. If curator URL exists in inventory (normalized) → keep it
+    2. Score every inventory product against item name by word overlap
+    3. Require at least 2 meaningful words in common (or 1 if item is a single word)
+    4. Pick highest-scoring match
+    5. Fallback: search link on best-guess retailer
     """
     if not materials_list:
         return materials_list
-    # Build product title -> product map for fuzzy matching (lowercase keywords)
+
+    # Build product index for fuzzy matching
     product_by_words = {}
     inventory_urls = set()
     for p in (products or []):
@@ -2415,42 +2443,76 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn):
         if not link or is_bad_product_url_fn(link):
             continue
         inventory_urls.add(link)
+        inventory_urls.add(_normalize_url_for_matching(link))
         title = (p.get('title') or '').lower()
-        words = [w for w in re.split(r'\W+', title) if len(w) >= 2]
+        words = {w for w in re.split(r'\W+', title) if len(w) >= 2 and w not in _STOPWORDS}
         for w in words:
             product_by_words.setdefault(w, []).append(p)
+
     out = []
     for m in materials_list:
         m = dict(m)
         item_name = (m.get('item') or '').strip()
         existing_url = (m.get('product_url') or '').strip()
-        # Only trust URLs that actually exist in our product inventory
+
+        # Only trust URLs that actually exist in our product inventory (normalized)
         # The curator often invents plausible-looking Amazon URLs that lead to wrong products
-        if existing_url and existing_url in inventory_urls:
-            out.append(m)
-            continue
+        if existing_url:
+            norm_url = _normalize_url_for_matching(existing_url)
+            if existing_url in inventory_urls or norm_url in inventory_urls:
+                logger.debug(f"MATERIALS: Kept inventory URL for '{item_name[:40]}': {existing_url[:80]}")
+                out.append(m)
+                continue
+
         m['product_url'] = ''
         m['is_search_link'] = False
-        # Try to match to a product from our list (same pool as product gifts)
+
+        # Score every candidate product by word overlap with item name
         best = None
+        best_score = 0
         if item_name and products:
-            item_words = [w for w in re.split(r'\W+', item_name.lower()) if len(w) >= 2]
+            item_words = {w for w in re.split(r'\W+', item_name.lower()) if len(w) >= 2 and w not in _STOPWORDS}
+            min_overlap = 1 if len(item_words) <= 1 else 2
+
+            # Collect unique candidate products from word index
+            seen_links = set()
+            candidates = []
             for w in item_words:
                 for p in product_by_words.get(w, []):
-                    title = (p.get('title') or '').lower()
-                    if any(iw in title for iw in item_words) or any(tw in item_name.lower() for tw in title.split()):
-                        best = p
-                        break
-                if best:
-                    break
+                    plink = (p.get('link') or '').strip()
+                    if plink not in seen_links:
+                        seen_links.add(plink)
+                        candidates.append(p)
+
+            for p in candidates:
+                title = (p.get('title') or '').lower()
+                title_words = {w for w in re.split(r'\W+', title) if len(w) >= 2 and w not in _STOPWORDS}
+                overlap = item_words & title_words
+                score = len(overlap)
+                if score >= min_overlap and score > best_score:
+                    best = p
+                    best_score = score
+
         if best:
-            m['product_url'] = (best.get('link') or '').strip()
+            matched_link = (best.get('link') or '').strip()
+            m['product_url'] = matched_link
             m['where_to_buy'] = best.get('source_domain') or (best.get('where_to_buy') or 'Online')
+            logger.info(f"MATERIALS: Matched '{item_name[:40]}' → '{best.get('title', '')[:50]}' (score={best_score})")
         else:
-            # Fallback: give a clickable search link so they can find the item quickly
-            m['product_url'] = 'https://www.amazon.com/s?k=' + quote(item_name or 'gift')
-            m['where_to_buy'] = 'Search Amazon'
+            # Fallback: search link — use the retailer most likely to have the item
+            search_query = quote(item_name or 'gift')
+            where = (m.get('where_to_buy') or '').lower()
+            if 'etsy' in where:
+                m['product_url'] = f'https://www.etsy.com/search?q={search_query}'
+                m['where_to_buy'] = 'Search Etsy'
+            elif 'ebay' in where:
+                m['product_url'] = f'https://www.ebay.com/sch/i.html?_nkw={search_query}'
+                m['where_to_buy'] = 'Search eBay'
+            else:
+                m['product_url'] = f'https://www.amazon.com/s?k={search_query}'
+                m['where_to_buy'] = 'Search Amazon'
             m['is_search_link'] = True
+            logger.info(f"MATERIALS: No match for '{item_name[:40]}' → search fallback ({m['where_to_buy']})")
         out.append(m)
     return out
 

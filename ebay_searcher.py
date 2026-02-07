@@ -121,6 +121,7 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
             "q": query[:100],
             "limit": min(per_query, 50),
             "offset": random.choice([0, 0, 0, 5, 10, 15]),
+            "filter": "conditionIds:{1000|1500|1750|2000|2500}",  # New, Open Box, New with defects, Certified Refurb, Seller Refurb
         }
         try:
             r = requests.get(
@@ -147,6 +148,11 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
                 continue
             title = (item.get("title") or "").strip()
             if not title:
+                continue
+            # Skip used/pre-owned items — bad gift quality
+            condition = (item.get("condition") or "").strip()
+            if condition.lower() in ("pre-owned", "used", "for parts or not working", "acceptable"):
+                logger.debug("Skipping used eBay item: %s (%s)", title[:50], condition)
                 continue
             link = item.get("itemWebUrl") or ""
             if not link:

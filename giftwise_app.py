@@ -2563,7 +2563,11 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn):
             logger.info(f"MATERIALS: Matched '{item_name[:40]}' → '{best.get('title', '')[:50]}' (score={best_score})")
         else:
             # Fallback: search link — use the retailer most likely to have the item
-            search_query = quote(item_name or 'gift')
+            # Clean the item name for search: strip qualifiers like "for group", "for the trip"
+            # that make sense in a description but pollute search results
+            clean_name = re.sub(r'\b(for\s+(the\s+)?(group|trip|class|event|party|everyone|them|her|him|you))\b', '', item_name, flags=re.IGNORECASE).strip()
+            clean_name = re.sub(r'\s{2,}', ' ', clean_name).strip(' ,')
+            search_query = quote(clean_name or item_name or 'gift')
             where = (m.get('where_to_buy') or '').lower()
             if 'etsy' in where:
                 m['product_url'] = f'https://www.etsy.com/search?q={search_query}'

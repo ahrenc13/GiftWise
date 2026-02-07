@@ -254,6 +254,31 @@
                 </div>
             </div>
             
+            <div id="demographics-container" class="relationship-group">
+                <label>A bit about the recipient <span style="font-weight:normal;color:#6b7280">(optional but helps a lot)</span></label>
+                <div style="display:flex;gap:16px;margin-bottom:18px;flex-wrap:wrap;">
+                    <div style="flex:1;min-width:140px;">
+                        <label for="recipient_age" style="font-size:0.9em;color:#6b7280;margin-bottom:6px;display:block">Age range</label>
+                        <select id="recipient_age" name="recipient_age" style="width:100%;padding:10px 14px;border:2px solid #e5e7eb;border-radius:10px;font-size:1em;background:#fff;">
+                            <option value="">Not sure</option>
+                            <option value="18">18-24</option>
+                            <option value="25">25-34</option>
+                            <option value="35">35-44</option>
+                            <option value="45">45+</option>
+                        </select>
+                    </div>
+                    <div style="flex:1;min-width:140px;">
+                        <label for="recipient_gender" style="font-size:0.9em;color:#6b7280;margin-bottom:6px;display:block">Gender</label>
+                        <select id="recipient_gender" name="recipient_gender" style="width:100%;padding:10px 14px;border:2px solid #e5e7eb;border-radius:10px;font-size:1em;background:#fff;">
+                            <option value="">Prefer not to say</option>
+                            <option value="female">Female</option>
+                            <option value="male">Male</option>
+                            <option value="nonbinary">Non-binary</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
             <div id="relationship-container" class="relationship-group">
                 <label>What's your relationship to this person?</label>
                 <div class="relationship-options">
@@ -292,18 +317,19 @@
         const myselfRadio = document.getElementById('myself');
         const someoneElseRadio = document.getElementById('someone_else');
         const relationshipContainer = document.getElementById('relationship-container');
+        const demographicsContainer = document.getElementById('demographics-container');
         const relationshipRadios = document.querySelectorAll('input[name="relationship"]');
-        
+
         function updateRelationshipVisibility() {
             if (someoneElseRadio.checked) {
                 relationshipContainer.classList.add('visible');
-                // Make one of the relationship options required
+                demographicsContainer.classList.add('visible');
                 relationshipRadios.forEach(radio => {
                     radio.required = true;
                 });
             } else {
                 relationshipContainer.classList.remove('visible');
-                // Remove required from relationship options
+                demographicsContainer.classList.remove('visible');
                 relationshipRadios.forEach(radio => {
                     radio.required = false;
                 });

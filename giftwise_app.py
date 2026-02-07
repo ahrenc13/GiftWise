@@ -914,14 +914,16 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
         first_post = data[0]
         owner_username = first_post.get('ownerUsername', username)
         owner_full_name = first_post.get('ownerFullName', '')
-        
+        owner_bio = first_post.get('ownerBio', '') or first_post.get('biography', '') or ''
+        owner_followers = first_post.get('ownerFollowers', 0) or first_post.get('followersCount', 0) or 0
+
         posts = data[:max_posts]
-        
+
         result = {
             'username': owner_username,
             'full_name': owner_full_name,
-            'bio': '',
-            'followers': 0,
+            'bio': owner_bio,
+            'followers': owner_followers,
             'posts': [
                 {
                     'caption': post.get('caption', ''),
@@ -1235,7 +1237,8 @@ def parse_tiktok_data(data, username):
             'timestamp': item.get('createTime', ''),
             'url': item.get('webVideoUrl', ''),
             'hashtags': [tag.get('name', '') for tag in item.get('hashtags', [])],
-            'music': item.get('musicMeta', {}).get('musicName', '')
+            'music': item.get('musicMeta', {}).get('musicName', ''),
+            'music_artist': item.get('musicMeta', {}).get('musicAuthor', '') or item.get('musicMeta', {}).get('musicArtist', '')
         }
         
         # Check if this is a repost (diversificationId indicates repost)
@@ -1396,23 +1399,32 @@ def signup():
         email = request.form.get('email', '').strip()
         recipient_type = request.form.get('recipient_type')
         relationship = request.form.get('relationship', '')
-        
+        recipient_age = request.form.get('recipient_age', '')
+        recipient_gender = request.form.get('recipient_gender', '')
+
         if not email:
-            return render_template('signup.html', 
+            return render_template('signup.html',
                                  relationship_options=RELATIONSHIP_OPTIONS,
                                  error='Email is required')
-        
+
         # Create user
         user_id = email
         save_user(user_id, {
             'email': email,
             'recipient_type': recipient_type,
             'relationship': relationship,
+            'recipient_age': int(recipient_age) if recipient_age else None,
+            'recipient_gender': recipient_gender or None,
             'subscription_tier': 'free',  # Default to free tier
             'created_at': datetime.now().isoformat()
         })
-        
+
         session['user_id'] = user_id
+        # Store demographics in session for enrichment engine
+        if recipient_age:
+            session['recipient_age'] = int(recipient_age)
+        if recipient_gender:
+            session['recipient_gender'] = recipient_gender
         logger.info(f"New user signed up: {email}")
         
         return redirect('/connect-platforms')
@@ -2550,7 +2562,16 @@ def api_generate_recommendations():
             # IMPORTANT: Final recommendations come ONLY from curator output. We never pass inventory
             # straight through—even if one vendor dominates the pool, the curator must select from it.
             logger.info("STEP 3: Selecting best gifts from inventory...")
-            curated = curate_gifts(profile_for_backend, products, recipient_type, relationship, claude_client, rec_count=product_rec_count, enhanced_search_terms=enhanced_search_terms)
+            # Build enrichment context for curator (demographics, trending, anti-recs)
+            enriched_profile = session.get('enriched_profile') or {}
+            enrichment_context = {
+                'demographics': enriched_profile.get('demographics', {}),
+                'trending_items': enriched_profile.get('trending_items', []),
+                'anti_recommendations': enriched_profile.get('anti_recommendations', []),
+                'relationship_guidance': enriched_profile.get('relationship_guidance', {}),
+                'price_guidance': enriched_profile.get('price_guidance', {}),
+            } if enriched_profile else {}
+            curated = curate_gifts(profile_for_backend, products, recipient_type, relationship, claude_client, rec_count=product_rec_count, enhanced_search_terms=enhanced_search_terms, enrichment_context=enrichment_context)
             
             product_gifts = curated.get('product_gifts', [])
             experience_gifts = curated.get('experience_gifts', [])

@@ -12,10 +12,10 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def curate_gifts(profile, products, recipient_type, relationship, claude_client, rec_count=10, enhanced_search_terms=None):
+def curate_gifts(profile, products, recipient_type, relationship, claude_client, rec_count=10, enhanced_search_terms=None, enrichment_context=None):
     """
     Curate gift recommendations from real products and profile.
-    
+
     Args:
         profile: Recipient profile from build_recipient_profile()
         products: List of real products from search_real_products()
@@ -24,6 +24,7 @@ def curate_gifts(profile, products, recipient_type, relationship, claude_client,
         claude_client: Anthropic client for AI curation
         rec_count: Number of product recommendations (default 10)
         enhanced_search_terms: Optional list of enhanced search terms from intelligence layer
+        enrichment_context: Optional dict with demographics, trending, anti-recs from enrichment engine
     
     Returns:
         Dict with:
@@ -80,6 +81,41 @@ Context:
 
 These are refined search terms from deep profile analysis - products matching these are likely to be especially good fits.
 """
+
+    # Add enrichment intelligence (demographics, trending, anti-recs)
+    enrichment_section = ""
+    if enrichment_context:
+        parts = []
+
+        demo = enrichment_context.get('demographics', {})
+        if demo and demo.get('demographic_bucket'):
+            demo_lines = []
+            if demo.get('gift_style'):
+                demo_lines.append(f"Gift style: {demo['gift_style']}")
+            if demo.get('popular_categories'):
+                demo_lines.append(f"Popular for this demo: {', '.join(demo['popular_categories'][:6])}")
+            if demo.get('avoid'):
+                demo_lines.append(f"Avoid for this demo: {', '.join(demo['avoid'][:5])}")
+            if demo.get('price_preference'):
+                demo_lines.append(f"Typical budget: ${demo['price_preference'][0]}-${demo['price_preference'][1]}")
+            if demo_lines:
+                parts.append("👤 DEMOGRAPHIC INSIGHT ({}):\n{}".format(
+                    demo['demographic_bucket'], chr(10).join(['  - ' + l for l in demo_lines])))
+
+        trending = enrichment_context.get('trending_items', [])
+        if trending:
+            parts.append(f"📈 TRENDING IN 2026: {', '.join(str(t) for t in trending[:8])}")
+
+        anti_recs = enrichment_context.get('anti_recommendations', [])
+        if anti_recs:
+            parts.append(f"🚫 AVOID THESE GIFT TYPES: {', '.join(str(a) for a in anti_recs[:8])}")
+
+        price_g = enrichment_context.get('price_guidance', {})
+        if price_g and price_g.get('guidance'):
+            parts.append(f"💰 PRICE GUIDANCE: {price_g['guidance']}")
+
+        if parts:
+            enrichment_section = "\n\n" + "\n\n".join(parts) + "\n"
     
     # Format profile for prompt (gaps moved to top, rest supporting)
     profile_summary = f"""
@@ -87,7 +123,7 @@ RECIPIENT PROFILE:
 
 {sweet_spots}
 {enhanced_terms_section}
-
+{enrichment_section}
 INTERESTS ({len(profile.get('interests', []))} identified):
 {format_interests(profile.get('interests', []))}
 

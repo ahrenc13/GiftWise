@@ -2198,6 +2198,92 @@ def generate_recommendations_route():
                          recipient_type=recipient_type)
 
 
+def _build_intel_report(profile, enriched_profile, session):
+    """Build intelligence report dict for the profile page showpiece section."""
+    report = {}
+
+    # 1. Data sources analysed
+    sources = []
+    platforms = (get_session_user() or {}).get('platforms', {})
+    ig_data = platforms.get('instagram', {})
+    tt_data = platforms.get('tiktok', {})
+    pt_data = platforms.get('pinterest', {})
+    if ig_data:
+        post_count = len(ig_data.get('posts', []))
+        bio = ig_data.get('bio', '')
+        followers = ig_data.get('followers', 0)
+        src = f"Instagram: {post_count} posts analysed"
+        if followers:
+            src += f", {followers:,} followers"
+        if bio:
+            src += ", bio extracted"
+        sources.append(src)
+    if tt_data:
+        post_count = len(tt_data.get('posts', []))
+        src = f"TikTok: {post_count} videos analysed"
+        music_count = sum(1 for p in tt_data.get('posts', []) if p.get('music_artist'))
+        if music_count:
+            src += f", {music_count} music tracks identified"
+        sources.append(src)
+    if pt_data:
+        pin_count = len(pt_data.get('pins', []))
+        sources.append(f"Pinterest: {pin_count} pins analysed")
+    report['sources'] = sources
+
+    # 2. Demographic insight
+    demo = enriched_profile.get('demographics', {})
+    if demo and demo.get('demographic_bucket'):
+        report['demographic'] = {
+            'bucket': demo.get('demographic_bucket', ''),
+            'gift_style': demo.get('gift_style', ''),
+            'popular_categories': demo.get('popular_categories', [])[:6],
+            'avoid': demo.get('avoid', [])[:4],
+            'price_preference': demo.get('price_preference'),
+        }
+
+    # 3. Per-interest intelligence (from enrichment engine)
+    interest_intel = []
+    for ei in enriched_profile.get('enriched_interests', []):
+        intel = {'name': ei.get('interest', '')}
+        if ei.get('search_terms'):
+            intel['search_terms'] = ei['search_terms'][:6]
+        if ei.get('do_buy'):
+            intel['do_buy'] = ei['do_buy'][:4]
+        if ei.get('dont_buy'):
+            intel['dont_buy'] = ei['dont_buy'][:4]
+        if ei.get('trending_2026'):
+            intel['trending'] = ei['trending_2026'][:3]
+        if ei.get('price_points'):
+            intel['price_points'] = ei['price_points']
+        if any(k in intel for k in ('search_terms', 'do_buy', 'dont_buy', 'trending')):
+            interest_intel.append(intel)
+    report['interest_intel'] = interest_intel
+
+    # 4. Cross-platform signals (brands, aesthetics from profile)
+    cross_platform = {}
+    brands = profile.get('style_preferences', {}).get('brands', [])
+    if brands:
+        cross_platform['brands'] = brands[:8]
+    # Pull music taste if available in profile
+    music = profile.get('music_taste', [])
+    if music:
+        cross_platform['music'] = music[:6]
+    asp = profile.get('aspirational_vs_current', {})
+    if asp.get('aspirational'):
+        cross_platform['aspirational'] = asp['aspirational'][:5]
+    if asp.get('current'):
+        cross_platform['current'] = asp['current'][:5]
+    if cross_platform:
+        report['cross_platform'] = cross_platform
+
+    # 5. Quality filters applied
+    qf = session.get('quality_filters', [])
+    if qf:
+        report['quality_filters'] = qf[:6]
+
+    return report
+
+
 @app.route('/review-profile')
 def review_profile():
     """Build profile from scraped data and show validation UI so user can correct work vs hobby, prioritize, etc."""
@@ -2264,6 +2350,10 @@ def review_profile():
     # Generate gift strategy summary (gaps, aspirational, avoid)
     gift_strategy = format_gift_strategy(profile)
 
+    # Build intelligence report data for showpiece section
+    enriched_profile = session.get('enriched_profile') or {}
+    intel_report = _build_intel_report(profile, enriched_profile, session)
+
     generation_id = str(uuid.uuid4())
     session['review_generation_id'] = generation_id
     return render_template('profile_validation_fun.html',
@@ -2272,6 +2362,7 @@ def review_profile():
                           profile=profile_for_template,
                           profile_json=json.dumps(profile_for_template),
                           gift_strategy=gift_strategy,
+                          intel_report=intel_report,
                           generation_id=generation_id)
 
 
@@ -2503,6 +2594,7 @@ def api_generate_recommendations():
             # STEP 2: Pull inventory of real products (Etsy → Awin → eBay → ShareASale → Amazon fallback).
             # Inventory must be at least 2-3x the number we will select so the engine can choose carefully.
             product_rec_count = 10  # number of product gifts we will select
+            inventory_target = product_rec_count * 4  # request 4x so curator has real choices (40 products)
             logger.info("STEP 2: Pulling product inventory...")
             enhanced_search_terms = session.get('enhanced_search_terms', [])
             products = search_products_multi_retailer(
@@ -2515,7 +2607,7 @@ def api_generate_recommendations():
                 shareasale_token=os.environ.get('SHAREASALE_API_TOKEN', ''),
                 shareasale_secret=os.environ.get('SHAREASALE_API_SECRET', ''),
                 amazon_key=os.environ.get('RAPIDAPI_KEY', ''),
-                target_count=product_rec_count,
+                target_count=inventory_target,
                 enhanced_search_terms=enhanced_search_terms,
             )
             

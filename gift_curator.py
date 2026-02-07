@@ -241,7 +241,10 @@ EXPERIENCE GIFTS:
 - If no location context, DO NOT suggest location-specific experiences
 
 DIVERSITY & EVIDENCE:
-- DIVERSITY: Max 2 products per single interest/theme (e.g., max 2 per band). Spread across at least 5+ interests.
+- BRAND DIVERSITY (CRITICAL): NEVER select 2 products from the same brand or manufacturer. If you see "Yankee Candle" twice, pick ONE and replace the other with something different. Same for any brand—one product per brand, no exceptions.
+- CATEGORY DIVERSITY: NEVER select 2 products that are essentially the same type of item (e.g., two candles, two mugs, two t-shirts, two posters). Each product should feel like a genuinely different type of gift.
+- INTEREST SPREAD: Max 2 products per single interest/theme (e.g., max 2 per band). Spread across at least 5+ distinct interests.
+- NOVELTY: Prioritize unique, surprising, and thoughtful gifts over obvious/generic ones. A creative niche product is better than a mass-market default.
 - Each recommendation must have SPECIFIC evidence from the profile (not generic "they'll love this")
 - Total: {rec_count} product gifts + 3 experience gifts (we will filter to keep 2-3)
 - Every product gift product_url MUST be an exact copy of a URL from the INVENTORY list above - no invented products, no search pages.

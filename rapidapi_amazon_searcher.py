@@ -55,14 +55,14 @@ def search_products_rapidapi_amazon(profile, api_key, target_count=20):
             "interest": name,
             "priority": "high" if interest.get("intensity") == "passionate" else "medium",
         })
-    search_queries = search_queries[:8]
+    search_queries = search_queries[:12]
     if not search_queries:
         return []
 
     all_products = []
     seen_asins = set()
-    # Cap at 2 per query so results span multiple interests (avoid "all dog" or "all one interest")
-    per_query = min(2, max(1, (target_count + len(search_queries) - 1) // len(search_queries)))
+    # Allow more per query when target_count is higher; still cap to keep interest diversity
+    per_query = min(5, max(2, (target_count + len(search_queries) - 1) // len(search_queries)))
 
     headers = {
         "X-RapidAPI-Key": key,

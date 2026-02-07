@@ -35,6 +35,12 @@ def search_products_rapidapi_amazon(profile, api_key, target_count=20):
     if not interests:
         return []
 
+    import random
+    # Multiple query suffixes — randomized so repeat runs get fresh products
+    GIFT_SUFFIXES = ["gift", "unique gift", "gift set", "novelty", "fun gift", "cool gift"]
+    FAN_SUFFIXES = ["fan gift", "merch", "fan gear", "collector item", "fan accessories"]
+    SPORTS_SUFFIXES = ["fan gear", "sports gift", "fan merch", "apparel", "fan accessory"]
+
     search_queries = []
     for interest in interests:
         name = interest.get("name", "")
@@ -45,13 +51,13 @@ def search_products_rapidapi_amazon(profile, api_key, target_count=20):
             continue
         name_lower = name.lower()
         if any(term in name_lower for term in ["music", "band", "singer", "artist"]):
-            query = f"{name} fan gift"
+            suffix = random.choice(FAN_SUFFIXES)
         elif any(term in name_lower for term in ["sports", "basketball", "team"]):
-            query = f"{name} fan merchandise"
+            suffix = random.choice(SPORTS_SUFFIXES)
         else:
-            query = f"{name} gift"
+            suffix = random.choice(GIFT_SUFFIXES)
         search_queries.append({
-            "query": query,
+            "query": f"{name} {suffix}",
             "interest": name,
             "priority": "high" if interest.get("intensity") == "passionate" else "medium",
         })
@@ -75,10 +81,11 @@ def search_products_rapidapi_amazon(profile, api_key, target_count=20):
         query = q["query"]
         interest = q["interest"]
         priority = q["priority"]
+        # Randomize page so repeat runs surface different products
         params = {
             "query": query[:100],
             "country": "US",
-            "page": 1,
+            "page": random.choice([1, 1, 1, 2, 3]),
         }
         try:
             r = requests.get(

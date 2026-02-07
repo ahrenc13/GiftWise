@@ -76,6 +76,12 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
     if not interests:
         return []
 
+    import random
+    # Multiple query suffixes for variety — different runs get different products
+    GIFT_SUFFIXES = ["gift", "present", "gift idea", "accessories", "lover gift"]
+    FAN_SUFFIXES = ["fan gift", "merchandise", "memorabilia", "fan gear", "collectible"]
+    SPORTS_SUFFIXES = ["fan merchandise", "gear", "fan gift", "memorabilia", "apparel"]
+
     search_queries = []
     for interest in interests:
         name = interest.get("name", "")
@@ -86,13 +92,13 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
             continue
         name_lower = name.lower()
         if any(term in name_lower for term in ["music", "band", "singer", "artist"]):
-            query = f"{name} fan gift"
+            suffix = random.choice(FAN_SUFFIXES)
         elif any(term in name_lower for term in ["sports", "basketball", "team"]):
-            query = f"{name} fan merchandise"
+            suffix = random.choice(SPORTS_SUFFIXES)
         else:
-            query = f"{name} gift"
+            suffix = random.choice(GIFT_SUFFIXES)
         search_queries.append({
-            "query": query,
+            "query": f"{name} {suffix}",
             "interest": name,
             "priority": "high" if interest.get("intensity") == "passionate" else "medium",
         })
@@ -110,10 +116,11 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
         query = q["query"]
         interest = q["interest"]
         priority = q["priority"]
+        # Randomize offset so repeat runs surface different products
         params = {
             "q": query[:100],
             "limit": min(per_query, 50),
-            "offset": 0,
+            "offset": random.choice([0, 0, 0, 5, 10, 15]),
         }
         try:
             r = requests.get(

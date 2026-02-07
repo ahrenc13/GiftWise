@@ -135,6 +135,19 @@
             100% { background-position: -200% 0; }
         }
         
+        .quote-message {
+            font-size: 0.95em;
+            opacity: 0;
+            font-style: italic;
+            margin-top: 16px;
+            min-height: 1.5em;
+            transition: opacity 0.6s ease;
+        }
+
+        .quote-message.visible {
+            opacity: 0.7;
+        }
+
         .warning-message {
             color: #ffd700;
             font-weight: 600;
@@ -145,8 +158,8 @@
     <div class="container">
         <div class="logo">🎁</div>
         <h1>Analyzing {% if recipient_type == 'someone_else' %}Their{% else %}Your{% endif %} Interests...</h1>
-        <p class="subtitle">This usually takes 30-60 seconds</p>
-        
+        <p class="subtitle">Hang tight — this takes about a minute</p>
+
         <div class="platforms-analyzing">
             <h3 style="margin-bottom: 20px;">Getting to know {% if recipient_type == 'someone_else' %}them{% else %}you{% endif %} from:</h3>
             {% for platform in platforms %}
@@ -159,71 +172,105 @@
             </div>
             {% endfor %}
         </div>
-        
+
         <div class="spinner"></div>
         <div class="progress-bar-container">
             <div class="progress-bar" id="progressBar"></div>
         </div>
-        <p class="status-message">Finding gifts that feel like they were made just for them...</p>
+        <p class="status-message" id="statusMessage">Building a personality profile from their posts...</p>
+        <p class="quote-message" id="quoteMessage"></p>
     </div>
     
     <script>
-        // FINAL SOLUTION: Indeterminate progress bar - NO PERCENTAGES
-        // This completely eliminates the possibility of showing incorrect progress
-        // The bar just animates until the API completes
-        
         (function() {
             'use strict';
-            
-            // Get progress bar element
+
             const progressBar = document.getElementById('progressBar');
-            if (!progressBar) {
-                console.error('Progress bar element not found!');
-                return;
-            }
-            
-            // Set to indeterminate mode immediately - NO percentage tracking
+            const statusEl = document.getElementById('statusMessage');
+            const quoteEl = document.getElementById('quoteMessage');
+            if (!progressBar) return;
+
             progressBar.classList.add('indeterminate');
             progressBar.style.width = '100%';
-            progressBar.setAttribute('data-mode', 'indeterminate');
-            
-            // State for warning message only
+
+            // Pipeline stages — shown in order, timed to roughly match real progress
+            const stages = [
+                { at: 0,   text: 'Building a personality profile from their posts...' },
+                { at: 12,  text: 'Identifying interests, passions, and hidden obsessions...' },
+                { at: 25,  text: 'Searching retailers for products they\'d actually love...' },
+                { at: 45,  text: 'Browsing thousands of products across multiple stores...' },
+                { at: 65,  text: 'AI is handpicking the perfect gifts...' },
+                { at: 90,  text: 'Curating experiences they\'ll never forget...' },
+                { at: 110, text: 'Validating every link and image...' },
+                { at: 125, text: 'Almost there — putting the finishing touches on...' },
+            ];
+
+            // Quotes — cycled between stage updates to keep the page alive
+            const quotes = [
+                'Better than asking "what do you want?"',
+                'No gift cards. No generic ideas. Real gifts.',
+                'We do the hard part so you don\'t have to.',
+                'Every recommendation backed by their actual interests.',
+                'Searching stores you\'d never think to check.',
+                'The best gifts feel like someone really gets you.',
+                'Great gifts come to those who wait.',
+                'This beats wandering the mall for three hours.',
+                'Your recipient has no idea what\'s coming.',
+                'Thousands of products. Only the perfect ones make the cut.',
+            ];
+
             const state = {
                 startTime: Date.now(),
-                warningShown: false,
-                apiComplete: false
+                stageIndex: 0,
+                quoteIndex: Math.floor(Math.random() * quotes.length),
+                apiComplete: false,
             };
-            
-            // Show warning after 90 seconds (but NO progress percentage)
-            function checkForWarning() {
-                if (state.apiComplete || state.warningShown) {
-                    return;
-                }
-                
+
+            function fadeText(el, newText) {
+                el.style.opacity = '0';
+                setTimeout(() => {
+                    el.textContent = newText;
+                    el.style.opacity = '';
+                    el.classList.add('visible');
+                }, 400);
+            }
+
+            function tick() {
+                if (state.apiComplete) return;
                 const elapsed = (Date.now() - state.startTime) / 1000;
-                const progressText = document.querySelector('.status-message');
-                
-                if (elapsed >= 90 && progressText) {
-                    state.warningShown = true;
-                    progressText.style.opacity = '0';
-                    setTimeout(() => {
-                        progressText.innerHTML = '⚠️ This is taking longer than usual. Please wait...';
-                        progressText.className = 'status-message warning-message';
-                        progressText.style.opacity = '1';
-                    }, 300);
+
+                // Advance to next stage if it's time
+                const nextStage = stages[state.stageIndex + 1];
+                if (nextStage && elapsed >= nextStage.at) {
+                    state.stageIndex++;
+                    fadeText(statusEl, stages[state.stageIndex].text);
+                }
+
+                // Cycle quotes every 7 seconds
+                if (quoteEl) {
+                    const quotePhase = Math.floor(elapsed / 7);
+                    const targetQuote = (state.quoteIndex + quotePhase) % quotes.length;
+                    const currentText = quotes[targetQuote];
+                    if (quoteEl.textContent !== currentText) {
+                        fadeText(quoteEl, currentText);
+                    }
+                }
+
+                // Warning if over 3 minutes
+                if (elapsed >= 180) {
+                    statusEl.innerHTML = 'This is taking longer than usual — hang in there...';
+                    statusEl.className = 'status-message warning-message';
                 }
             }
-            
-            // Check for warning every 5 seconds (lightweight)
-            const warningInterval = setInterval(checkForWarning, 5000);
-            
-            // Cleanup function
+
+            const tickInterval = setInterval(tick, 2000);
+            // Show first quote after a short delay
+            setTimeout(() => fadeText(quoteEl, quotes[state.quoteIndex]), 3000);
+
             window.giftwiseCleanup = function() {
-                clearInterval(warningInterval);
+                clearInterval(tickInterval);
                 state.apiComplete = true;
             };
-            
-            // Expose state for debugging
             window.giftwiseProgressState = state;
         })();
         

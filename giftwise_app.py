@@ -79,21 +79,7 @@ def profile_for_search_and_curation(profile):
     p['interests'] = [i for i in p.get('interests', []) if not i.get('is_work')]
     return p
 
-# Import enhanced recommendation engine (legacy fallback)
-try:
-    from enhanced_recommendation_engine import (
-        extract_deep_signals,
-        integrate_wishlist_data,
-        detect_duplicates,
-        build_enhanced_prompt,
-        validate_recommendations
-    )
-    from enhanced_data_extraction import combine_all_signals
-    ENHANCED_ENGINE_AVAILABLE = True
-except ImportError:
-    ENHANCED_ENGINE_AVAILABLE = False
-    # logger not defined yet, will log later if needed
-    pass
+ENHANCED_ENGINE_AVAILABLE = False
 
 # Import wishlist integrations
 try:
@@ -2673,8 +2659,9 @@ def api_generate_recommendations():
                 'anti_recommendations': enriched_profile.get('anti_recommendations', []),
                 'relationship_guidance': enriched_profile.get('relationship_guidance', {}),
                 'price_guidance': enriched_profile.get('price_guidance', {}),
+                'enriched_interests': enriched_profile.get('enriched_interests', []),
             } if enriched_profile else {}
-            curated = curate_gifts(profile_for_backend, products, recipient_type, relationship, claude_client, rec_count=product_rec_count, enhanced_search_terms=enhanced_search_terms, enrichment_context=enrichment_context)
+            curated = curate_gifts(profile_for_backend, products, recipient_type, relationship, claude_client, rec_count=product_rec_count + 4, enhanced_search_terms=enhanced_search_terms, enrichment_context=enrichment_context)
             
             product_gifts = curated.get('product_gifts', [])
             experience_gifts = curated.get('experience_gifts', [])
@@ -2709,6 +2696,12 @@ def api_generate_recommendations():
                 if not u or not isinstance(u, str):
                     return ''
                 u = u.strip().rstrip('/')
+                # Strip tracking query params that don't affect the product page
+                if '?' in u:
+                    base, _, qs = u.partition('?')
+                    # Keep Amazon dp/ URLs clean; strip query from most URLs
+                    if '/dp/' in base or '/listing/' in base or '/itm/' in base:
+                        u = base
                 return u or ''
             product_url_to_image = {}
             valid_product_urls = set()  # only gifts with URLs in this set—no invented products
@@ -2740,9 +2733,7 @@ def api_generate_recommendations():
                 if product_url not in valid_product_urls and _normalize_url_for_image(product_url) not in valid_product_urls:
                     logger.debug(f"Dropping product gift not in inventory: {gift.get('name', '')[:50]}")
                     continue
-                image_url = (gift.get('image_url') or '').strip()
-                if not image_url:
-                    image_url = product_url_to_image.get(product_url, '') or product_url_to_image.get(_normalize_url_for_image(product_url), '')
+                image_url = product_url_to_image.get(product_url, '') or product_url_to_image.get(_normalize_url_for_image(product_url), '')
                 if is_bad_product_url(product_url):
                     product_url = ''
                     image_url = ''

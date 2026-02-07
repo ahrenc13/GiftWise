@@ -278,7 +278,11 @@ def _row_to_product(row, interest, query, priority):
         return None
     if not link:
         return None
-    snippet = f"From {merchant}" if merchant else title[:100]
+    description = (
+        row.get("product_short_description") or row.get("description")
+        or row.get("Description") or row.get("product_description") or ""
+    ).strip()
+    snippet = description[:150] if description else (f"From {merchant}" if merchant else title[:120])
     source_domain = (
         merchant.lower().replace(" ", "").replace("-", "") + ".com"
         if merchant
@@ -315,16 +319,17 @@ def _product_text(row):
 
 
 def _matches_query(row, query_terms):
-    """True if product name/keywords/description contain any of the query terms (skip stopwords)."""
+    """True if product text contains the primary interest term (not just generic words like 'gift')."""
     text = _product_text(row)
-    stopwords = {"and", "the", "or", "with", "from"}  # allow "gift" and "for" to match
+    generic_terms = {"and", "the", "or", "with", "from", "gift", "present", "idea", "unique", "personalized", "accessories", "lover", "fan"}
+    meaningful_matches = 0
     for term in query_terms:
         t = (term or "").strip().lower()
-        if len(t) <= 1 or t in stopwords:
+        if len(t) <= 1 or t in generic_terms:
             continue
         if t in text:
-            return True
-    return False
+            meaningful_matches += 1
+    return meaningful_matches >= 1
 
 
 def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_search_terms=None):

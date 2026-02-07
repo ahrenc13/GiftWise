@@ -99,7 +99,7 @@ def _stream_feed_and_match(feed_url, search_queries, max_results_from_feed, seen
     scanned = 0
     text_stream = None
     try:
-        text_stream = io.TextIOWrapper(r.raw, encoding="utf-8", errors="replace")
+        text_stream = io.TextIOWrapper(r.raw, encoding="utf-8", errors="replace", newline="")
         reader = csv.DictReader(text_stream)
         for row in reader:
             scanned += 1
@@ -156,7 +156,7 @@ def _fetch_feed_nonstream(feed_url, search_queries, max_results_from_feed, seen_
     count = 0
     scanned = 0
     try:
-        reader = csv.DictReader(io.StringIO(r.text))
+        reader = csv.DictReader(io.StringIO(r.text, newline=""))
         for row in reader:
             scanned += 1
             if count >= max_results_from_feed or scanned > MAX_ROWS_TO_SCAN_PER_FEED:
@@ -199,7 +199,7 @@ def _stream_feed_first_n(feed_url, n, seen_ids):
     count = 0
     text_stream = None
     try:
-        text_stream = io.TextIOWrapper(r.raw, encoding="utf-8", errors="replace")
+        text_stream = io.TextIOWrapper(r.raw, encoding="utf-8", errors="replace", newline="")
         reader = csv.DictReader(text_stream)
         for row in reader:
             if count >= n:
@@ -237,7 +237,7 @@ def _download_feed_csv(feed_url):
     rows = []
     text_stream = None
     try:
-        text_stream = io.TextIOWrapper(r.raw, encoding="utf-8", errors="replace")
+        text_stream = io.TextIOWrapper(r.raw, encoding="utf-8", errors="replace", newline="")
         reader = csv.DictReader(text_stream)
         for i, row in enumerate(reader):
             if i >= MAX_ROWS_PER_FEED:

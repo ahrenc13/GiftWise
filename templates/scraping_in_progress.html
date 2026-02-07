@@ -112,6 +112,19 @@
             font-weight: bold;
         }
 
+        .platform-icon.error {
+            background: #ef4444 !important;
+            animation: none;
+        }
+
+        .platform-icon.error::after {
+            content: '✗';
+            position: absolute;
+            font-size: 32px;
+            color: white;
+            font-weight: bold;
+        }
+
         @keyframes pulse {
             0%, 100% { transform: scale(1); opacity: 1; }
             50% { transform: scale(1.1); opacity: 0.8; }
@@ -287,7 +300,7 @@
                     </div>
                     <div class="platform-name">${platform.charAt(0).toUpperCase() + platform.slice(1)}</div>
                     <div class="platform-status" data-status="${platform}">
-                        ${status === 'scraping' ? 'Analyzing...' : status === 'complete' ? 'Complete!' : 'Waiting...'}
+                        ${status === 'scraping' ? 'Analyzing...' : status === 'complete' ? 'Complete!' : (status === 'error' || status === 'failed') ? 'Failed' : 'Waiting...'}
                     </div>
                 `;
                 container.appendChild(platformDiv);
@@ -298,7 +311,9 @@
         function updateProgress() {
             const total = Object.keys(platformData).length;
             const complete = Object.values(platformData).filter(p => p.status === 'complete').length;
-            const percentage = Math.round((complete / total) * 100);
+            const errored = Object.values(platformData).filter(p => p.status === 'error' || p.status === 'failed').length;
+            const resolved = complete + errored;
+            const percentage = Math.round((resolved / total) * 100);
 
             document.getElementById('progress-bar').style.width = percentage + '%';
             document.getElementById('progress-text').textContent = percentage + '% complete';
@@ -332,11 +347,24 @@
                 .then(data => {
                     console.log('Status response:', data); // Debug logging
                     
+                    // Check for fatal error (all platforms failed)
+                    if (data.error && !data.in_progress) {
+                        document.getElementById('status-message').textContent = data.error;
+                        document.getElementById('status-message').style.color = '#ef4444';
+                        document.getElementById('progress-text').textContent = 'Scraping failed';
+                        // Show retry option after 2 seconds
+                        setTimeout(() => {
+                            document.getElementById('status-message').innerHTML =
+                                data.error + '<br><br><a href="/connect-accounts" style="color: #818cf8; text-decoration: underline;">Try again</a>';
+                        }, 2000);
+                        return;  // Stop polling
+                    }
+
                     if (data.statuses) {
                         // Update platform data with statuses
                         Object.entries(data.statuses).forEach(([platform, info]) => {
                             platformData[platform] = info;
-                            
+
                             // Update icon status
                             const icon = document.querySelector(`[data-platform="${platform}"]`);
                             if (icon) {
@@ -345,6 +373,8 @@
                                     icon.classList.add('complete');
                                 } else if (info.status === 'scraping') {
                                     icon.classList.add('scraping');
+                                } else if (info.status === 'error' || info.status === 'failed') {
+                                    icon.classList.add('error');
                                 }
                             }
 
@@ -356,6 +386,9 @@
                                 } else if (info.status === 'complete') {
                                     statusText.textContent = 'Complete!';
                                     statusText.style.color = '#10b981';
+                                } else if (info.status === 'error' || info.status === 'failed') {
+                                    statusText.textContent = 'Failed';
+                                    statusText.style.color = '#ef4444';
                                 }
                             }
                         });

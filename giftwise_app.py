@@ -1883,14 +1883,17 @@ def start_scraping():
                 _scrape_semaphore.acquire()
             try:
                 data = scrape_instagram_profile(username, max_posts=50, task_id=task_id)
-                if data:
-                    user = get_user(user_id)
-                    if user:
-                        platforms = user.get('platforms', {})
+                user = get_user(user_id)
+                if user:
+                    platforms = user.get('platforms', {})
+                    if data:
                         platforms['instagram']['data'] = data
                         platforms['instagram']['status'] = 'complete'
                         platforms['instagram']['connected_at'] = datetime.now().isoformat()
-                        save_user(user_id, {'platforms': platforms})
+                    else:
+                        platforms['instagram']['status'] = 'error'
+                        logger.warning("Instagram scrape returned no data — marking as error")
+                    save_user(user_id, {'platforms': platforms})
             finally:
                 _scrape_semaphore.release()
         
@@ -1910,14 +1913,17 @@ def start_scraping():
                 _scrape_semaphore.acquire()
             try:
                 data = scrape_tiktok_profile(username, max_videos=50, task_id=task_id)
-                if data:
-                    user = get_user(user_id)
-                    if user:
-                        platforms = user.get('platforms', {})
+                user = get_user(user_id)
+                if user:
+                    platforms = user.get('platforms', {})
+                    if data:
                         platforms['tiktok']['data'] = data
                         platforms['tiktok']['status'] = 'complete'
                         platforms['tiktok']['connected_at'] = datetime.now().isoformat()
-                        save_user(user_id, {'platforms': platforms})
+                    else:
+                        platforms['tiktok']['status'] = 'error'
+                        logger.warning("TikTok scrape returned no data — marking as error")
+                    save_user(user_id, {'platforms': platforms})
             finally:
                 _scrape_semaphore.release()
         
@@ -3084,54 +3090,75 @@ def check_scraping_status():
     # Check status of each platform
     scraping_in_progress = False
     completed_count = 0
+    errored_count = 0
     total_platforms = len(platforms)
     platform_statuses = {}
-    
+
     for platform, data in platforms.items():
         status = data.get('status', '')
         has_data = bool(data.get('data'))
         platform_statuses[platform] = {'status': status, 'has_data': has_data}
-        
+
         # Still scraping
         if status == 'scraping':
             scraping_in_progress = True
             logger.info(f"Platform {platform} still scraping (status: {status})")
-        
+
         # Has completed data
         elif status == 'complete' and has_data:
             completed_count += 1
             logger.debug(f"Platform {platform} complete with data")
-        
-        # Ready but not started (shouldn't happen, but handle it)
-        elif status == 'ready':
-            logger.warning(f"Platform {platform} is ready but scraping hasn't started")
-            scraping_in_progress = True  # Treat as in progress
-    
-    logger.info(f"Scraping status check: {completed_count}/{total_platforms} complete, in_progress={scraping_in_progress}")
-    
+
+        # Failed or errored — terminal state, don't wait for it
+        elif status in ('error', 'failed'):
+            errored_count += 1
+            logger.warning(f"Platform {platform} scraping failed (status: {status})")
+
+        # Ready/connected but scraper thread hasn't updated status yet
+        elif status in ('ready', 'connected'):
+            scraping_in_progress = True
+            logger.info(f"Platform {platform} status is '{status}' — waiting for scraper thread")
+
+    resolved_count = completed_count + errored_count
+    logger.info(f"Scraping status check: {completed_count}/{total_platforms} complete, {errored_count} errored, in_progress={scraping_in_progress}")
+
     # If still scraping, return in progress
     if scraping_in_progress:
         return jsonify({
-            'complete': False, 
+            'complete': False,
             'in_progress': True,
             'completed': completed_count,
             'total': total_platforms,
             'statuses': platform_statuses
         })
-    
-    # If no data yet, might still be processing
-    if completed_count == 0:
-        logger.warning("No platforms have completed scraping yet")
+
+    # All platforms have resolved (complete or errored)
+    if resolved_count >= total_platforms:
+        # If ALL failed, return error
+        if completed_count == 0:
+            logger.error(f"All {total_platforms} platform(s) failed to scrape")
+            return jsonify({
+                'complete': False,
+                'error': 'All platforms failed to scrape. Please check your usernames and try again.',
+                'statuses': platform_statuses
+            })
+        # If some succeeded, proceed with what we have
+        if errored_count > 0:
+            logger.warning(f"{errored_count} platform(s) failed but {completed_count} succeeded — proceeding with available data")
+
+    # If no platforms resolved yet (edge case — shouldn't happen after above checks)
+    if completed_count == 0 and errored_count == 0:
+        logger.warning("No platforms have completed or errored yet")
         return jsonify({
-            'complete': False, 
-            'in_progress': True, 
+            'complete': False,
+            'in_progress': True,
             'message': 'Processing data...',
             'statuses': platform_statuses
         })
-    
-    # CRITICAL: Check if ALL platforms are complete (not just some)
-    if completed_count < total_platforms:
-        logger.info(f"Still waiting for {total_platforms - completed_count} platform(s) to complete")
+
+    # If some are still pending (not errored, not complete)
+    if resolved_count < total_platforms:
+        logger.info(f"Still waiting for {total_platforms - resolved_count} platform(s) to resolve")
         return jsonify({
             'complete': False,
             'in_progress': True,

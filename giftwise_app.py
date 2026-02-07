@@ -2900,7 +2900,8 @@ def api_generate_recommendations():
                     materials_items = [f"{m.get('item', 'Item')} ({m.get('estimated_price', '$XX')})" for m in materials_list[:3]]
                     materials_summary = f"Materials needed: {', '.join(materials_items)}"
                 how_special = exp.get('how_to_make_it_special', '')
-                parts = [exp.get('description', ''), exp.get('how_to_execute', ''), how_special, materials_summary]
+                # Don't include how_special here — it's rendered as its own section by the template
+                parts = [exp.get('description', ''), exp.get('how_to_execute', ''), materials_summary]
                 full_description = '\n\n'.join(p for p in parts if p).strip()
                 location_info = ""
                 if exp.get('location_specific'):

@@ -253,7 +253,12 @@ EXPERIENCE GIFTS:
   * If you cannot find a REAL venue website in their area (e.g., "https://bluedoorjazzclub.com", "https://indianapolismuseum.org"), leave reservation_link AND venue_website EMPTY
   * Empty is better than fake - we will supply a geography-calibrated search link
   * For national experiences (not tied to a venue), leave both empty and explain in how_to_execute
-- materials_needed: when an item matches a product in AVAILABLE PRODUCTS, copy that product's URL exactly into product_url. Never use search URLs - only direct product page URLs from the list. Empty product_url is OK when no match; we will add a find-it link.
+- materials_needed: Items the gift-giver needs to BUY IN ADVANCE to prepare or execute this experience. Think: what do they need to purchase before the day arrives?
+  * GOOD examples: "Portable Bluetooth speaker" for a picnic, "Dog life jacket" for a lake day, "Watercolor paint set" for an art class
+  * BAD examples: "Concert merchandise" (bought AT the event, not in advance), "Commemorative poster" (a souvenir, not a material), "Tickets" (that's the reservation_link, not a material)
+  * Each item should be a specific, purchasable product — not a task ("make a playlist"), an abstract concept ("good vibes"), or something bought at the venue
+  * When an item matches a product in AVAILABLE PRODUCTS, copy that product's URL exactly into product_url. Never use search URLs. Empty product_url is OK when no match; we will add a find-it link.
+  * If the experience doesn't require advance purchases (e.g., a restaurant dinner), use an empty list []
 - If no location context, DO NOT suggest location-specific experiences
 
 DIVERSITY & EVIDENCE:

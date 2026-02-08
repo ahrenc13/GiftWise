@@ -30,36 +30,90 @@
             to   { opacity: 1; transform: translateY(0); }
         }
 
-        /* --- Hero banner (inside first card) --- */
-        .hero {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 28px;
-            border-radius: 14px;
+        /* --- Persona summary --- */
+        .persona-header {
             text-align: center;
-            margin-bottom: 28px;
+            margin-bottom: 8px;
         }
-        .hero h2 { font-size: 24px; margin-bottom: 12px; }
-        .hero p { font-size: 15px; opacity: 0.95; line-height: 1.6; }
+        .persona-header h2 {
+            font-size: 26px;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        .persona-header .subtitle {
+            font-size: 14px;
+            color: #888;
+        }
 
-        /* --- Section headers --- */
-        .section-label {
+        .persona-summary {
+            background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
+            border-radius: 14px;
+            padding: 24px 28px;
+            margin: 20px 0;
+            border-left: 4px solid #667eea;
+            line-height: 1.7;
+            font-size: 15px;
+            color: #444;
+        }
+        .persona-summary strong { color: #333; }
+        .persona-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 14px;
+        }
+        .persona-tag {
+            display: inline-block;
+            background: white;
+            border: 1px solid #e0e0e0;
+            padding: 5px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #555;
+        }
+        .persona-tag.style { border-color: #667eea; color: #667eea; }
+        .persona-tag.location { border-color: #10b981; color: #065f46; }
+        .persona-tag.brand { border-color: #8b5cf6; color: #5b21b6; }
+
+        /* --- Top CTA --- */
+        .top-cta {
+            text-align: center;
+            padding: 16px 0 8px 0;
+        }
+        .top-cta p {
+            color: #888;
+            font-size: 13px;
+            margin-top: 10px;
+        }
+
+        /* --- Accordion sections --- */
+        .accordion-toggle {
             display: flex;
             align-items: center;
             gap: 10px;
-            margin: 28px 0 16px 0;
-            font-size: 20px;
+            cursor: pointer;
+            padding: 14px 18px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            font-size: 16px;
             font-weight: 600;
             color: #333;
+            user-select: none;
+            transition: all 0.2s;
+            margin-bottom: 0;
         }
-        .section-label:first-child { margin-top: 0; }
-        .section-label .emoji { font-size: 28px; }
+        .accordion-toggle:hover { background: #f0f2f5; }
+        .accordion-toggle .emoji { font-size: 22px; }
+        .accordion-toggle .chevron { transition: transform 0.3s; font-size: 12px; margin-left: auto; color: #999; }
+        .accordion-toggle.open .chevron { transform: rotate(90deg); }
+        .accordion-body { display: none; padding: 16px 0 0 0; }
+        .accordion-body.open { display: block; }
 
         /* --- Divider --- */
         .divider {
             height: 1px;
             background: #e5e7eb;
-            margin: 24px 0;
+            margin: 20px 0;
         }
 
         /* --- Vibe cards (interests) --- */
@@ -120,6 +174,75 @@
         }
         .edit-inline textarea { min-height: 60px; resize: vertical; }
 
+        /* --- Add interest form --- */
+        .add-interest-form {
+            display: none;
+            margin-top: 12px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 1px solid #e0e0e0;
+        }
+        .add-interest-form label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+        .add-interest-form input, .add-interest-form textarea {
+            width: 100%;
+            max-width: 320px;
+            padding: 8px 10px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            font-size: 14px;
+        }
+        .add-interest-form textarea { min-height: 60px; }
+
+        /* --- Add keywords section --- */
+        .add-keywords {
+            margin-top: 16px;
+        }
+        .add-keywords-label {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 8px;
+        }
+        .keyword-input-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .keyword-input-row input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 14px;
+        }
+        .keyword-input-row input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 2px rgba(102,126,234,0.2); }
+        .keyword-input-row input::placeholder { color: #bbb; }
+        .added-keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            margin-top: 10px;
+        }
+        .keyword-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #eef2ff;
+            border: 1px solid #c7d2fe;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #4338ca;
+        }
+        .keyword-chip .remove-keyword {
+            cursor: pointer;
+            font-size: 14px;
+            color: #999;
+            line-height: 1;
+        }
+        .keyword-chip .remove-keyword:hover { color: #ef4444; }
+
         /* --- Quick facts (compact rows) --- */
         .quick-facts {
             background: #f8f9fa;
@@ -139,7 +262,7 @@
         .fact-label { font-weight: 600; color: #667eea; font-size: 14px; }
         .fact-value { color: #333; flex: 1; font-size: 14px; }
 
-        /* Inline fact edit (replaces prompt()) */
+        /* Inline fact edit */
         .fact-edit {
             display: none;
             width: 100%;
@@ -269,6 +392,16 @@
         button.small.work-toggle { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
         button.small.work-toggle:hover { background: #a7f3d0; }
 
+        button.keyword-add {
+            background: #667eea;
+            color: white;
+            padding: 10px 18px;
+            font-size: 14px;
+            border-radius: 10px;
+            white-space: nowrap;
+        }
+        button.keyword-add:hover { background: #5a6fd6; }
+
         /* --- CTA bar --- */
         .cta-bar {
             display: flex;
@@ -279,33 +412,14 @@
             padding: 20px 0 0 0;
         }
 
-        /* --- Add interest form --- */
-        .add-interest-form {
-            display: none;
-            margin-top: 12px;
-            padding: 16px;
-            background: #f8f9fa;
-            border-radius: 12px;
-            border: 1px solid #e0e0e0;
-        }
-        .add-interest-form label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 4px; }
-        .add-interest-form input, .add-interest-form textarea {
-            width: 100%;
-            max-width: 320px;
-            padding: 8px 10px;
-            margin-bottom: 10px;
-            border-radius: 8px;
-            border: 1px solid #ccc;
-            font-size: 14px;
-        }
-        .add-interest-form textarea { min-height: 60px; }
-
         @media (max-width: 600px) {
             .card { padding: 20px 16px; }
-            .hero { padding: 20px 16px; }
-            .hero h2 { font-size: 20px; }
-            .section-label { font-size: 18px; }
+            .persona-summary { padding: 18px 16px; }
+            .persona-header h2 { font-size: 22px; }
+            .accordion-toggle { font-size: 15px; padding: 12px 14px; }
             .fact-row { flex-direction: column; align-items: flex-start; }
+            .keyword-input-row { flex-direction: column; }
+            .keyword-input-row input { width: 100%; }
         }
     </style>
 </head>
@@ -313,214 +427,240 @@
     <div class="container">
         {% set pronoun_possessive = 'your' if recipient_name == 'You' else 'their' %}
         {% set pronoun_subject = 'you' if recipient_name == 'You' else 'they' %}
+        {% set pronoun_object = 'you' if recipient_name == 'You' else 'them' %}
 
-        <!-- ===== CARD 1: Profile (hero + interests + quick facts + strategy) ===== -->
+        <!-- ===== CARD 1: Persona summary + top CTA ===== -->
         <div class="card">
-            <!-- Hero -->
-            <div class="hero">
-                <h2>Here's What We Learned About {{ recipient_name }}</h2>
-                <p>Based on {{ pronoun_possessive }} social media, we built this profile. <strong>Why review?</strong> If we mixed up <em>work</em> with <em>hobbies</em>, we might suggest gifts from {{ pronoun_possessive }} job. Mark work vs. hobby, fix anything wrong, then hit <strong>Find my gifts</strong>.</p>
+            <div class="persona-header">
+                <h2>Meet {{ recipient_name }}</h2>
+                <div class="subtitle">Based on {{ pronoun_possessive }} social media activity</div>
             </div>
 
-            <!-- Interests -->
-            <div class="section-label"><span class="emoji">✨</span> {{ recipient_name }}'s Vibe</div>
-
-            {% for interest in interests %}
-            <div class="vibe-card" data-interest-id="{{ loop.index0 }}">
-                <div class="vibe-title">{{ interest.name }}</div>
-                <div class="vibe-description">{{ interest.description }}</div>
-                <div class="vibe-tags">
-                    {% if interest.is_work %}
-                    <span class="tag work">🏢 Work (won't suggest gifts)</span>
-                    {% endif %}
-                    {% if interest.activity_type == 'active' %}
-                    <span class="tag active">🏃 Does This</span>
-                    {% else %}
-                    <span class="tag">👀 Watches/Enjoys</span>
-                    {% endif %}
-                    {% if interest.confidence %}
-                    <span class="confidence-indicator confidence-{{ 'high' if interest.confidence > 0.7 else 'medium' }}">
-                        {{ (interest.confidence * 100) | int }}% sure
-                    </span>
-                    {% endif %}
-                </div>
-                <div class="correction-buttons">
-                    <button class="small secondary" onclick="editInterest({{ loop.index0 }})">✏️ Edit</button>
-                    <button class="small secondary" onclick="removeInterest({{ loop.index0 }})">❌ Remove</button>
-                    {% if interest.is_work %}
-                    <button class="small work-toggle" onclick="toggleWork({{ loop.index0 }})">Mark as hobby</button>
-                    {% else %}
-                    <button class="small secondary" onclick="toggleWork({{ loop.index0 }})">Mark as work</button>
-                    {% endif %}
-                </div>
-                <div class="edit-inline" id="edit-{{ loop.index0 }}">
-                    <input type="text" id="name-{{ loop.index0 }}" value="{{ interest.name }}" placeholder="Interest name">
-                    <textarea id="desc-{{ loop.index0 }}" placeholder="What {{ pronoun_subject }} like about it">{{ interest.description }}</textarea>
-                    <button class="small" onclick="saveEdit({{ loop.index0 }})">Save</button>
-                    <button class="small secondary" onclick="cancelEdit({{ loop.index0 }})">Cancel</button>
-                </div>
-            </div>
-            {% endfor %}
-
-            <div id="add-interest-form" class="add-interest-form">
-                <label>Interest name</label>
-                <input type="text" id="new-interest-name" placeholder="e.g. Vintage vinyl">
-                <label>What do {{ pronoun_subject }} like about it? (optional)</label>
-                <textarea id="new-interest-desc" placeholder="e.g. Collects 70s rock"></textarea>
-                <label>Is this related to {{ pronoun_possessive }} job?</label>
-                <div style="margin-bottom: 10px;">
-                    <label style="margin-right: 16px; font-weight: normal;"><input type="radio" name="new-interest-work" id="new-interest-work-no" value="no" checked> No, hobby</label>
-                    <label style="font-weight: normal;"><input type="radio" name="new-interest-work" id="new-interest-work-yes" value="yes"> Yes, work</label>
-                </div>
-                <label>Do {{ pronoun_subject }} actively do this?</label>
-                <div style="margin-bottom: 12px;">
-                    <label style="margin-right: 16px; font-weight: normal;"><input type="radio" name="new-interest-active" id="new-interest-active-yes" value="yes" checked> Yes</label>
-                    <label style="font-weight: normal;"><input type="radio" name="new-interest-active" id="new-interest-active-no" value="no"> No, {{ pronoun_subject }} watch/enjoy</label>
-                </div>
-                <button type="button" class="small primary" onclick="submitAddInterest()" style="padding: 8px 16px; font-size: 13px;">Add to profile</button>
-                <button type="button" class="small secondary" onclick="cancelAddInterest()" style="margin-left: 6px;">Cancel</button>
-            </div>
-            <div id="add-interest-btn-wrap">
-                <button class="secondary" onclick="showAddInterestForm()" style="margin-top: 12px;">+ Add Something We Missed</button>
+            <!-- Synthesized persona summary -->
+            <div class="persona-summary" id="persona-summary">
+                <!-- Filled by JS from profile data for richer synthesis -->
             </div>
 
-            <!-- Divider -->
+            <!-- Top CTA -->
+            <div class="top-cta">
+                <button class="primary" onclick="approveProfile()">I trust you — find my gifts</button>
+                <p>Or scroll down to review and tweak what we found</p>
+            </div>
+        </div>
+
+        <!-- ===== CARD 2: Interests (accordion) + Add keywords ===== -->
+        <div class="card">
+            <!-- Interests accordion -->
+            <div class="accordion-toggle" onclick="toggleAccordion('interests')" id="interests-toggle">
+                <span class="emoji">&#10024;</span>
+                <span>Interests we found — expand to review &amp; edit</span>
+                <span class="chevron">&#9654;</span>
+            </div>
+            <div class="accordion-body" id="interests-body">
+                {% for interest in interests %}
+                <div class="vibe-card" data-interest-id="{{ loop.index0 }}">
+                    <div class="vibe-title">{{ interest.name }}</div>
+                    <div class="vibe-description">{{ interest.description }}</div>
+                    <div class="vibe-tags">
+                        {% if interest.is_work %}
+                        <span class="tag work">&#x1F3E2; Work (won't suggest gifts)</span>
+                        {% endif %}
+                        {% if interest.activity_type == 'active' %}
+                        <span class="tag active">&#x1F3C3; Does This</span>
+                        {% else %}
+                        <span class="tag">&#x1F440; Watches/Enjoys</span>
+                        {% endif %}
+                        {% if interest.confidence %}
+                        <span class="confidence-indicator confidence-{{ 'high' if interest.confidence > 0.7 else 'medium' }}">
+                            {{ (interest.confidence * 100) | int }}% sure
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="correction-buttons">
+                        <button class="small secondary" onclick="editInterest({{ loop.index0 }})">&#9999;&#65039; Edit</button>
+                        <button class="small secondary" onclick="removeInterest({{ loop.index0 }})">&#10060; Remove</button>
+                        {% if interest.is_work %}
+                        <button class="small work-toggle" onclick="toggleWork({{ loop.index0 }})">Mark as hobby</button>
+                        {% else %}
+                        <button class="small secondary" onclick="toggleWork({{ loop.index0 }})">Mark as work</button>
+                        {% endif %}
+                    </div>
+                    <div class="edit-inline" id="edit-{{ loop.index0 }}">
+                        <input type="text" id="name-{{ loop.index0 }}" value="{{ interest.name }}" placeholder="Interest name">
+                        <textarea id="desc-{{ loop.index0 }}" placeholder="What {{ pronoun_subject }} like about it">{{ interest.description }}</textarea>
+                        <button class="small" onclick="saveEdit({{ loop.index0 }})">Save</button>
+                        <button class="small secondary" onclick="cancelEdit({{ loop.index0 }})">Cancel</button>
+                    </div>
+                </div>
+                {% endfor %}
+
+                <div id="add-interest-form" class="add-interest-form">
+                    <label>Interest name</label>
+                    <input type="text" id="new-interest-name" placeholder="e.g. Vintage vinyl">
+                    <label>What do {{ pronoun_subject }} like about it? (optional)</label>
+                    <textarea id="new-interest-desc" placeholder="e.g. Collects 70s rock"></textarea>
+                    <label>Is this related to {{ pronoun_possessive }} job?</label>
+                    <div style="margin-bottom: 10px;">
+                        <label style="margin-right: 16px; font-weight: normal;"><input type="radio" name="new-interest-work" id="new-interest-work-no" value="no" checked> No, hobby</label>
+                        <label style="font-weight: normal;"><input type="radio" name="new-interest-work" id="new-interest-work-yes" value="yes"> Yes, work</label>
+                    </div>
+                    <label>Do {{ pronoun_subject }} actively do this?</label>
+                    <div style="margin-bottom: 12px;">
+                        <label style="margin-right: 16px; font-weight: normal;"><input type="radio" name="new-interest-active" id="new-interest-active-yes" value="yes" checked> Yes</label>
+                        <label style="font-weight: normal;"><input type="radio" name="new-interest-active" id="new-interest-active-no" value="no"> No, {{ pronoun_subject }} watch/enjoy</label>
+                    </div>
+                    <button type="button" class="small primary" onclick="submitAddInterest()" style="padding: 8px 16px; font-size: 13px;">Add to profile</button>
+                    <button type="button" class="small secondary" onclick="cancelAddInterest()" style="margin-left: 6px;">Cancel</button>
+                </div>
+                <div id="add-interest-btn-wrap">
+                    <button class="secondary" onclick="showAddInterestForm()" style="margin-top: 12px;">+ Add Something We Missed</button>
+                </div>
+            </div>
+
+            <!-- Add keywords/interests -->
             <div class="divider"></div>
-
-            <!-- Quick Facts -->
-            <div class="section-label"><span class="emoji">📋</span> About {{ recipient_name }}</div>
-
-            <div class="quick-facts">
-                <!-- Location -->
-                <div class="fact-row" id="location-row">
-                    <span class="fact-icon">🌎</span>
-                    <span class="fact-label">Location:</span>
-                    <span class="fact-value" id="location-display" style="{% if not profile.location_context or not profile.location_context.city_region %}display: none;{% endif %}">{% if profile.location_context and profile.location_context.city_region %}{{ profile.location_context.city_region }}{% if profile.location_context.state %}, {{ profile.location_context.state }}{% endif %}{% endif %}</span>
-                    <div class="location-input-wrap" id="location-edit-wrap" style="display: {% if profile.location_context and profile.location_context.city_region %}none{% else %}block{% endif %};">
-                        <input type="text" id="location-input" placeholder="Start typing a city…" autocomplete="off" value="{{ profile.location_context.city_region or '' }}">
-                        <ul class="location-autocomplete" id="location-autocomplete" style="display: none;"></ul>
-                        <span class="location-hint">Helps us suggest local experiences</span>
-                    </div>
-                    <button class="small secondary" id="location-edit-btn" onclick="editLocation()" style="{% if not profile.location_context or not profile.location_context.city_region %}display: none;{% endif %}">Edit</button>
+            <div class="add-keywords">
+                <div class="add-keywords-label">Have something specific in mind? Add keywords to guide our search.</div>
+                <div class="keyword-input-row">
+                    <input type="text" id="keyword-input" placeholder="e.g. camping gear, board games, espresso..." onkeydown="if(event.key==='Enter'){addKeyword();}">
+                    <button class="keyword-add" onclick="addKeyword()">+ Add</button>
                 </div>
-
-                <!-- Style -->
-                {% if profile.style_preferences and profile.style_preferences.visual_style %}
-                <div class="fact-row" id="style-row">
-                    <span class="fact-icon">🎨</span>
-                    <span class="fact-label">Style:</span>
-                    <span class="fact-value" id="style-display">{{ profile.style_preferences.visual_style }}{% if profile.style_preferences.quality_level %} · {{ profile.style_preferences.quality_level }}{% endif %}</span>
-                    <button class="small secondary" onclick="toggleFactEdit('style')">Edit</button>
-                    <div class="fact-edit" id="style-edit">
-                        <input type="text" id="style-input" value="{{ profile.style_preferences.visual_style or '' }}" placeholder="e.g. minimalist, boho, classic">
-                        <button class="small" onclick="saveFactEdit('style')">Save</button>
-                        <button class="small secondary" onclick="cancelFactEdit('style')">Cancel</button>
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Brands -->
-                {% if profile.style_preferences and profile.style_preferences.brands %}
-                <div class="fact-row" id="brands-row">
-                    <span class="fact-icon">🏷️</span>
-                    <span class="fact-label">Brands:</span>
-                    <span class="fact-value" id="brands-display">{{ profile.style_preferences.brands | join(', ') }}</span>
-                    <button class="small secondary" onclick="toggleFactEdit('brands')">Edit</button>
-                    <div class="fact-edit" id="brands-edit">
-                        <input type="text" id="brands-input" value="{{ profile.style_preferences.brands | join(', ') }}" placeholder="Comma-separated brands">
-                        <button class="small" onclick="saveFactEdit('brands')">Save</button>
-                        <button class="small secondary" onclick="cancelFactEdit('brands')">Cancel</button>
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Budget -->
-                {% if profile.price_signals and (profile.price_signals.estimated_range or profile.price_signals.budget_category) %}
-                <div class="fact-row" id="budget-row">
-                    <span class="fact-icon">💰</span>
-                    <span class="fact-label">Budget:</span>
-                    <span class="fact-value" id="budget-display">{{ profile.price_signals.estimated_range or '' }}{% if profile.price_signals.budget_category %} ({{ profile.price_signals.budget_category }}){% endif %}</span>
-                    <button class="small secondary" onclick="toggleFactEdit('budget')">Edit</button>
-                    <div class="fact-edit" id="budget-edit">
-                        <input type="text" id="budget-input" value="{{ profile.price_signals.estimated_range or '' }}" placeholder="e.g. $25-75">
-                        <button class="small" onclick="saveFactEdit('budget')">Save</button>
-                        <button class="small secondary" onclick="cancelFactEdit('budget')">Cancel</button>
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Pet -->
-                {% if profile.pet_details %}
-                <div class="fact-row" id="pet-row">
-                    <span class="fact-icon">🐾</span>
-                    <span class="fact-label">Pet:</span>
-                    <span class="fact-value" id="pet-display">{{ profile.pet_details }}</span>
-                    <button class="small secondary" onclick="toggleFactEdit('pet')">Edit</button>
-                    <div class="fact-edit" id="pet-edit">
-                        <input type="text" id="pet-input" value="{{ profile.pet_details or '' }}" placeholder="e.g. Golden retriever named Max">
-                        <button class="small" onclick="saveFactEdit('pet')">Save</button>
-                        <button class="small secondary" onclick="cancelFactEdit('pet')">Cancel</button>
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Family -->
-                {% if profile.family_context %}
-                <div class="fact-row" id="family-row">
-                    <span class="fact-icon">👨‍👩‍👧‍👦</span>
-                    <span class="fact-label">Family:</span>
-                    <span class="fact-value" id="family-display">{{ profile.family_context }}</span>
-                    <button class="small secondary" onclick="toggleFactEdit('family')">Edit</button>
-                    <div class="fact-edit" id="family-edit">
-                        <input type="text" id="family-input" value="{{ profile.family_context or '' }}" placeholder="e.g. Married, 2 kids">
-                        <button class="small" onclick="saveFactEdit('family')">Save</button>
-                        <button class="small secondary" onclick="cancelFactEdit('family')">Cancel</button>
-                    </div>
-                </div>
-                {% endif %}
-
-                <!-- Venues -->
-                {% if profile.specific_venues %}
-                <div class="fact-row">
-                    <span class="fact-icon">📍</span>
-                    <span class="fact-label">Hangouts:</span>
-                    <span class="fact-value">{{ profile.specific_venues | map(attribute='name') | select('string') | join(', ') }}</span>
-                </div>
-                {% endif %}
+                <div class="added-keywords" id="added-keywords"></div>
             </div>
+        </div>
 
-            {% if gift_strategy %}
-            <div class="divider"></div>
-            <div class="section-label"><span class="emoji">🎁</span> Gift Strategy</div>
-            <div class="gift-strategy">
-                {{ gift_strategy | safe }}
+        <!-- ===== CARD 3: Quick Facts (accordion) ===== -->
+        <div class="card">
+            <div class="accordion-toggle" onclick="toggleAccordion('facts')" id="facts-toggle">
+                <span class="emoji">&#x1F4CB;</span>
+                <span>About {{ recipient_name }}</span>
+                <span class="chevron">&#9654;</span>
             </div>
-            {% endif %}
+            <div class="accordion-body" id="facts-body">
+                <div class="quick-facts">
+                    <!-- Location -->
+                    <div class="fact-row" id="location-row">
+                        <span class="fact-icon">&#x1F30E;</span>
+                        <span class="fact-label">Location:</span>
+                        <span class="fact-value" id="location-display" style="{% if not profile.location_context or not profile.location_context.city_region %}display: none;{% endif %}">{% if profile.location_context and profile.location_context.city_region %}{{ profile.location_context.city_region }}{% if profile.location_context.state %}, {{ profile.location_context.state }}{% endif %}{% endif %}</span>
+                        <div class="location-input-wrap" id="location-edit-wrap" style="display: {% if profile.location_context and profile.location_context.city_region %}none{% else %}block{% endif %};">
+                            <input type="text" id="location-input" placeholder="Start typing a city..." autocomplete="off" value="{{ profile.location_context.city_region or '' }}">
+                            <ul class="location-autocomplete" id="location-autocomplete" style="display: none;"></ul>
+                            <span class="location-hint">Helps us suggest local experiences</span>
+                        </div>
+                        <button class="small secondary" id="location-edit-btn" onclick="editLocation()" style="{% if not profile.location_context or not profile.location_context.city_region %}display: none;{% endif %}">Edit</button>
+                    </div>
 
-            <!-- CTA -->
-            <div class="divider"></div>
-            <div style="text-align: center; padding: 8px 0 4px 0;">
-                <p style="color: #666; font-size: 14px; margin-bottom: 16px;">Fix anything wrong above, then hit the button when you're ready.</p>
-                <div class="cta-bar">
-                    <button class="secondary" onclick="window.location.href='/connect-platforms'">← Back to platforms</button>
-                    <button class="primary" onclick="approveProfile()">Find my gifts →</button>
+                    <!-- Style -->
+                    {% if profile.style_preferences and profile.style_preferences.visual_style %}
+                    <div class="fact-row" id="style-row">
+                        <span class="fact-icon">&#x1F3A8;</span>
+                        <span class="fact-label">Style:</span>
+                        <span class="fact-value" id="style-display">{{ profile.style_preferences.visual_style }}{% if profile.style_preferences.quality_level %} &middot; {{ profile.style_preferences.quality_level }}{% endif %}</span>
+                        <button class="small secondary" onclick="toggleFactEdit('style')">Edit</button>
+                        <div class="fact-edit" id="style-edit">
+                            <input type="text" id="style-input" value="{{ profile.style_preferences.visual_style or '' }}" placeholder="e.g. minimalist, boho, classic">
+                            <button class="small" onclick="saveFactEdit('style')">Save</button>
+                            <button class="small secondary" onclick="cancelFactEdit('style')">Cancel</button>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Brands -->
+                    {% if profile.style_preferences and profile.style_preferences.brands %}
+                    <div class="fact-row" id="brands-row">
+                        <span class="fact-icon">&#x1F3F7;&#xFE0F;</span>
+                        <span class="fact-label">Brands:</span>
+                        <span class="fact-value" id="brands-display">{{ profile.style_preferences.brands | join(', ') }}</span>
+                        <button class="small secondary" onclick="toggleFactEdit('brands')">Edit</button>
+                        <div class="fact-edit" id="brands-edit">
+                            <input type="text" id="brands-input" value="{{ profile.style_preferences.brands | join(', ') }}" placeholder="Comma-separated brands">
+                            <button class="small" onclick="saveFactEdit('brands')">Save</button>
+                            <button class="small secondary" onclick="cancelFactEdit('brands')">Cancel</button>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Budget -->
+                    {% if profile.price_signals and (profile.price_signals.estimated_range or profile.price_signals.budget_category) %}
+                    <div class="fact-row" id="budget-row">
+                        <span class="fact-icon">&#x1F4B0;</span>
+                        <span class="fact-label">Budget:</span>
+                        <span class="fact-value" id="budget-display">{{ profile.price_signals.estimated_range or '' }}{% if profile.price_signals.budget_category %} ({{ profile.price_signals.budget_category }}){% endif %}</span>
+                        <button class="small secondary" onclick="toggleFactEdit('budget')">Edit</button>
+                        <div class="fact-edit" id="budget-edit">
+                            <input type="text" id="budget-input" value="{{ profile.price_signals.estimated_range or '' }}" placeholder="e.g. $25-75">
+                            <button class="small" onclick="saveFactEdit('budget')">Save</button>
+                            <button class="small secondary" onclick="cancelFactEdit('budget')">Cancel</button>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Pet -->
+                    {% if profile.pet_details %}
+                    <div class="fact-row" id="pet-row">
+                        <span class="fact-icon">&#x1F43E;</span>
+                        <span class="fact-label">Pet:</span>
+                        <span class="fact-value" id="pet-display">{{ profile.pet_details }}</span>
+                        <button class="small secondary" onclick="toggleFactEdit('pet')">Edit</button>
+                        <div class="fact-edit" id="pet-edit">
+                            <input type="text" id="pet-input" value="{{ profile.pet_details or '' }}" placeholder="e.g. Golden retriever named Max">
+                            <button class="small" onclick="saveFactEdit('pet')">Save</button>
+                            <button class="small secondary" onclick="cancelFactEdit('pet')">Cancel</button>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Family -->
+                    {% if profile.family_context %}
+                    <div class="fact-row" id="family-row">
+                        <span class="fact-icon">&#x1F468;&#x200D;&#x1F469;&#x200D;&#x1F467;&#x200D;&#x1F466;</span>
+                        <span class="fact-label">Family:</span>
+                        <span class="fact-value" id="family-display">{{ profile.family_context }}</span>
+                        <button class="small secondary" onclick="toggleFactEdit('family')">Edit</button>
+                        <div class="fact-edit" id="family-edit">
+                            <input type="text" id="family-input" value="{{ profile.family_context or '' }}" placeholder="e.g. Married, 2 kids">
+                            <button class="small" onclick="saveFactEdit('family')">Save</button>
+                            <button class="small secondary" onclick="cancelFactEdit('family')">Cancel</button>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <!-- Venues -->
+                    {% if profile.specific_venues %}
+                    <div class="fact-row">
+                        <span class="fact-icon">&#x1F4CD;</span>
+                        <span class="fact-label">Hangouts:</span>
+                        <span class="fact-value">{{ profile.specific_venues | map(attribute='name') | select('string') | join(', ') }}</span>
+                    </div>
+                    {% endif %}
                 </div>
+
+                {% if gift_strategy %}
+                <div class="divider"></div>
+                <div style="font-size: 16px; font-weight: 600; color: #333; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <span style="font-size: 20px;">&#x1F381;</span> Gift Strategy
+                </div>
+                <div class="gift-strategy">
+                    {{ gift_strategy | safe }}
+                </div>
+                {% endif %}
             </div>
         </div>
 
         {% if intel_report %}
-        <!-- ===== CARD 2: Intelligence Report (collapsible) ===== -->
+        <!-- ===== CARD 4: Intelligence Report (collapsible) ===== -->
         <div class="card">
             <div class="intel-toggle" onclick="toggleIntel()" id="intel-toggle">
-                <span>🔬</span>
+                <span>&#x1F52C;</span>
                 <span>Under the Hood — Our Analysis</span>
-                <span class="chevron">▶</span>
+                <span class="chevron">&#9654;</span>
             </div>
             <div class="intel-body" id="intel-body">
 
                 {% if intel_report.sources %}
                 <div class="intel-card">
-                    <div class="intel-card-title">📊 Data Sources</div>
+                    <div class="intel-card-title">&#x1F4CA; Data Sources</div>
                     <div class="intel-card-body">
                         {% for src in intel_report.sources %}
                         <div style="margin-bottom: 4px;">{{ src }}</div>
@@ -531,7 +671,7 @@
 
                 {% if intel_report.demographic %}
                 <div class="intel-card">
-                    <div class="intel-card-title">👤 Demographic Insight</div>
+                    <div class="intel-card-title">&#x1F464; Demographic Insight</div>
                     <div class="intel-card-body">
                         {% if intel_report.demographic.gift_style %}
                         <div>Gift style: <strong>{{ intel_report.demographic.gift_style }}</strong></div>
@@ -555,7 +695,7 @@
 
                 {% if intel_report.cross_platform %}
                 <div class="intel-card">
-                    <div class="intel-card-title">🔗 Cross-Platform Signals</div>
+                    <div class="intel-card-title">&#x1F517; Cross-Platform Signals</div>
                     <div class="intel-card-body">
                         {% if intel_report.cross_platform.brands %}
                         <div>Brands detected: {% for b in intel_report.cross_platform.brands %}<span class="intel-tag">{{ b }}</span>{% endfor %}</div>
@@ -572,11 +712,11 @@
 
                 {% if intel_report.interest_intel %}
                 <div class="intel-card" style="border-left-color: #8b5cf6;">
-                    <div class="intel-card-title">🧠 Per-Interest Intelligence</div>
+                    <div class="intel-card-title">&#x1F9E0; Per-Interest Intelligence</div>
                     <div class="intel-card-body">
                         {% for ii in intel_report.interest_intel %}
                         <div class="intel-interest-row" onclick="toggleInterestIntel(this)">
-                            <div class="intel-interest-name">{{ ii.name }} <span class="chevron" style="font-size: 10px; color: #999;">▶</span></div>
+                            <div class="intel-interest-name">{{ ii.name }} <span class="chevron" style="font-size: 10px; color: #999;">&#9654;</span></div>
                             <div class="intel-interest-detail">
                                 {% if ii.search_terms %}
                                 <div class="intel-detail-label">Search Strategy</div>
@@ -603,7 +743,7 @@
 
                 {% if intel_report.quality_filters %}
                 <div class="intel-card" style="border-left-color: #ef4444;">
-                    <div class="intel-card-title">🛡️ Quality Filters Active</div>
+                    <div class="intel-card-title">&#x1F6E1;&#xFE0F; Quality Filters Active</div>
                     <div class="intel-card-body">
                         {% for f in intel_report.quality_filters %}<span class="intel-tag bad">{{ f }}</span>{% endfor %}
                     </div>
@@ -613,6 +753,17 @@
             </div>
         </div>
         {% endif %}
+
+        <!-- ===== Bottom CTA ===== -->
+        <div class="card">
+            <div style="text-align: center; padding: 4px 0;">
+                <p style="color: #666; font-size: 14px; margin-bottom: 16px;">Happy with the profile? Let's find the perfect gifts.</p>
+                <div class="cta-bar">
+                    <button class="secondary" onclick="window.location.href='/connect-platforms'">&larr; Back to platforms</button>
+                    <button class="primary" onclick="approveProfile()">Find my gifts &rarr;</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
@@ -620,6 +771,84 @@
         let generationId = "{{ generation_id }}";
         let pronounPossessive = "{{ pronoun_possessive }}";
         let pronounSubject = "{{ pronoun_subject }}";
+        let addedKeywords = [];
+
+        // --- Build persona summary from profile data ---
+        (function buildPersonaSummary() {
+            var el = document.getElementById('persona-summary');
+            if (!el) return;
+
+            var interests = (profileData.interests || []).filter(function(i) { return !i.is_work; });
+            var topInterests = interests.slice(0, 4).map(function(i) { return i.name; });
+            var location = (profileData.location_context && profileData.location_context.city_region) || '';
+            var style = (profileData.style_preferences && profileData.style_preferences.visual_style) || '';
+            var brands = (profileData.style_preferences && profileData.style_preferences.brands) || [];
+            var quality = (profileData.style_preferences && profileData.style_preferences.quality_level) || '';
+
+            // Build natural language summary
+            var parts = [];
+            var name = "{{ recipient_name }}";
+            var isYou = name === 'You';
+            var subj = isYou ? 'You' : name;
+            var verb = isYou ? "'re" : ' is';
+            var poss = isYou ? 'your' : 'their';
+
+            if (topInterests.length > 0) {
+                var interestStr;
+                if (topInterests.length === 1) {
+                    interestStr = '<strong>' + escapeHtml(topInterests[0]) + '</strong>';
+                } else if (topInterests.length === 2) {
+                    interestStr = '<strong>' + escapeHtml(topInterests[0]) + '</strong> and <strong>' + escapeHtml(topInterests[1]) + '</strong>';
+                } else {
+                    var last = topInterests.pop();
+                    interestStr = topInterests.map(function(i) { return '<strong>' + escapeHtml(i) + '</strong>'; }).join(', ') + ', and <strong>' + escapeHtml(last) + '</strong>';
+                }
+                parts.push(subj + verb + ' really into ' + interestStr + '.');
+            }
+
+            if (location) {
+                parts.push((isYou ? 'Based' : 'Based') + ' in <strong>' + escapeHtml(location) + '</strong>.');
+            }
+
+            if (style) {
+                parts.push((isYou ? 'Your' : 'Their') + ' style leans <strong>' + escapeHtml(style) + '</strong>' + (quality ? ' with ' + escapeHtml(quality) + ' taste' : '') + '.');
+            }
+
+            if (interests.length > 4) {
+                var moreCount = interests.length - 4;
+                parts.push('Plus ' + moreCount + ' more interest' + (moreCount > 1 ? 's' : '') + ' we spotted.');
+            }
+
+            if (parts.length === 0) {
+                parts.push("We found some interesting things about " + (isYou ? "you" : name) + " from " + poss + " social media.");
+            }
+
+            el.innerHTML = parts.join(' ');
+
+            // Add tags
+            var tagsHtml = '';
+            if (location) {
+                tagsHtml += '<span class="persona-tag location">' + escapeHtml(location) + '</span>';
+            }
+            if (style) {
+                tagsHtml += '<span class="persona-tag style">' + escapeHtml(style) + '</span>';
+            }
+            brands.slice(0, 5).forEach(function(b) {
+                tagsHtml += '<span class="persona-tag brand">' + escapeHtml(b) + '</span>';
+            });
+            if (tagsHtml) {
+                el.innerHTML += '<div class="persona-tags">' + tagsHtml + '</div>';
+            }
+        })();
+
+        // --- Accordion ---
+        function toggleAccordion(section) {
+            var toggle = document.getElementById(section + '-toggle');
+            var body = document.getElementById(section + '-body');
+            if (!toggle || !body) return;
+            toggle.classList.toggle('open');
+            body.classList.toggle('open');
+        }
 
         // --- Interest editing ---
         function editInterest(index) {
@@ -653,7 +882,7 @@
                 if (!workTag && tags) {
                     const span = document.createElement('span');
                     span.className = 'tag work';
-                    span.textContent = '🏢 Work (won\'t suggest gifts)';
+                    span.textContent = '\u{1F3E2} Work (won\'t suggest gifts)';
                     tags.insertBefore(span, tags.firstChild);
                 }
                 if (toggleBtn) { toggleBtn.textContent = "Mark as hobby"; toggleBtn.className = 'small work-toggle'; }
@@ -720,12 +949,12 @@
                 '<div class="vibe-title">' + escapeHtml(name) + '</div>' +
                 '<div class="vibe-description">' + escapeHtml(newInterest.description) + '</div>' +
                 '<div class="vibe-tags">' +
-                (isWork ? '<span class="tag work">🏢 Work (won\'t suggest gifts)</span>' : '') +
-                (isActive ? '<span class="tag active">🏃 Does This</span>' : '<span class="tag">👀 Watches/Enjoys</span>') +
+                (isWork ? '<span class="tag work">\u{1F3E2} Work (won\'t suggest gifts)</span>' : '') +
+                (isActive ? '<span class="tag active">\u{1F3C3} Does This</span>' : '<span class="tag">\u{1F440} Watches/Enjoys</span>') +
                 '<span class="confidence-indicator confidence-high">100% sure</span></div>' +
                 '<div class="correction-buttons">' +
-                '<button class="small secondary" onclick="editInterest(' + index + ')">✏️ Edit</button>' +
-                '<button class="small secondary" onclick="removeInterest(' + index + ')">❌ Remove</button>' +
+                '<button class="small secondary" onclick="editInterest(' + index + ')">\u270F\uFE0F Edit</button>' +
+                '<button class="small secondary" onclick="removeInterest(' + index + ')">\u274C Remove</button>' +
                 (isWork ? '<button class="small work-toggle" onclick="toggleWork(' + index + ')">Mark as hobby</button>' : '<button class="small secondary" onclick="toggleWork(' + index + ')">Mark as work</button>') +
                 '</div>' +
                 '<div class="edit-inline" id="edit-' + index + '">' +
@@ -745,7 +974,37 @@
             return d.innerHTML;
         }
 
-        // --- Quick fact inline editing (replaces prompt() dialogs) ---
+        // --- Keywords ---
+        function addKeyword() {
+            var input = document.getElementById('keyword-input');
+            var val = input.value.trim();
+            if (!val) return;
+            // Split on commas to allow multiple at once
+            var keywords = val.split(',').map(function(k) { return k.trim(); }).filter(Boolean);
+            keywords.forEach(function(kw) {
+                if (addedKeywords.indexOf(kw) === -1) {
+                    addedKeywords.push(kw);
+                }
+            });
+            input.value = '';
+            renderKeywords();
+            // Store in profileData for submission
+            profileData._extra_keywords = addedKeywords.slice();
+        }
+        function removeKeyword(index) {
+            addedKeywords.splice(index, 1);
+            profileData._extra_keywords = addedKeywords.slice();
+            renderKeywords();
+        }
+        function renderKeywords() {
+            var container = document.getElementById('added-keywords');
+            container.innerHTML = '';
+            addedKeywords.forEach(function(kw, i) {
+                container.innerHTML += '<span class="keyword-chip">' + escapeHtml(kw) + ' <span class="remove-keyword" onclick="removeKeyword(' + i + ')">&times;</span></span>';
+            });
+        }
+
+        // --- Quick fact inline editing ---
         function toggleFactEdit(field) {
             var el = document.getElementById(field + '-edit');
             if (!el) return;
@@ -771,7 +1030,7 @@
                 if (!profileData.style_preferences) profileData.style_preferences = {};
                 profileData.style_preferences.visual_style = val;
                 var el = document.getElementById('style-display');
-                if (el) el.textContent = val + (profileData.style_preferences.quality_level ? ' · ' + profileData.style_preferences.quality_level : '');
+                if (el) el.textContent = val + (profileData.style_preferences.quality_level ? ' \u00B7 ' + profileData.style_preferences.quality_level : '');
             } else if (field === 'brands') {
                 if (!profileData.style_preferences) profileData.style_preferences = {};
                 profileData.style_preferences.brands = val.split(',').map(function(b) { return b.trim(); }).filter(Boolean);
@@ -806,7 +1065,7 @@
             var chevron = row.querySelector('.chevron');
             if (detail) {
                 detail.classList.toggle('open');
-                if (chevron) chevron.textContent = detail.classList.contains('open') ? '▼' : '▶';
+                if (chevron) chevron.textContent = detail.classList.contains('open') ? '\u25BC' : '\u25B6';
             }
         }
 
@@ -889,9 +1148,8 @@
 
         // --- Approve profile ---
         async function approveProfile() {
-            var btn = document.querySelector('.primary');
-            btn.disabled = true;
-            btn.textContent = 'Finding gifts...';
+            var btns = document.querySelectorAll('.primary');
+            btns.forEach(function(b) { b.disabled = true; b.textContent = 'Finding gifts...'; });
 
             var response = await fetch('/api/approve-profile', {
                 method: 'POST',
@@ -906,8 +1164,7 @@
                 window.location.href = '/generating?id=' + generationId;
             } else {
                 alert('Error saving. Please try again.');
-                btn.disabled = false;
-                btn.textContent = 'Find my gifts →';
+                btns.forEach(function(b) { b.disabled = false; b.textContent = 'Find my gifts \u2192'; });
             }
         }
     </script>

@@ -178,6 +178,86 @@ class WorkExclusionFilter:
         return filtered
 
 
+class ObsoleteFormatFilter:
+    """Filter out obsolete media formats and low-effort generic products.
+
+    Logic: anyone with an active social media presence is streaming music/video.
+    Physical DVDs, CDs, VHS tapes, and Blu-rays are almost never a good gift
+    for this audience. Also catches generic filler items (wall calendars,
+    bumper stickers, keychains with generic prints) that read as low-effort.
+    """
+
+    # Obsolete physical media — title keywords
+    OBSOLETE_MEDIA_KEYWORDS = [
+        'dvd', 'blu-ray', 'bluray', 'blu ray', 'vhs', 'cassette tape',
+        'audio cassette', 'compact disc', 'music cd', 'album cd',
+        'laserdisc', 'minidisc', 'betamax', '8-track', '8 track',
+    ]
+
+    # Patterns that strongly indicate obsolete media in title
+    # (catches "Toto Live in Amsterdam DVD", "Greatest Hits CD", etc.)
+    OBSOLETE_MEDIA_PATTERNS = [
+        r'\bDVD\b', r'\bDVDs\b', r'\bVHS\b', r'\bBlu-?[Rr]ay\b',
+        r'\b(?:audio|music|album)\s+CD\b', r'\bCD\b(?:\s+(?:album|set|collection|box))',
+        r'\bcassette\b',
+    ]
+
+    # Generic low-effort gift indicators
+    LOW_EFFORT_KEYWORDS = [
+        'bumper sticker', 'car sticker', 'fridge magnet',
+        'rubber bracelet', 'lanyard', 'wristband',
+    ]
+
+    @staticmethod
+    def is_obsolete_or_low_effort(product):
+        """Check if product is an obsolete format or generic low-effort item."""
+        title = (product.get('title') or '').lower()
+        snippet = (product.get('snippet') or '').lower()
+        combined = title + ' ' + snippet
+
+        # Check keyword matches
+        for keyword in ObsoleteFormatFilter.OBSOLETE_MEDIA_KEYWORDS:
+            if keyword in combined:
+                return True, f"obsolete media: '{keyword}'"
+
+        # Check regex patterns (for case-sensitive matches like "DVD", "CD")
+        title_raw = product.get('title') or ''
+        for pattern in ObsoleteFormatFilter.OBSOLETE_MEDIA_PATTERNS:
+            if re.search(pattern, title_raw):
+                return True, f"obsolete media pattern: {pattern}"
+
+        # Check low-effort items
+        for keyword in ObsoleteFormatFilter.LOW_EFFORT_KEYWORDS:
+            if keyword in combined:
+                return True, f"low-effort item: '{keyword}'"
+
+        return False, None
+
+    @staticmethod
+    def filter_products(products, profile=None):
+        """Filter out obsolete format and low-effort products."""
+        if not products:
+            return []
+
+        filtered = []
+        excluded_count = 0
+
+        for product in products:
+            should_exclude, reason = ObsoleteFormatFilter.is_obsolete_or_low_effort(product)
+            if should_exclude:
+                excluded_count += 1
+                logger.info(
+                    "EXCLUDED %s: %s",
+                    reason,
+                    (product.get('title') or 'Unknown')[:60],
+                )
+            else:
+                filtered.append(product)
+
+        logger.info(f"Obsolete/low-effort filter removed {excluded_count} items, kept {len(filtered)}")
+        return filtered
+
+
 class PassiveActiveFilter:
     """Filter out active products for passive interests (e.g. don't suggest basketballs to people who just watch games)"""
     
@@ -288,7 +368,14 @@ def apply_smart_filters(products, profile):
     except Exception as e:
         logger.error(f"Error in PassiveActiveFilter: {e}")
         # Continue with unfiltered products rather than crash
-    
+
+    # Apply obsolete format / low-effort filter
+    try:
+        products = ObsoleteFormatFilter.filter_products(products, profile)
+    except Exception as e:
+        logger.error(f"Error in ObsoleteFormatFilter: {e}")
+        # Continue with unfiltered products rather than crash
+
     logger.info(f"Smart filters complete: {len(products)} products remaining")
     
     return products

@@ -748,7 +748,7 @@
                         <div class="rec-price">{{ rec.price_range }}</div>
                         <div class="rec-where">Available at: {{ rec.where_to_buy }}</div>
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            {% if rec.gift_type == 'experience' and (rec.reservation_link or rec.venue_website or rec.purchase_link) %}
+                            {% if rec.gift_type == 'experience' %}
                             {% if rec.reservation_link %}
                             <a href="{{ rec.reservation_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation();" style="background: #059669;">
                                 Reserve / Book →
@@ -759,9 +759,15 @@
                                 Venue / Website
                             </a>
                             {% endif %}
-                            {% if rec.purchase_link and (rec.experience_search_fallback or (not rec.reservation_link and not rec.venue_website)) %}
-                            <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation();" {% if rec.experience_search_fallback %}style="background: #0ea5e9;"{% endif %}>
-                                {{ 'Find options →' if rec.experience_search_fallback else 'Get started →' }}
+                            {% if rec.experience_providers and not rec.reservation_link %}
+                            {% for provider in rec.experience_providers[:2] %}
+                            <a href="{{ provider.url }}" target="_blank" class="rec-link" onclick="event.stopPropagation();" style="background: #7c3aed;">
+                                {{ provider.name }} →
+                            </a>
+                            {% endfor %}
+                            {% elif rec.purchase_link and (rec.experience_search_fallback or (not rec.reservation_link and not rec.venue_website)) %}
+                            <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation();" style="background: #0ea5e9;">
+                                Find options →
                             </a>
                             {% endif %}
                             {% endif %}

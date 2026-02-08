@@ -3050,7 +3050,25 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
 
                 primary_link = reservation_link or venue_website
                 experience_search_fallback = False
-                if not primary_link and exp.get('name'):
+                # Get curated provider links for this experience type
+                experience_provider_links = []
+                try:
+                    from experience_providers import get_experience_providers
+                    experience_provider_links = get_experience_providers(
+                        exp_name,
+                        location=search_loc,
+                        description=exp.get('description', ''),
+                    )
+                except ImportError:
+                    logger.debug("experience_providers module not available")
+                except Exception as ep_err:
+                    logger.warning(f"Experience provider lookup failed: {ep_err}")
+
+                if not primary_link and experience_provider_links:
+                    # Use first provider as primary link instead of Google search
+                    primary_link = experience_provider_links[0]['url']
+                    experience_search_fallback = False
+                elif not primary_link and exp.get('name'):
                     primary_link = _make_experience_search_link(exp_name, search_loc)
                     experience_search_fallback = True
                 if not primary_link and materials_list:
@@ -3068,6 +3086,7 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                     'reservation_link': reservation_link or None,
                     'venue_website': venue_website or None,
                     'experience_search_fallback': experience_search_fallback,
+                    'experience_providers': experience_provider_links,
                     'image_url': '',
                     'gift_type': 'experience',
                     'confidence_level': exp.get('confidence_level', 'adventurous'),

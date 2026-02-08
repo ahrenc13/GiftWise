@@ -1420,6 +1420,37 @@ def index():
     """Landing page"""
     return render_template('index.html')
 
+@app.route('/privacy')
+def privacy():
+    """Privacy policy"""
+    return render_template('privacy.html')
+
+@app.route('/terms')
+def terms():
+    """Terms of service — redirect to privacy for now"""
+    return render_template('privacy.html')
+
+@app.route('/guides')
+def gift_guides():
+    """Gift guides index — editorial content for SEO and affiliate revenue"""
+    return render_template('gift_guides.html')
+
+@app.route('/guides/<slug>')
+def gift_guide_detail(slug):
+    """Individual gift guide article"""
+    template_map = {
+        'beauty-lover': 'guide_beauty.html',
+        'music-fan': 'guide_music.html',
+        'homebody': 'guide_home.html',
+        'travel-obsessed': 'guide_travel.html',
+        'dog-parent': 'guide_dog.html',
+        'tech-nerd': 'guide_tech.html',
+    }
+    template = template_map.get(slug)
+    if template:
+        return render_template(template)
+    return render_template('error.html', error_message="Guide not found."), 404
+
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     """Signup page with 4-tier relationship selection"""
@@ -2591,7 +2622,7 @@ _NON_PURCHASABLE_SIGNALS = {
 }
 
 
-def _backfill_materials_links(materials_list, products, is_bad_product_url_fn):
+def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, affiliate_tag=None):
     """
     Ensure every materials_needed item has a working link: match to products when possible,
     otherwise add a search link so the user can find the item. Makes experience shopping lists turnkey.
@@ -2601,7 +2632,7 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn):
     2. Score every inventory product against item name by word overlap
     3. Require at least 2 meaningful words in common (or 1 if item is a single word)
     4. Pick highest-scoring match
-    5. Fallback: search link on best-guess retailer
+    5. Fallback: search link on best-guess retailer (with affiliate tag if available)
     """
     if not materials_list:
         return materials_list
@@ -2689,7 +2720,8 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn):
                 m['product_url'] = f'https://www.ebay.com/sch/i.html?_nkw={search_query}'
                 m['where_to_buy'] = 'Search eBay'
             else:
-                m['product_url'] = f'https://www.amazon.com/s?k={search_query}'
+                tag_param = f'&tag={affiliate_tag}' if affiliate_tag else ''
+                m['product_url'] = f'https://www.amazon.com/s?k={search_query}{tag_param}'
                 m['where_to_buy'] = 'Search Amazon'
             m['is_search_link'] = True
             logger.info(f"MATERIALS: No match for '{item_name[:40]}' → search fallback ({m['where_to_buy']})")
@@ -2815,6 +2847,10 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                 shareasale_id=os.environ.get('SHAREASALE_AFFILIATE_ID', ''),
                 shareasale_token=os.environ.get('SHAREASALE_API_TOKEN', ''),
                 shareasale_secret=os.environ.get('SHAREASALE_API_SECRET', ''),
+                skimlinks_publisher_id=os.environ.get('SKIMLINKS_PUBLISHER_ID', ''),
+                skimlinks_client_id=os.environ.get('SKIMLINKS_CLIENT_ID', ''),
+                skimlinks_client_secret=os.environ.get('SKIMLINKS_CLIENT_SECRET', ''),
+                skimlinks_domain_id=os.environ.get('SKIMLINKS_PUBLISHER_DOMAIN_ID', ''),
                 amazon_key=os.environ.get('RAPIDAPI_KEY', ''),
                 target_count=inventory_target,
                 enhanced_search_terms=enhanced_search_terms,
@@ -2966,7 +3002,8 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
 
             for exp in experience_gifts:
                 materials_list = _backfill_materials_links(
-                    exp.get('materials_needed', []), products, is_bad_product_url
+                    exp.get('materials_needed', []), products, is_bad_product_url,
+                    affiliate_tag=AMAZON_AFFILIATE_TAG
                 )
                 materials_summary = ""
                 if materials_list:

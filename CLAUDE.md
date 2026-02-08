@@ -1,5 +1,10 @@
 # GiftWise — Project Intelligence
 
+## Environment Notes
+- **Git is installed and working.** Do not prompt the user to install git, git for windows, or any other tooling. The repo is active with full commit history. Just use it.
+- **Python/Flask app.** Run with `python giftwise_app.py` or via deployment. No special build step.
+- **Branch:** Check `git branch` for the current working branch before making changes.
+
 ## What This Is
 AI-powered gift recommendation app. Flask pipeline: scrape social media → Claude analyzes profile → enrich with static data → search retailers → Claude curates gifts → programmatic cleanup → display.
 

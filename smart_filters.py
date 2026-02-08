@@ -179,57 +179,89 @@ class WorkExclusionFilter:
 
 
 class ObsoleteFormatFilter:
-    """Filter out obsolete media formats and low-effort generic products.
+    """Filter out obsolete media *content* (DVDs, random CDs) and low-effort products.
 
-    Logic: anyone with an active social media presence is streaming music/video.
-    Physical DVDs, CDs, VHS tapes, and Blu-rays are almost never a good gift
-    for this audience. Also catches generic filler items (wall calendars,
-    bumper stickers, keychains with generic prints) that read as low-effort.
+    Key distinction: we filter the *content format* (a Toto concert DVD), NOT the
+    *hardware* (a retro CD player, a turntable, a cassette deck). If someone has
+    retro/vinyl/analog signals in their profile, we skip this filter entirely for
+    products matched to that interest — those are intentional passion purchases.
+
+    Also catches generic filler items (bumper stickers, rubber bracelets) that
+    read as low-effort regardless of interest.
     """
 
-    # Obsolete physical media — title keywords
-    OBSOLETE_MEDIA_KEYWORDS = [
-        'dvd', 'blu-ray', 'bluray', 'blu ray', 'vhs', 'cassette tape',
-        'audio cassette', 'compact disc', 'music cd', 'album cd',
-        'laserdisc', 'minidisc', 'betamax', '8-track', '8 track',
+    # Obsolete physical media CONTENT — title keywords
+    # These are the discs/tapes themselves, not players/hardware
+    OBSOLETE_CONTENT_KEYWORDS = [
+        'dvd', 'blu-ray', 'bluray', 'blu ray', 'vhs',
+        'laserdisc', 'betamax',
     ]
 
-    # Patterns that strongly indicate obsolete media in title
-    # (catches "Toto Live in Amsterdam DVD", "Greatest Hits CD", etc.)
-    OBSOLETE_MEDIA_PATTERNS = [
+    # Patterns for media content in title (case-sensitive)
+    OBSOLETE_CONTENT_PATTERNS = [
         r'\bDVD\b', r'\bDVDs\b', r'\bVHS\b', r'\bBlu-?[Rr]ay\b',
-        r'\b(?:audio|music|album)\s+CD\b', r'\bCD\b(?:\s+(?:album|set|collection|box))',
-        r'\bcassette\b',
     ]
 
-    # Generic low-effort gift indicators
+    # Generic low-effort gift indicators (always filtered, no exceptions)
     LOW_EFFORT_KEYWORDS = [
         'bumper sticker', 'car sticker', 'fridge magnet',
         'rubber bracelet', 'lanyard', 'wristband',
     ]
 
+    # Retro/analog interest signals — if ANY interest matches these,
+    # skip the obsolete content filter for products tied to that interest
+    RETRO_SIGNALS = [
+        'vinyl', 'record', 'turntable', 'retro', 'analog', 'analogue',
+        'cassette', 'tape deck', 'hi-fi', 'hifi', 'audiophile',
+        'vintage audio', 'vintage music', 'record collection',
+        'record store', 'crate digging',
+    ]
+
     @staticmethod
-    def is_obsolete_or_low_effort(product):
-        """Check if product is an obsolete format or generic low-effort item."""
+    def _has_retro_interest(profile):
+        """Check if profile has retro/analog audio interests."""
+        if not profile:
+            return set()
+        retro_interest_names = set()
+        for interest in profile.get('interests', []):
+            name = (interest.get('name') or '').lower()
+            desc = (interest.get('description') or '').lower()
+            combined = name + ' ' + desc
+            if any(signal in combined for signal in ObsoleteFormatFilter.RETRO_SIGNALS):
+                retro_interest_names.add(name)
+        return retro_interest_names
+
+    @staticmethod
+    def is_obsolete_or_low_effort(product, retro_interests=None):
+        """Check if product is obsolete content or generic low-effort item.
+
+        Returns (should_exclude, reason) tuple.
+        """
         title = (product.get('title') or '').lower()
         snippet = (product.get('snippet') or '').lower()
         combined = title + ' ' + snippet
 
-        # Check keyword matches
-        for keyword in ObsoleteFormatFilter.OBSOLETE_MEDIA_KEYWORDS:
-            if keyword in combined:
-                return True, f"obsolete media: '{keyword}'"
-
-        # Check regex patterns (for case-sensitive matches like "DVD", "CD")
-        title_raw = product.get('title') or ''
-        for pattern in ObsoleteFormatFilter.OBSOLETE_MEDIA_PATTERNS:
-            if re.search(pattern, title_raw):
-                return True, f"obsolete media pattern: {pattern}"
-
-        # Check low-effort items
+        # Low-effort items are always filtered regardless of interests
         for keyword in ObsoleteFormatFilter.LOW_EFFORT_KEYWORDS:
             if keyword in combined:
                 return True, f"low-effort item: '{keyword}'"
+
+        # If this product matches a retro interest, don't filter it
+        if retro_interests:
+            product_interest = (product.get('interest_match') or '').lower()
+            if product_interest in retro_interests:
+                return False, None
+
+        # Check obsolete content keywords
+        for keyword in ObsoleteFormatFilter.OBSOLETE_CONTENT_KEYWORDS:
+            if keyword in combined:
+                return True, f"obsolete media: '{keyword}'"
+
+        # Check regex patterns (case-sensitive: "DVD", "VHS")
+        title_raw = product.get('title') or ''
+        for pattern in ObsoleteFormatFilter.OBSOLETE_CONTENT_PATTERNS:
+            if re.search(pattern, title_raw):
+                return True, f"obsolete media pattern: {pattern}"
 
         return False, None
 
@@ -239,11 +271,15 @@ class ObsoleteFormatFilter:
         if not products:
             return []
 
+        retro_interests = ObsoleteFormatFilter._has_retro_interest(profile)
+        if retro_interests:
+            logger.info(f"Retro/analog interests detected: {retro_interests} — allowing vintage media for those interests")
+
         filtered = []
         excluded_count = 0
 
         for product in products:
-            should_exclude, reason = ObsoleteFormatFilter.is_obsolete_or_low_effort(product)
+            should_exclude, reason = ObsoleteFormatFilter.is_obsolete_or_low_effort(product, retro_interests)
             if should_exclude:
                 excluded_count += 1
                 logger.info(

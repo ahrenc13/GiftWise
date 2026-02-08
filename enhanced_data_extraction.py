@@ -15,6 +15,66 @@ from collections import Counter, defaultdict
 from datetime import datetime, timedelta
 import re
 
+# --- Brand detection ---
+# Large but not exhaustive list of brands people commonly reference on social media.
+# Matches are case-insensitive against captions, hashtags, and @mentions.
+_KNOWN_BRANDS = {
+    # Apparel / Athleisure
+    'nike', 'adidas', 'puma', 'reebok', 'new balance', 'asics', 'under armour',
+    'lululemon', 'athleta', 'fabletics', 'gymshark', 'alo yoga', 'vuori',
+    'patagonia', 'north face', 'columbia', 'arcteryx', "arc'teryx", 'rei',
+    'hoka', 'on running', 'brooks', 'saucony', 'allbirds',
+    # Fashion
+    'zara', 'h&m', 'uniqlo', 'everlane', 'madewell', 'j crew', 'anthropologie',
+    'free people', 'urban outfitters', 'aritzia', 'reformation', 'cos',
+    'gucci', 'louis vuitton', 'chanel', 'prada', 'dior', 'hermes', 'burberry',
+    'balenciaga', 'versace', 'fendi', 'coach', 'kate spade', 'michael kors',
+    'tory burch', 'ralph lauren', 'calvin klein', 'tommy hilfiger',
+    'carhartt', 'dickies', 'levis', "levi's",
+    # Beauty / Skincare
+    'glossier', 'fenty', 'rare beauty', 'charlotte tilbury', 'nars',
+    'tatcha', 'drunk elephant', 'the ordinary', 'cerave', 'olaplex',
+    'dyson', 'goop', 'supergoop', 'sol de janeiro', 'summer fridays',
+    # Tech / Electronics
+    'apple', 'samsung', 'sony', 'canon', 'nikon', 'fujifilm', 'gopro',
+    'bose', 'sonos', 'jbl', 'marshall', 'beats', 'airpods',
+    'nintendo', 'xbox', 'playstation', 'steam deck', 'oculus', 'meta quest',
+    'tesla', 'rivian', 'peloton', 'whoop', 'garmin', 'fitbit', 'oura',
+    # Home / Kitchen
+    'le creuset', 'staub', 'yeti', 'stanley', 'hydroflask', 'ember',
+    'kitchenaid', 'smeg', 'our place', 'always pan', 'ninja', 'instant pot',
+    'dyson', 'roomba', 'nest', 'philips hue', 'sonos',
+    'crate and barrel', 'cb2', 'west elm', 'pottery barn', 'restoration hardware',
+    'ikea', 'article', 'floyd', 'maiden home',
+    # Outdoor / Sports
+    'yeti', 'hydroflask', 'osprey', 'deuter', 'kelty', 'thule',
+    'traeger', 'weber', 'solo stove', 'big green egg', 'blackstone',
+    'callaway', 'titleist', 'taylormade', 'ping',
+    'trek', 'specialized', 'cannondale', 'giant',
+    # Food / Beverage / Lifestyle
+    'starbucks', 'nespresso', 'fellow', 'chemex', 'breville',
+    'disney', 'lego', 'funko', 'crocs', 'birkenstock',
+    'amazon', 'etsy', 'target', 'costco', 'trader joes', "trader joe's",
+    # Entertainment / Media
+    'netflix', 'spotify', 'hulu', 'disney plus', 'hbo',
+    'taylor swift', 'harry styles', 'beyonce', 'bts', 'olivia rodrigo',
+    # Pets
+    'chewy', 'barkbox', 'kong', 'ruffwear',
+    # Jewelry / Accessories
+    'mejuri', 'gorjana', 'kendra scott', 'pandora', 'tiffany',
+    'ray ban', 'oakley', 'warby parker',
+}
+
+# Words that look like @mentions but aren't brands (common personal/generic handles)
+_NON_BRAND_HANDLES = {
+    'me', 'self', 'my', 'repost', 'reels', 'explore', 'trending', 'viral',
+    'fyp', 'foryou', 'foryoupage', 'photo', 'photography', 'instagood',
+    'love', 'life', 'style', 'beauty', 'fitness', 'food', 'travel',
+    'music', 'art', 'design', 'nature', 'fashion', 'home', 'family',
+    'friends', 'fun', 'happy', 'beautiful', 'cute', 'goals', 'mood',
+    'ootd', 'tbt', 'selfie', 'photooftheday', 'instadaily',
+}
+
 def extract_all_instagram_signals(ig_data):
     """
     Extract EVERYTHING possible from Instagram data
@@ -87,17 +147,30 @@ def extract_all_instagram_signals(ig_data):
                 'hashtags': hashtags
             })
         
-        # Extract brand mentions
-        common_brands = [
-            'nike', 'adidas', 'apple', 'sony', 'canon', 'lego', 'disney',
-            'starbucks', 'target', 'amazon', 'etsy', 'patagonia', 'north face',
-            'tesla', 'bmw', 'mercedes', 'taylor swift', 'harry styles',
-            'sony', 'nintendo', 'xbox', 'playstation', 'netflix', 'spotify'
-        ]
+        # Extract brand mentions from caption text
         caption_lower = caption.lower()
-        for brand in common_brands:
+        for brand in _KNOWN_BRANDS:
             if brand in caption_lower:
                 signals['brand_mentions'][brand] += 1
+
+        # @mentions are often brand handles — treat them as brand signals
+        for mention in mentions:
+            m_lower = mention.lower()
+            if m_lower not in _NON_BRAND_HANDLES and len(m_lower) > 2:
+                # Check if it matches a known brand (stripped underscores/dots)
+                clean = m_lower.replace('_', ' ').replace('.', ' ').strip()
+                if clean in _KNOWN_BRANDS:
+                    signals['brand_mentions'][clean] += 1
+                else:
+                    # Unknown handle — still record it as a potential brand
+                    # (Claude will decide if it's relevant)
+                    signals['brand_mentions'][m_lower] += 1
+
+        # Hashtags can be brand references (#Lululemon, #YetiCoolers)
+        for tag in hashtags:
+            tag_lower = tag.lower().replace('_', ' ')
+            if tag_lower in _KNOWN_BRANDS:
+                signals['brand_mentions'][tag_lower] += 1
         
         # Extract product mentions (common patterns)
         product_indicators = ['bought', 'got', 'new', 'just got', 'purchased', 'ordered']
@@ -175,6 +248,7 @@ def extract_all_tiktok_signals(tt_data):
         'hashtags': Counter(),
         'music_trends': Counter(),
         'video_types': Counter(),
+        'brand_mentions': Counter(),
         'engagement_patterns': {},
         'repost_analysis': {},
         'creator_styles': [],
@@ -182,7 +256,7 @@ def extract_all_tiktok_signals(tt_data):
         'aspirational_content': [],
         'current_interests': []
     }
-    
+
     # Analyze videos
     for video in videos:
         description = video.get('description', '').lower()
@@ -191,14 +265,33 @@ def extract_all_tiktok_signals(tt_data):
         likes = video.get('likes', 0)
         comments = video.get('comments', 0)
         shares = video.get('shares', 0)
-        
+
         # Hashtags
         signals['hashtags'].update([tag.lower() for tag in hashtags])
-        
+
+        # Brand mentions from description and hashtags
+        for brand in _KNOWN_BRANDS:
+            if brand in description:
+                signals['brand_mentions'][brand] += 1
+        for tag in hashtags:
+            tag_lower = tag.lower().replace('_', ' ')
+            if tag_lower in _KNOWN_BRANDS:
+                signals['brand_mentions'][tag_lower] += 1
+        # @mentions in TikTok descriptions
+        tt_mentions = re.findall(r'@(\w+)', description)
+        for m in tt_mentions:
+            m_lower = m.lower()
+            if m_lower not in _NON_BRAND_HANDLES and len(m_lower) > 2:
+                clean = m_lower.replace('_', ' ')
+                if clean in _KNOWN_BRANDS:
+                    signals['brand_mentions'][clean] += 1
+                else:
+                    signals['brand_mentions'][m_lower] += 1
+
         # Music trends
         if music:
             signals['music_trends'][music.lower()] += 1
-        
+
         # Engagement
         total_engagement = likes + comments + shares
         if total_engagement > 1000:
@@ -224,10 +317,11 @@ def extract_all_tiktok_signals(tt_data):
     # Convert to dicts
     signals['hashtags'] = dict(signals['hashtags'].most_common(50))
     signals['music_trends'] = dict(signals['music_trends'].most_common(20))
+    signals['brand_mentions'] = dict(signals['brand_mentions'].most_common(15))
     signals['trending_topics'] = list(set(signals['trending_topics']))[:20]
     signals['aspirational_content'] = list(set(signals['aspirational_content']))[:30]
     signals['current_interests'] = list(set(signals['current_interests']))[:20]
-    
+
     return signals
 
 def extract_all_pinterest_signals(pinterest_data):
@@ -342,9 +436,11 @@ def combine_all_signals(platform_data):
     if all_signals['tiktok'].get('hashtags'):
         combined['all_hashtags'].update(all_signals['tiktok']['hashtags'])
     
-    # Combine brands
+    # Combine brands (from all platforms)
     if all_signals['instagram'].get('brand_mentions'):
         combined['all_brands'].update(all_signals['instagram']['brand_mentions'])
+    if all_signals['tiktok'].get('brand_mentions'):
+        combined['all_brands'].update(all_signals['tiktok']['brand_mentions'])
     
     # Combine activities
     if all_signals['instagram'].get('activity_types'):

@@ -81,10 +81,14 @@ MAX_ROWS_TO_SCAN_PER_FEED = 3500
 
 def _stream_feed_and_match(feed_url, search_queries, max_results_from_feed, seen_ids):
     """
-    Stream a feed CSV and yield only rows that match any search query (terms or primary_term).
+    Download a feed CSV (buffered, not raw-stream) and yield rows that match any search query.
     Stops when we have max_results_from_feed matches or after MAX_ROWS_TO_SCAN_PER_FEED rows.
-    Keeps memory small so we can afford to open many feeds.
+
+    We buffer the first ~4 MB into memory rather than wrapping the raw socket with TextIOWrapper,
+    because many Awin feeds close the socket mid-read ("I/O operation on closed file").
     """
+    BUFFER_BYTES = 4 * 1024 * 1024  # 4 MB — enough for ~3500 CSV rows
+
     try:
         r = requests.get(feed_url, timeout=90, stream=True)
         r.raise_for_status()
@@ -92,15 +96,35 @@ def _stream_feed_and_match(feed_url, search_queries, max_results_from_feed, seen
         logger.warning("Awin feed stream failed: %s", e)
         return
 
-    # Required for gzip-compressed feeds: decompress on read (else "I/O operation on closed file")
-    r.raw.decode_content = True
+    r.raw.decode_content = True  # handle gzip/deflate at the urllib3 level
+
+    # Buffer first BUFFER_BYTES so we aren't at the mercy of the socket staying open
+    try:
+        chunks = []
+        total = 0
+        for chunk in r.iter_content(chunk_size=64 * 1024):
+            chunks.append(chunk)
+            total += len(chunk)
+            if total >= BUFFER_BYTES:
+                break
+        r.close()
+        data = b"".join(chunks)
+    except Exception as e:
+        logger.warning("Awin feed download failed: %s", e)
+        try:
+            r.close()
+        except Exception:
+            pass
+        return
+
+    if not data:
+        return
 
     count = 0
     scanned = 0
-    text_stream = None
     try:
-        text_stream = io.TextIOWrapper(r.raw, encoding="utf-8", errors="replace", newline="")
-        reader = csv.DictReader(text_stream)
+        text = data.decode("utf-8", errors="replace")
+        reader = csv.DictReader(io.StringIO(text, newline=""))
         for row in reader:
             scanned += 1
             if count >= max_results_from_feed or scanned > MAX_ROWS_TO_SCAN_PER_FEED:
@@ -126,20 +150,9 @@ def _stream_feed_and_match(feed_url, search_queries, max_results_from_feed, seen
                 yield product
                 break
     except Exception as e:
-        logger.warning("Awin feed stream parse failed: %s", e)
-    finally:
-        # Close text_stream first (it wraps r.raw), then close r
-        if text_stream:
-            try:
-                text_stream.close()
-            except Exception:
-                pass
-        try:
-            r.close()
-        except Exception:
-            pass
+        logger.warning("Awin feed parse failed (buffered): %s", e)
     if scanned > 0:
-        logger.debug("Awin stream: scanned %s rows, matched %s", scanned, count)
+        logger.debug("Awin buffered: scanned %s rows, matched %s from %s", scanned, count, feed_url[:80])
 
 
 def _fetch_feed_nonstream(feed_url, search_queries, max_results_from_feed, seen_ids):
@@ -189,6 +202,8 @@ def _fetch_feed_nonstream(feed_url, search_queries, max_results_from_feed, seen_
 
 def _stream_feed_first_n(feed_url, n, seen_ids):
     """Yield first n valid products from feed (no query match). Used when matching returns 0."""
+    BUFFER_BYTES = 1 * 1024 * 1024  # 1 MB — only need a few rows
+
     try:
         r = requests.get(feed_url, timeout=90, stream=True)
         r.raise_for_status()
@@ -196,11 +211,32 @@ def _stream_feed_first_n(feed_url, n, seen_ids):
         logger.warning("Awin feed stream failed: %s", e)
         return
     r.raw.decode_content = True
-    count = 0
-    text_stream = None
+
     try:
-        text_stream = io.TextIOWrapper(r.raw, encoding="utf-8", errors="replace", newline="")
-        reader = csv.DictReader(text_stream)
+        chunks = []
+        total = 0
+        for chunk in r.iter_content(chunk_size=64 * 1024):
+            chunks.append(chunk)
+            total += len(chunk)
+            if total >= BUFFER_BYTES:
+                break
+        r.close()
+        data = b"".join(chunks)
+    except Exception as e:
+        logger.warning("Awin feed download failed (first_n): %s", e)
+        try:
+            r.close()
+        except Exception:
+            pass
+        return
+
+    if not data:
+        return
+
+    count = 0
+    try:
+        text = data.decode("utf-8", errors="replace")
+        reader = csv.DictReader(io.StringIO(text, newline=""))
         for row in reader:
             if count >= n:
                 break
@@ -211,22 +247,13 @@ def _stream_feed_first_n(feed_url, n, seen_ids):
             count += 1
             yield product
     except Exception as e:
-        logger.warning("Awin feed stream parse failed: %s", e)
-    finally:
-        # Close text_stream first (it wraps r.raw), then close r
-        if text_stream:
-            try:
-                text_stream.close()
-            except Exception:
-                pass
-        try:
-            r.close()
-        except Exception:
-            pass
+        logger.warning("Awin feed parse failed (first_n): %s", e)
 
 
 def _download_feed_csv(feed_url):
-    """Download feed CSV; stream-read and cap at MAX_ROWS_PER_FEED to avoid OOM on large feeds."""
+    """Download feed CSV; buffer first 4 MB and cap at MAX_ROWS_PER_FEED to avoid OOM on large feeds."""
+    BUFFER_BYTES = 4 * 1024 * 1024
+
     try:
         r = requests.get(feed_url, timeout=60, stream=True)
         r.raise_for_status()
@@ -234,11 +261,29 @@ def _download_feed_csv(feed_url):
         logger.warning("Awin feed download failed: %s", e)
         return []
     r.raw.decode_content = True
-    rows = []
-    text_stream = None
+
     try:
-        text_stream = io.TextIOWrapper(r.raw, encoding="utf-8", errors="replace", newline="")
-        reader = csv.DictReader(text_stream)
+        chunks = []
+        total = 0
+        for chunk in r.iter_content(chunk_size=64 * 1024):
+            chunks.append(chunk)
+            total += len(chunk)
+            if total >= BUFFER_BYTES:
+                break
+        r.close()
+        data = b"".join(chunks)
+    except Exception as e:
+        logger.warning("Awin feed download read failed: %s", e)
+        try:
+            r.close()
+        except Exception:
+            pass
+        return []
+
+    rows = []
+    try:
+        text = data.decode("utf-8", errors="replace")
+        reader = csv.DictReader(io.StringIO(text, newline=""))
         for i, row in enumerate(reader):
             if i >= MAX_ROWS_PER_FEED:
                 break
@@ -246,17 +291,6 @@ def _download_feed_csv(feed_url):
     except Exception as e:
         logger.warning("Awin feed parse failed: %s", e)
         return []
-    finally:
-        # Close text_stream first (it wraps r.raw), then close r
-        if text_stream:
-            try:
-                text_stream.close()
-            except Exception:
-                pass
-        try:
-            r.close()
-        except Exception:
-            pass
     logger.info("Awin feed parsed: %s product rows (max %s per feed)", len(rows), MAX_ROWS_PER_FEED)
     return rows
 
@@ -428,11 +462,13 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
     seen_ids = set()
     feeds_used = []
 
-    for feed_info in ordered_feeds[:max_feeds]:
+    logger.info("Awin searching %d feeds (joined=%d, total=%d)", min(max_feeds, len(ordered_feeds)), len(joined), len(feed_list))
+    for idx, feed_info in enumerate(ordered_feeds[:max_feeds]):
         if len(all_products) >= target_count:
             break
         feed_url = feed_info.get("url")
         advertiser = feed_info.get("advertiser_name", "Awin")
+        logger.info("Awin feed %d/%d: %s (%s)", idx + 1, min(max_feeds, len(ordered_feeds)), advertiser, feed_info.get("vertical", "?"))
         need = min(per_feed_target, target_count - len(all_products))
         feed_count = 0
         for product in _stream_feed_and_match(feed_url, search_queries, need, seen_ids):

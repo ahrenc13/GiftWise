@@ -301,7 +301,7 @@ Extract and structure the following information:
 3. **STYLE & AESTHETIC PREFERENCES**:
    - Visual style (minimalist, maximalist, vintage, modern, etc.)
    - Color preferences
-   - Brand preferences (specific brands they mention/tag)
+   - Brand preferences — be EXHAUSTIVE. List EVERY brand, company, team, artist, or creator they tag (@mentions), wear, use, hashtag, or reference. Include fashion brands (Zara, Lululemon), tech (Apple, Sony), food/drink (Starbucks, Nespresso), sports teams (Pacers, Colts), artists (Taylor Swift), creators, and niche brands. Aim for 5-15+ brands. More is better — we use this to personalize search results.
    - Quality level (budget, mid-range, premium, luxury)
 
 4. **PRICE POINT SIGNALS**:
@@ -346,7 +346,7 @@ Return ONLY a JSON object with this structure:
   "style_preferences": {{
     "visual_style": "description",
     "colors": ["color preferences"],
-    "brands": ["specific brands they mention"],
+    "brands": ["EVERY brand/company/artist they tag, mention, wear, use, or follow — be exhaustive, not conservative. Include clothing brands, tech brands, food/drink brands, sports teams, artists, creators. Aim for 5-15 brands."],
     "quality_level": "budget|mid-range|premium|luxury"
   }},
   "price_signals": {{

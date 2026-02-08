@@ -20,6 +20,23 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+
+def _ci_get(row, *keys):
+    """Case-insensitive dict lookup: try each key against actual row keys."""
+    # Fast path: try exact match first
+    for k in keys:
+        v = row.get(k)
+        if v:
+            return v.strip() if isinstance(v, str) else v
+    # Slow path: case-insensitive match
+    row_lower = {k.lower().strip(): v for k, v in row.items()}
+    for k in keys:
+        v = row_lower.get(k.lower().strip())
+        if v:
+            return v.strip() if isinstance(v, str) else v
+    return ""
+
+
 # In-memory cache: feed list and one feed's products. TTL 1 hour.
 _awin_feed_list_cache = {}
 _awin_feed_list_ts = 0
@@ -49,15 +66,48 @@ def _get_feed_list(api_key):
 
     reader = csv.DictReader(io.StringIO(text))
     rows = list(reader)
+
+    # Log actual column names on first fetch for debugging
+    if rows:
+        logger.info("Awin feed list columns: %s", list(rows[0].keys()))
+        # Sample membership status values to debug joined=0
+        statuses = set()
+        for r in rows[:30]:
+            for k in r:
+                if 'status' in k.lower() or 'member' in k.lower() or 'join' in k.lower():
+                    statuses.add(f"{k}={r[k]}")
+            # Also check by common Awin column names
+            for col in ("Membership Status", "membership_status", "Joined", "Status"):
+                v = r.get(col)
+                if v:
+                    statuses.add(f"{col}={v}")
+        if statuses:
+            logger.info("Awin feed list status-like values (sample): %s", statuses)
+
     # Normalize column names (could be with/without spaces); include Vertical and Feed Name for relevance
     out = []
     for row in rows:
-        url_val = (row.get("URL") or row.get("url") or "").strip()
-        feed_id = (row.get("Feed ID") or row.get("Feed Id") or row.get("feed_id") or "").strip()
-        advertiser = (row.get("Advertiser Name") or row.get("advertiser_name") or "").strip()
-        status = (row.get("Membership Status") or row.get("membership_status") or "").strip()
-        feed_name = (row.get("Feed Name") or row.get("feed_name") or "").strip()
-        vertical = (row.get("Vertical") or row.get("vertical") or "").strip()
+        # Case-insensitive column lookup helper
+        ci = {k.lower().strip(): v for k, v in row.items()}
+        url_val = (ci.get("url") or "").strip()
+        feed_id = (ci.get("feed id") or ci.get("feed_id") or "").strip()
+        advertiser = (ci.get("advertiser name") or ci.get("advertiser_name") or "").strip()
+        # Awin uses various column names for membership: check all known variants
+        status = (ci.get("membership status") or ci.get("membership_status")
+                  or ci.get("joined") or ci.get("status") or "").strip()
+        feed_name = (ci.get("feed name") or ci.get("feed_name") or ci.get("name") or "").strip()
+        vertical = (ci.get("vertical") or ci.get("primary region") or "").strip()
+        # Also extract number of products and language for smarter feed selection
+        num_products = 0
+        for np_col in ("no of products", "no_of_products", "number of products", "products"):
+            np_val = ci.get(np_col)
+            if np_val:
+                try:
+                    num_products = int(str(np_val).strip().replace(",", ""))
+                except (ValueError, TypeError):
+                    pass
+                break
+        language = (ci.get("language") or ci.get("primary region") or "").strip()
         if url_val:
             out.append({
                 "url": url_val,
@@ -66,10 +116,17 @@ def _get_feed_list(api_key):
                 "membership_status": status,
                 "feed_name": feed_name,
                 "vertical": vertical,
+                "num_products": num_products,
+                "language": language,
             })
     _awin_feed_list_cache[api_key] = out
     _awin_feed_list_ts = now
-    logger.info("Awin feed list: %s feeds", len(out))
+    # Log breakdown of statuses
+    status_counts = {}
+    for f in out:
+        s = f.get("membership_status", "").lower() or "(empty)"
+        status_counts[s] = status_counts.get(s, 0) + 1
+    logger.info("Awin feed list: %s feeds, status breakdown: %s", len(out), status_counts)
     return out
 
 
@@ -127,6 +184,14 @@ def _stream_feed_and_match(feed_url, search_queries, max_results_from_feed, seen
         reader = csv.DictReader(io.StringIO(text, newline=""))
         for row in reader:
             scanned += 1
+            # Log column names from first row for debugging
+            if scanned == 1:
+                logger.info("Awin feed CSV columns: %s", list(row.keys())[:20])
+                # Log a sample product to see what data we're working with
+                sample_title = _ci_get(row, "product_name", "title", "product_title", "name")
+                sample_link = _ci_get(row, "aw_deep_link", "merchant_deep_link", "deep_link", "link", "aw_product_url")
+                logger.info("Awin feed sample row: title=%s link=%s",
+                            (sample_title or "(none)")[:60], (sample_link or "(none)")[:60])
             if count >= max_results_from_feed or scanned > MAX_ROWS_TO_SCAN_PER_FEED:
                 break
             for q in search_queries:
@@ -152,7 +217,7 @@ def _stream_feed_and_match(feed_url, search_queries, max_results_from_feed, seen
     except Exception as e:
         logger.warning("Awin feed parse failed (buffered): %s", e)
     if scanned > 0:
-        logger.debug("Awin buffered: scanned %s rows, matched %s from %s", scanned, count, feed_url[:80])
+        logger.info("Awin buffered: scanned %s rows, matched %s from %s", scanned, count, feed_url[:80])
 
 
 def _fetch_feed_nonstream(feed_url, search_queries, max_results_from_feed, seen_ids):
@@ -296,33 +361,32 @@ def _download_feed_csv(feed_url):
 
 
 def _row_to_product(row, interest, query, priority):
-    """Map Awin feed row to our product dict. Supports multiple Awin feed column naming conventions."""
-    title = (row.get("product_name") or row.get("product name") or row.get("title") or row.get("product_title") or "").strip()
-    link = (row.get("aw_deep_link") or row.get("merchant_deep_link") or row.get("deep_link") or row.get("link") or "").strip()
-    # Awin feeds use various image column names; check all common variants for thumbnails
-    image = (
-        (row.get("merchant_image_url") or row.get("aw_image_url") or row.get("aw_thumb_url")
-         or row.get("image_url") or row.get("merchant_thumb") or row.get("product_image")
-         or row.get("thumb_url") or row.get("image_link") or row.get("thumbnail_url"))
-        or ""
-    ).strip()
-    price = (row.get("search_price") or row.get("store_price") or "").strip()
-    merchant = (row.get("merchant_name") or "").strip()
+    """Map Awin feed row to our product dict. Case-insensitive column lookup for robustness."""
+    title = _ci_get(row, "product_name", "product name", "title", "product_title", "name",
+                    "Product Name", "Title")
+    link = _ci_get(row, "aw_deep_link", "merchant_deep_link", "deep_link", "link",
+                   "aw_product_url", "product_url", "URL", "Merchant Deep Link")
+    image = _ci_get(row, "merchant_image_url", "aw_image_url", "aw_thumb_url",
+                    "image_url", "merchant_thumb", "product_image", "thumb_url",
+                    "image_link", "thumbnail_url", "Image URL", "Merchant Image URL")
+    price = _ci_get(row, "search_price", "store_price", "price", "Price",
+                    "rrp_price", "display_price")
+    merchant = _ci_get(row, "merchant_name", "Merchant Name", "brand_name", "brand",
+                       "advertiser_name")
     if not title:
         return None
     if not link:
         return None
-    description = (
-        row.get("product_short_description") or row.get("description")
-        or row.get("Description") or row.get("product_description") or ""
-    ).strip()
+    description = _ci_get(row, "product_short_description", "description", "Description",
+                          "product_description", "Product Description")
     snippet = description[:150] if description else (f"From {merchant}" if merchant else title[:120])
     source_domain = (
         merchant.lower().replace(" ", "").replace("-", "") + ".com"
         if merchant
         else "awin.com"
     )
-    product_id = (row.get("aw_product_id") or row.get("merchant_product_id") or "").strip() or str(hash(title + link))[:16]
+    product_id = _ci_get(row, "aw_product_id", "merchant_product_id", "product_id",
+                         "Product ID") or str(hash(title + link))[:16]
     return {
         "title": title[:200],
         "link": link,
@@ -340,16 +404,14 @@ def _row_to_product(row, interest, query, priority):
 
 
 def _product_text(row):
-    """All searchable text from a feed row; supports multiple column naming conventions."""
-    name = (
-        row.get("product_name") or row.get("product name") or row.get("Product Name")
-        or row.get("Name") or row.get("Title") or row.get("title") or row.get("product_title") or ""
-    ).strip().lower()
-    keywords = (
-        row.get("keywords") or row.get("product_short_description") or row.get("description")
-        or row.get("Description") or row.get("product_description") or ""
-    ).strip().lower()
-    return name + " " + keywords
+    """All searchable text from a feed row; case-insensitive column lookup."""
+    name = (_ci_get(row, "product_name", "product name", "Product Name", "Name",
+                    "Title", "title", "product_title") or "").lower()
+    keywords = (_ci_get(row, "keywords", "product_short_description", "description",
+                        "Description", "product_description", "category_name",
+                        "merchant_category") or "").lower()
+    brand = (_ci_get(row, "brand_name", "brand", "merchant_name") or "").lower()
+    return name + " " + keywords + " " + brand
 
 
 def _matches_query(row, query_terms):
@@ -425,19 +487,24 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
         logger.warning("Awin feed list empty or failed")
         return []
 
-    # Prefer Joined; deprioritize single-category retailers (e.g. florists) for diversity
-    _florist_keywords = ("bunch", "flower", "florist", "roses", "bouquet")
-    def _is_likely_florist(advertiser_name):
+    # Prefer Joined/active feeds; accept multiple status values
+    _active_statuses = {"joined", "active", "approved", "yes", "1", "true"}
+    _niche_keywords = ("bunch", "flower", "florist", "roses", "bouquet", "tooled up", "tools")
+
+    def _is_niche_retailer(advertiser_name):
         name = (advertiser_name or "").lower()
-        return any(k in name for k in _florist_keywords)
+        return any(k in name for k in _niche_keywords)
 
-    joined = [f for f in feed_list if (f.get("membership_status") or "").lower() == "joined"]
+    joined = [f for f in feed_list if (f.get("membership_status") or "").lower() in _active_statuses]
+    logger.info("Awin joined/active feeds: %d (out of %d total)", len(joined), len(feed_list))
     candidates = joined if joined else feed_list
-    general = [f for f in candidates if not _is_likely_florist(f.get("advertiser_name", ""))]
-    florists = [f for f in candidates if _is_likely_florist(f.get("advertiser_name", ""))]
-    ordered_feeds = general + florists
 
-    # Relevance: prefer feeds whose vertical, feed_name, or advertiser_name mention any interest
+    # Prefer English-language feeds and gift-relevant verticals
+    _gift_verticals = {"retail", "gifts", "home & garden", "sports & outdoors", "clothing & accessories",
+                       "food & drink", "health & beauty", "entertainment", "travel", "toys & games",
+                       "arts & crafts", "books", "music", "pets", "jewelry"}
+
+    # Score each feed for selection (higher = better)
     interest_keywords = set()
     for q in search_queries:
         pt = q.get("primary_term")
@@ -446,17 +513,57 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
         for w in re.split(r"\s+", (q.get("interest") or "")):
             if len(w) > 2:
                 interest_keywords.add(w.lower())
-    def _feed_relevance(feed_info):
+
+    def _feed_score(feed_info):
+        score = 0
         text = " ".join([
             (feed_info.get("vertical") or "").lower(),
             (feed_info.get("feed_name") or "").lower(),
             (feed_info.get("advertiser_name") or "").lower(),
         ])
-        return sum(1 for k in interest_keywords if k in text)
-    ordered_feeds = sorted(ordered_feeds, key=lambda f: -_feed_relevance(f))
+        # Interest keyword matches
+        score += sum(2 for k in interest_keywords if k in text)
+        # Gift-relevant vertical bonus
+        vertical_lower = (feed_info.get("vertical") or "").lower()
+        if any(v in vertical_lower for v in _gift_verticals):
+            score += 5
+        # Larger catalogs are more likely to have matches
+        num_products = feed_info.get("num_products", 0)
+        if num_products > 10000:
+            score += 3
+        elif num_products > 1000:
+            score += 2
+        elif num_products > 100:
+            score += 1
+        # English preference
+        lang = (feed_info.get("language") or "").lower()
+        if "en" in lang or "english" in lang or not lang:
+            score += 1
+        # Penalize niche single-category retailers
+        if _is_niche_retailer(feed_info.get("advertiser_name", "")):
+            score -= 5
+        return score
 
-    # Stream-and-match: use more feeds (8), scan up to MAX_ROWS_TO_SCAN_PER_FEED per feed, only keep matches
-    max_feeds = 8
+    scored_feeds = sorted(candidates, key=lambda f: -_feed_score(f))
+
+    # Deduplicate by advertiser name — only keep the best feed per advertiser
+    seen_advertisers = set()
+    ordered_feeds = []
+    for f in scored_feeds:
+        adv = (f.get("advertiser_name") or "").lower().strip()
+        if adv in seen_advertisers:
+            continue
+        seen_advertisers.add(adv)
+        ordered_feeds.append(f)
+
+    # Log top selections for debugging
+    for i, f in enumerate(ordered_feeds[:10]):
+        logger.info("Awin feed rank %d: %s (%s) score=%d products=%s",
+                     i + 1, f.get("advertiser_name", "?"), f.get("vertical", "?"),
+                     _feed_score(f), f.get("num_products", "?"))
+
+    # Stream-and-match: search top feeds, scan up to MAX_ROWS_TO_SCAN_PER_FEED per feed
+    max_feeds = 12
     per_feed_target = max((target_count + max_feeds - 1) // max_feeds, 3)
     all_products = []
     seen_ids = set()

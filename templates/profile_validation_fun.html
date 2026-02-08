@@ -5,235 +5,200 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meet {{ recipient_name }} - Giftwise</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
         }
-        
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-        }
-        
-        .personality-card {
+
+        .container { max-width: 800px; margin: 0 auto; }
+
+        /* --- Unified card --- */
+        .card {
             background: white;
             border-radius: 20px;
-            padding: 40px;
+            padding: 28px 32px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
             margin-bottom: 20px;
             animation: slideIn 0.5s ease;
         }
-        
         @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(20px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
-        
-        h1 {
-            color: #667eea;
-            margin-bottom: 15px;
-            font-size: 32px;
+
+        /* --- Hero banner (inside first card) --- */
+        .hero {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 28px;
+            border-radius: 14px;
+            text-align: center;
+            margin-bottom: 28px;
         }
-        
-        .intro {
-            color: #666;
-            font-size: 18px;
-            line-height: 1.6;
-            margin-bottom: 30px;
-        }
-        
-        .intro-lead {
-            color: #444;
-            font-size: 16px;
-            line-height: 1.65;
-            margin-bottom: 0;
-        }
-        
-        .personality-section {
-            margin-bottom: 30px;
-        }
-        
-        .section-header {
+        .hero h2 { font-size: 24px; margin-bottom: 12px; }
+        .hero p { font-size: 15px; opacity: 0.95; line-height: 1.6; }
+
+        /* --- Section headers --- */
+        .section-label {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-bottom: 20px;
-        }
-        
-        .section-emoji {
-            font-size: 36px;
-        }
-        
-        .section-title {
-            font-size: 24px;
-            color: #333;
+            gap: 10px;
+            margin: 28px 0 16px 0;
+            font-size: 20px;
             font-weight: 600;
+            color: #333;
         }
-        
+        .section-label:first-child { margin-top: 0; }
+        .section-label .emoji { font-size: 28px; }
+
+        /* --- Divider --- */
+        .divider {
+            height: 1px;
+            background: #e5e7eb;
+            margin: 24px 0;
+        }
+
+        /* --- Vibe cards (interests) --- */
         .vibe-card {
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
             color: white;
-            padding: 25px;
-            border-radius: 15px;
-            margin-bottom: 15px;
+            padding: 20px;
+            border-radius: 14px;
+            margin-bottom: 12px;
             transition: transform 0.2s;
         }
-        
-        .vibe-card:hover {
-            transform: translateY(-2px);
-        }
-        
-        .vibe-title {
-            font-size: 20px;
-            font-weight: 600;
-            margin-bottom: 8px;
-        }
-        
-        .vibe-description {
-            font-size: 15px;
-            opacity: 0.95;
-            line-height: 1.5;
-        }
-        
-        .vibe-tags {
-            margin-top: 12px;
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-        }
-        
+        .vibe-card:hover { transform: translateY(-2px); }
+        .vibe-title { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+        .vibe-description { font-size: 14px; opacity: 0.95; line-height: 1.5; }
+
+        .vibe-tags { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
         .tag {
             background: rgba(255,255,255,0.25);
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 13px;
+            padding: 4px 10px;
+            border-radius: 16px;
+            font-size: 12px;
             font-weight: 500;
             backdrop-filter: blur(10px);
         }
-        
-        .tag.work {
-            background: rgba(255,87,108,0.3);
+        .tag.work { background: rgba(255,87,108,0.3); }
+        .tag.active { background: rgba(76,217,100,0.3); }
+
+        .confidence-indicator {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 600;
+            padding: 3px 8px;
+            border-radius: 10px;
+            margin-left: 6px;
         }
-        
-        .tag.active {
-            background: rgba(76,217,100,0.3);
+        .confidence-high { background: #d4edda; color: #155724; }
+        .confidence-medium { background: #fff3cd; color: #856404; }
+
+        .correction-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+
+        /* --- Inline edit forms --- */
+        .edit-inline {
+            background: white;
+            border: 2px solid #667eea;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 10px;
+            display: none;
         }
-        
+        .edit-inline.active { display: block; }
+        .edit-inline input, .edit-inline textarea {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+        .edit-inline textarea { min-height: 60px; resize: vertical; }
+
+        /* --- Quick facts (compact rows) --- */
         .quick-facts {
             background: #f8f9fa;
             border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
+            padding: 16px 20px;
         }
-        
         .fact-row {
             display: flex;
             align-items: center;
-            padding: 12px 0;
+            flex-wrap: wrap;
+            padding: 10px 0;
             border-bottom: 1px solid #e0e0e0;
+            gap: 8px;
         }
-        
-        .fact-row:last-child {
-            border-bottom: none;
-        }
-        
-        .fact-icon {
-            font-size: 24px;
-            margin-right: 12px;
-        }
-        
-        .fact-label {
-            font-weight: 600;
-            color: #667eea;
-            margin-right: 8px;
-        }
-        
-        .fact-value {
-            color: #333;
-            flex: 1;
-        }
-        
-        .gift-strategy {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-        }
+        .fact-row:last-child { border-bottom: none; }
+        .fact-icon { font-size: 22px; flex-shrink: 0; }
+        .fact-label { font-weight: 600; color: #667eea; font-size: 14px; }
+        .fact-value { color: #333; flex: 1; font-size: 14px; }
 
+        /* Inline fact edit (replaces prompt()) */
+        .fact-edit {
+            display: none;
+            width: 100%;
+            margin-top: 6px;
+        }
+        .fact-edit.active { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .fact-edit input {
+            flex: 1;
+            min-width: 180px;
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+        .fact-edit input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 2px rgba(102,126,234,0.2); }
+
+        /* Location autocomplete */
+        .location-input-wrap { position: relative; flex: 1; min-width: 200px; max-width: 320px; }
+        .location-input-wrap input { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 14px; }
+        .location-input-wrap input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 2px rgba(102,126,234,0.2); }
+        .location-autocomplete { position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px; background: white; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10; max-height: 220px; overflow-y: auto; }
+        .location-autocomplete li { list-style: none; padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #333; }
+        .location-autocomplete li:last-child { border-bottom: none; }
+        .location-autocomplete li:hover { background: #f0f4ff; }
+        .location-hint { font-size: 12px; color: #888; margin-top: 4px; }
+
+        /* --- Gift strategy (compact) --- */
+        .gift-strategy { display: flex; flex-direction: column; gap: 8px; }
         .strategy-block {
             display: flex;
             align-items: flex-start;
-            gap: 10px;
-            padding: 10px 14px;
+            gap: 8px;
+            padding: 8px 12px;
             background: #f8f9fa;
-            border-radius: 10px;
+            border-radius: 8px;
         }
+        .strategy-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+        .strategy-hint { font-size: 13px; color: #888; }
 
-        .strategy-icon {
-            font-size: 20px;
-            flex-shrink: 0;
-            margin-top: 1px;
-        }
-
-        .strategy-hint {
-            font-size: 13px;
-            color: #888;
-        }
-
-        .intel-section {
-            margin-bottom: 20px;
-        }
-
+        /* --- Intel report (collapsible) --- */
         .intel-toggle {
             display: flex;
             align-items: center;
             gap: 10px;
             cursor: pointer;
-            padding: 14px 18px;
+            padding: 12px 16px;
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             color: #a0e7ff;
             border-radius: 12px;
-            font-size: 15px;
+            font-size: 14px;
             font-weight: 600;
             user-select: none;
             transition: all 0.2s;
         }
-
-        .intel-toggle:hover {
-            background: linear-gradient(135deg, #16213e 0%, #0f3460 100%);
-        }
-
-        .intel-toggle .chevron {
-            transition: transform 0.3s;
-            font-size: 12px;
-            margin-left: auto;
-        }
-
-        .intel-toggle.open .chevron {
-            transform: rotate(90deg);
-        }
-
-        .intel-body {
-            display: none;
-            padding: 16px 0 0 0;
-        }
-
-        .intel-body.open {
-            display: block;
-        }
+        .intel-toggle:hover { background: linear-gradient(135deg, #16213e 0%, #0f3460 100%); }
+        .intel-toggle .chevron { transition: transform 0.3s; font-size: 12px; margin-left: auto; }
+        .intel-toggle.open .chevron { transform: rotate(90deg); }
+        .intel-body { display: none; padding: 16px 0 0 0; }
+        .intel-body.open { display: block; }
 
         .intel-card {
             background: #f0f4ff;
@@ -242,34 +207,10 @@
             margin-bottom: 10px;
             border-left: 3px solid #667eea;
         }
+        .intel-card-title { font-weight: 600; font-size: 14px; color: #333; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+        .intel-card-body { font-size: 13px; color: #555; line-height: 1.5; }
 
-        .intel-card-title {
-            font-weight: 600;
-            font-size: 14px;
-            color: #333;
-            margin-bottom: 6px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .intel-card-body {
-            font-size: 13px;
-            color: #555;
-            line-height: 1.5;
-        }
-
-        .intel-tag {
-            display: inline-block;
-            background: white;
-            border: 1px solid #ddd;
-            padding: 3px 10px;
-            border-radius: 14px;
-            font-size: 12px;
-            margin: 2px 3px;
-            color: #444;
-        }
-
+        .intel-tag { display: inline-block; background: white; border: 1px solid #ddd; padding: 3px 10px; border-radius: 14px; font-size: 12px; margin: 2px 3px; color: #444; }
         .intel-tag.good { border-color: #10b981; color: #065f46; background: #ecfdf5; }
         .intel-tag.bad { border-color: #ef4444; color: #991b1b; background: #fef2f2; }
         .intel-tag.trend { border-color: #8b5cf6; color: #5b21b6; background: #f5f3ff; }
@@ -283,65 +224,13 @@
             border: 1px solid #e5e7eb;
             transition: background 0.15s;
         }
+        .intel-interest-row:hover { background: #f8faff; }
+        .intel-interest-name { font-weight: 600; font-size: 14px; color: #333; }
+        .intel-interest-detail { display: none; padding-top: 8px; margin-top: 8px; border-top: 1px solid #f0f0f0; }
+        .intel-interest-detail.open { display: block; }
+        .intel-detail-label { font-size: 12px; font-weight: 600; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 6px; margin-bottom: 3px; }
 
-        .intel-interest-row:hover {
-            background: #f8faff;
-        }
-
-        .intel-interest-name {
-            font-weight: 600;
-            font-size: 14px;
-            color: #333;
-        }
-
-        .intel-interest-detail {
-            display: none;
-            padding-top: 8px;
-            margin-top: 8px;
-            border-top: 1px solid #f0f0f0;
-        }
-
-        .intel-interest-detail.open {
-            display: block;
-        }
-
-        .intel-detail-label {
-            font-size: 12px;
-            font-weight: 600;
-            color: #888;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-top: 6px;
-            margin-bottom: 3px;
-        }
-
-        .validation-prompt {
-            background: #fff3cd;
-            border-left: 4px solid #ffc107;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 20px 0;
-        }
-        
-        .validation-prompt h3 {
-            color: #856404;
-            font-size: 16px;
-            margin-bottom: 8px;
-        }
-        
-        .validation-prompt p {
-            color: #856404;
-            font-size: 14px;
-            line-height: 1.5;
-        }
-        
-        .correction-buttons {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            margin-top: 15px;
-        }
-        
+        /* --- Buttons --- */
         button {
             border: none;
             border-radius: 8px;
@@ -350,22 +239,8 @@
             cursor: pointer;
             transition: all 0.2s;
         }
-        
-        button.small {
-            padding: 8px 14px;
-            font-size: 13px;
-        }
-        
-        .actions {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 16px;
-            justify-content: center;
-            align-items: center;
-            margin-top: 30px;
-        }
-        
-        /* Primary CTA: Find my gifts - stands out */
+        button.small { padding: 6px 12px; font-size: 12px; }
+
         button.primary {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
@@ -373,121 +248,64 @@
             font-size: 18px;
             box-shadow: 0 4px 14px rgba(16, 185, 129, 0.4);
         }
-        
         button.primary:hover {
             background: linear-gradient(135deg, #059669 0%, #047857 100%);
             transform: translateY(-2px);
             box-shadow: 0 6px 18px rgba(16, 185, 129, 0.45);
         }
-        
-        /* Secondary: Back to platforms - low emphasis */
+
         button.secondary {
             background: transparent;
             color: #666;
-            padding: 12px 20px;
-            font-size: 14px;
+            padding: 10px 16px;
+            font-size: 13px;
             border: 1px solid #ccc;
         }
-        
-        button.secondary:hover {
-            background: #f5f5f5;
-            color: #333;
-            border-color: #999;
+        button.secondary:hover { background: #f5f5f5; color: #333; border-color: #999; }
+
+        button.secondary.small { background: #f0f0f0; color: #555; border: 1px solid #ddd; }
+        button.secondary.small:hover { background: #e5e5e5; }
+
+        button.small.work-toggle { background: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; }
+        button.small.work-toggle:hover { background: #a7f3d0; }
+
+        /* --- CTA bar --- */
+        .cta-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 16px;
+            justify-content: center;
+            align-items: center;
+            padding: 20px 0 0 0;
         }
-        
-        .location-input-wrap { position: relative; flex: 1; max-width: 320px; }
-        .location-input-wrap input { width: 100%; padding: 10px 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; }
-        .location-input-wrap input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 2px rgba(102,126,234,0.2); }
-        .location-autocomplete { position: absolute; left: 0; right: 0; top: 100%; margin-top: 4px; background: white; border: 1px solid #e0e0e0; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 10; max-height: 220px; overflow-y: auto; }
-        .location-autocomplete li { list-style: none; padding: 10px 12px; cursor: pointer; border-bottom: 1px solid #f0f0f0; font-size: 14px; color: #333; }
-        .location-autocomplete li:last-child { border-bottom: none; }
-        .location-autocomplete li:hover { background: #f0f4ff; }
-        .location-hint { font-size: 13px; color: #666; margin-top: 6px; }
-        
-        button.secondary.small {
-            background: #f0f0f0;
-            color: #555;
-            border: 1px solid #ddd;
-        }
-        
-        button.secondary.small:hover {
-            background: #e5e5e5;
-        }
-        
-        button.small.work-toggle {
-            background: #d1fae5;
-            color: #065f46;
-            border: 1px solid #6ee7b7;
-        }
-        
-        button.small.work-toggle:hover {
-            background: #a7f3d0;
-        }
-        
-        .confidence-indicator {
-            display: inline-block;
-            font-size: 12px;
-            font-weight: 600;
-            padding: 4px 10px;
-            border-radius: 12px;
-            margin-left: 10px;
-        }
-        
-        .confidence-high {
-            background: #d4edda;
-            color: #155724;
-        }
-        
-        .confidence-medium {
-            background: #fff3cd;
-            color: #856404;
-        }
-        
-        .edit-inline {
-            background: white;
-            border: 2px solid #667eea;
-            border-radius: 8px;
-            padding: 12px;
-            margin-top: 10px;
+
+        /* --- Add interest form --- */
+        .add-interest-form {
             display: none;
+            margin-top: 12px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            border: 1px solid #e0e0e0;
         }
-        
-        .edit-inline.active {
-            display: block;
-        }
-        
-        .edit-inline input, .edit-inline textarea {
+        .add-interest-form label { display: block; font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+        .add-interest-form input, .add-interest-form textarea {
             width: 100%;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
+            max-width: 320px;
+            padding: 8px 10px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
             font-size: 14px;
-            margin-bottom: 8px;
         }
-        
-        .edit-inline textarea {
-            min-height: 60px;
-            resize: vertical;
-        }
-        
-        .personality-summary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 30px;
-            border-radius: 15px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        .personality-summary h2 {
-            font-size: 28px;
-            margin-bottom: 15px;
-        }
-        
-        .personality-summary p {
-            font-size: 16px;
-            opacity: 0.95;
-            line-height: 1.6;
+        .add-interest-form textarea { min-height: 60px; }
+
+        @media (max-width: 600px) {
+            .card { padding: 20px 16px; }
+            .hero { padding: 20px 16px; }
+            .hero h2 { font-size: 20px; }
+            .section-label { font-size: 18px; }
+            .fact-row { flex-direction: column; align-items: flex-start; }
         }
     </style>
 </head>
@@ -495,339 +313,335 @@
     <div class="container">
         {% set pronoun_possessive = 'your' if recipient_name == 'You' else 'their' %}
         {% set pronoun_subject = 'you' if recipient_name == 'You' else 'they' %}
-        <!-- Personality Summary -->
-        <div class="personality-card">
-            <div class="personality-summary">
-                <h2>🎯 Here's What We Learned About {{ recipient_name }}</h2>
-                <p class="intro-lead">Based on {{ pronoun_possessive }} social media, we built this profile. <strong>Why review?</strong> If we mixed up <em>work</em> (e.g. IMS medical team) with <em>hobbies</em>, we might suggest "behind the scenes at IMS" as a gift—{{ pronoun_subject }} already work there! Mark work vs. hobby, fix anything wrong, then hit <strong>Find my gifts</strong>.</p>
+
+        <!-- ===== CARD 1: Profile (hero + interests + quick facts + strategy) ===== -->
+        <div class="card">
+            <!-- Hero -->
+            <div class="hero">
+                <h2>Here's What We Learned About {{ recipient_name }}</h2>
+                <p>Based on {{ pronoun_possessive }} social media, we built this profile. <strong>Why review?</strong> If we mixed up <em>work</em> with <em>hobbies</em>, we might suggest gifts from {{ pronoun_possessive }} job. Mark work vs. hobby, fix anything wrong, then hit <strong>Find my gifts</strong>.</p>
             </div>
-        </div>
-        
-        <!-- Vibe Section -->
-        <div class="personality-card">
-            <div class="personality-section">
-                <div class="section-header">
-                    <span class="section-emoji">✨</span>
-                    <h2 class="section-title">{{ recipient_name }}'s Vibe</h2>
+
+            <!-- Interests -->
+            <div class="section-label"><span class="emoji">✨</span> {{ recipient_name }}'s Vibe</div>
+
+            {% for interest in interests %}
+            <div class="vibe-card" data-interest-id="{{ loop.index0 }}">
+                <div class="vibe-title">{{ interest.name }}</div>
+                <div class="vibe-description">{{ interest.description }}</div>
+                <div class="vibe-tags">
+                    {% if interest.is_work %}
+                    <span class="tag work">🏢 Work (won't suggest gifts)</span>
+                    {% endif %}
+                    {% if interest.activity_type == 'active' %}
+                    <span class="tag active">🏃 Does This</span>
+                    {% else %}
+                    <span class="tag">👀 Watches/Enjoys</span>
+                    {% endif %}
+                    {% if interest.confidence %}
+                    <span class="confidence-indicator confidence-{{ 'high' if interest.confidence > 0.7 else 'medium' }}">
+                        {{ (interest.confidence * 100) | int }}% sure
+                    </span>
+                    {% endif %}
                 </div>
-                
-                {% for interest in interests %}
-                <div class="vibe-card" data-interest-id="{{ loop.index0 }}">
-                    <div class="vibe-title">{{ interest.name }}</div>
-                    <div class="vibe-description">{{ interest.description }}</div>
-                    <div class="vibe-tags">
-                        {% if interest.is_work %}
-                        <span class="tag work">🏢 Work Thing (won't suggest gifts here)</span>
-                        {% endif %}
-                        
-                        {% if interest.activity_type == 'active' %}
-                        <span class="tag active">🏃 Actually Does This</span>
-                        {% else %}
-                        <span class="tag">👀 Watches/Enjoys This</span>
-                        {% endif %}
-                        
-                        {% if interest.confidence %}
-                        <span class="confidence-indicator confidence-{{ 'high' if interest.confidence > 0.7 else 'medium' }}">
-                            {{ (interest.confidence * 100) | int }}% sure
-                        </span>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="correction-buttons">
-                        <button class="small secondary" onclick="editInterest({{ loop.index0 }})">✏️ Edit</button>
-                        <button class="small secondary" onclick="removeInterest({{ loop.index0 }})">❌ Remove</button>
-                        {% if interest.is_work %}
-                        <button class="small work-toggle" onclick="toggleWork({{ loop.index0 }})">Mark as hobby (we'll suggest gifts)</button>
-                        {% else %}
-                        <button class="small secondary" onclick="toggleWork({{ loop.index0 }})">Mark as work (we won't suggest gifts here)</button>
-                        {% endif %}
-                    </div>
-                    
-                    <div class="edit-inline" id="edit-{{ loop.index0 }}">
-                        <input type="text" id="name-{{ loop.index0 }}" value="{{ interest.name }}" placeholder="Interest name">
-                        <textarea id="desc-{{ loop.index0 }}" placeholder="What {{ pronoun_subject }} like about it">{{ interest.description }}</textarea>
-                        <button class="small" onclick="saveEdit({{ loop.index0 }})">💾 Save</button>
-                        <button class="small secondary" onclick="cancelEdit({{ loop.index0 }})">Cancel</button>
-                    </div>
+                <div class="correction-buttons">
+                    <button class="small secondary" onclick="editInterest({{ loop.index0 }})">✏️ Edit</button>
+                    <button class="small secondary" onclick="removeInterest({{ loop.index0 }})">❌ Remove</button>
+                    {% if interest.is_work %}
+                    <button class="small work-toggle" onclick="toggleWork({{ loop.index0 }})">Mark as hobby</button>
+                    {% else %}
+                    <button class="small secondary" onclick="toggleWork({{ loop.index0 }})">Mark as work</button>
+                    {% endif %}
                 </div>
-                {% endfor %}
-                
-                <div id="add-interest-form" style="display: none; margin-top: 15px; padding: 20px; background: #f8f9fa; border-radius: 12px; border: 1px solid #e0e0e0;">
-                    <h4 style="margin-bottom: 12px;">Add an interest</h4>
-                    <p style="font-size: 14px; color: #555; margin-bottom: 12px;">We'll include it when finding gifts.</p>
-                    <label style="display: block; font-weight: 600; margin-bottom: 4px;">Interest name</label>
-                    <input type="text" id="new-interest-name" placeholder="e.g. Vintage vinyl" style="width: 100%; max-width: 320px; padding: 10px; margin-bottom: 12px; border-radius: 8px; border: 1px solid #ccc;">
-                    <label style="display: block; font-weight: 600; margin-bottom: 4px;">What do {{ pronoun_subject }} like about it? (optional)</label>
-                    <textarea id="new-interest-desc" placeholder="e.g. Collects 70s rock" style="width: 100%; max-width: 320px; padding: 10px; margin-bottom: 12px; border-radius: 8px; border: 1px solid #ccc; min-height: 60px;"></textarea>
-                    <label style="display: block; font-weight: 600; margin-bottom: 8px;">Is this related to {{ pronoun_possessive }} job/work?</label>
-                    <div style="margin-bottom: 12px;">
-                        <label style="margin-right: 16px;"><input type="radio" name="new-interest-work" id="new-interest-work-no" value="no" checked> No, it's a hobby</label>
-                        <label><input type="radio" name="new-interest-work" id="new-interest-work-yes" value="yes"> Yes, it's work</label>
-                    </div>
-                    <label style="display: block; font-weight: 600; margin-bottom: 8px;">Do {{ pronoun_subject }} actively do this?</label>
-                    <div style="margin-bottom: 16px;">
-                        <label style="margin-right: 16px;"><input type="radio" name="new-interest-active" id="new-interest-active-yes" value="yes" checked> Yes, {{ pronoun_subject }} do it</label>
-                        <label><input type="radio" name="new-interest-active" id="new-interest-active-no" value="no"> No, {{ pronoun_subject }} mostly watch/enjoy</label>
-                    </div>
-                    <button type="button" class="small primary" onclick="submitAddInterest()">Add to profile</button>
-                    <button type="button" class="small secondary" onclick="cancelAddInterest()" style="margin-left: 8px;">Cancel</button>
-                </div>
-                <div id="add-interest-btn-wrap">
-                    <button class="secondary" onclick="showAddInterestForm()" style="margin-top: 15px;">+ Add Something We Missed</button>
+                <div class="edit-inline" id="edit-{{ loop.index0 }}">
+                    <input type="text" id="name-{{ loop.index0 }}" value="{{ interest.name }}" placeholder="Interest name">
+                    <textarea id="desc-{{ loop.index0 }}" placeholder="What {{ pronoun_subject }} like about it">{{ interest.description }}</textarea>
+                    <button class="small" onclick="saveEdit({{ loop.index0 }})">Save</button>
+                    <button class="small secondary" onclick="cancelEdit({{ loop.index0 }})">Cancel</button>
                 </div>
             </div>
-        </div>
-        
-        <!-- About Them (consolidated: location, style, brands, budget, pet, family, venues) -->
-        <div class="personality-card">
-            <div class="personality-section">
-                <div class="section-header">
-                    <span class="section-emoji">📋</span>
-                    <h2 class="section-title">About {{ recipient_name }}</h2>
+            {% endfor %}
+
+            <div id="add-interest-form" class="add-interest-form">
+                <label>Interest name</label>
+                <input type="text" id="new-interest-name" placeholder="e.g. Vintage vinyl">
+                <label>What do {{ pronoun_subject }} like about it? (optional)</label>
+                <textarea id="new-interest-desc" placeholder="e.g. Collects 70s rock"></textarea>
+                <label>Is this related to {{ pronoun_possessive }} job?</label>
+                <div style="margin-bottom: 10px;">
+                    <label style="margin-right: 16px; font-weight: normal;"><input type="radio" name="new-interest-work" id="new-interest-work-no" value="no" checked> No, hobby</label>
+                    <label style="font-weight: normal;"><input type="radio" name="new-interest-work" id="new-interest-work-yes" value="yes"> Yes, work</label>
+                </div>
+                <label>Do {{ pronoun_subject }} actively do this?</label>
+                <div style="margin-bottom: 12px;">
+                    <label style="margin-right: 16px; font-weight: normal;"><input type="radio" name="new-interest-active" id="new-interest-active-yes" value="yes" checked> Yes</label>
+                    <label style="font-weight: normal;"><input type="radio" name="new-interest-active" id="new-interest-active-no" value="no"> No, {{ pronoun_subject }} watch/enjoy</label>
+                </div>
+                <button type="button" class="small primary" onclick="submitAddInterest()" style="padding: 8px 16px; font-size: 13px;">Add to profile</button>
+                <button type="button" class="small secondary" onclick="cancelAddInterest()" style="margin-left: 6px;">Cancel</button>
+            </div>
+            <div id="add-interest-btn-wrap">
+                <button class="secondary" onclick="showAddInterestForm()" style="margin-top: 12px;">+ Add Something We Missed</button>
+            </div>
+
+            <!-- Divider -->
+            <div class="divider"></div>
+
+            <!-- Quick Facts -->
+            <div class="section-label"><span class="emoji">📋</span> About {{ recipient_name }}</div>
+
+            <div class="quick-facts">
+                <!-- Location -->
+                <div class="fact-row" id="location-row">
+                    <span class="fact-icon">🌎</span>
+                    <span class="fact-label">Location:</span>
+                    <span class="fact-value" id="location-display" style="{% if not profile.location_context or not profile.location_context.city_region %}display: none;{% endif %}">{% if profile.location_context and profile.location_context.city_region %}{{ profile.location_context.city_region }}{% if profile.location_context.state %}, {{ profile.location_context.state }}{% endif %}{% endif %}</span>
+                    <div class="location-input-wrap" id="location-edit-wrap" style="display: {% if profile.location_context and profile.location_context.city_region %}none{% else %}block{% endif %};">
+                        <input type="text" id="location-input" placeholder="Start typing a city…" autocomplete="off" value="{{ profile.location_context.city_region or '' }}">
+                        <ul class="location-autocomplete" id="location-autocomplete" style="display: none;"></ul>
+                        <span class="location-hint">Helps us suggest local experiences</span>
+                    </div>
+                    <button class="small secondary" id="location-edit-btn" onclick="editLocation()" style="{% if not profile.location_context or not profile.location_context.city_region %}display: none;{% endif %}">Edit</button>
                 </div>
 
-                <div class="quick-facts">
-                    <!-- Location -->
-                    <div class="fact-row" id="location-row">
-                        <span class="fact-icon">🌎</span>
-                        <span class="fact-label">Location:</span>
-                        <span class="fact-value" id="location-display" style="{% if not profile.location_context or not profile.location_context.city_region %}display: none;{% endif %}">{% if profile.location_context and profile.location_context.city_region %}{{ profile.location_context.city_region }}{% if profile.location_context.state %}, {{ profile.location_context.state }}{% endif %}{% endif %}</span>
-                        <div class="location-input-wrap" id="location-edit-wrap" style="display: {% if profile.location_context and profile.location_context.city_region %}none{% else %}block{% endif %};">
-                            <input type="text" id="location-input" placeholder="Start typing a city or region…" autocomplete="off" value="{{ profile.location_context.city_region or '' }}">
-                            <ul class="location-autocomplete" id="location-autocomplete" style="display: none;"></ul>
-                            <span class="location-hint">Helps us suggest local experiences</span>
-                        </div>
-                        <button class="small secondary" id="location-edit-btn" onclick="editLocation()" style="{% if not profile.location_context or not profile.location_context.city_region %}display: none;{% endif %}">Edit</button>
+                <!-- Style -->
+                {% if profile.style_preferences and profile.style_preferences.visual_style %}
+                <div class="fact-row" id="style-row">
+                    <span class="fact-icon">🎨</span>
+                    <span class="fact-label">Style:</span>
+                    <span class="fact-value" id="style-display">{{ profile.style_preferences.visual_style }}{% if profile.style_preferences.quality_level %} · {{ profile.style_preferences.quality_level }}{% endif %}</span>
+                    <button class="small secondary" onclick="toggleFactEdit('style')">Edit</button>
+                    <div class="fact-edit" id="style-edit">
+                        <input type="text" id="style-input" value="{{ profile.style_preferences.visual_style or '' }}" placeholder="e.g. minimalist, boho, classic">
+                        <button class="small" onclick="saveFactEdit('style')">Save</button>
+                        <button class="small secondary" onclick="cancelFactEdit('style')">Cancel</button>
                     </div>
+                </div>
+                {% endif %}
 
-                    <!-- Style -->
-                    {% if profile.style_preferences and profile.style_preferences.visual_style %}
-                    <div class="fact-row">
-                        <span class="fact-icon">🎨</span>
-                        <span class="fact-label">Style:</span>
-                        <span class="fact-value" id="style-display">{{ profile.style_preferences.visual_style }}{% if profile.style_preferences.quality_level %} · {{ profile.style_preferences.quality_level }}{% endif %}</span>
-                        <button class="small secondary" onclick="editStyle()">Edit</button>
+                <!-- Brands -->
+                {% if profile.style_preferences and profile.style_preferences.brands %}
+                <div class="fact-row" id="brands-row">
+                    <span class="fact-icon">🏷️</span>
+                    <span class="fact-label">Brands:</span>
+                    <span class="fact-value" id="brands-display">{{ profile.style_preferences.brands | join(', ') }}</span>
+                    <button class="small secondary" onclick="toggleFactEdit('brands')">Edit</button>
+                    <div class="fact-edit" id="brands-edit">
+                        <input type="text" id="brands-input" value="{{ profile.style_preferences.brands | join(', ') }}" placeholder="Comma-separated brands">
+                        <button class="small" onclick="saveFactEdit('brands')">Save</button>
+                        <button class="small secondary" onclick="cancelFactEdit('brands')">Cancel</button>
                     </div>
-                    {% endif %}
+                </div>
+                {% endif %}
 
-                    <!-- Brands -->
-                    {% if profile.style_preferences and profile.style_preferences.brands %}
-                    <div class="fact-row">
-                        <span class="fact-icon">🏷️</span>
-                        <span class="fact-label">Brands:</span>
-                        <span class="fact-value" id="brands-display">{{ profile.style_preferences.brands | join(', ') }}</span>
-                        <button class="small secondary" onclick="editBrands()">Edit</button>
+                <!-- Budget -->
+                {% if profile.price_signals and (profile.price_signals.estimated_range or profile.price_signals.budget_category) %}
+                <div class="fact-row" id="budget-row">
+                    <span class="fact-icon">💰</span>
+                    <span class="fact-label">Budget:</span>
+                    <span class="fact-value" id="budget-display">{{ profile.price_signals.estimated_range or '' }}{% if profile.price_signals.budget_category %} ({{ profile.price_signals.budget_category }}){% endif %}</span>
+                    <button class="small secondary" onclick="toggleFactEdit('budget')">Edit</button>
+                    <div class="fact-edit" id="budget-edit">
+                        <input type="text" id="budget-input" value="{{ profile.price_signals.estimated_range or '' }}" placeholder="e.g. $25-75">
+                        <button class="small" onclick="saveFactEdit('budget')">Save</button>
+                        <button class="small secondary" onclick="cancelFactEdit('budget')">Cancel</button>
                     </div>
-                    {% endif %}
+                </div>
+                {% endif %}
 
-                    <!-- Budget -->
-                    {% if profile.price_signals and (profile.price_signals.estimated_range or profile.price_signals.budget_category) %}
-                    <div class="fact-row">
-                        <span class="fact-icon">💰</span>
-                        <span class="fact-label">Budget:</span>
-                        <span class="fact-value" id="budget-display">{{ profile.price_signals.estimated_range or '' }}{% if profile.price_signals.budget_category %} ({{ profile.price_signals.budget_category }}){% endif %}</span>
-                        <button class="small secondary" onclick="editBudget()">Edit</button>
+                <!-- Pet -->
+                {% if profile.pet_details %}
+                <div class="fact-row" id="pet-row">
+                    <span class="fact-icon">🐾</span>
+                    <span class="fact-label">Pet:</span>
+                    <span class="fact-value" id="pet-display">{{ profile.pet_details }}</span>
+                    <button class="small secondary" onclick="toggleFactEdit('pet')">Edit</button>
+                    <div class="fact-edit" id="pet-edit">
+                        <input type="text" id="pet-input" value="{{ profile.pet_details or '' }}" placeholder="e.g. Golden retriever named Max">
+                        <button class="small" onclick="saveFactEdit('pet')">Save</button>
+                        <button class="small secondary" onclick="cancelFactEdit('pet')">Cancel</button>
                     </div>
-                    {% endif %}
+                </div>
+                {% endif %}
 
-                    <!-- Pet -->
-                    {% if profile.pet_details %}
-                    <div class="fact-row">
-                        <span class="fact-icon">🐾</span>
-                        <span class="fact-label">Pet:</span>
-                        <span class="fact-value">{{ profile.pet_details }}</span>
-                        <button class="small secondary" onclick="editPet()">Edit</button>
+                <!-- Family -->
+                {% if profile.family_context %}
+                <div class="fact-row" id="family-row">
+                    <span class="fact-icon">👨‍👩‍👧‍👦</span>
+                    <span class="fact-label">Family:</span>
+                    <span class="fact-value" id="family-display">{{ profile.family_context }}</span>
+                    <button class="small secondary" onclick="toggleFactEdit('family')">Edit</button>
+                    <div class="fact-edit" id="family-edit">
+                        <input type="text" id="family-input" value="{{ profile.family_context or '' }}" placeholder="e.g. Married, 2 kids">
+                        <button class="small" onclick="saveFactEdit('family')">Save</button>
+                        <button class="small secondary" onclick="cancelFactEdit('family')">Cancel</button>
                     </div>
-                    {% endif %}
+                </div>
+                {% endif %}
 
-                    <!-- Family -->
-                    {% if profile.family_context %}
-                    <div class="fact-row">
-                        <span class="fact-icon">👨‍👩‍👧‍👦</span>
-                        <span class="fact-label">Family:</span>
-                        <span class="fact-value">{{ profile.family_context }}</span>
-                        <button class="small secondary" onclick="editFamily()">Edit</button>
-                    </div>
-                    {% endif %}
+                <!-- Venues -->
+                {% if profile.specific_venues %}
+                <div class="fact-row">
+                    <span class="fact-icon">📍</span>
+                    <span class="fact-label">Hangouts:</span>
+                    <span class="fact-value">{{ profile.specific_venues | map(attribute='name') | select('string') | join(', ') }}</span>
+                </div>
+                {% endif %}
+            </div>
 
-                    <!-- Venues -->
-                    {% if profile.specific_venues %}
-                    <div class="fact-row">
-                        <span class="fact-icon">📍</span>
-                        <span class="fact-label">Hangouts:</span>
-                        <span class="fact-value">{{ profile.specific_venues | map(attribute='name') | select('string') | join(', ') }}</span>
-                    </div>
-                    {% endif %}
+            {% if gift_strategy %}
+            <div class="divider"></div>
+            <div class="section-label"><span class="emoji">🎁</span> Gift Strategy</div>
+            <div class="gift-strategy">
+                {{ gift_strategy | safe }}
+            </div>
+            {% endif %}
+
+            <!-- CTA -->
+            <div class="divider"></div>
+            <div style="text-align: center; padding: 8px 0 4px 0;">
+                <p style="color: #666; font-size: 14px; margin-bottom: 16px;">Fix anything wrong above, then hit the button when you're ready.</p>
+                <div class="cta-bar">
+                    <button class="secondary" onclick="window.location.href='/connect-platforms'">← Back to platforms</button>
+                    <button class="primary" onclick="approveProfile()">Find my gifts →</button>
                 </div>
             </div>
         </div>
-
-        {% if gift_strategy %}
-        <!-- Gift Strategy -->
-        <div class="personality-card">
-            <div class="personality-section">
-                <div class="section-header">
-                    <span class="section-emoji">🎁</span>
-                    <h2 class="section-title">Gift Strategy</h2>
-                </div>
-                <div class="gift-strategy">
-                    {{ gift_strategy | safe }}
-                </div>
-            </div>
-        </div>
-        {% endif %}
 
         {% if intel_report %}
-        <!-- Intelligence Report (collapsible showpiece) -->
-        <div class="personality-card">
-            <div class="intel-section">
-                <div class="intel-toggle" onclick="toggleIntel()" id="intel-toggle">
-                    <span>🔬</span>
-                    <span>Under the Hood — Our Analysis</span>
-                    <span class="chevron">▶</span>
+        <!-- ===== CARD 2: Intelligence Report (collapsible) ===== -->
+        <div class="card">
+            <div class="intel-toggle" onclick="toggleIntel()" id="intel-toggle">
+                <span>🔬</span>
+                <span>Under the Hood — Our Analysis</span>
+                <span class="chevron">▶</span>
+            </div>
+            <div class="intel-body" id="intel-body">
+
+                {% if intel_report.sources %}
+                <div class="intel-card">
+                    <div class="intel-card-title">📊 Data Sources</div>
+                    <div class="intel-card-body">
+                        {% for src in intel_report.sources %}
+                        <div style="margin-bottom: 4px;">{{ src }}</div>
+                        {% endfor %}
+                    </div>
                 </div>
-                <div class="intel-body" id="intel-body">
+                {% endif %}
 
-                    {% if intel_report.sources %}
-                    <div class="intel-card">
-                        <div class="intel-card-title">📊 Data Sources</div>
-                        <div class="intel-card-body">
-                            {% for src in intel_report.sources %}
-                            <div style="margin-bottom: 4px;">{{ src }}</div>
-                            {% endfor %}
+                {% if intel_report.demographic %}
+                <div class="intel-card">
+                    <div class="intel-card-title">👤 Demographic Insight</div>
+                    <div class="intel-card-body">
+                        {% if intel_report.demographic.gift_style %}
+                        <div>Gift style: <strong>{{ intel_report.demographic.gift_style }}</strong></div>
+                        {% endif %}
+                        {% if intel_report.demographic.popular_categories %}
+                        <div style="margin-top: 6px;">Trending for this demo:
+                            {% for cat in intel_report.demographic.popular_categories %}<span class="intel-tag trend">{{ cat }}</span>{% endfor %}
                         </div>
-                    </div>
-                    {% endif %}
-
-                    {% if intel_report.demographic %}
-                    <div class="intel-card">
-                        <div class="intel-card-title">👤 Demographic Insight</div>
-                        <div class="intel-card-body">
-                            {% if intel_report.demographic.gift_style %}
-                            <div>Gift style: <strong>{{ intel_report.demographic.gift_style }}</strong></div>
-                            {% endif %}
-                            {% if intel_report.demographic.popular_categories %}
-                            <div style="margin-top: 6px;">Trending for this demo:
-                                {% for cat in intel_report.demographic.popular_categories %}<span class="intel-tag trend">{{ cat }}</span>{% endfor %}
-                            </div>
-                            {% endif %}
-                            {% if intel_report.demographic.avoid %}
-                            <div style="margin-top: 6px;">Skip for this demo:
-                                {% for a in intel_report.demographic.avoid %}<span class="intel-tag bad">{{ a }}</span>{% endfor %}
-                            </div>
-                            {% endif %}
-                            {% if intel_report.demographic.price_preference %}
-                            <div style="margin-top: 6px;">Typical budget: ${{ intel_report.demographic.price_preference[0] }}–${{ intel_report.demographic.price_preference[1] }}</div>
-                            {% endif %}
+                        {% endif %}
+                        {% if intel_report.demographic.avoid %}
+                        <div style="margin-top: 6px;">Skip for this demo:
+                            {% for a in intel_report.demographic.avoid %}<span class="intel-tag bad">{{ a }}</span>{% endfor %}
                         </div>
+                        {% endif %}
+                        {% if intel_report.demographic.price_preference %}
+                        <div style="margin-top: 6px;">Typical budget: ${{ intel_report.demographic.price_preference[0] }}–${{ intel_report.demographic.price_preference[1] }}</div>
+                        {% endif %}
                     </div>
-                    {% endif %}
-
-                    {% if intel_report.cross_platform %}
-                    <div class="intel-card">
-                        <div class="intel-card-title">🔗 Cross-Platform Signals</div>
-                        <div class="intel-card-body">
-                            {% if intel_report.cross_platform.brands %}
-                            <div>Brands detected: {% for b in intel_report.cross_platform.brands %}<span class="intel-tag">{{ b }}</span>{% endfor %}</div>
-                            {% endif %}
-                            {% if intel_report.cross_platform.music %}
-                            <div style="margin-top: 6px;">Music taste: {% for m in intel_report.cross_platform.music %}<span class="intel-tag">{{ m }}</span>{% endfor %}</div>
-                            {% endif %}
-                            {% if intel_report.cross_platform.aspirational %}
-                            <div style="margin-top: 6px;">Aspiring to: {% for a in intel_report.cross_platform.aspirational %}<span class="intel-tag good">{{ a }}</span>{% endfor %}</div>
-                            {% endif %}
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    {% if intel_report.interest_intel %}
-                    <div class="intel-card" style="border-left-color: #8b5cf6;">
-                        <div class="intel-card-title">🧠 Per-Interest Intelligence</div>
-                        <div class="intel-card-body">
-                            {% for ii in intel_report.interest_intel %}
-                            <div class="intel-interest-row" onclick="toggleInterestIntel(this)">
-                                <div class="intel-interest-name">{{ ii.name }} <span class="chevron" style="font-size: 10px; color: #999;">▶</span></div>
-                                <div class="intel-interest-detail">
-                                    {% if ii.search_terms %}
-                                    <div class="intel-detail-label">Search Strategy</div>
-                                    <div>{% for t in ii.search_terms %}<span class="intel-tag">{{ t }}</span>{% endfor %}</div>
-                                    {% endif %}
-                                    {% if ii.do_buy %}
-                                    <div class="intel-detail-label">Good Gift Types</div>
-                                    <div>{% for d in ii.do_buy %}<span class="intel-tag good">{{ d }}</span>{% endfor %}</div>
-                                    {% endif %}
-                                    {% if ii.dont_buy %}
-                                    <div class="intel-detail-label">Avoid</div>
-                                    <div>{% for d in ii.dont_buy %}<span class="intel-tag bad">{{ d }}</span>{% endfor %}</div>
-                                    {% endif %}
-                                    {% if ii.trending %}
-                                    <div class="intel-detail-label">Trending 2026</div>
-                                    <div>{% for t in ii.trending %}<span class="intel-tag trend">{{ t }}</span>{% endfor %}</div>
-                                    {% endif %}
-                                </div>
-                            </div>
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    {% if intel_report.quality_filters %}
-                    <div class="intel-card" style="border-left-color: #ef4444;">
-                        <div class="intel-card-title">🛡️ Quality Filters Active</div>
-                        <div class="intel-card-body">
-                            {% for f in intel_report.quality_filters %}<span class="intel-tag bad">{{ f }}</span>{% endfor %}
-                        </div>
-                    </div>
-                    {% endif %}
-
                 </div>
+                {% endif %}
+
+                {% if intel_report.cross_platform %}
+                <div class="intel-card">
+                    <div class="intel-card-title">🔗 Cross-Platform Signals</div>
+                    <div class="intel-card-body">
+                        {% if intel_report.cross_platform.brands %}
+                        <div>Brands detected: {% for b in intel_report.cross_platform.brands %}<span class="intel-tag">{{ b }}</span>{% endfor %}</div>
+                        {% endif %}
+                        {% if intel_report.cross_platform.music %}
+                        <div style="margin-top: 6px;">Music taste: {% for m in intel_report.cross_platform.music %}<span class="intel-tag">{{ m }}</span>{% endfor %}</div>
+                        {% endif %}
+                        {% if intel_report.cross_platform.aspirational %}
+                        <div style="margin-top: 6px;">Aspiring to: {% for a in intel_report.cross_platform.aspirational %}<span class="intel-tag good">{{ a }}</span>{% endfor %}</div>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if intel_report.interest_intel %}
+                <div class="intel-card" style="border-left-color: #8b5cf6;">
+                    <div class="intel-card-title">🧠 Per-Interest Intelligence</div>
+                    <div class="intel-card-body">
+                        {% for ii in intel_report.interest_intel %}
+                        <div class="intel-interest-row" onclick="toggleInterestIntel(this)">
+                            <div class="intel-interest-name">{{ ii.name }} <span class="chevron" style="font-size: 10px; color: #999;">▶</span></div>
+                            <div class="intel-interest-detail">
+                                {% if ii.search_terms %}
+                                <div class="intel-detail-label">Search Strategy</div>
+                                <div>{% for t in ii.search_terms %}<span class="intel-tag">{{ t }}</span>{% endfor %}</div>
+                                {% endif %}
+                                {% if ii.do_buy %}
+                                <div class="intel-detail-label">Good Gift Types</div>
+                                <div>{% for d in ii.do_buy %}<span class="intel-tag good">{{ d }}</span>{% endfor %}</div>
+                                {% endif %}
+                                {% if ii.dont_buy %}
+                                <div class="intel-detail-label">Avoid</div>
+                                <div>{% for d in ii.dont_buy %}<span class="intel-tag bad">{{ d }}</span>{% endfor %}</div>
+                                {% endif %}
+                                {% if ii.trending %}
+                                <div class="intel-detail-label">Trending 2026</div>
+                                <div>{% for t in ii.trending %}<span class="intel-tag trend">{{ t }}</span>{% endfor %}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if intel_report.quality_filters %}
+                <div class="intel-card" style="border-left-color: #ef4444;">
+                    <div class="intel-card-title">🛡️ Quality Filters Active</div>
+                    <div class="intel-card-body">
+                        {% for f in intel_report.quality_filters %}<span class="intel-tag bad">{{ f }}</span>{% endfor %}
+                    </div>
+                </div>
+                {% endif %}
+
             </div>
         </div>
         {% endif %}
-
-        <!-- Validation Prompt -->
-        <div class="personality-card">
-            <div class="validation-prompt">
-                <h3>Ready to find gifts?</h3>
-                <p>Fix anything that's wrong—edit names, mark work vs. hobby, add or remove interests. <strong>Changes apply immediately</strong> and will be used when you click Find my gifts.</p>
-            </div>
-            
-            <div class="actions">
-                <button class="secondary" onclick="window.location.href='/connect-platforms'">← Back to platforms</button>
-                <button class="primary" onclick="approveProfile()">Find my gifts →</button>
-            </div>
-        </div>
     </div>
-    
+
     <script>
         let profileData = {{ profile_json | safe }};
         let generationId = "{{ generation_id }}";
         let pronounPossessive = "{{ pronoun_possessive }}";
         let pronounSubject = "{{ pronoun_subject }}";
-        
+
+        // --- Interest editing ---
         function editInterest(index) {
-            document.getElementById(`edit-${index}`).classList.add('active');
+            document.getElementById('edit-' + index).classList.add('active');
         }
-        
         function cancelEdit(index) {
-            document.getElementById(`edit-${index}`).classList.remove('active');
+            document.getElementById('edit-' + index).classList.remove('active');
         }
-        
         function saveEdit(index) {
-            const name = document.getElementById(`name-${index}`).value.trim();
-            const desc = document.getElementById(`desc-${index}`).value.trim();
+            const name = document.getElementById('name-' + index).value.trim();
+            const desc = document.getElementById('desc-' + index).value.trim();
             if (!name) return;
             profileData.interests[index].name = name;
             profileData.interests[index].description = desc;
-            const card = document.querySelector(`[data-interest-id="${index}"]`);
+            const card = document.querySelector('[data-interest-id="' + index + '"]');
             if (card) {
                 card.querySelector('.vibe-title').textContent = name;
                 card.querySelector('.vibe-description').textContent = desc || (pronounSubject === 'you' ? "You're into " + name : "They're into " + name);
             }
             cancelEdit(index);
-            alert('Updated.');
         }
-        
+
         function toggleWork(index) {
             profileData.interests[index].is_work = !profileData.interests[index].is_work;
             const card = document.querySelector('[data-interest-id="' + index + '"]');
@@ -839,18 +653,16 @@
                 if (!workTag && tags) {
                     const span = document.createElement('span');
                     span.className = 'tag work';
-                    span.textContent = '🏢 Work Thing (won\'t suggest gifts here)';
+                    span.textContent = '🏢 Work (won\'t suggest gifts)';
                     tags.insertBefore(span, tags.firstChild);
                 }
-                if (toggleBtn) toggleBtn.textContent = "Mark as hobby (we'll suggest gifts)";
-                if (toggleBtn) toggleBtn.className = 'small work-toggle';
+                if (toggleBtn) { toggleBtn.textContent = "Mark as hobby"; toggleBtn.className = 'small work-toggle'; }
             } else {
                 if (workTag) workTag.remove();
-                if (toggleBtn) toggleBtn.textContent = "Mark as work (we won't suggest gifts here)";
-                if (toggleBtn) toggleBtn.className = 'small secondary';
+                if (toggleBtn) { toggleBtn.textContent = "Mark as work"; toggleBtn.className = 'small secondary'; }
             }
         }
-        
+
         function removeInterest(index) {
             if (!confirm('Remove this from ' + pronounPossessive + ' profile?')) return;
             profileData.interests.splice(index, 1);
@@ -874,9 +686,9 @@
                     btn.setAttribute('onclick', on);
                 });
             }
-            alert('Removed.');
         }
-        
+
+        // --- Add interest ---
         function showAddInterestForm() {
             document.getElementById('add-interest-form').style.display = 'block';
             document.getElementById('add-interest-btn-wrap').style.display = 'none';
@@ -903,30 +715,28 @@
             };
             profileData.interests.push(newInterest);
             const index = profileData.interests.length - 1;
-            const container = document.querySelector('.personality-section');
             const addBtnWrap = document.getElementById('add-interest-btn-wrap');
             const cardHtml = '<div class="vibe-card" data-interest-id="' + index + '">' +
                 '<div class="vibe-title">' + escapeHtml(name) + '</div>' +
                 '<div class="vibe-description">' + escapeHtml(newInterest.description) + '</div>' +
                 '<div class="vibe-tags">' +
-                (isWork ? '<span class="tag work">🏢 Work Thing (won\'t suggest gifts here)</span>' : '') +
-                (isActive ? '<span class="tag active">🏃 Actually Does This</span>' : '<span class="tag">👀 Watches/Enjoys This</span>') +
+                (isWork ? '<span class="tag work">🏢 Work (won\'t suggest gifts)</span>' : '') +
+                (isActive ? '<span class="tag active">🏃 Does This</span>' : '<span class="tag">👀 Watches/Enjoys</span>') +
                 '<span class="confidence-indicator confidence-high">100% sure</span></div>' +
                 '<div class="correction-buttons">' +
                 '<button class="small secondary" onclick="editInterest(' + index + ')">✏️ Edit</button>' +
                 '<button class="small secondary" onclick="removeInterest(' + index + ')">❌ Remove</button>' +
-                (isWork ? '<button class="small work-toggle" onclick="toggleWork(' + index + ')">Mark as hobby (we\'ll suggest gifts)</button>' : '<button class="small secondary" onclick="toggleWork(' + index + ')">Mark as work (we won\'t suggest gifts here)</button>') +
+                (isWork ? '<button class="small work-toggle" onclick="toggleWork(' + index + ')">Mark as hobby</button>' : '<button class="small secondary" onclick="toggleWork(' + index + ')">Mark as work</button>') +
                 '</div>' +
                 '<div class="edit-inline" id="edit-' + index + '">' +
                 '<input type="text" id="name-' + index + '" value="' + escapeHtml(name) + '" placeholder="Interest name">' +
                 '<textarea id="desc-' + index + '" placeholder="What ' + pronounSubject + ' like about it">' + escapeHtml(newInterest.description) + '</textarea>' +
-                '<button class="small" onclick="saveEdit(' + index + ')">💾 Save</button>' +
+                '<button class="small" onclick="saveEdit(' + index + ')">Save</button>' +
                 '<button class="small secondary" onclick="cancelEdit(' + index + ')">Cancel</button></div></div>';
             const div = document.createElement('div');
             div.innerHTML = cardHtml;
-            container.insertBefore(div.firstChild, addBtnWrap);
+            addBtnWrap.parentNode.insertBefore(div.firstChild, document.getElementById('add-interest-form'));
             cancelAddInterest();
-            alert('Added. It\'s in your profile above.');
         }
         function escapeHtml(s) {
             if (!s) return '';
@@ -934,24 +744,74 @@
             d.textContent = s;
             return d.innerHTML;
         }
-        
+
+        // --- Quick fact inline editing (replaces prompt() dialogs) ---
+        function toggleFactEdit(field) {
+            var el = document.getElementById(field + '-edit');
+            if (!el) return;
+            if (el.classList.contains('active')) {
+                cancelFactEdit(field);
+            } else {
+                el.classList.add('active');
+                var inp = document.getElementById(field + '-input');
+                if (inp) inp.focus();
+            }
+        }
+        function cancelFactEdit(field) {
+            var el = document.getElementById(field + '-edit');
+            if (el) el.classList.remove('active');
+        }
+        function saveFactEdit(field) {
+            var inp = document.getElementById(field + '-input');
+            if (!inp) return;
+            var val = inp.value.trim();
+            if (!val) return;
+
+            if (field === 'style') {
+                if (!profileData.style_preferences) profileData.style_preferences = {};
+                profileData.style_preferences.visual_style = val;
+                var el = document.getElementById('style-display');
+                if (el) el.textContent = val + (profileData.style_preferences.quality_level ? ' · ' + profileData.style_preferences.quality_level : '');
+            } else if (field === 'brands') {
+                if (!profileData.style_preferences) profileData.style_preferences = {};
+                profileData.style_preferences.brands = val.split(',').map(function(b) { return b.trim(); }).filter(Boolean);
+                var el = document.getElementById('brands-display');
+                if (el) el.textContent = profileData.style_preferences.brands.join(', ');
+            } else if (field === 'budget') {
+                if (!profileData.price_signals) profileData.price_signals = {};
+                profileData.price_signals.estimated_range = val;
+                var el = document.getElementById('budget-display');
+                if (el) el.textContent = val + (profileData.price_signals.budget_category ? ' (' + profileData.price_signals.budget_category + ')' : '');
+            } else if (field === 'pet') {
+                profileData.pet_details = val;
+                var el = document.getElementById('pet-display');
+                if (el) el.textContent = val;
+            } else if (field === 'family') {
+                profileData.family_context = val;
+                var el = document.getElementById('family-display');
+                if (el) el.textContent = val;
+            }
+            cancelFactEdit(field);
+        }
+
+        // --- Intel report ---
         function toggleIntel() {
-            const toggle = document.getElementById('intel-toggle');
-            const body = document.getElementById('intel-body');
+            var toggle = document.getElementById('intel-toggle');
+            var body = document.getElementById('intel-body');
             toggle.classList.toggle('open');
             body.classList.toggle('open');
         }
-
         function toggleInterestIntel(row) {
-            const detail = row.querySelector('.intel-interest-detail');
-            const chevron = row.querySelector('.chevron');
+            var detail = row.querySelector('.intel-interest-detail');
+            var chevron = row.querySelector('.chevron');
             if (detail) {
                 detail.classList.toggle('open');
                 if (chevron) chevron.textContent = detail.classList.contains('open') ? '▼' : '▶';
             }
         }
 
-        let locationAutocompleteTimer = null;
+        // --- Location autocomplete ---
+        var locationAutocompleteTimer = null;
         function ensureLocationContext() {
             if (!profileData.location_context) profileData.location_context = {};
             if (typeof profileData.location_context.city_region === 'undefined') profileData.location_context.city_region = '';
@@ -963,7 +823,7 @@
             document.getElementById('location-display').style.display = profileData.location_context.city_region ? 'inline' : 'none';
             document.getElementById('location-edit-wrap').style.display = 'none';
             document.getElementById('location-input').value = profileData.location_context.city_region || '';
-            const editBtn = document.getElementById('location-edit-btn');
+            var editBtn = document.getElementById('location-edit-btn');
             if (editBtn) editBtn.style.display = profileData.location_context.city_region ? 'inline-block' : 'none';
         }
         function showLocationEdit() {
@@ -973,13 +833,11 @@
             document.getElementById('location-input').value = profileData.location_context.city_region || '';
             document.getElementById('location-input').focus();
         }
-        function editLocation() {
-            showLocationEdit();
-        }
+        function editLocation() { showLocationEdit(); }
 
         (function initLocationAutocomplete() {
-            const input = document.getElementById('location-input');
-            const list = document.getElementById('location-autocomplete');
+            var input = document.getElementById('location-input');
+            var list = document.getElementById('location-autocomplete');
             if (!input || !list) return;
 
             function fetchSuggestions(q) {
@@ -990,7 +848,7 @@
                         list.innerHTML = '';
                         if (!items.length) { list.style.display = 'none'; return; }
                         items.forEach(function(item) {
-                            const li = document.createElement('li');
+                            var li = document.createElement('li');
                             li.textContent = item.display;
                             li.onclick = function() {
                                 profileData.location_context.city_region = item.city_region;
@@ -1007,11 +865,11 @@
 
             input.addEventListener('input', function() {
                 clearTimeout(locationAutocompleteTimer);
-                const q = input.value.trim();
+                var q = input.value.trim();
                 locationAutocompleteTimer = setTimeout(function() { fetchSuggestions(q); }, 220);
             });
             input.addEventListener('focus', function() {
-                const q = input.value.trim();
+                var q = input.value.trim();
                 if (q.length >= 2) fetchSuggestions(q);
             });
             input.addEventListener('blur', function() {
@@ -1028,63 +886,14 @@
                 if (!input.contains(e.target) && !list.contains(e.target)) list.style.display = 'none';
             });
         })();
-        
-        function editPet() {
-            const newPet = prompt('Tell us about {{ pronoun_possessive }} pet:', profileData.pet_details);
-            if (newPet) {
-                profileData.pet_details = newPet;
-                alert('Updated!');
-            }
-        }
-        
-        function editFamily() {
-            const newFamily = prompt(pronounSubject === 'you' ? 'Tell us about your family:' : 'Family details:', profileData.family_context);
-            if (newFamily) {
-                profileData.family_context = newFamily;
-                alert('Updated!');
-            }
-        }
 
-        function editStyle() {
-            if (!profileData.style_preferences) profileData.style_preferences = {};
-            const cur = profileData.style_preferences.visual_style || '';
-            const newStyle = prompt('Describe ' + pronounPossessive + ' style (e.g. "minimalist", "boho", "classic"):', cur);
-            if (newStyle !== null && newStyle.trim()) {
-                profileData.style_preferences.visual_style = newStyle.trim();
-                const el = document.getElementById('style-display');
-                if (el) el.textContent = newStyle.trim() + (profileData.style_preferences.quality_level ? ' · ' + profileData.style_preferences.quality_level : '');
-            }
-        }
-
-        function editBrands() {
-            if (!profileData.style_preferences) profileData.style_preferences = {};
-            const cur = (profileData.style_preferences.brands || []).join(', ');
-            const newBrands = prompt('Brands ' + pronounSubject + ' like (comma-separated):', cur);
-            if (newBrands !== null && newBrands.trim()) {
-                profileData.style_preferences.brands = newBrands.split(',').map(function(b) { return b.trim(); }).filter(Boolean);
-                const el = document.getElementById('brands-display');
-                if (el) el.textContent = profileData.style_preferences.brands.join(', ');
-            }
-        }
-
-        function editBudget() {
-            if (!profileData.price_signals) profileData.price_signals = {};
-            const cur = profileData.price_signals.estimated_range || '';
-            const newBudget = prompt('Budget range (e.g. "$25-75", "$50-150"):', cur);
-            if (newBudget !== null && newBudget.trim()) {
-                profileData.price_signals.estimated_range = newBudget.trim();
-                const el = document.getElementById('budget-display');
-                if (el) el.textContent = newBudget.trim() + (profileData.price_signals.budget_category ? ' (' + profileData.price_signals.budget_category + ')' : '');
-            }
-        }
-        
+        // --- Approve profile ---
         async function approveProfile() {
-            const btn = document.querySelector('.primary');
+            var btn = document.querySelector('.primary');
             btn.disabled = true;
             btn.textContent = 'Finding gifts...';
-            
-            // Send approved profile to backend
-            const response = await fetch('/api/approve-profile', {
+
+            var response = await fetch('/api/approve-profile', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
@@ -1092,7 +901,7 @@
                     profile: profileData
                 })
             });
-            
+
             if (response.ok) {
                 window.location.href = '/generating?id=' + generationId;
             } else {

@@ -2609,9 +2609,17 @@ def _focus_experience_query(experience_name, location):
 
 # Words too common to be useful for matching materials to products
 _STOPWORDS = {
+    # Articles / prepositions / conjunctions
     'the', 'a', 'an', 'and', 'or', 'for', 'of', 'to', 'in', 'on', 'with',
+    'from', 'by', 'at', 'up', 'out', 'into', 'over', 'its', 'is', 'are',
+    # Generic product/gift terms
     'set', 'kit', 'pack', 'new', 'premium', 'deluxe', 'best', 'great',
-    'gift', 'item', 'product', 'buy', 'from', 'by', 'size', 'color',
+    'gift', 'item', 'product', 'buy', 'size', 'color', 'style', 'edition',
+    # Size/shape adjectives (match anything, distinguish nothing)
+    'small', 'large', 'big', 'mini', 'tiny', 'medium', 'xl', 'extra',
+    # Generic descriptors that cause false positives
+    'box', 'case', 'bag', 'holder', 'portable', 'travel', 'home', 'pro',
+    'classic', 'modern', 'vintage', 'original', 'special', 'super', 'ultra',
 }
 
 # Materials that describe actions/DIY tasks rather than purchasable products
@@ -2679,7 +2687,13 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
             if is_non_purchasable:
                 item_words = set()  # Force search fallback
                 logger.info(f"MATERIALS: '{item_name[:40]}' is non-purchasable, skipping inventory match")
-            min_overlap = 1 if len(item_words) <= 1 else 2
+            # Require enough overlap that the match is meaningful:
+            # - At least 2 words in common (absolute floor)
+            # - At least 40% of the material's meaningful words must match
+            # This prevents "small portable blanket for dogs" (4 words after stopwords)
+            # from matching a product that only shares 1 generic word.
+            n_item_words = len(item_words)
+            min_overlap = max(2, int(n_item_words * 0.4)) if n_item_words > 1 else 1
 
             # Collect unique candidate products from word index
             seen_links = set()

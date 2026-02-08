@@ -303,15 +303,24 @@ class TestExperienceSearchLinks:
         link = _make_experience_search_link("Taylor Swift Concert", "Indianapolis, Indiana", "book")
         assert "google.com/search" in link
         assert "Taylor" in link
-        assert "tickets" in link
         assert "Indianapolis" in link
 
     def test_venue_link(self):
         link = _make_experience_search_link("Gainbridge Fieldhouse", "Indianapolis", "venue")
         assert "google.com/search" in link
         assert "Gainbridge" in link
-        assert "tickets" not in link  # venue type doesn't add "tickets book"
 
     def test_empty_location_still_works(self):
         link = _make_experience_search_link("Cooking Class", "", "book")
         assert "Cooking" in link
+
+    def test_focused_query_strips_filler(self):
+        """Verbose experience names should produce focused search queries."""
+        link = _make_experience_search_link(
+            "Consultation session with travel agent specializing in European river cruises",
+            "Indianapolis", "book")
+        link_lower = link.lower()
+        assert "travel" in link_lower
+        assert "european" in link_lower or "river" in link_lower
+        # Should NOT contain the filler "consultation session"
+        assert "consultation" not in link_lower

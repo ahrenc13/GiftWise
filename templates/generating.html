@@ -434,14 +434,18 @@
                 container.classList.add('visible');
 
                 // Build/update retailer rows
-                const retailerIcons = {
-                    'Etsy': '🛍️', 'Awin': '🔗', 'eBay': '📦',
-                    'Amazon': '📱', 'ShareASale': '🏪'
+                // Map internal retailer names to customer-friendly labels
+                const retailerDisplay = {
+                    'Etsy': { icon: '🛍️', label: 'Etsy' },
+                    'Awin': { icon: '🏷️', label: 'Specialty Brands' },
+                    'eBay': { icon: '📦', label: 'eBay' },
+                    'Amazon': { icon: '📱', label: 'Amazon' },
+                    'ShareASale': { icon: '🏪', label: 'Partner Stores' },
                 };
 
                 let html = '';
                 for (const [name, info] of Object.entries(retailers)) {
-                    const icon = retailerIcons[name] || '🏬';
+                    const display = retailerDisplay[name] || { icon: '🏬', label: name };
                     let statusHtml = '';
                     if (info.status === 'searching') {
                         statusHtml = '<span class="dot searching"></span> Searching...';
@@ -451,7 +455,7 @@
                         statusHtml = '<span class="dot skipped"></span> Skipped';
                     }
                     html += '<div class="retailer-row">' +
-                            '<span class="retailer-name">' + icon + ' ' + name + '</span>' +
+                            '<span class="retailer-name">' + display.icon + ' ' + display.label + '</span>' +
                             '<span class="retailer-status">' + statusHtml + '</span>' +
                             '</div>';
                 }

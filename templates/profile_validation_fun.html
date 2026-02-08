@@ -432,8 +432,13 @@
         <!-- ===== CARD 1: Persona summary + top CTA ===== -->
         <div class="card">
             <div class="persona-header">
+                {% if recipient_name == 'You' %}
+                <h2>Here's What We See</h2>
+                <div class="subtitle">Based on your social media activity</div>
+                {% else %}
                 <h2>Meet {{ recipient_name }}</h2>
                 <div class="subtitle">Based on {{ pronoun_possessive }} social media activity</div>
+                {% endif %}
             </div>
 
             <!-- Synthesized persona summary -->
@@ -443,8 +448,13 @@
 
             <!-- Top CTA -->
             <div class="top-cta">
+                {% if recipient_name == 'You' %}
+                <button class="primary" onclick="approveProfile()">Looks right — show me ideas</button>
+                <p>Or scroll down to review and tweak what we found</p>
+                {% else %}
                 <button class="primary" onclick="approveProfile()">I trust you — find my gifts</button>
                 <p>Or scroll down to review and tweak what we found</p>
+                {% endif %}
             </div>
         </div>
 
@@ -757,10 +767,16 @@
         <!-- ===== Bottom CTA ===== -->
         <div class="card">
             <div style="text-align: center; padding: 4px 0;">
+                {% if recipient_name == 'You' %}
+                <p style="color: #666; font-size: 14px; margin-bottom: 16px;">Look good? Let's find some things you'll love.</p>
+                {% else %}
                 <p style="color: #666; font-size: 14px; margin-bottom: 16px;">Happy with the profile? Let's find the perfect gifts.</p>
+                {% endif %}
                 <div class="cta-bar">
                     <button class="secondary" onclick="window.location.href='/connect-platforms'">&larr; Back to platforms</button>
-                    <button class="primary" onclick="approveProfile()">Find my gifts &rarr;</button>
+                    <button class="primary" onclick="approveProfile()">
+                        {% if recipient_name == 'You' %}Show me ideas &rarr;{% else %}Find my gifts &rarr;{% endif %}
+                    </button>
                 </div>
             </div>
         </div>
@@ -1148,8 +1164,9 @@
 
         // --- Approve profile ---
         async function approveProfile() {
+            var isYou = "{{ recipient_name }}" === 'You';
             var btns = document.querySelectorAll('.primary');
-            btns.forEach(function(b) { b.disabled = true; b.textContent = 'Finding gifts...'; });
+            btns.forEach(function(b) { b.disabled = true; b.textContent = isYou ? 'Finding ideas...' : 'Finding gifts...'; });
 
             var response = await fetch('/api/approve-profile', {
                 method: 'POST',
@@ -1164,7 +1181,8 @@
                 window.location.href = '/generating?id=' + generationId;
             } else {
                 alert('Error saving. Please try again.');
-                btns.forEach(function(b) { b.disabled = false; b.textContent = 'Find my gifts \u2192'; });
+                var resetText = isYou ? 'Show me ideas \u2192' : 'Find my gifts \u2192';
+                btns.forEach(function(b) { b.disabled = false; b.textContent = resetText; });
             }
         }
     </script>

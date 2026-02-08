@@ -11,6 +11,7 @@ Env: AWIN_DATA_FEED_API_KEY (from Awin Toolbox → Create-a-Feed).
 """
 
 import csv
+import gzip
 import io
 import logging
 import re
@@ -35,6 +36,25 @@ def _ci_get(row, *keys):
         if v:
             return v.strip() if isinstance(v, str) else v
     return ""
+
+
+def _decompress_if_gzipped(data):
+    """Detect gzip magic bytes and decompress. Awin feeds often return gzip without Content-Encoding header."""
+    if data[:2] == b'\x1f\x8b':
+        try:
+            decompressed = gzip.decompress(data)
+            logger.info("Awin feed: decompressed gzip %d bytes -> %d bytes", len(data), len(decompressed))
+            return decompressed
+        except Exception as e:
+            logger.warning("Awin feed gzip decompress failed: %s", e)
+            # Try zlib as fallback (handles truncated gzip streams)
+            try:
+                decompressed = zlib.decompress(data, zlib.MAX_WBITS | 16)
+                logger.info("Awin feed: decompressed via zlib %d bytes -> %d bytes", len(data), len(decompressed))
+                return decompressed
+            except Exception:
+                pass
+    return data
 
 
 # In-memory cache: feed list and one feed's products. TTL 1 hour.
@@ -177,6 +197,9 @@ def _stream_feed_and_match(feed_url, search_queries, max_results_from_feed, seen
     if not data:
         return
 
+    # Awin feeds often return gzip-compressed data without Content-Encoding header
+    data = _decompress_if_gzipped(data)
+
     count = 0
     scanned = 0
     try:
@@ -231,10 +254,13 @@ def _fetch_feed_nonstream(feed_url, search_queries, max_results_from_feed, seen_
     except requests.RequestException as e:
         logger.warning("Awin feed non-stream fetch failed: %s", e)
         return
+    # Decompress if gzipped (Awin feeds often lack Content-Encoding header)
+    raw_data = _decompress_if_gzipped(r.content)
+    text = raw_data.decode("utf-8", errors="replace")
     count = 0
     scanned = 0
     try:
-        reader = csv.DictReader(io.StringIO(r.text, newline=""))
+        reader = csv.DictReader(io.StringIO(text, newline=""))
         for row in reader:
             scanned += 1
             if count >= max_results_from_feed or scanned > MAX_ROWS_TO_SCAN_PER_FEED:
@@ -298,6 +324,8 @@ def _stream_feed_first_n(feed_url, n, seen_ids):
     if not data:
         return
 
+    data = _decompress_if_gzipped(data)
+
     count = 0
     try:
         text = data.decode("utf-8", errors="replace")
@@ -344,6 +372,8 @@ def _download_feed_csv(feed_url):
         except Exception:
             pass
         return []
+
+    data = _decompress_if_gzipped(data)
 
     rows = []
     try:

@@ -2497,12 +2497,83 @@ def _validate_experience_url(url, timeout=3):
 
 
 def _make_experience_search_link(experience_name, location, link_type='book'):
-    """Generate a Google search link for booking/finding an experience in a location."""
-    if link_type == 'venue':
-        query = f"{experience_name} {location}".strip()
-    else:
-        query = f"{experience_name} tickets book {location}".strip()
+    """Generate a focused Google search link for finding/booking an experience.
+
+    Instead of dumping the full experience description into a Google search,
+    extract the actionable service and build a query like:
+      "travel agents in Indianapolis specializing in European river cruises"
+    rather than:
+      "Consultation session with travel agent specializing in European river cruises tickets book Indianapolis Indiana"
+    """
+    # Extract the core searchable concept from verbose experience names
+    query = _focus_experience_query(experience_name, location)
     return f"https://www.google.com/search?q={quote(query)}"
+
+
+def _focus_experience_query(experience_name, location):
+    """Turn a verbose experience description into a focused, actionable search query.
+
+    Examples:
+      "Consultation session with travel agent specializing in European river cruises"
+      → "travel agents in Indianapolis specializing in European river cruises"
+
+      "Private cooking class focused on Thai cuisine"
+      → "Thai cooking classes in Indianapolis"
+
+      "Concert tickets for upcoming Chappell Roan tour"
+      → "Chappell Roan concert tickets Indianapolis"
+    """
+    name = experience_name.strip()
+    loc = location.strip() if location else ''
+
+    # Strip filler phrases that don't help Google
+    import re as _re
+    filler = [
+        r'^consultation\s+session\s+with\s+',
+        r'^book\s+a\s+',
+        r'^gift\s+of\s+a?\s*',
+        r'^experience:\s*',
+        r'^arrange\s+a\s+',
+        r'^plan\s+a\s+',
+        r'^organize\s+a\s+',
+        r'^schedule\s+a\s+',
+        r'^sign\s+(?:them|up)\s+for\s+',
+        r'^enroll\s+(?:them\s+)?in\s+',
+    ]
+    cleaned = name
+    for pattern in filler:
+        cleaned = _re.sub(pattern, '', cleaned, flags=_re.IGNORECASE).strip()
+
+    # Detect service-provider experiences and restructure:
+    # "travel agent specializing in X" → "travel agents in {location} specializing in X"
+    provider_patterns = [
+        (r'([\w\s]+?)\s+specializing\s+in\s+(.+)', lambda m: f"{m.group(1).strip()}s in {loc} specializing in {m.group(2).strip()}"),
+        (r'([\w\s]+?)\s+who\s+specialize[s]?\s+in\s+(.+)', lambda m: f"{m.group(1).strip()}s in {loc} specializing in {m.group(2).strip()}"),
+        (r'([\w\s]+?)\s+focused\s+on\s+(.+)', lambda m: f"{m.group(1).strip()} {m.group(2).strip()} in {loc}"),
+        (r'([\w\s]+?)\s+(?:class|classes|lesson|lessons|workshop|workshops)\b(.*)', lambda m: f"{m.group(1).strip()} {m.group(0).split(m.group(1))[1].strip()} in {loc}"),
+    ]
+
+    for pattern, builder in provider_patterns:
+        match = _re.match(pattern, cleaned, flags=_re.IGNORECASE)
+        if match and loc:
+            result = builder(match)
+            # Avoid double location
+            if loc.lower() not in result.lower():
+                result = result
+            return result
+
+    # For ticket/event experiences, put the specific name first
+    ticket_words = ['ticket', 'tickets', 'tour', 'show', 'concert', 'game', 'match']
+    if any(w in cleaned.lower() for w in ticket_words):
+        query = f"{cleaned} {loc}".strip()
+        return query
+
+    # Default: "{experience} in {location}" (drop "tickets book")
+    if loc:
+        query = f"{cleaned} in {loc}".strip()
+    else:
+        query = cleaned
+    return query
 
 
 # Words too common to be useful for matching materials to products
@@ -2929,8 +3000,7 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                 primary_link = reservation_link or venue_website
                 experience_search_fallback = False
                 if not primary_link and exp.get('name'):
-                    query = quote(f"{exp.get('name', 'experience')} {search_geography}".strip())
-                    primary_link = f"https://www.google.com/search?q={query}"
+                    primary_link = _make_experience_search_link(exp_name, search_loc)
                     experience_search_fallback = True
                 if not primary_link and materials_list:
                     first_url = (materials_list[0].get('product_url') or '').strip()

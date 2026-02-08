@@ -40,11 +40,9 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 - Already signed up. Brands on Rakuten: Sephora, Nordstrom, Anthropologie, Free People, Urban Outfitters, Coach, ASOS, West Elm, H&M
 - Known issue: Sephora US doesn't show up (only Sephora BR). This is a confirmed platform-wide bug reported by many publishers. Workaround: email `uspubsupport@rakuten.com` or try Sephora's own "My Sephora Storefront" (via Motom) program at 15%.
 
-**4. Spotify Extended Quota Mode — apply before March 9, 2026**
-- Spotify announced (Feb 6, 2026) severe restrictions on Development Mode: Premium required, 1 Client ID per dev, max 5 authorized users, smaller endpoint set
-- Effective March 9 for existing apps. Our Spotify OAuth integration will break without Extended Quota Mode approval
-- Use case for application: "We read user's top artists/tracks to generate personalized gift recommendations" — legitimate, non-competing use
-- Fallback if rejected: ask users for Spotify Wrapped screenshots or manual artist input
+**4. Spotify — not currently integrated, but worth watching**
+- Spotify announced (Feb 6, 2026) severe restrictions on Development Mode: Premium required, 1 Client ID per dev, max 5 authorized users
+- We don't use Spotify yet. If we add it later, we'll need Extended Quota Mode approval. Not urgent.
 
 **5. Future searcher modules to build**
 - `rakuten_searcher.py` — once API credentials are available (Product Search API at `https://api.rakutenmarketing.com/productsearch/1.0`, Bearer token auth, XML response)

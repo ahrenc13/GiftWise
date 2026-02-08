@@ -275,6 +275,11 @@ STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
 STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID')
 AMAZON_AFFILIATE_TAG = os.environ.get('AMAZON_AFFILIATE_TAG', '')  # Optional: for affiliate links
 
+# Claude model selection — toggle in Render env vars for A/B testing Opus vs Sonnet
+# Defaults to Sonnet for both. Set CLAUDE_CURATOR_MODEL to test Opus on curation.
+CLAUDE_PROFILE_MODEL = os.environ.get('CLAUDE_PROFILE_MODEL', 'claude-sonnet-4-20250514')
+CLAUDE_CURATOR_MODEL = os.environ.get('CLAUDE_CURATOR_MODEL', 'claude-sonnet-4-20250514')
+
 # Image fetching APIs (optional)
 SERPAPI_API_KEY = os.environ.get('SERPAPI_API_KEY', '')
 UNSPLASH_ACCESS_KEY = os.environ.get('UNSPLASH_ACCESS_KEY', '')
@@ -313,6 +318,7 @@ if STRIPE_SECRET_KEY:
     stripe.api_key = STRIPE_SECRET_KEY
 if ANTHROPIC_API_KEY:
     claude_client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    logger.info("Claude models — profile: %s, curator: %s", CLAUDE_PROFILE_MODEL, CLAUDE_CURATOR_MODEL)
 else:
     logger.warning("ANTHROPIC_API_KEY not set - recommendation generation will fail")
 
@@ -2370,7 +2376,7 @@ def review_profile():
     recipient_name = "Your recipient" if recipient_type == 'someone_else' else "You"
     # Build profile (one Claude call) so user can review before we search/curate
     logger.info("Building profile for review step...")
-    profile = build_recipient_profile(platforms, recipient_type, relationship, claude_client)
+    profile = build_recipient_profile(platforms, recipient_type, relationship, claude_client, model=CLAUDE_PROFILE_MODEL)
     # Enrich using only non-work interests so cached enrichment is correct for search/curation
     profile_for_backend = profile_for_search_and_curation(profile)
     
@@ -2795,7 +2801,7 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                 logger.info("Using user-approved profile from review step")
             else:
                 logger.info("STEP 1: Building deep recipient profile...")
-                profile = build_recipient_profile(platforms, recipient_type, relationship, claude_client)
+                profile = build_recipient_profile(platforms, recipient_type, relationship, claude_client, model=CLAUDE_PROFILE_MODEL)
 
             if not profile.get('interests'):
                 logger.warning("No interests extracted from profile - data quality issue")
@@ -2909,7 +2915,8 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
             curated = curate_gifts(profile_for_backend, products, recipient_type, relationship,
                                    claude_client, rec_count=product_rec_count + 4,
                                    enhanced_search_terms=enhanced_search_terms,
-                                   enrichment_context=enrichment_context)
+                                   enrichment_context=enrichment_context,
+                                   model=CLAUDE_CURATOR_MODEL)
 
             product_gifts = curated.get('product_gifts', [])
             experience_gifts = curated.get('experience_gifts', [])

@@ -12,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def curate_gifts(profile, products, recipient_type, relationship, claude_client, rec_count=10, enhanced_search_terms=None, enrichment_context=None):
+def curate_gifts(profile, products, recipient_type, relationship, claude_client, rec_count=10, enhanced_search_terms=None, enrichment_context=None, model=None):
     """
     Curate gift recommendations from real products and profile.
 
@@ -25,12 +25,15 @@ def curate_gifts(profile, products, recipient_type, relationship, claude_client,
         rec_count: Number of product recommendations (default 10)
         enhanced_search_terms: Optional list of enhanced search terms from intelligence layer
         enrichment_context: Optional dict with demographics, trending, anti-recs from enrichment engine
-    
+        model: Claude model ID (default: claude-sonnet-4-20250514)
+
     Returns:
         Dict with:
         - product_gifts: List of 10 curated products
         - experience_gifts: List of 2-3 hyper-specific experiences
     """
+    if not model:
+        model = "claude-sonnet-4-20250514"
     
     if not products:
         logger.error("No products to curate from")
@@ -278,10 +281,10 @@ Return ONLY the JSON object, no markdown, no backticks"""
     
     try:
         # Call Claude for curation
-        logger.info("Calling Claude API for gift curation...")
-        
+        logger.info("Calling Claude API for gift curation (model=%s)...", model)
+
         message = claude_client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=model,
             max_tokens=12000,
             messages=[{"role": "user", "content": prompt}],
             timeout=120.0

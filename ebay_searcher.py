@@ -117,10 +117,11 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
         interest = q["interest"]
         priority = q["priority"]
         # Randomize offset so repeat runs surface different products
+        # Keep offset low — higher offsets cause 400 errors on narrow queries
         params = {
             "q": query[:100],
             "limit": min(per_query, 50),
-            "offset": random.choice([0, 0, 0, 5, 10, 15]),
+            "offset": random.choice([0, 0, 0, 0, 5]),
             "filter": "conditionIds:{1000|1500|1750|2000|2500}",  # New, Open Box, New with defects, Certified Refurb, Seller Refurb
         }
         try:

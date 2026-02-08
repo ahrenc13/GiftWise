@@ -185,6 +185,51 @@
             border-color: #667eea;
         }
         
+        /* --- Focused card overlay (Apple Watch orbit) --- */
+        .card-backdrop {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 100;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+            opacity: 0;
+            transition: opacity 0.35s ease;
+        }
+        .card-backdrop.visible { display: block; opacity: 1; }
+
+        .recommendation-card.focused {
+            position: fixed;
+            z-index: 101;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(1);
+            width: min(580px, 92vw);
+            max-height: 88vh;
+            overflow-y: auto;
+            border-radius: 20px;
+            box-shadow: 0 24px 80px rgba(0,0,0,0.35);
+            border-color: #667eea;
+            padding: 24px;
+            animation: cardFocusIn 0.35s ease forwards;
+            cursor: default;
+        }
+
+        @keyframes cardFocusIn {
+            from { opacity: 0.7; transform: translate(-50%, -50%) scale(0.85); }
+            to   { opacity: 1;   transform: translate(-50%, -50%) scale(1); }
+        }
+
+        /* Siblings shrink while one is focused */
+        .recommendations-grid.has-focus .recommendation-card:not(.focused) {
+            transform: scale(0.92);
+            opacity: 0.45;
+            filter: blur(1px);
+            pointer-events: none;
+            transition: all 0.35s ease;
+        }
+
         .recommendation-card.expanded {
             padding: 20px;
         }
@@ -251,7 +296,8 @@
             position: relative;
         }
         
-        .recommendation-card.expanded .rec-image-container {
+        .recommendation-card.expanded .rec-image-container,
+        .recommendation-card.focused .rec-image-container {
             height: 250px;
             border-radius: 12px;
             margin-bottom: 15px;
@@ -301,11 +347,13 @@
             display: none;
         }
         
-        .recommendation-card.expanded .rec-compact-view {
+        .recommendation-card.expanded .rec-compact-view,
+        .recommendation-card.focused .rec-compact-view {
             display: none;
         }
-        
-        .recommendation-card.expanded .rec-expanded-view {
+
+        .recommendation-card.expanded .rec-expanded-view,
+        .recommendation-card.focused .rec-expanded-view {
             display: block;
         }
         
@@ -318,7 +366,8 @@
             line-height: 1.4;
         }
         
-        .recommendation-card.expanded .rec-name {
+        .recommendation-card.expanded .rec-name,
+        .recommendation-card.focused .rec-name {
             font-size: 1.5em;
             margin-bottom: 15px;
             padding: 0;
@@ -328,7 +377,8 @@
             display: none;
         }
         
-        .recommendation-card.expanded .rec-description {
+        .recommendation-card.expanded .rec-description,
+        .recommendation-card.focused .rec-description {
             display: block;
             color: #4b5563;
             line-height: 1.7;
@@ -340,7 +390,8 @@
             display: none;
         }
         
-        .recommendation-card.expanded .rec-why {
+        .recommendation-card.expanded .rec-why,
+        .recommendation-card.focused .rec-why {
             display: block;
             background: #f0fdf4;
             padding: 15px;
@@ -370,7 +421,8 @@
             opacity: 1;
         }
         
-        .recommendation-card.expanded .expand-indicator {
+        .recommendation-card.expanded .expand-indicator,
+        .recommendation-card.focused .expand-indicator {
             display: none;
         }
         
@@ -378,7 +430,8 @@
             display: none;
         }
         
-        .recommendation-card.expanded .rec-footer {
+        .recommendation-card.expanded .rec-footer,
+        .recommendation-card.focused .rec-footer {
             display: block;
             margin-top: auto;
             padding-top: 15px;
@@ -498,7 +551,32 @@
             color: white;
         }
         
+        /* Close button on focused card */
+        .card-close-btn {
+            display: none;
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            font-size: 18px;
+            border: none;
+            cursor: pointer;
+            z-index: 102;
+            line-height: 36px;
+            text-align: center;
+        }
+        .recommendation-card.focused .card-close-btn { display: block; }
+
         @media (max-width: 768px) {
+            .recommendation-card.focused {
+                width: 96vw;
+                max-height: 92vh;
+                border-radius: 16px;
+            }
             .recommendations-grid {
                 grid-template-columns: 1fr;
             }
@@ -573,6 +651,9 @@
             </div>
         </div>
         
+        <!-- Backdrop for focused card overlay -->
+        <div class="card-backdrop" id="card-backdrop"></div>
+
         <!-- Recommendations Grid -->
         <div class="recommendations-grid" id="recommendations-grid">
             {% for rec in recommendations %}
@@ -581,6 +662,7 @@
                  data-type="{{ rec.gift_type }}"
                  data-confidence="{{ rec.confidence_level }}"
                  onclick="toggleCard(this)">
+                <button class="card-close-btn" onclick="event.stopPropagation(); closeCard();" aria-label="Close">&times;</button>
                 <!-- Compact View -->
                 <div class="rec-compact-view">
                     <div class="rec-image-container">
@@ -774,18 +856,43 @@
             .catch(err => console.error('Error toggling favorite:', err));
         }
         
-        // Toggle card expansion
-        function toggleCard(card) {
-            card.classList.toggle('expanded');
+        // --- Orbit card expansion ---
+        const backdrop = document.getElementById('card-backdrop');
+        const grid = document.getElementById('recommendations-grid');
+        let focusedCard = null;
+
+        function openCard(card) {
+            if (focusedCard === card) { closeCard(); return; }
+            if (focusedCard) closeCard(true);
+
+            // Remember scroll position for the card
+            card._scrollY = window.scrollY;
+            focusedCard = card;
+            card.classList.add('focused');
+            grid.classList.add('has-focus');
+            backdrop.classList.add('visible');
+            document.body.style.overflow = 'hidden';
         }
-        
-        // Close cards when clicking outside
-        document.addEventListener('click', function(event) {
-            if (!event.target.closest('.recommendation-card') && !event.target.closest('.rec-link') && !event.target.closest('.favorite-btn')) {
-                document.querySelectorAll('.recommendation-card.expanded').forEach(card => {
-                    card.classList.remove('expanded');
-                });
-            }
+
+        function closeCard(skipBodyReset) {
+            if (!focusedCard) return;
+            focusedCard.classList.remove('focused');
+            focusedCard = null;
+            grid.classList.remove('has-focus');
+            backdrop.classList.remove('visible');
+            if (!skipBodyReset) document.body.style.overflow = '';
+        }
+
+        function toggleCard(card) {
+            openCard(card);
+        }
+
+        // Close on backdrop click
+        backdrop.addEventListener('click', function() { closeCard(); });
+
+        // Close on Escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && focusedCard) closeCard();
         });
     </script>
     

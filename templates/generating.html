@@ -5,12 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Generating Recommendations - Giftwise</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -20,322 +16,622 @@
             justify-content: center;
             color: white;
         }
-        
+
         .container {
             text-align: center;
-            max-width: 600px;
-            padding: 40px;
+            max-width: 640px;
+            width: 100%;
+            padding: 32px 24px;
         }
-        
+
         .logo {
-            font-size: 4em;
-            margin-bottom: 30px;
+            font-size: 3.5em;
+            margin-bottom: 16px;
             animation: bounce 2s infinite;
         }
-        
+
         @keyframes bounce {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
+            50% { transform: translateY(-15px); }
         }
-        
-        h1 {
-            font-size: 2.5em;
-            margin-bottom: 20px;
-        }
-        
+
+        h1 { font-size: 1.8em; margin-bottom: 8px; font-weight: 700; }
+
         .subtitle {
-            font-size: 1.3em;
-            opacity: 0.9;
-            margin-bottom: 40px;
+            font-size: 1.1em;
+            opacity: 0.85;
+            margin-bottom: 28px;
         }
-        
-        .platforms-analyzing {
+
+        /* Pipeline steps */
+        .pipeline {
             background: rgba(255,255,255,0.1);
             backdrop-filter: blur(10px);
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 40px;
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            text-align: left;
         }
-        
-        .platform-item {
+
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            padding: 12px 0;
+            opacity: 0.45;
+            transition: opacity 0.4s ease;
+        }
+
+        .step.active { opacity: 1; }
+        .step.done { opacity: 0.75; }
+
+        .step-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 15px;
-            padding: 15px;
-            margin: 10px 0;
-            background: rgba(255,255,255,0.1);
-            border-radius: 10px;
-            animation: pulse 2s infinite;
+            font-size: 14px;
+            flex-shrink: 0;
+            background: rgba(255,255,255,0.15);
+            transition: background 0.3s;
         }
-        
-        @keyframes pulse {
-            0%, 100% { opacity: 0.6; }
-            50% { opacity: 1; }
+
+        .step.active .step-icon {
+            background: rgba(255,255,255,0.3);
+            animation: pulse-icon 1.5s infinite;
         }
-        
-        .platform-item:nth-child(1) { animation-delay: 0s; }
-        .platform-item:nth-child(2) { animation-delay: 0.2s; }
-        .platform-item:nth-child(3) { animation-delay: 0.4s; }
-        .platform-item:nth-child(4) { animation-delay: 0.6s; }
-        
-        .spinner {
-            border: 4px solid rgba(255,255,255,0.3);
-            border-top: 4px solid white;
-            border-radius: 50%;
-            width: 60px;
-            height: 60px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 30px;
+
+        .step.done .step-icon {
+            background: rgba(76, 175, 80, 0.6);
         }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+
+        @keyframes pulse-icon {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
         }
-        
-        .status-message {
-            font-size: 1.1em;
+
+        .step-label {
+            font-size: 0.95em;
+            font-weight: 500;
+        }
+
+        .step-detail {
+            font-size: 0.8em;
+            opacity: 0.7;
+            margin-top: 2px;
+        }
+
+        /* Interest tags */
+        .interests-reveal {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .interests-reveal.visible { display: block; }
+
+        .interests-reveal h4 {
+            font-size: 0.85em;
+            opacity: 0.7;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .interest-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .interest-tag {
+            background: rgba(255,255,255,0.18);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            opacity: 0;
+            transform: translateY(10px) scale(0.9);
+            animation: tagReveal 0.4s ease forwards;
+        }
+
+        @keyframes tagReveal {
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        /* Retailer search progress */
+        .retailers-progress {
+            margin-top: 16px;
+            display: none;
+        }
+
+        .retailers-progress.visible { display: block; }
+
+        .retailer-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 12px;
+            margin: 4px 0;
+            background: rgba(255,255,255,0.08);
+            border-radius: 8px;
+            font-size: 0.88em;
+        }
+
+        .retailer-name { font-weight: 500; }
+
+        .retailer-status {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85em;
             opacity: 0.8;
-            transition: opacity 0.3s ease;
         }
-        
+
+        .retailer-status .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .dot.searching {
+            background: #ffd700;
+            animation: blink 1s infinite;
+        }
+
+        .dot.done { background: #4caf50; }
+        .dot.skipped { background: rgba(255,255,255,0.3); }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        /* Product counter */
+        .product-counter {
+            display: none;
+            margin-top: 16px;
+            font-size: 1.3em;
+            font-weight: 700;
+        }
+
+        .product-counter.visible { display: block; }
+
+        .product-counter .count {
+            font-size: 1.6em;
+            display: inline-block;
+            min-width: 40px;
+        }
+
+        /* Progress bar */
         .progress-bar-container {
             width: 100%;
-            height: 8px;
-            background: rgba(255,255,255,0.2);
+            height: 6px;
+            background: rgba(255,255,255,0.15);
             border-radius: 10px;
             overflow: hidden;
-            margin: 20px 0;
+            margin: 20px 0 12px;
         }
-        
+
         .progress-bar {
             height: 100%;
             background: white;
-            width: 0% !important;
-            transition: width 0.5s ease;
             border-radius: 10px;
-            position: relative;
-            overflow: hidden;
+            transition: width 0.8s ease;
+            width: 0%;
         }
-        
-        /* Indeterminate progress bar animation */
+
         .progress-bar.indeterminate {
             width: 100% !important;
-            background: linear-gradient(90deg, 
-                rgba(255,255,255,0.3) 0%, 
-                rgba(255,255,255,0.8) 50%, 
-                rgba(255,255,255,0.3) 100%);
+            background: linear-gradient(90deg,
+                rgba(255,255,255,0.2) 0%,
+                rgba(255,255,255,0.7) 50%,
+                rgba(255,255,255,0.2) 100%);
             background-size: 200% 100%;
-            animation: indeterminate-progress 2s linear infinite;
+            animation: shimmer 2s linear infinite;
         }
-        
-        @keyframes indeterminate-progress {
+
+        @keyframes shimmer {
             0% { background-position: 200% 0; }
             100% { background-position: -200% 0; }
         }
-        
-        .quote-message {
-            font-size: 0.95em;
-            opacity: 0;
-            font-style: italic;
-            margin-top: 16px;
-            min-height: 1.5em;
-            transition: opacity 0.6s ease;
+
+        /* Status and quotes */
+        .status-message {
+            font-size: 1em;
+            opacity: 0.85;
+            min-height: 1.4em;
+            transition: opacity 0.3s;
         }
 
-        .quote-message.visible {
-            opacity: 0.7;
+        .fun-fact {
+            font-size: 0.88em;
+            opacity: 0;
+            font-style: italic;
+            margin-top: 14px;
+            min-height: 2.4em;
+            transition: opacity 0.5s ease;
+            line-height: 1.4;
         }
+
+        .fun-fact.visible { opacity: 0.6; }
 
         .warning-message {
             color: #ffd700;
             font-weight: 600;
+        }
+
+        /* Gift-giving tips section */
+        .tip-card {
+            display: none;
+            background: rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-top: 20px;
+            text-align: left;
+            font-size: 0.88em;
+            line-height: 1.5;
+        }
+
+        .tip-card.visible { display: block; }
+
+        .tip-card .tip-label {
+            font-weight: 700;
+            font-size: 0.75em;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.7;
+            margin-bottom: 6px;
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="logo">🎁</div>
-        <h1>Analyzing {% if recipient_type == 'someone_else' %}Their{% else %}Your{% endif %} Interests...</h1>
-        <p class="subtitle">This takes a few minutes...but it's worth the wait.</p>
-        <p class="quote-message" id="quoteMessage"></p>
+        <h1 id="mainTitle">Finding the Perfect Gifts...</h1>
+        <p class="subtitle" id="subtitle">This takes a few minutes, but it's worth the wait.</p>
 
-        <div class="platforms-analyzing">
-            <h3 style="margin-bottom: 20px;">Getting to know {% if recipient_type == 'someone_else' %}them{% else %}you{% endif %} from:</h3>
-            {% for platform in platforms %}
-            <div class="platform-item">
-                {% if platform == 'instagram' %}📷 Instagram{% endif %}
-                {% if platform == 'spotify' %}🎵 Spotify{% endif %}
-                {% if platform == 'pinterest' %}📌 Pinterest{% endif %}
-                {% if platform == 'tiktok' %}🎬 TikTok{% endif %}
-                <span>✓</span>
+        <div class="pipeline">
+            <div class="step active" id="step-profile">
+                <div class="step-icon">1</div>
+                <div>
+                    <div class="step-label">Analyzing personality profile</div>
+                    <div class="step-detail" id="step-profile-detail">Reading their posts and interests...</div>
+                </div>
             </div>
-            {% endfor %}
+            <div class="step" id="step-search">
+                <div class="step-icon">2</div>
+                <div>
+                    <div class="step-label">Searching stores</div>
+                    <div class="step-detail" id="step-search-detail">Browsing multiple retailers...</div>
+                </div>
+            </div>
+            <div class="step" id="step-curate">
+                <div class="step-icon">3</div>
+                <div>
+                    <div class="step-label">AI gift curation</div>
+                    <div class="step-detail" id="step-curate-detail">Picking the best matches...</div>
+                </div>
+            </div>
+            <div class="step" id="step-finish">
+                <div class="step-icon">4</div>
+                <div>
+                    <div class="step-label">Final touches</div>
+                    <div class="step-detail" id="step-finish-detail">Validating links and images...</div>
+                </div>
+            </div>
+
+            <!-- Interest tags appear after profile analysis -->
+            <div class="interests-reveal" id="interestsReveal">
+                <h4>Interests Discovered</h4>
+                <div class="interest-tags" id="interestTags"></div>
+            </div>
+
+            <!-- Per-retailer search progress -->
+            <div class="retailers-progress" id="retailersProgress"></div>
+
+            <!-- Live product counter -->
+            <div class="product-counter" id="productCounter">
+                <span class="count" id="productCount">0</span> products found
+            </div>
         </div>
 
-        <div class="spinner"></div>
         <div class="progress-bar-container">
-            <div class="progress-bar" id="progressBar"></div>
+            <div class="progress-bar indeterminate" id="progressBar"></div>
         </div>
-        <p class="status-message" id="statusMessage">Building a personality profile from their posts...</p>
+
+        <p class="status-message" id="statusMessage">Getting started...</p>
+        <p class="fun-fact" id="funFact"></p>
+
+        <div class="tip-card" id="tipCard">
+            <div class="tip-label">Did you know?</div>
+            <div id="tipContent"></div>
+        </div>
     </div>
-    
+
     <script>
         (function() {
             'use strict';
 
-            const progressBar = document.getElementById('progressBar');
-            const statusEl = document.getElementById('statusMessage');
-            const quoteEl = document.getElementById('quoteMessage');
-            if (!progressBar) return;
+            const recipientType = '{{ recipient_type }}';
+            const pronoun = recipientType === 'someone_else' ? 'their' : 'your';
+            const they = recipientType === 'someone_else' ? 'they' : 'you';
 
-            progressBar.classList.add('indeterminate');
-            progressBar.style.width = '100%';
-
-            // Pipeline stages — shown in order, timed to roughly match real progress
-            const stages = [
-                { at: 0,   text: 'Building a personality profile from their posts...' },
-                { at: 12,  text: 'Identifying interests, passions, and hidden obsessions...' },
-                { at: 25,  text: 'Searching retailers for products they\'d actually love...' },
-                { at: 45,  text: 'Browsing thousands of products across multiple stores...' },
-                { at: 65,  text: 'AI is handpicking the perfect gifts...' },
-                { at: 90,  text: 'Curating experiences they\'ll never forget...' },
-                { at: 110, text: 'Validating every link and image...' },
-                { at: 125, text: 'Almost there — putting the finishing touches on...' },
+            // Fun facts and tips that rotate during the wait
+            const funFacts = [
+                'The average person spends 15 hours shopping for holiday gifts. We do it in minutes.',
+                'Personalized gifts are 2x more likely to be kept and cherished.',
+                'The best gifts show you pay attention \u2014 that\'s exactly what we\'re doing right now.',
+                'Studies show experiences create stronger memories than material gifts.',
+                '68% of people say they\'d rather receive a thoughtful gift than an expensive one.',
+                'We\'re searching stores most people don\'t even know about.',
+                'Each recommendation is backed by real social media analysis \u2014 no generic suggestions.',
+                'Gift-giving activates the same brain regions as receiving gifts.',
+                'A well-chosen $20 gift beats a generic $100 one every time.',
+                'We analyze posting patterns, not just what they say \u2014 actions reveal interests.',
             ];
 
-            // Quotes — cycled between stage updates to keep the page alive
-            const quotes = [
-                'Better than asking "what do you want?"',
-                'No gift cards. No generic ideas. Real gifts.',
-                'We do the hard part so you don\'t have to.',
-                'Every recommendation backed by their actual interests.',
-                'Searching stores you\'d never think to check.',
-                'The best gifts feel like someone really gets you.',
-                'Great gifts come to those who wait.',
-                'This beats wandering the mall for three hours.',
-                'Your recipient has no idea what\'s coming.',
-                'Thousands of products. Only the perfect ones make the cut.',
+            const tips = [
+                'Gifts that reference an inside joke or shared memory feel the most personal.',
+                'Experience gifts (concerts, classes, trips) create lasting memories.',
+                'Don\'t overthink price \u2014 the thought behind the gift matters most.',
+                'Wrapping matters: a beautifully wrapped small gift beats a big gift in a bag.',
+                'Add a handwritten note explaining why you chose it. That\'s the real gift.',
             ];
 
+            // State
             const state = {
+                lastStage: '',
+                interestsShown: false,
+                factIndex: Math.floor(Math.random() * funFacts.length),
+                tipIndex: Math.floor(Math.random() * tips.length),
+                tipShown: false,
                 startTime: Date.now(),
-                stageIndex: 0,
-                quoteIndex: Math.floor(Math.random() * quotes.length),
-                apiComplete: false,
+                complete: false,
             };
 
-            function fadeText(el, newText) {
+            const $ = id => document.getElementById(id);
+
+            function setStepState(stepId, newState) {
+                const el = $(stepId);
+                if (!el) return;
+                el.classList.remove('active', 'done');
+                if (newState) el.classList.add(newState);
+            }
+
+            function fadeText(el, text) {
+                if (!el || el.textContent === text) return;
                 el.style.opacity = '0';
                 setTimeout(() => {
-                    el.textContent = newText;
+                    el.textContent = text;
                     el.style.opacity = '';
+                }, 300);
+            }
+
+            function showInterests(interests) {
+                if (state.interestsShown || !interests || interests.length === 0) return;
+                state.interestsShown = true;
+                const container = $('interestsReveal');
+                const tags = $('interestTags');
+                if (!container || !tags) return;
+                container.classList.add('visible');
+                interests.forEach((name, i) => {
+                    setTimeout(() => {
+                        const tag = document.createElement('span');
+                        tag.className = 'interest-tag';
+                        tag.textContent = name;
+                        tag.style.animationDelay = (i * 0.08) + 's';
+                        tags.appendChild(tag);
+                    }, i * 120);
+                });
+            }
+
+            function updateRetailers(retailers) {
+                const container = $('retailersProgress');
+                if (!container || !retailers || Object.keys(retailers).length === 0) return;
+                container.classList.add('visible');
+
+                // Build/update retailer rows
+                const retailerIcons = {
+                    'Etsy': '🛍️', 'Awin': '🔗', 'eBay': '📦',
+                    'Amazon': '📱', 'ShareASale': '🏪'
+                };
+
+                let html = '';
+                for (const [name, info] of Object.entries(retailers)) {
+                    const icon = retailerIcons[name] || '🏬';
+                    let statusHtml = '';
+                    if (info.status === 'searching') {
+                        statusHtml = '<span class="dot searching"></span> Searching...';
+                    } else if (info.status === 'done') {
+                        statusHtml = '<span class="dot done"></span> ' + (info.count || 0) + ' found';
+                    } else if (info.status === 'skipped') {
+                        statusHtml = '<span class="dot skipped"></span> Skipped';
+                    }
+                    html += '<div class="retailer-row">' +
+                            '<span class="retailer-name">' + icon + ' ' + name + '</span>' +
+                            '<span class="retailer-status">' + statusHtml + '</span>' +
+                            '</div>';
+                }
+                container.innerHTML = html;
+            }
+
+            function updateProductCount(count) {
+                const counter = $('productCounter');
+                const countEl = $('productCount');
+                if (!counter || !countEl || count <= 0) return;
+                counter.classList.add('visible');
+                countEl.textContent = count;
+            }
+
+            function rotateFunFact() {
+                if (state.complete) return;
+                const el = $('funFact');
+                if (!el) return;
+                el.classList.remove('visible');
+                setTimeout(() => {
+                    el.textContent = funFacts[state.factIndex % funFacts.length];
                     el.classList.add('visible');
+                    state.factIndex++;
                 }, 400);
             }
 
-            function tick() {
-                if (state.apiComplete) return;
+            function showTip() {
+                if (state.tipShown) return;
                 const elapsed = (Date.now() - state.startTime) / 1000;
-
-                // Advance to next stage if it's time
-                const nextStage = stages[state.stageIndex + 1];
-                if (nextStage && elapsed >= nextStage.at) {
-                    state.stageIndex++;
-                    fadeText(statusEl, stages[state.stageIndex].text);
-                }
-
-                // Cycle quotes every 7 seconds
-                if (quoteEl) {
-                    const quotePhase = Math.floor(elapsed / 7);
-                    const targetQuote = (state.quoteIndex + quotePhase) % quotes.length;
-                    const currentText = quotes[targetQuote];
-                    if (quoteEl.textContent !== currentText) {
-                        fadeText(quoteEl, currentText);
-                    }
-                }
-
-                // Warning if over 3 minutes
-                if (elapsed >= 180) {
-                    statusEl.innerHTML = 'This is taking longer than usual — hang in there...';
-                    statusEl.className = 'status-message warning-message';
-                }
+                if (elapsed < 40) return;  // Show tip after 40 seconds
+                state.tipShown = true;
+                const card = $('tipCard');
+                const content = $('tipContent');
+                if (!card || !content) return;
+                content.textContent = tips[state.tipIndex % tips.length];
+                card.classList.add('visible');
             }
 
-            const tickInterval = setInterval(tick, 2000);
-            // Show first quote after a short delay
-            setTimeout(() => fadeText(quoteEl, quotes[state.quoteIndex]), 3000);
+            function applyProgress(data) {
+                if (state.complete) return;
+                const stage = data.stage || 'starting';
 
-            window.giftwiseCleanup = function() {
-                clearInterval(tickInterval);
-                state.apiComplete = true;
-            };
-            window.giftwiseProgressState = state;
-        })();
-        
-        // Auto-generate recommendations when page loads
-        window.addEventListener('load', async function() {
-            try {
-                // Create AbortController for timeout
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 240000); // 4 minute timeout (reduced from 6)
-                
-                const response = await fetch('/api/generate-recommendations', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    signal: controller.signal
-                });
-                
-                clearTimeout(timeoutId);
-                
-                // Cleanup progress tracking
-                if (window.giftwiseCleanup) {
-                    window.giftwiseCleanup();
+                // Update pipeline steps based on stage
+                if (stage === 'starting' || stage === 'profile_analysis') {
+                    setStepState('step-profile', 'active');
+                } else if (stage === 'profile_done') {
+                    setStepState('step-profile', 'done');
+                    $('step-profile-detail').textContent = (data.interests || []).length + ' interests found';
+                    showInterests(data.interests);
+                } else if (stage === 'searching_retailers') {
+                    setStepState('step-profile', 'done');
+                    setStepState('step-search', 'active');
+                    showInterests(data.interests);
+                } else if (stage === 'filtering') {
+                    setStepState('step-profile', 'done');
+                    setStepState('step-search', 'done');
+                    $('step-search-detail').textContent = (data.product_count || 0) + ' products found';
+                } else if (stage === 'curating') {
+                    setStepState('step-profile', 'done');
+                    setStepState('step-search', 'done');
+                    setStepState('step-curate', 'active');
+                } else if (stage === 'cleanup' || stage === 'images') {
+                    setStepState('step-profile', 'done');
+                    setStepState('step-search', 'done');
+                    setStepState('step-curate', 'done');
+                    setStepState('step-finish', 'active');
+                } else if (stage === 'complete') {
+                    setStepState('step-profile', 'done');
+                    setStepState('step-search', 'done');
+                    setStepState('step-curate', 'done');
+                    setStepState('step-finish', 'done');
                 }
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    // Mark API as complete
-                    if (window.giftwiseProgressState) {
-                        window.giftwiseProgressState.apiComplete = true;
+
+                // Update retailers and product count
+                if (data.retailers) updateRetailers(data.retailers);
+                if (data.product_count > 0) updateProductCount(data.product_count);
+
+                // Update status message
+                if (data.stage_label) {
+                    fadeText($('statusMessage'), data.stage_label);
+                }
+
+                // Handle completion
+                if (data.complete) {
+                    state.complete = true;
+                    const bar = $('progressBar');
+                    if (bar) {
+                        bar.classList.remove('indeterminate');
+                        bar.style.width = '100%';
                     }
-                    
-                    // Remove indeterminate animation and show complete
-                    const progressBar = document.getElementById('progressBar');
-                    if (progressBar) {
-                        progressBar.classList.remove('indeterminate');
-                        progressBar.style.width = '100%';
-                        progressBar.style.background = 'white';
-                        progressBar.setAttribute('data-progress', '100');
+
+                    if (data.success) {
+                        fadeText($('mainTitle'), 'Your gifts are ready!');
+                        fadeText($('subtitle'), 'Redirecting...');
+                        setTimeout(() => {
+                            window.location.href = '/recommendations';
+                        }, 800);
+                    } else {
+                        const errorMsg = data.error || 'Something went wrong. Please try again.';
+                        alert(errorMsg);
+                        window.location.href = '/connect-platforms';
                     }
-                    setTimeout(() => {
+                }
+
+                // Show tip after enough time
+                showTip();
+            }
+
+            // Start generation and begin polling
+            async function startGeneration() {
+                try {
+                    const resp = await fetch('/api/generate-recommendations', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    const data = await resp.json();
+
+                    if (data.error) {
+                        alert(data.error);
+                        window.location.href = '/connect-platforms';
+                        return;
+                    }
+
+                    // Legacy fallback: if server returned success directly (not using background thread)
+                    if (data.success) {
                         window.location.href = '/recommendations';
-                    }, 500);
-                } else {
-                    if (window.giftwiseCleanup) {
-                        window.giftwiseCleanup();
+                        return;
                     }
-                    alert('Error generating recommendations: ' + (data.error || 'Unknown error'));
+
+                    // Start polling for progress
+                    pollProgress();
+                } catch (err) {
+                    console.error('Failed to start generation:', err);
+                    alert('Error starting recommendation generation. Please try again.');
                     window.location.href = '/connect-platforms';
                 }
-            } catch (error) {
-                if (window.giftwiseCleanup) {
-                    window.giftwiseCleanup();
-                }
-                console.error('Error:', error);
-                
-                if (error.name === 'AbortError') {
-                    alert('Request timed out. The AI is taking longer than expected. Please try again.');
-                } else {
-                    alert('Error generating recommendations. Please try again.');
-                }
-                window.location.href = '/connect-platforms';
             }
-        });
+
+            async function pollProgress() {
+                if (state.complete) return;
+
+                try {
+                    const resp = await fetch('/api/generation-progress');
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        applyProgress(data);
+                    }
+                } catch (err) {
+                    console.error('Progress poll error:', err);
+                }
+
+                // Check for timeout (5 minutes)
+                const elapsed = (Date.now() - state.startTime) / 1000;
+                if (elapsed > 300) {
+                    state.complete = true;
+                    alert('Request timed out. Please try again.');
+                    window.location.href = '/connect-platforms';
+                    return;
+                }
+
+                if (elapsed > 180) {
+                    const msg = $('statusMessage');
+                    if (msg && !msg.classList.contains('warning-message')) {
+                        msg.classList.add('warning-message');
+                        msg.textContent = 'This is taking longer than usual \u2014 hang in there...';
+                    }
+                }
+
+                if (!state.complete) {
+                    setTimeout(pollProgress, 2000);
+                }
+            }
+
+            // Rotate fun facts every 8 seconds
+            setInterval(rotateFunFact, 8000);
+            setTimeout(rotateFunFact, 3000);  // First fact after 3s
+
+            // Kick off on page load
+            window.addEventListener('load', startGeneration);
+        })();
     </script>
 </body>
 </html>

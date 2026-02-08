@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gift Guides - Giftwise</title>
+    <meta name="description" content="Expert gift guides powered by AI and social media analysis. Find the perfect gift for anyone based on their real interests.">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; }
+        .nav { background: white; border-bottom: 2px solid #f0f0f0; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; max-width: 1200px; margin: 0 auto; }
+        .nav-logo { font-size: 1.4em; font-weight: 700; color: #667eea; text-decoration: none; }
+        .nav-links a { margin-left: 25px; color: #555; text-decoration: none; font-weight: 500; }
+        .nav-links a:hover { color: #667eea; }
+        .hero-sm { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 60px 20px; text-align: center; }
+        .hero-sm h1 { font-size: 2.5em; margin-bottom: 15px; }
+        .hero-sm p { font-size: 1.2em; opacity: 0.9; max-width: 700px; margin: 0 auto; }
+        .container { max-width: 1200px; margin: 0 auto; padding: 60px 20px; }
+        .guides-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 30px; }
+        .guide-card { background: white; border: 2px solid #e5e7eb; border-radius: 16px; overflow: hidden; transition: all 0.3s; text-decoration: none; color: inherit; }
+        .guide-card:hover { transform: translateY(-5px); box-shadow: 0 12px 30px rgba(102, 126, 234, 0.15); border-color: #667eea; }
+        .guide-img { height: 200px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); display: flex; align-items: center; justify-content: center; font-size: 4em; }
+        .guide-img.beauty { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .guide-img.music { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .guide-img.home { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        .guide-img.travel { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+        .guide-img.pet { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); }
+        .guide-img.tech { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .guide-body { padding: 25px; }
+        .guide-body h2 { font-size: 1.3em; margin-bottom: 10px; color: #1f2937; }
+        .guide-body p { color: #6b7280; font-size: 0.95em; margin-bottom: 15px; }
+        .guide-meta { font-size: 0.85em; color: #9ca3af; }
+        .cta-section { text-align: center; padding: 60px 20px; background: #f9fafb; margin-top: 60px; }
+        .cta-section h2 { font-size: 2em; margin-bottom: 15px; color: #1f2937; }
+        .cta-section p { font-size: 1.1em; color: #6b7280; margin-bottom: 25px; }
+        .cta-button { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 15px 40px; font-size: 1.1em; border: none; border-radius: 50px; cursor: pointer; font-weight: 600; text-decoration: none; display: inline-block; }
+        .footer { background: #1f2937; color: white; padding: 40px 20px; text-align: center; }
+        .footer p { opacity: 0.8; margin: 8px 0; }
+        .footer a { color: white; opacity: 0.8; }
+        .affiliate-disclosure { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 12px 20px; margin: 20px auto; max-width: 1200px; font-size: 0.85em; color: #92400e; }
+        @media (max-width: 768px) { .hero-sm h1 { font-size: 1.8em; } .guides-grid { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="/" class="nav-logo">Giftwise</a>
+        <div class="nav-links">
+            <a href="/guides">Gift Guides</a>
+            <a href="/signup">Get Started</a>
+        </div>
+    </div>
+
+    <div class="hero-sm">
+        <h1>Gift Guides</h1>
+        <p>Expert-curated gift recommendations for every personality and occasion. Powered by real data from what people actually love.</p>
+    </div>
+
+    <div class="affiliate-disclosure">
+        <strong>Disclosure:</strong> Some links in our gift guides are affiliate links. If you click through and make a purchase, we may earn a small commission at no extra cost to you. This helps us keep Giftwise free. We only recommend products we genuinely believe make great gifts.
+    </div>
+
+    <div class="container">
+        <div class="guides-grid">
+            <a href="/guides/beauty-lover" class="guide-card">
+                <div class="guide-img beauty">&#x1f484;</div>
+                <div class="guide-body">
+                    <h2>The Best Gifts for Beauty Lovers in 2026</h2>
+                    <p>From cult-favorite skincare sets to luxury fragrance picks, these are the beauty gifts that actually impress — not another generic bath bomb.</p>
+                    <span class="guide-meta">Updated February 2026 &middot; 15 product picks</span>
+                </div>
+            </a>
+
+            <a href="/guides/music-fan" class="guide-card">
+                <div class="guide-img music">&#x1f3b5;</div>
+                <div class="guide-body">
+                    <h2>Gift Ideas for the Music Obsessed</h2>
+                    <p>Whether they're into Taylor Swift, vinyl collecting, or bedroom production — gifts that match how they actually listen and discover music.</p>
+                    <span class="guide-meta">Updated February 2026 &middot; 12 product picks</span>
+                </div>
+            </a>
+
+            <a href="/guides/homebody" class="guide-card">
+                <div class="guide-img home">&#x1f3e0;</div>
+                <div class="guide-body">
+                    <h2>Gifts for the Homebody Who Has Everything</h2>
+                    <p>Cozy, practical, and elevated — from smart home upgrades to the candle they'll actually burn. Curated for people who love their space.</p>
+                    <span class="guide-meta">Updated February 2026 &middot; 14 product picks</span>
+                </div>
+            </a>
+
+            <a href="/guides/travel-obsessed" class="guide-card">
+                <div class="guide-img travel">&#x2708;&#xFE0F;</div>
+                <div class="guide-body">
+                    <h2>Travel Gifts That Aren't a Neck Pillow</h2>
+                    <p>Skip the luggage tags. These are the travel gifts frequent flyers and weekend wanderers actually want — tested by real travelers.</p>
+                    <span class="guide-meta">Updated February 2026 &middot; 13 product picks</span>
+                </div>
+            </a>
+
+            <a href="/guides/dog-parent" class="guide-card">
+                <div class="guide-img pet">&#x1f436;</div>
+                <div class="guide-body">
+                    <h2>Gifts for Dog Parents (Not Just Dog Toys)</h2>
+                    <p>The best gifts for people who treat their dog like family — matching gear, adventure essentials, and the portrait they'll actually hang up.</p>
+                    <span class="guide-meta">Updated February 2026 &middot; 11 product picks</span>
+                </div>
+            </a>
+
+            <a href="/guides/tech-nerd" class="guide-card">
+                <div class="guide-img tech">&#x1f4bb;</div>
+                <div class="guide-body">
+                    <h2>Tech Gifts They Don't Already Own</h2>
+                    <p>Finding tech gifts for someone who buys everything on launch day is hard. These are the under-the-radar picks they haven't thought of yet.</p>
+                    <span class="guide-meta">Updated February 2026 &middot; 12 product picks</span>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <div class="cta-section">
+        <h2>Want Gifts Tailored to a Specific Person?</h2>
+        <p>Our AI analyzes their Instagram and TikTok to find gifts based on what they actually post about, save, and love.</p>
+        <a href="/signup" class="cta-button">Try Giftwise Free</a>
+    </div>
+
+    <div class="footer">
+        <div class="container">
+            <p>&copy; 2026 Giftwise. All rights reserved.</p>
+            <p style="margin-top: 10px; font-size: 0.9em;">We may earn commissions from links on this page. <a href="/privacy">Privacy Policy</a> | <a href="/terms">Terms of Service</a></p>
+        </div>
+    </div>
+</body>
+</html>

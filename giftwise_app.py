@@ -1420,6 +1420,32 @@ def index():
     """Landing page"""
     return render_template('index.html')
 
+@app.route('/privacy')
+def privacy():
+    """Privacy policy"""
+    return render_template('privacy.html')
+
+@app.route('/terms')
+def terms():
+    """Terms of service — redirect to privacy for now"""
+    return render_template('privacy.html')
+
+@app.route('/guides')
+def gift_guides():
+    """Gift guides index — editorial content for SEO and affiliate revenue"""
+    return render_template('gift_guides.html')
+
+@app.route('/guides/<slug>')
+def gift_guide_detail(slug):
+    """Individual gift guide article"""
+    template_map = {
+        'beauty-lover': 'guide_beauty.html',
+    }
+    template = template_map.get(slug)
+    if template:
+        return render_template(template)
+    return render_template('error.html', error_message="Guide not found."), 404
+
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     """Signup page with 4-tier relationship selection"""

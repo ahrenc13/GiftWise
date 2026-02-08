@@ -1440,6 +1440,11 @@ def gift_guide_detail(slug):
     """Individual gift guide article"""
     template_map = {
         'beauty-lover': 'guide_beauty.html',
+        'music-fan': 'guide_music.html',
+        'homebody': 'guide_home.html',
+        'travel-obsessed': 'guide_travel.html',
+        'dog-parent': 'guide_dog.html',
+        'tech-nerd': 'guide_tech.html',
     }
     template = template_map.get(slug)
     if template:

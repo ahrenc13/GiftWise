@@ -35,6 +35,7 @@ def search_products_multi_retailer(
     amazon_key=None,
     target_count=20,
     enhanced_search_terms=None,
+    progress_callback=None,
 ):
     """
     Search across multiple retailers.
@@ -59,21 +60,32 @@ def search_products_multi_retailer(
     # Curator will pick the best N; if they're all from one vendor, that's fine.
     per_vendor_target = min(target_count, MAX_INVENTORY_SIZE // 5)  # so 5 vendors don't exceed MAX
 
+    def _notify(retailer, count=None, searching=False, done=False, skipped=False):
+        if progress_callback:
+            try:
+                progress_callback(retailer=retailer, count=count, searching=searching, done=done, skipped=skipped)
+            except Exception:
+                pass
+
     # 1. Etsy
     if etsy_key:
         try:
             from etsy_searcher import search_products_etsy
 
+            _notify('Etsy', searching=True)
             logger.info(f"Searching Etsy for {per_vendor_target} products...")
             etsy_products = search_products_etsy(
                 profile, etsy_key, target_count=per_vendor_target
             )
             all_products.extend(etsy_products)
             logger.info(f"Got {len(etsy_products)} products from Etsy")
+            _notify('Etsy', count=len(etsy_products), done=True)
         except ImportError as e:
             logger.warning(f"etsy_searcher not available: {e}")
+            _notify('Etsy', skipped=True)
         except Exception as e:
             logger.error(f"Etsy search failed: {e}")
+            _notify('Etsy', count=0, done=True)
     else:
         logger.info("Etsy API key not set - skipping Etsy")
 
@@ -82,6 +94,7 @@ def search_products_multi_retailer(
         try:
             from awin_searcher import search_products_awin
 
+            _notify('Awin', searching=True)
             logger.info(f"Searching Awin for {per_vendor_target} products...")
             awin_products = search_products_awin(
                 profile,
@@ -91,10 +104,13 @@ def search_products_multi_retailer(
             )
             all_products.extend(awin_products)
             logger.info(f"Got {len(awin_products)} products from Awin")
+            _notify('Awin', count=len(awin_products), done=True)
         except ImportError as e:
             logger.warning(f"awin_searcher not available: {e}")
+            _notify('Awin', skipped=True)
         except Exception as e:
             logger.error(f"Awin search failed: {e}")
+            _notify('Awin', count=0, done=True)
     else:
         logger.info("Awin data feed API key not set - skipping Awin")
 
@@ -103,6 +119,7 @@ def search_products_multi_retailer(
         try:
             from ebay_searcher import search_products_ebay
 
+            _notify('eBay', searching=True)
             logger.info(f"Searching eBay for {per_vendor_target} products...")
             ebay_products = search_products_ebay(
                 profile,
@@ -112,10 +129,13 @@ def search_products_multi_retailer(
             )
             all_products.extend(ebay_products)
             logger.info(f"Got {len(ebay_products)} products from eBay")
+            _notify('eBay', count=len(ebay_products), done=True)
         except ImportError as e:
             logger.warning(f"ebay_searcher not available: {e}")
+            _notify('eBay', skipped=True)
         except Exception as e:
             logger.error(f"eBay search failed: {e}")
+            _notify('eBay', count=0, done=True)
     else:
         logger.info("eBay credentials not set - skipping eBay")
 
@@ -124,6 +144,7 @@ def search_products_multi_retailer(
         try:
             from affiliate_searcher import search_products_shareasale
 
+            _notify('ShareASale', searching=True)
             logger.info(f"Searching ShareASale for {per_vendor_target} products...")
             shareasale_products = search_products_shareasale(
                 profile,
@@ -134,10 +155,13 @@ def search_products_multi_retailer(
             )
             all_products.extend(shareasale_products)
             logger.info(f"Got {len(shareasale_products)} products from ShareASale")
+            _notify('ShareASale', count=len(shareasale_products), done=True)
         except ImportError as e:
             logger.warning(f"affiliate_searcher not available: {e}")
+            _notify('ShareASale', skipped=True)
         except Exception as e:
             logger.error(f"ShareASale search failed: {e}")
+            _notify('ShareASale', count=0, done=True)
     else:
         logger.info("ShareASale credentials not set - skipping ShareASale")
 
@@ -146,16 +170,20 @@ def search_products_multi_retailer(
         try:
             from rapidapi_amazon_searcher import search_products_rapidapi_amazon
 
+            _notify('Amazon', searching=True)
             logger.info(f"Searching Amazon for {per_vendor_target} products...")
             amazon_products = search_products_rapidapi_amazon(
                 profile, amazon_key, target_count=per_vendor_target
             )
             all_products.extend(amazon_products)
             logger.info(f"Got {len(amazon_products)} products from Amazon")
+            _notify('Amazon', count=len(amazon_products), done=True)
         except ImportError:
             logger.warning("rapidapi_amazon_searcher not found - Amazon skipped")
+            _notify('Amazon', skipped=True)
         except Exception as e:
             logger.error(f"Amazon search failed: {e}")
+            _notify('Amazon', count=0, done=True)
     else:
         logger.info("Amazon key not set - skipping Amazon")
 

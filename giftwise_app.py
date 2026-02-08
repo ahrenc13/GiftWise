@@ -442,7 +442,7 @@ def set_progress(task_id, status, message, percent=0):
         'percent': percent,
         'timestamp': datetime.now().isoformat()
     }
-    
+
     # Clean up old entries to prevent memory leak
     if len(scraping_progress) > MAX_PROGRESS_ENTRIES:
         # Remove oldest 100 entries
@@ -457,6 +457,48 @@ def get_progress(task_id):
         'message': 'Unknown status',
         'percent': 0
     })
+
+# ============================================================================
+# GENERATION PROGRESS TRACKING (real-time pipeline stages for waiting page)
+# ============================================================================
+_generation_progress = {}
+_generation_progress_lock = threading.Lock()
+
+def _set_gen_progress(user_id, **kwargs):
+    """Update generation progress for a user. Thread-safe."""
+    with _generation_progress_lock:
+        if user_id not in _generation_progress:
+            _generation_progress[user_id] = {
+                'stage': 'starting',
+                'stage_label': 'Getting started...',
+                'interests': [],
+                'retailers': {},
+                'product_count': 0,
+                'complete': False,
+                'success': False,
+                'error': None,
+                'started_at': datetime.now().isoformat(),
+            }
+        _generation_progress[user_id].update(kwargs)
+
+def _get_gen_progress(user_id):
+    """Get generation progress for a user. Thread-safe."""
+    with _generation_progress_lock:
+        return dict(_generation_progress.get(user_id, {
+            'stage': 'unknown',
+            'stage_label': 'Preparing...',
+            'interests': [],
+            'retailers': {},
+            'product_count': 0,
+            'complete': False,
+            'success': False,
+            'error': None,
+        }))
+
+def _clear_gen_progress(user_id):
+    """Remove generation progress for a user."""
+    with _generation_progress_lock:
+        _generation_progress.pop(user_id, None)
 
 # ============================================================================
 # DATABASE HELPERS (Fixed: Thread-safe operations)

@@ -127,7 +127,8 @@ def _get_feed_list(api_key):
                 except (ValueError, TypeError):
                     pass
                 break
-        language = (ci.get("language") or ci.get("primary region") or "").strip()
+        language = (ci.get("language") or "").strip()
+        primary_region = (ci.get("primary region") or ci.get("primary_region") or "").strip()
         if url_val:
             out.append({
                 "url": url_val,
@@ -137,7 +138,8 @@ def _get_feed_list(api_key):
                 "feed_name": feed_name,
                 "vertical": vertical,
                 "num_products": num_products,
-                "language": language,
+                "language": language or primary_region,
+                "primary_region": primary_region,
             })
     _awin_feed_list_cache[api_key] = out
     _awin_feed_list_ts = now
@@ -410,11 +412,22 @@ def _row_to_product(row, interest, query, priority):
     description = _ci_get(row, "product_short_description", "description", "Description",
                           "product_description", "Product Description")
     snippet = description[:150] if description else (f"From {merchant}" if merchant else title[:120])
-    source_domain = (
-        merchant.lower().replace(" ", "").replace("-", "") + ".com"
-        if merchant
-        else "awin.com"
-    )
+    # Extract a clean source domain from the merchant name
+    # If merchant name contains a domain-like string (e.g. "eSIMania.com"), use it directly
+    # Otherwise, build a reasonable slug from the first meaningful words
+    if merchant:
+        _m = merchant.strip()
+        # Check if merchant name already contains a domain
+        domain_match = re.search(r'(\w[\w-]*\.(?:com|co\.uk|net|org|io|shop|store))', _m, re.IGNORECASE)
+        if domain_match:
+            source_domain = domain_match.group(1).lower()
+        else:
+            # Use first 2-3 words to avoid absurdly long domains
+            words = re.split(r'[\s\-]+', _m)
+            slug = "".join(w.lower() for w in words[:3] if w)
+            source_domain = slug + ".com" if slug else "awin.com"
+    else:
+        source_domain = "awin.com"
     product_id = _ci_get(row, "aw_product_id", "merchant_product_id", "product_id",
                          "Product ID") or str(hash(title + link))[:16]
     return {
@@ -520,13 +533,48 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
     # Prefer Joined/active feeds; accept multiple status values
     _active_statuses = {"joined", "active", "approved", "yes", "1", "true"}
     _niche_keywords = ("bunch", "flower", "florist", "roses", "bouquet", "tooled up", "tools")
+    _adult_keywords = ("pleasure", "erotic", "lingerie", "adult", "sex", "vibrator", "fetish", "intimacy")
+    # Non-English-speaking regions to deprioritize (we want US/UK/AU/CA feeds)
+    _english_regions = {"us", "uk", "gb", "au", "ca", "ie", "nz"}
 
     def _is_niche_retailer(advertiser_name):
         name = (advertiser_name or "").lower()
         return any(k in name for k in _niche_keywords)
 
+    def _is_adult_feed(feed_info):
+        text = " ".join([
+            (feed_info.get("feed_name") or "").lower(),
+            (feed_info.get("advertiser_name") or "").lower(),
+            (feed_info.get("vertical") or "").lower(),
+        ])
+        return any(k in text for k in _adult_keywords)
+
+    def _is_closed_feed(feed_info):
+        text = " ".join([
+            (feed_info.get("feed_name") or "").lower(),
+            (feed_info.get("advertiser_name") or "").lower(),
+        ])
+        return "closed" in text
+
+    def _is_english_region(feed_info):
+        region = (feed_info.get("primary_region") or "").lower().strip()
+        lang = (feed_info.get("language") or "").lower().strip()
+        # If region is specified, check it's English-speaking
+        if region and region in _english_regions:
+            return True
+        if region and region not in _english_regions:
+            return False
+        # Fall back to language check
+        if lang and ("en" in lang or "english" in lang):
+            return True
+        # No region/language info — don't exclude
+        return not region and not lang
+
+    # Hard-filter: remove closed and adult feeds before scoring
+    feed_list = [f for f in feed_list if not _is_closed_feed(f) and not _is_adult_feed(f)]
+
     joined = [f for f in feed_list if (f.get("membership_status") or "").lower() in _active_statuses]
-    logger.info("Awin joined/active feeds: %d (out of %d total)", len(joined), len(feed_list))
+    logger.info("Awin joined/active feeds: %d (out of %d total after filtering)", len(joined), len(feed_list))
     candidates = joined if joined else feed_list
 
     # Prefer English-language feeds and gift-relevant verticals
@@ -565,10 +613,11 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
             score += 2
         elif num_products > 100:
             score += 1
-        # English preference
-        lang = (feed_info.get("language") or "").lower()
-        if "en" in lang or "english" in lang or not lang:
-            score += 1
+        # English/US region preference — non-English regions are almost never useful
+        if _is_english_region(feed_info):
+            score += 3
+        else:
+            score -= 15  # Strong penalty: non-English feeds are rarely relevant for US users
         # Penalize niche single-category retailers
         if _is_niche_retailer(feed_info.get("advertiser_name", "")):
             score -= 5

@@ -33,6 +33,10 @@ def search_products_multi_retailer(
     shareasale_token=None,
     shareasale_secret=None,
     amazon_key=None,
+    skimlinks_publisher_id=None,
+    skimlinks_client_id=None,
+    skimlinks_client_secret=None,
+    skimlinks_domain_id=None,
     target_count=20,
     enhanced_search_terms=None,
     progress_callback=None,
@@ -52,7 +56,7 @@ def search_products_multi_retailer(
     """
     logger.info(f"Multi-retailer search: target {target_count} products")
     logger.info(
-        f"Available: Etsy={bool(etsy_key)}, Awin={bool(awin_data_feed_api_key)}, eBay={bool(ebay_client_id and ebay_client_secret)}, ShareASale={bool(shareasale_id)}, Amazon={bool(amazon_key)}"
+        f"Available: Etsy={bool(etsy_key)}, Awin={bool(awin_data_feed_api_key)}, eBay={bool(ebay_client_id and ebay_client_secret)}, ShareASale={bool(shareasale_id)}, Skimlinks={bool(skimlinks_publisher_id)}, Amazon={bool(amazon_key)}"
     )
 
     all_products = []
@@ -165,7 +169,35 @@ def search_products_multi_retailer(
     else:
         logger.info("ShareASale credentials not set - skipping ShareASale")
 
-    # 5. Amazon
+    # 5. Skimlinks (aggregated: 48,500+ merchants across 50+ affiliate networks)
+    if skimlinks_publisher_id:
+        try:
+            from skimlinks_searcher import search_products_skimlinks
+
+            _notify('Skimlinks', searching=True)
+            logger.info(f"Searching Skimlinks for {per_vendor_target} products...")
+            skimlinks_products = search_products_skimlinks(
+                profile,
+                skimlinks_publisher_id,
+                skimlinks_client_id,
+                skimlinks_client_secret,
+                skimlinks_domain_id,
+                target_count=per_vendor_target,
+                enhanced_search_terms=enhanced_search_terms,
+            )
+            all_products.extend(skimlinks_products)
+            logger.info(f"Got {len(skimlinks_products)} products from Skimlinks")
+            _notify('Skimlinks', count=len(skimlinks_products), done=True)
+        except ImportError as e:
+            logger.warning(f"skimlinks_searcher not available: {e}")
+            _notify('Skimlinks', skipped=True)
+        except Exception as e:
+            logger.error(f"Skimlinks search failed: {e}")
+            _notify('Skimlinks', count=0, done=True)
+    else:
+        logger.info("Skimlinks credentials not set - skipping Skimlinks")
+
+    # 6. Amazon
     if amazon_key:
         try:
             from rapidapi_amazon_searcher import search_products_rapidapi_amazon

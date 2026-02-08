@@ -575,7 +575,17 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
 
     joined = [f for f in feed_list if (f.get("membership_status") or "").lower() in _active_statuses]
     logger.info("Awin joined/active feeds: %d (out of %d total after filtering)", len(joined), len(feed_list))
-    candidates = joined if joined else feed_list
+
+    # Gate: if no joined feeds, don't waste time downloading and scanning random feeds
+    if not joined:
+        logger.warning(
+            "Awin: 0 joined advertisers — skipping feed downloads. "
+            "Join advertisers at https://www.awin.com/us/search/advertiser-directory "
+            "to enable Awin product results."
+        )
+        return []
+
+    candidates = joined
 
     # Prefer English-language feeds and gift-relevant verticals
     _gift_verticals = {"retail", "gifts", "home & garden", "sports & outdoors", "clothing & accessories",

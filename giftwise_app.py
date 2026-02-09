@@ -1426,6 +1426,12 @@ def index():
     """Landing page"""
     return render_template('index.html')
 
+@app.route('/valentine')
+@app.route('/valentines')
+def valentines_landing():
+    """Valentine's Day landing page"""
+    return render_template('valentines_landing.html')
+
 @app.route('/privacy')
 def privacy():
     """Privacy policy"""
@@ -3825,12 +3831,12 @@ def api_generate_share_image():
             rec_count=rec_count,
             relationship=relationship
         )
-        
+
         return send_file(
             img_bytes,
-            mimetype='image/png',
+            mimetype='image/svg+xml',
             as_attachment=True,
-            download_name='my-valentine-gifts.png'
+            download_name='my-giftwise-picks.svg'
         )
     except Exception as e:
         logger.error(f"Error generating share image: {e}")

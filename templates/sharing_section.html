@@ -203,13 +203,13 @@ function shareImage() {
 
 function shareTwitter() {
     const text = "Just found the perfect Valentine's gift with AI! 💝 No more guessing what they want. ";
-    const url = "https://giftwise.app?ref={{ user.referral_code }}";
+    const url = "https://giftwise.fit?ref={{ user.referral_code }}";
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
     window.open(twitterUrl, '_blank', 'width=550,height=420');
 }
 
 function copyLink() {
-    const link = "https://giftwise.app?ref={{ user.referral_code }}";
+    const link = "https://giftwise.fit?ref={{ user.referral_code }}";
     navigator.clipboard.writeText(link).then(() => {
         alert('🔗 Link copied! Share it with friends to give them 25% off 💝');
     }).catch(() => {

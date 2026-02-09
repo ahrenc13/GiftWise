@@ -10,6 +10,7 @@ Returns products in our standard format (title, link, image, price, source_domai
 """
 
 import logging
+import re
 import requests
 
 logger = logging.getLogger(__name__)
@@ -19,12 +20,77 @@ RAPIDAPI_AMAZON_HOST = "real-time-amazon-data.p.rapidapi.com"
 RAPIDAPI_SEARCH_URL = "https://real-time-amazon-data.p.rapidapi.com/search"
 
 
+# Filler phrases the profile analyzer puts in interest names that hurt search quality.
+# "Dog ownership and care" → "Dog", "International travel" stays as-is,
+# "Family celebrations and milestone events" → "celebrations milestone"
+_INTEREST_FILLER = re.compile(
+    r'\b(?:and care|ownership|and maintenance|fandom|and lifestyle|'
+    r'personalized|and (?:pop |rock |country )?culture|'
+    r'connections and|celebrations and milestone events|'
+    r'family celebrations)\b',
+    re.IGNORECASE,
+)
+
+# Suffixes keyed by category — more specific than generic "gift"
+_QUERY_SUFFIXES = {
+    'music':   ['merch', 'fan gift', 'vinyl', 'poster', 'accessories'],
+    'sports':  ['fan gear', 'jersey', 'memorabilia', 'apparel', 'wall art'],
+    'travel':  ['accessories', 'organizer', 'essentials', 'travel kit', 'gadget'],
+    'food':    ['lover gift', 'accessories', 'cookbook', 'kitchen gift', 'kit'],
+    'pet':     ['accessories', 'toy', 'lover gift', 'supplies', 'treats'],
+    'fashion': ['accessories', 'jewelry', 'style gift', 'wardrobe', 'trendy'],
+    'home':    ['decor', 'organizer', 'gadget', 'accessories', 'cozy gift'],
+    'tech':    ['gadget', 'accessories', 'electronics', 'smart device', 'gear'],
+    'fitness': ['gear', 'accessories', 'equipment', 'workout gift', 'apparel'],
+    'beauty':  ['set', 'skincare', 'beauty gift', 'tools', 'kit'],
+    'default': ['gift', 'unique gift', 'lover gift', 'accessories', 'gift idea'],
+}
+
+# Keywords that map interest names to suffix categories
+_CATEGORY_SIGNALS = {
+    'music':   ['music', 'band', 'singer', 'artist', 'concert', 'vinyl', 'album', 'rap', 'pop', 'rock', 'jazz', 'hip hop'],
+    'sports':  ['sports', 'basketball', 'football', 'soccer', 'baseball', 'team', 'nba', 'nfl', 'mlb', 'hockey', 'racing'],
+    'travel':  ['travel', 'cruise', 'vacation', 'international', 'destination', 'adventure', 'backpack'],
+    'food':    ['cook', 'food', 'baking', 'kitchen', 'culinary', 'recipe', 'chef', 'grill', 'bbq'],
+    'pet':     ['dog', 'cat', 'pet', 'puppy', 'kitten', 'animal'],
+    'fashion': ['fashion', 'style', 'clothing', 'outfit', 'wardrobe', 'jewelry', 'sneaker', 'shoe'],
+    'home':    ['home', 'decor', 'renovation', 'garden', 'plant', 'interior', 'candle', 'cozy'],
+    'tech':    ['tech', 'gaming', 'computer', 'gadget', 'electronic', 'phone', 'smart'],
+    'fitness': ['fitness', 'gym', 'yoga', 'running', 'workout', 'exercise', 'hiking', 'outdoor'],
+    'beauty':  ['beauty', 'skincare', 'makeup', 'cosmetic', 'hair', 'nail', 'spa', 'self-care'],
+}
+
+
+def _clean_interest_for_search(name):
+    """Strip filler phrases from interest names to make better search queries.
+
+    'Dog ownership and care' → 'Dog'
+    'Taylor Swift fandom' → 'Taylor Swift'
+    'Chappell Roan and pop music' → 'Chappell Roan pop music'
+    'Home renovation and design' → 'Home renovation design'
+    """
+    cleaned = _INTEREST_FILLER.sub('', name).strip()
+    # Collapse double spaces and trailing 'and'
+    cleaned = re.sub(r'\s+', ' ', cleaned).strip()
+    cleaned = re.sub(r'\band\b\s*$', '', cleaned, flags=re.IGNORECASE).strip()
+    cleaned = re.sub(r'^\band\b\s*', '', cleaned, flags=re.IGNORECASE).strip()
+    return cleaned or name
+
+
+def _categorize_interest(name_lower):
+    """Map an interest name to a suffix category."""
+    for category, signals in _CATEGORY_SIGNALS.items():
+        if any(signal in name_lower for signal in signals):
+            return category
+    return 'default'
+
+
 def search_products_rapidapi_amazon(profile, api_key, target_count=20):
     """
     Search Amazon via RapidAPI Real-Time Amazon Data (product search).
 
-    Builds queries from profile interests (e.g. "dog gift", "basketball fan merchandise"),
-    calls the search endpoint, and maps results to our product format.
+    Builds queries from profile interests, cleans interest names for search,
+    and uses category-specific suffixes for better product relevance.
     """
     if not (api_key and api_key.strip()):
         logger.warning("RapidAPI key not configured - skipping Amazon search")
@@ -36,10 +102,6 @@ def search_products_rapidapi_amazon(profile, api_key, target_count=20):
         return []
 
     import random
-    # Multiple query suffixes — randomized so repeat runs get fresh products
-    GIFT_SUFFIXES = ["gift", "unique gift", "gift set", "novelty", "fun gift", "cool gift"]
-    FAN_SUFFIXES = ["fan gift", "merch", "fan gear", "collector item", "fan accessories"]
-    SPORTS_SUFFIXES = ["fan gear", "sports gift", "fan merch", "apparel", "fan accessory"]
 
     search_queries = []
     for interest in interests:
@@ -49,18 +111,16 @@ def search_products_rapidapi_amazon(profile, api_key, target_count=20):
         if interest.get("is_work", False):
             logger.info("Skipping work interest for Amazon: %s", name)
             continue
-        name_lower = name.lower()
-        if any(term in name_lower for term in ["music", "band", "singer", "artist"]):
-            suffix = random.choice(FAN_SUFFIXES)
-        elif any(term in name_lower for term in ["sports", "basketball", "team"]):
-            suffix = random.choice(SPORTS_SUFFIXES)
-        else:
-            suffix = random.choice(GIFT_SUFFIXES)
+        cleaned = _clean_interest_for_search(name)
+        category = _categorize_interest(cleaned.lower())
+        suffix = random.choice(_QUERY_SUFFIXES[category])
+        query = f"{cleaned} {suffix}"
         search_queries.append({
-            "query": f"{name} {suffix}",
+            "query": query,
             "interest": name,
             "priority": "high" if interest.get("intensity") == "passionate" else "medium",
         })
+        logger.debug("Amazon query: '%s' → '%s' (category: %s)", name, query, category)
     search_queries = search_queries[:12]
     if not search_queries:
         return []

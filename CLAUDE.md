@@ -1,7 +1,78 @@
 # GiftWise — Project Intelligence
 
+## Environment Notes
+- **Git is installed and working.** Do not prompt the user to install git, git for windows, or any other tooling. The repo is active with full commit history. Just use it.
+- **Python/Flask app.** Run with `python giftwise_app.py` or via deployment. No special build step.
+- **Branch:** Check `git branch` for the current working branch before making changes.
+
 ## What This Is
 AI-powered gift recommendation app. Flask pipeline: scrape social media → Claude analyzes profile → enrich with static data → search retailers → Claude curates gifts → programmatic cleanup → display.
+
+## Current Sprint: Affiliate Network Buildout (Feb 2026)
+
+### What just happened (branch: `claude/debug-awin-links-Tq5On`)
+
+**Awin fixes (commit d65a230):**
+- Awin was returning garbage — AliExpress PL, Dutch adult stores, closed German merchants
+- Root cause: all 607 feeds were "Not Joined", no region filtering, no content filtering
+- Fixed: hard-filter closed/adult feeds, -15 penalty for non-English regions, regex-based source_domain extraction
+- Fixed: experience material fallback links now include Amazon affiliate tag
+
+**Awin gated behind joined feeds (commit 746a8aa):**
+- If 0 joined advertisers → return [] immediately (was wasting ~30s downloading random feeds)
+- Created `skimlinks_searcher.py` — full Product Key API v2 integration, wired into multi_retailer_searcher.py as step 5
+
+**Gift guides for Skimlinks approval (commits e30bab6, 883a3a6):**
+- 6 editorial gift guide pages at `/guides/<slug>`: beauty-lover, music-fan, homebody, travel-obsessed, dog-parent, tech-nerd
+- `/privacy` and `/terms` routes added
+- Footer updated with affiliate disclosure + guides link
+- Purpose: Skimlinks has ~3% acceptance rate — these pages demonstrate editorial quality
+
+### Immediate next steps (in priority order)
+
+**1. Apply to Skimlinks — this is the fastest path to broad coverage**
+- Site is ready: 6 guide articles, affiliate disclosures, privacy/terms pages
+- One acceptance = blanket access to ~48,500 merchants (no per-brand applications)
+- Trade-off: 25% revenue share (you keep 75% of commissions)
+- Gift guides are deployed and ready for reviewer inspection
+
+**2. Apply to Impact and CJ Affiliate networks**
+- These two networks cover the most brands from the family's wishlist (see brand mapping below)
+- Impact: Target, Ulta, Kohl's, Gap/Old Navy/BR, Home Depot, Adidas, Shark, Crate & Barrel, Spanx, Petco, PetSmart, Dick's, Dyson, EverEve, Lowe's
+- CJ: Macy's, Nike (US), American Eagle/Aerie, J.Crew, Madewell, Columbia, North Face, Kiehl's
+
+**3. Continue Rakuten applications**
+- Already signed up. Brands on Rakuten: Sephora, Nordstrom, Anthropologie, Free People, Urban Outfitters, Coach, ASOS, West Elm, H&M
+- Known issue: Sephora US doesn't show up (only Sephora BR). This is a confirmed platform-wide bug reported by many publishers. Workaround: email `uspubsupport@rakuten.com` or try Sephora's own "My Sephora Storefront" (via Motom) program at 15%.
+
+**4. Spotify — not currently integrated, but worth watching**
+- Spotify announced (Feb 6, 2026) severe restrictions on Development Mode: Premium required, 1 Client ID per dev, max 5 authorized users
+- We don't use Spotify yet. If we add it later, we'll need Extended Quota Mode approval. Not urgent.
+
+**5. Future searcher modules to build**
+- `rakuten_searcher.py` — once API credentials are available (Product Search API at `https://api.rakutenmarketing.com/productsearch/1.0`, Bearer token auth, XML response)
+- `impact_searcher.py` — once Impact account is approved
+- `cj_searcher.py` — once CJ account is approved
+
+### Brand-to-network mapping (family's wishlist, ~70 brands)
+
+**Impact:** Target, Ulta, Kohl's, Gap/Old Navy/Banana Republic, Home Depot, Lowe's, Adidas, Shark, Crate & Barrel, Spanx, Petco, PetSmart, Dick's, Dyson, EverEve
+
+**CJ Affiliate:** Macy's, Nike (US), American Eagle/Aerie, J.Crew, Madewell, Columbia, North Face, Kiehl's, Lowe's
+
+**Rakuten:** Sephora, Nordstrom, Anthropologie, Free People, Urban Outfitters, Coach, ASOS, West Elm, H&M
+
+**Awin:** Etsy, UGG, Lululemon, H&M (EU), Portland Leather
+
+**Pepperjam/Partnerize:** Apple, Everlane, BaubleBar (20% commission!), Bombas (10%), Quince, David Yurman, Aeropostale
+
+**AvantLink:** REI, Patagonia
+
+**In-house/Other:** Walmart (own program + Walmart Creator), Zara (Captiv8 only), Bath & Body Works (CPX Advertising), Victoria's Secret (Skimlinks/DCMnetwork)
+
+**No affiliate program:** Brandy Melville, Aritzia, IKEA (no US program), Gymshark (closed — invite-only athletes now)
+
+**Too niche for major networks (Skimlinks best shot):** Garage, Pink Palm Puff, Dandy Worldwide, Custom Collective, Comfrt, Way of Wade
 
 ## Business Model & Revenue Architecture
 
@@ -10,7 +81,8 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 **1. Affiliate Revenue (Primary — optimize relentlessly)**
 Every product recommendation is an affiliate link opportunity. Revenue per click varies by source:
 - Amazon Associates: 1-4% commission (lowest, but highest conversion)
-- Etsy Affiliates: ~4-5% commission
+- Etsy Affiliates (via Awin): ~4-5% commission
+- Skimlinks merchants: varies, but 25% cut to Skimlinks
 - Awin merchants: 5-10% depending on advertiser
 - eBay Partner Network: 1-4%
 
@@ -68,11 +140,14 @@ When making any architectural decision, apply this framework:
 - `gift_curator.py` — Claude call #2: profile + inventory → curated recommendations
 - `post_curation_cleanup.py` — Programmatic enforcement of diversity rules (brand, category, interest, source)
 - `enrichment_engine.py` — Static intelligence layer (do_buy/dont_buy per interest, demographics, trending)
-- `multi_retailer_searcher.py` — Orchestrates all retailer searches, merges inventory pool
-- `rapidapi_amazon_searcher.py`, `ebay_searcher.py`, `etsy_searcher.py`, `awin_searcher.py` — Per-retailer search modules
+- `multi_retailer_searcher.py` — Orchestrates all retailer searches, merges inventory pool. Order: Etsy → Awin → eBay → ShareASale → Skimlinks → Amazon
+- `rapidapi_amazon_searcher.py`, `ebay_searcher.py`, `etsy_searcher.py`, `awin_searcher.py`, `skimlinks_searcher.py` — Per-retailer search modules
 - `smart_filters.py` — Work exclusion, passive/active filtering
 - `image_fetcher.py` — Thumbnail validation and fallback chain
 - `relationship_rules.py` — Relationship-appropriate gift guidance (disabled as hard filter, used as soft curator guidance)
+
+### Searcher module pattern
+Each searcher exports a `search_products_<source>()` function returning a list of product dicts with keys: `title`, `link`, `snippet`, `image`, `thumbnail`, `image_url`, `source_domain`, `search_query`, `interest_match`, `priority`, `price`, `product_id`. The multi_retailer_searcher orchestrates them all and merges into an inventory pool.
 
 ### Patterns to Follow
 - Images are resolved programmatically from inventory, never from curator LLM output
@@ -93,7 +168,17 @@ When making any architectural decision, apply this framework:
 - Amazon (RapidAPI): Active, working
 - eBay (Browse API): Active, working
 - Etsy (v3 API): Awaiting developer credentials
-- Awin (Data Feed API): Debugging 500 errors
-- ShareASale: Not active
+- Awin (Data Feed API): Code working, but gated — returns [] until advertisers are joined. Join at https://www.awin.com/us/search/advertiser-directory. Priority joins: Etsy, UGG, Lululemon, Portland Leather
+- Skimlinks (Product Key API v2): Code complete (`skimlinks_searcher.py`), awaiting Skimlinks publisher approval. Env vars: SKIMLINKS_PUBLISHER_ID, SKIMLINKS_CLIENT_ID, SKIMLINKS_CLIENT_SECRET, SKIMLINKS_PUBLISHER_DOMAIN_ID
+- ShareASale: Migrated to Awin (Oct 2025). Legacy code still present but not active.
 
-When Etsy and Awin come online, their snippet quality must match Amazon's before they're useful (see IMPLEMENTATION_PLAN.md changes 2-4).
+### Gift Guide Pages (for Skimlinks approval)
+Six editorial guides deployed at `/guides/<slug>`:
+- `guide_beauty.html` (beauty-lover) — 15 products, links to Sephora/Nordstrom/Anthropologie/Dyson/Amazon
+- `guide_music.html` (music-fan) — 12 products, links to Amazon/Etsy/Uncommon Goods/Vinyl Me Please
+- `guide_home.html` (homebody) — 14 products, links to Nordstrom/Amazon/Anthropologie/Bloomingdale's/Dyson
+- `guide_travel.html` (travel-obsessed) — 13 products, links to Amazon/Nordstrom/Away/REI
+- `guide_dog.html` (dog-parent) — 11 products, links to Etsy/Amazon/BarkBox
+- `guide_tech.html` (tech-nerd) — 12 products, links to Amazon/Best Buy/Analogue/Flipper Devices
+
+Also added: `/privacy`, `/terms` routes and affiliate disclosure in footer.

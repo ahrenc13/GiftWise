@@ -167,7 +167,7 @@
                 <div style="color: #6b7280; font-size: 0.9em; margin-bottom: 15px;">
                     Available at: {{ rec.where_to_buy }}
                 </div>
-                {% if rec.gift_type == 'experience' and (rec.reservation_link or rec.venue_website or rec.purchase_link) %}
+                {% if rec.gift_type == 'experience' %}
                 {% if rec.reservation_link %}
                 <a href="{{ rec.reservation_link }}" target="_blank" class="rec-link" style="background: #059669;">
                     Reserve / Book →
@@ -178,9 +178,15 @@
                     Venue / Website
                 </a>
                 {% endif %}
-                {% if rec.purchase_link and (rec.experience_search_fallback or not rec.reservation_link and not rec.venue_website) %}
-                <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" {% if rec.experience_search_fallback %}style="background: #0ea5e9;"{% endif %}>
-                    {{ 'Find options →' if rec.experience_search_fallback else 'Get started →' }}
+                {% if rec.experience_providers and not rec.reservation_link %}
+                {% for provider in rec.experience_providers[:2] %}
+                <a href="{{ provider.url }}" target="_blank" class="rec-link" style="background: #7c3aed;">
+                    {{ provider.name }} →
+                </a>
+                {% endfor %}
+                {% elif rec.purchase_link and (rec.experience_search_fallback or not rec.reservation_link and not rec.venue_website) %}
+                <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" style="background: #0ea5e9;">
+                    Find options →
                 </a>
                 {% endif %}
                 {% endif %}
@@ -194,10 +200,12 @@
         </div>
         
         <div class="cta-section">
-            <h2>Want personalized recommendations?</h2>
-            <p>Get your own gift recommendations based on your social media interests!</p>
-            <a href="/" class="cta-button">Try GiftWise Free</a>
+            <h2 style="font-size: 1.6em; margin-bottom: 8px;">These picks were made by AI in under 2 minutes</h2>
+            <p style="color: #6b7280; font-size: 1.05em;">Giftwise analyzes social media and finds gifts they'll actually love. No more guessing.</p>
+            <a href="/signup" class="cta-button">Get Your Own Picks — Free</a>
+            <p style="color: #9ca3af; font-size: 0.85em; margin-top: 12px;">No credit card required</p>
         </div>
     </div>
+    <script type="text/javascript" src="https://s.skimresources.com/js/298548X178612"></script>
 </body>
 </html>

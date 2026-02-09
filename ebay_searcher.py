@@ -14,6 +14,16 @@ import requests
 
 logger = logging.getLogger(__name__)
 
+try:
+    from rapidapi_amazon_searcher import _clean_interest_for_search, _categorize_interest, _QUERY_SUFFIXES
+except ImportError:
+    # Fallback if import fails — use simple passthrough
+    def _clean_interest_for_search(name):
+        return name
+    def _categorize_interest(name_lower):
+        return 'default'
+    _QUERY_SUFFIXES = {'default': ['gift', 'accessories', 'lover gift']}
+
 # Token cache: reuse until ~5 min before expiry
 _ebay_token = None
 _ebay_token_expires = 0
@@ -77,10 +87,6 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
         return []
 
     import random
-    # Multiple query suffixes for variety — different runs get different products
-    GIFT_SUFFIXES = ["gift", "present", "gift idea", "accessories", "lover gift"]
-    FAN_SUFFIXES = ["fan gift", "merchandise", "memorabilia", "fan gear", "collectible"]
-    SPORTS_SUFFIXES = ["fan merchandise", "gear", "fan gift", "memorabilia", "apparel"]
 
     search_queries = []
     for interest in interests:
@@ -90,18 +96,16 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
         if interest.get("is_work", False):
             logger.info("Skipping work interest for eBay: %s", name)
             continue
-        name_lower = name.lower()
-        if any(term in name_lower for term in ["music", "band", "singer", "artist"]):
-            suffix = random.choice(FAN_SUFFIXES)
-        elif any(term in name_lower for term in ["sports", "basketball", "team"]):
-            suffix = random.choice(SPORTS_SUFFIXES)
-        else:
-            suffix = random.choice(GIFT_SUFFIXES)
+        cleaned = _clean_interest_for_search(name)
+        category = _categorize_interest(cleaned.lower())
+        suffix = random.choice(_QUERY_SUFFIXES[category])
+        query = f"{cleaned} {suffix}"
         search_queries.append({
-            "query": f"{name} {suffix}",
+            "query": query,
             "interest": name,
             "priority": "high" if interest.get("intensity") == "passionate" else "medium",
         })
+        logger.debug("eBay query: '%s' → '%s' (category: %s)", name, query, category)
     search_queries = search_queries[:10]
     if not search_queries:
         return []

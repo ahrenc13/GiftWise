@@ -607,6 +607,27 @@
         </div>
     </div>
     
+    <!-- Valentine's Day urgency banner (auto-hides when not relevant) -->
+    <div id="vday-banner" style="display:none; background: linear-gradient(135deg, #f43f5e, #be123c); color: white; text-align: center; padding: 10px 20px; font-size: 14px; font-weight: 600;">
+        <span id="vday-msg"></span>
+        <a href="/valentine" style="color: white; margin-left: 12px; text-decoration: underline;">Valentine's Gift Guide</a>
+    </div>
+    <script>
+    (function() {
+        var vday = new Date('2026-02-14T00:00:00');
+        var now = new Date();
+        var days = Math.floor((vday - now) / 86400000);
+        if (days >= 0 && days <= 14) {
+            var msg = days === 0 ? "Valentine's Day is TODAY! Order ASAP." :
+                      days === 1 ? "TOMORROW is Valentine's Day! Order now." :
+                      days <= 3 ? days + " days until Valentine's Day — order now for delivery!" :
+                      days + " days until Valentine's Day";
+            document.getElementById('vday-msg').textContent = msg;
+            document.getElementById('vday-banner').style.display = 'block';
+        }
+    })();
+    </script>
+
     <div class="container">
         <h1 class="page-title">Your Gift Recommendations</h1>
         <p class="page-subtitle">Based on social media insights • {{ recommendations|length }} gifts found</p>
@@ -748,7 +769,7 @@
                         <div class="rec-price">{{ rec.price_range }}</div>
                         <div class="rec-where">Available at: {{ rec.where_to_buy }}</div>
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            {% if rec.gift_type == 'experience' and (rec.reservation_link or rec.venue_website or rec.purchase_link) %}
+                            {% if rec.gift_type == 'experience' %}
                             {% if rec.reservation_link %}
                             <a href="{{ rec.reservation_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation();" style="background: #059669;">
                                 Reserve / Book →
@@ -759,9 +780,15 @@
                                 Venue / Website
                             </a>
                             {% endif %}
-                            {% if rec.purchase_link and (rec.experience_search_fallback or (not rec.reservation_link and not rec.venue_website)) %}
-                            <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation();" {% if rec.experience_search_fallback %}style="background: #0ea5e9;"{% endif %}>
-                                {{ 'Find options →' if rec.experience_search_fallback else 'Get started →' }}
+                            {% if rec.experience_providers and not rec.reservation_link %}
+                            {% for provider in rec.experience_providers[:2] %}
+                            <a href="{{ provider.url }}" target="_blank" class="rec-link" onclick="event.stopPropagation();" style="background: #7c3aed;">
+                                {{ provider.name }} →
+                            </a>
+                            {% endfor %}
+                            {% elif rec.purchase_link and (rec.experience_search_fallback or (not rec.reservation_link and not rec.venue_website)) %}
+                            <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation();" style="background: #0ea5e9;">
+                                Find options →
                             </a>
                             {% endif %}
                             {% endif %}
@@ -784,6 +811,29 @@
             No recommendations match your current filters. Try adjusting your selection!
         </div>
         
+        <!-- Share Section -->
+        <div class="share-section" style="margin: 40px auto; max-width: 700px; text-align: center;">
+            <div style="background: linear-gradient(135deg, #f0f9ff, #e0f2fe); border: 2px solid #0ea5e9; border-radius: 16px; padding: 30px;">
+                <h3 style="font-size: 22px; color: #0369a1; margin-bottom: 8px;">Share these picks with someone</h3>
+                <p style="color: #6b7280; margin-bottom: 20px; font-size: 14px;">Send your personalized recommendations to a friend, partner, or family member</p>
+                <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                    <button onclick="shareRecommendations()" class="action-button primary" style="border: none; cursor: pointer; background: linear-gradient(135deg, #0ea5e9, #0369a1); color: white; padding: 12px 24px; border-radius: 10px; font-weight: 600;">
+                        Share My Picks
+                    </button>
+                    <button onclick="shareToTwitter()" class="action-button secondary" style="border: none; cursor: pointer; background: #1da1f2; color: white; padding: 12px 24px; border-radius: 10px; font-weight: 600;">
+                        Share on X
+                    </button>
+                </div>
+                <div id="share-result" style="display: none; margin-top: 16px;">
+                    <div style="display: flex; align-items: center; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                        <input id="share-url" type="text" readonly style="padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; width: 320px; max-width: 80vw; background: white;">
+                        <button onclick="copyShareUrl()" style="padding: 10px 16px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Copy</button>
+                    </div>
+                    <p style="color: #6b7280; font-size: 12px; margin-top: 8px;">Anyone with this link can see your recommendations</p>
+                </div>
+            </div>
+        </div>
+
         <!-- Actions Section -->
         <div class="actions-section">
             <h2 class="actions-title">What's Next?</h2>
@@ -836,6 +886,53 @@
             });
         }
         
+        // Share recommendations
+        function shareRecommendations() {
+            fetch('/api/share', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('share-url').value = data.share_url;
+                    document.getElementById('share-result').style.display = 'block';
+                    navigator.clipboard.writeText(data.share_url).catch(() => {});
+                } else {
+                    alert(data.error || 'Could not create share link');
+                }
+            })
+            .catch(() => alert('Could not create share link. Try again?'));
+        }
+
+        function copyShareUrl() {
+            const url = document.getElementById('share-url').value;
+            navigator.clipboard.writeText(url).then(() => {
+                const btn = event.target;
+                btn.textContent = 'Copied!';
+                setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
+            });
+        }
+
+        function shareToTwitter() {
+            // Create share link first, then open Twitter with it
+            fetch('/api/share', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('share-url').value = data.share_url;
+                    document.getElementById('share-result').style.display = 'block';
+                    const text = "Just found the perfect gifts with AI! Check out what Giftwise picked:";
+                    const twitterUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(data.share_url);
+                    window.open(twitterUrl, '_blank', 'width=550,height=420');
+                }
+            })
+            .catch(() => alert('Could not create share link'));
+        }
+
         // Toggle favorite (save/unsave)
         function toggleFavorite(index, button) {
             fetch('/api/toggle-favorite', {
@@ -992,5 +1089,6 @@
             });
         });
     </script>
+    <script type="text/javascript" src="https://s.skimresources.com/js/298548X178612"></script>
 </body>
 </html>

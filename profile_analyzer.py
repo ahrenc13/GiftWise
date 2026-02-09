@@ -33,16 +33,17 @@ PINTEREST_PIN_DESCRIPTIONS_IN_SUMMARY = 35
 PINTEREST_BOARD_NAMES = 20
 
 
-def build_recipient_profile(platforms, recipient_type, relationship, claude_client):
+def build_recipient_profile(platforms, recipient_type, relationship, claude_client, model=None):
     """
     Build comprehensive recipient profile from scraped social media data.
-    
+
     Args:
         platforms: Dict of platform data (instagram, tiktok, pinterest)
         recipient_type: 'myself' or 'someone_else'
         relationship: Relationship type if someone_else
         claude_client: Anthropic client for AI analysis
-    
+        model: Claude model ID (default: claude-sonnet-4-20250514)
+
     Returns:
         Dict with structured profile data including:
         - interests: Specific interests with evidence
@@ -53,6 +54,8 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
         - specific_venues: Actual places/venues mentioned
         - relationship_context: How relationship affects gifting
     """
+    if not model:
+        model = "claude-sonnet-4-20250514"
     
     logger.info("Building deep recipient profile...")
     
@@ -388,10 +391,10 @@ Return ONLY the JSON object, no markdown, no backticks, no explanation."""
     
     try:
         # Call Claude for deep analysis
-        logger.info("Calling Claude API for profile analysis...")
-        
+        logger.info("Calling Claude API for profile analysis (model=%s)...", model)
+
         message = claude_client.messages.create(
-            model="claude-sonnet-4-20250514",
+            model=model,
             max_tokens=6000,
             messages=[{"role": "user", "content": prompt}],
             timeout=120.0

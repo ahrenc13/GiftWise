@@ -178,6 +178,122 @@ class WorkExclusionFilter:
         return filtered
 
 
+class ObsoleteFormatFilter:
+    """Filter out obsolete media *content* (DVDs, random CDs) and low-effort products.
+
+    Key distinction: we filter the *content format* (a Toto concert DVD), NOT the
+    *hardware* (a retro CD player, a turntable, a cassette deck). If someone has
+    retro/vinyl/analog signals in their profile, we skip this filter entirely for
+    products matched to that interest — those are intentional passion purchases.
+
+    Also catches generic filler items (bumper stickers, rubber bracelets) that
+    read as low-effort regardless of interest.
+    """
+
+    # Obsolete physical media CONTENT — title keywords
+    # These are the discs/tapes themselves, not players/hardware
+    OBSOLETE_CONTENT_KEYWORDS = [
+        'dvd', 'blu-ray', 'bluray', 'blu ray', 'vhs',
+        'laserdisc', 'betamax',
+    ]
+
+    # Patterns for media content in title (case-sensitive)
+    OBSOLETE_CONTENT_PATTERNS = [
+        r'\bDVD\b', r'\bDVDs\b', r'\bVHS\b', r'\bBlu-?[Rr]ay\b',
+    ]
+
+    # Generic low-effort gift indicators (always filtered, no exceptions)
+    LOW_EFFORT_KEYWORDS = [
+        'bumper sticker', 'car sticker', 'fridge magnet',
+        'rubber bracelet', 'lanyard', 'wristband',
+    ]
+
+    # Retro/analog interest signals — if ANY interest matches these,
+    # skip the obsolete content filter for products tied to that interest
+    RETRO_SIGNALS = [
+        'vinyl', 'record', 'turntable', 'retro', 'analog', 'analogue',
+        'cassette', 'tape deck', 'hi-fi', 'hifi', 'audiophile',
+        'vintage audio', 'vintage music', 'record collection',
+        'record store', 'crate digging',
+    ]
+
+    @staticmethod
+    def _has_retro_interest(profile):
+        """Check if profile has retro/analog audio interests."""
+        if not profile:
+            return set()
+        retro_interest_names = set()
+        for interest in profile.get('interests', []):
+            name = (interest.get('name') or '').lower()
+            desc = (interest.get('description') or '').lower()
+            combined = name + ' ' + desc
+            if any(signal in combined for signal in ObsoleteFormatFilter.RETRO_SIGNALS):
+                retro_interest_names.add(name)
+        return retro_interest_names
+
+    @staticmethod
+    def is_obsolete_or_low_effort(product, retro_interests=None):
+        """Check if product is obsolete content or generic low-effort item.
+
+        Returns (should_exclude, reason) tuple.
+        """
+        title = (product.get('title') or '').lower()
+        snippet = (product.get('snippet') or '').lower()
+        combined = title + ' ' + snippet
+
+        # Low-effort items are always filtered regardless of interests
+        for keyword in ObsoleteFormatFilter.LOW_EFFORT_KEYWORDS:
+            if keyword in combined:
+                return True, f"low-effort item: '{keyword}'"
+
+        # If this product matches a retro interest, don't filter it
+        if retro_interests:
+            product_interest = (product.get('interest_match') or '').lower()
+            if product_interest in retro_interests:
+                return False, None
+
+        # Check obsolete content keywords
+        for keyword in ObsoleteFormatFilter.OBSOLETE_CONTENT_KEYWORDS:
+            if keyword in combined:
+                return True, f"obsolete media: '{keyword}'"
+
+        # Check regex patterns (case-sensitive: "DVD", "VHS")
+        title_raw = product.get('title') or ''
+        for pattern in ObsoleteFormatFilter.OBSOLETE_CONTENT_PATTERNS:
+            if re.search(pattern, title_raw):
+                return True, f"obsolete media pattern: {pattern}"
+
+        return False, None
+
+    @staticmethod
+    def filter_products(products, profile=None):
+        """Filter out obsolete format and low-effort products."""
+        if not products:
+            return []
+
+        retro_interests = ObsoleteFormatFilter._has_retro_interest(profile)
+        if retro_interests:
+            logger.info(f"Retro/analog interests detected: {retro_interests} — allowing vintage media for those interests")
+
+        filtered = []
+        excluded_count = 0
+
+        for product in products:
+            should_exclude, reason = ObsoleteFormatFilter.is_obsolete_or_low_effort(product, retro_interests)
+            if should_exclude:
+                excluded_count += 1
+                logger.info(
+                    "EXCLUDED %s: %s",
+                    reason,
+                    (product.get('title') or 'Unknown')[:60],
+                )
+            else:
+                filtered.append(product)
+
+        logger.info(f"Obsolete/low-effort filter removed {excluded_count} items, kept {len(filtered)}")
+        return filtered
+
+
 class PassiveActiveFilter:
     """Filter out active products for passive interests (e.g. don't suggest basketballs to people who just watch games)"""
     
@@ -288,7 +404,14 @@ def apply_smart_filters(products, profile):
     except Exception as e:
         logger.error(f"Error in PassiveActiveFilter: {e}")
         # Continue with unfiltered products rather than crash
-    
+
+    # Apply obsolete format / low-effort filter
+    try:
+        products = ObsoleteFormatFilter.filter_products(products, profile)
+    except Exception as e:
+        logger.error(f"Error in ObsoleteFormatFilter: {e}")
+        # Continue with unfiltered products rather than crash
+
     logger.info(f"Smart filters complete: {len(products)} products remaining")
     
     return products

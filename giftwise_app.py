@@ -188,6 +188,15 @@ try:
     VALENTINES_FEATURES_AVAILABLE = True
 except ImportError:
     VALENTINES_FEATURES_AVAILABLE = False
+
+# Lightweight event tracking for admin dashboard
+try:
+    from site_stats import track_event, get_dashboard_data
+    STATS_AVAILABLE = True
+except ImportError:
+    STATS_AVAILABLE = False
+    def track_event(event_name): pass
+    def get_dashboard_data(): return {}
     pass
 
 # Enhanced modules (FIXED VERSIONS)
@@ -1430,6 +1439,7 @@ def index():
 @app.route('/valentines')
 def valentines_landing():
     """Valentine's Day landing page"""
+    track_event('valentine_hit')
     return render_template('valentines_landing.html')
 
 @app.route('/privacy')
@@ -1450,6 +1460,7 @@ def gift_guides():
 @app.route('/guides/<slug>')
 def gift_guide_detail(slug):
     """Individual gift guide article"""
+    track_event('guide_hit')
     template_map = {
         'beauty-lover': 'guide_beauty.html',
         'music-fan': 'guide_music.html',
@@ -1497,6 +1508,7 @@ def signup():
         if recipient_gender:
             session['recipient_gender'] = recipient_gender
         logger.info(f"New user signed up: {email}")
+        track_event('signup')
         
         return redirect('/connect-platforms')
     
@@ -3146,6 +3158,7 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
             })
 
             logger.info("Generation complete! %d recommendations saved.", len(all_recommendations))
+            track_event('rec_run')
             _set_gen_progress(user_id, stage='complete',
                               stage_label='Your gifts are ready!',
                               complete=True, success=True)
@@ -3337,7 +3350,8 @@ def create_share():
     
     share_id = generate_share_id(recommendations, user_id)
     save_share(share_id, recommendations, user_id)
-    
+    track_event('share_create')
+
     share_url = request.url_root.rstrip('/') + f'/share/{share_id}'
     
     return jsonify({'success': True, 'share_url': share_url, 'share_id': share_id})
@@ -3345,6 +3359,7 @@ def create_share():
 @app.route('/share/<share_id>')
 def view_shared_recommendations(share_id):
     """View shared recommendations"""
+    track_event('share_view')
     share_data = get_share(share_id)
     
     if not share_data:
@@ -3804,6 +3819,23 @@ def logout():
 
 
 # ========================================
+# ADMIN DASHBOARD
+# ========================================
+
+ADMIN_KEY = os.environ.get('ADMIN_DASHBOARD_KEY', '')
+
+@app.route('/admin/stats')
+def admin_stats():
+    """Lightweight admin dashboard — password-protected via query param."""
+    key = request.args.get('key', '')
+    if not ADMIN_KEY or key != ADMIN_KEY:
+        return render_template('error.html', error="Not found.", error_code=404), 404
+
+    data = get_dashboard_data()
+    return render_template('admin_stats.html', data=data)
+
+
+# ========================================
 # VALENTINE'S DAY ROUTES
 # ========================================
 
@@ -3865,6 +3897,7 @@ def api_referral_stats():
 # Error handlers for better crash reporting
 @app.errorhandler(500)
 def internal_error(error):
+    track_event('error')
     logger.error(f"Internal server error: {error}", exc_info=True)
     return render_template('error.html', 
                          error="An internal error occurred. Please try again.",

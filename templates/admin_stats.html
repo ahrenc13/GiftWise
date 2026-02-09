@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GiftWise Stats</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #111827; color: #f3f4f6; padding: 20px;
+        }
+        h1 { font-size: 20px; color: #9ca3af; margin-bottom: 4px; }
+        .ts { font-size: 12px; color: #6b7280; margin-bottom: 24px; }
+        .grid {
+            display: grid; grid-template-columns: 1fr 1fr;
+            gap: 12px; margin-bottom: 32px;
+        }
+        .card {
+            background: #1f2937; border-radius: 12px; padding: 16px;
+        }
+        .card .label { font-size: 12px; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; }
+        .card .today { font-size: 32px; font-weight: 700; color: #f9fafb; }
+        .card .week { font-size: 14px; color: #6b7280; margin-top: 2px; }
+        .card.highlight .today { color: #34d399; }
+        .card.warn .today { color: #f87171; }
+        h2 { font-size: 16px; color: #9ca3af; margin-bottom: 12px; }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { text-align: left; color: #6b7280; padding: 6px 8px; border-bottom: 1px solid #374151; }
+        td { padding: 6px 8px; border-bottom: 1px solid #1f2937; }
+        .zero { color: #4b5563; }
+        .section { margin-bottom: 32px; }
+        .actions { background: #1f2937; border-radius: 12px; padding: 16px; font-size: 13px; line-height: 1.8; }
+        .actions strong { color: #fbbf24; }
+        @media (max-width: 400px) {
+            .grid { grid-template-columns: 1fr; }
+            .card .today { font-size: 28px; }
+        }
+    </style>
+</head>
+<body>
+    <h1>GiftWise Dashboard</h1>
+    <div class="ts">Updated {{ data.generated_at }}</div>
+
+    <div class="grid">
+        <div class="card">
+            <div class="label">Signups</div>
+            <div class="today">{{ data.today.signup }}</div>
+            <div class="week">{{ data.week.signup }} this week</div>
+        </div>
+        <div class="card highlight">
+            <div class="label">Recs Generated</div>
+            <div class="today">{{ data.today.rec_run }}</div>
+            <div class="week">{{ data.week.rec_run }} this week</div>
+        </div>
+        <div class="card">
+            <div class="label">Shares Created</div>
+            <div class="today">{{ data.today.share_create }}</div>
+            <div class="week">{{ data.week.share_create }} this week</div>
+        </div>
+        <div class="card">
+            <div class="label">Share Views</div>
+            <div class="today">{{ data.today.share_view }}</div>
+            <div class="week">{{ data.week.share_view }} this week</div>
+        </div>
+        <div class="card">
+            <div class="label">/valentine Hits</div>
+            <div class="today">{{ data.today.valentine_hit }}</div>
+            <div class="week">{{ data.week.valentine_hit }} this week</div>
+        </div>
+        <div class="card">
+            <div class="label">Guide Views</div>
+            <div class="today">{{ data.today.guide_hit }}</div>
+            <div class="week">{{ data.week.guide_hit }} this week</div>
+        </div>
+        <div class="card {{ 'warn' if data.today.error > 0 else '' }}">
+            <div class="label">Errors (500s)</div>
+            <div class="today">{{ data.today.error }}</div>
+            <div class="week">{{ data.week.error }} this week</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Last 7 Days</h2>
+        <div style="overflow-x: auto;">
+        <table>
+            <tr>
+                <th>Date</th>
+                <th>Sign</th>
+                <th>Recs</th>
+                <th>Share</th>
+                <th>Views</th>
+                <th>Vday</th>
+                <th>Guide</th>
+                <th>Err</th>
+            </tr>
+            {% for row in data.daily %}
+            <tr>
+                <td>{{ row.date[5:] }}</td>
+                <td class="{{ 'zero' if row.signup == 0 else '' }}">{{ row.signup }}</td>
+                <td class="{{ 'zero' if row.rec_run == 0 else '' }}">{{ row.rec_run }}</td>
+                <td class="{{ 'zero' if row.share_create == 0 else '' }}">{{ row.share_create }}</td>
+                <td class="{{ 'zero' if row.share_view == 0 else '' }}">{{ row.share_view }}</td>
+                <td class="{{ 'zero' if row.valentine_hit == 0 else '' }}">{{ row.valentine_hit }}</td>
+                <td class="{{ 'zero' if row.guide_hit == 0 else '' }}">{{ row.guide_hit }}</td>
+                <td class="{{ 'warn' if row.error > 0 else 'zero' }}">{{ row.error }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>What To Do</h2>
+        <div class="actions">
+            <strong>Share views > 0 but signups flat:</strong> shared page CTA isn't converting<br>
+            <strong>Recs running but 0 shares:</strong> share button isn't visible enough<br>
+            <strong>/valentine climbing:</strong> TikTok is working — consider posting again<br>
+            <strong>Errors spiking:</strong> check Render logs, something broke<br>
+            <strong>5+ recs/day consistently:</strong> past hobby traffic — think about paywall<br>
+            <strong>Share views > signups by 3x:</strong> people are looking but not converting — improve CTA or landing page
+        </div>
+    </div>
+</body>
+</html>

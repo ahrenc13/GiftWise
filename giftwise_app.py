@@ -1755,6 +1755,35 @@ def connect_tiktok():
     
     return jsonify({'success': True, 'username': username})
 
+@app.route('/connect/spotify-wrapped', methods=['POST'])
+def connect_spotify_wrapped():
+    """Save Spotify Wrapped text for music preference analysis"""
+    user = get_session_user()
+    if not user:
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+
+    # Accept JSON data from frontend
+    data = request.get_json()
+    wrapped_text = (data.get('wrapped_text', '') if data else '').strip()
+
+    if not wrapped_text:
+        return jsonify({'success': False, 'error': 'Please paste your Spotify Wrapped or top artists'}), 400
+
+    user_id = session['user_id']
+
+    # Save the Spotify Wrapped text to platforms
+    platforms = user.get('platforms', {})
+    platforms['spotify_wrapped'] = {
+        'wrapped_text': wrapped_text,
+        'status': 'connected',
+        'method': 'manual_text',
+        'connected_at': datetime.now().isoformat()
+    }
+    save_user(user_id, {'platforms': platforms})
+    logger.info(f"User {user_id} saved Spotify Wrapped text ({len(wrapped_text)} chars)")
+
+    return jsonify({'success': True})
+
 @app.route('/connect/etsy', methods=['POST'])
 def connect_etsy():
     """Connect Etsy wishlist via OAuth"""

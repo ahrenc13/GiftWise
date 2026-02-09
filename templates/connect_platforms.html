@@ -444,6 +444,35 @@
                     </div>
                 {% endif %}
             </div>
+
+            <!-- Spotify Wrapped -->
+            <div class="platform-card">
+                <div class="platform-header">
+                    <div class="platform-icon spotify-icon">🎵</div>
+                    <div class="platform-info">
+                        <h3>Spotify Wrapped</h3>
+                        <p>Your music taste (optional)</p>
+                    </div>
+                </div>
+
+                <div class="platform-status">
+                    Spotify doesn't allow apps to access listening history directly, but we can learn a lot from your Wrapped! Just paste your top artists or the whole thing.
+                </div>
+
+                <div class="input-group">
+                    <label for="spotify_wrapped">Paste your Spotify Wrapped or top artists (optional)</label>
+                    <textarea
+                        id="spotify_wrapped"
+                        placeholder="e.g., 'My top artists: Taylor Swift, Olivia Rodrigo, Sabrina Carpenter' or paste your whole Wrapped summary"
+                        rows="4"
+                        style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical;"
+                    ></textarea>
+                </div>
+
+                <div class="platform-actions">
+                    <button class="btn btn-primary" onclick="saveSpotifyWrapped()">Save Music Preferences</button>
+                </div>
+            </div>
         </div>
 
         <div class="continue-section">
@@ -508,6 +537,29 @@
             });
         }
 
+        function saveSpotifyWrapped() {
+            const wrapped = document.getElementById('spotify_wrapped').value.trim();
+            if (!wrapped) {
+                alert('Please paste your Spotify Wrapped or top artists');
+                return;
+            }
+
+            fetch('/connect/spotify-wrapped', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({wrapped_text: wrapped})
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Music preferences saved!');
+                    document.getElementById('spotify_wrapped').value = '';
+                } else {
+                    alert(data.error || 'Failed to save music preferences');
+                }
+            });
+        }
+
         // Enable continue button when platforms connected
         const connectedCount = {{ connected_count }};
         if (connectedCount > 0) {
@@ -517,3 +569,4 @@
     <script type="text/javascript" src="https://s.skimresources.com/js/298548X178612"></script>
 </body>
 </html>
+

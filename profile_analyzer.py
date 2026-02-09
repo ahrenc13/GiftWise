@@ -199,7 +199,18 @@ PIN DESCRIPTIONS (Explicit wishlist signals):
 
 CRITICAL NOTE: Pinterest boards are explicit wishlists - they're pinning exactly what they want.
 """)
-    
+
+    # Spotify Wrapped text
+    spotify_wrapped = platforms.get('spotify_wrapped', {}).get('wrapped_text', '')
+    if spotify_wrapped:
+        data_summary.append(f"""
+SPOTIFY MUSIC PREFERENCES:
+
+{spotify_wrapped[:1000]}
+
+NOTE: Spotify doesn't allow direct API access, so the user manually shared their Wrapped or top artists. Music taste is a strong personality signal.
+""")
+
     # Enhanced signal extraction (brands, aesthetics, activities, engagement patterns)
     if ENHANCED_EXTRACTION_AVAILABLE:
         try:

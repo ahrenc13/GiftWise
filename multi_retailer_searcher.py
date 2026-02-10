@@ -37,6 +37,9 @@ def search_products_multi_retailer(
     skimlinks_client_id=None,
     skimlinks_client_secret=None,
     skimlinks_domain_id=None,
+    cj_api_key=None,
+    cj_account_id=None,
+    cj_website_id=None,
     target_count=20,
     enhanced_search_terms=None,
     progress_callback=None,
@@ -49,6 +52,8 @@ def search_products_multi_retailer(
     - Add Awin products (feed-based)
     - Add eBay products (Browse API)
     - Add ShareASale products (brand names, legacy)
+    - Add Skimlinks products (48,500+ merchants)
+    - Add CJ Affiliate products (approved advertisers only)
     - Use Amazon as fallback if needed
 
     Returns mixed list of products from all sources.
@@ -56,7 +61,7 @@ def search_products_multi_retailer(
     """
     logger.info(f"Multi-retailer search: target {target_count} products")
     logger.info(
-        f"Available: Etsy={bool(etsy_key)}, Awin={bool(awin_data_feed_api_key)}, eBay={bool(ebay_client_id and ebay_client_secret)}, ShareASale={bool(shareasale_id)}, Skimlinks={bool(skimlinks_publisher_id)}, Amazon={bool(amazon_key)}"
+        f"Available: Etsy={bool(etsy_key)}, Awin={bool(awin_data_feed_api_key)}, eBay={bool(ebay_client_id and ebay_client_secret)}, ShareASale={bool(shareasale_id)}, Skimlinks={bool(skimlinks_publisher_id)}, CJ={bool(cj_api_key)}, Amazon={bool(amazon_key)}"
     )
 
     all_products = []
@@ -197,7 +202,34 @@ def search_products_multi_retailer(
     else:
         logger.info("Skimlinks credentials not set - skipping Skimlinks")
 
-    # 6. Amazon
+    # 6. CJ Affiliate
+    if cj_api_key:
+        try:
+            from cj_searcher import search_products_cj
+
+            _notify('CJ Affiliate', searching=True)
+            logger.info(f"Searching CJ Affiliate for {per_vendor_target} products...")
+            cj_products = search_products_cj(
+                profile,
+                cj_api_key,
+                account_id=cj_account_id,
+                website_id=cj_website_id,
+                target_count=per_vendor_target,
+                enhanced_search_terms=enhanced_search_terms,
+            )
+            all_products.extend(cj_products)
+            logger.info(f"Got {len(cj_products)} products from CJ Affiliate")
+            _notify('CJ Affiliate', count=len(cj_products), done=True)
+        except ImportError as e:
+            logger.warning(f"cj_searcher not available: {e}")
+            _notify('CJ Affiliate', skipped=True)
+        except Exception as e:
+            logger.error(f"CJ Affiliate search failed: {e}")
+            _notify('CJ Affiliate', count=0, done=True)
+    else:
+        logger.info("CJ Affiliate credentials not set - skipping CJ")
+
+    # 7. Amazon
     if amazon_key:
         try:
             from rapidapi_amazon_searcher import search_products_rapidapi_amazon

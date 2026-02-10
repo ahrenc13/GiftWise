@@ -1,0 +1,110 @@
+name: Daily Product Database Refresh
+
+on:
+  # Run daily at 2:00 AM UTC
+  schedule:
+    - cron: '0 2 * * *'
+
+  # Allow manual triggering from Actions tab
+  workflow_dispatch:
+    inputs:
+      retailer:
+        description: 'Specific retailer to refresh (or "all")'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - amazon
+          - ebay
+          - etsy
+          - awin
+          - skimlinks
+          - cj
+
+jobs:
+  refresh-database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Create data directory
+        run: mkdir -p data
+
+      - name: Run product refresh
+        env:
+          # Affiliate API credentials from GitHub Secrets
+          RAPIDAPI_KEY: ${{ secrets.RAPIDAPI_KEY }}
+          RAPIDAPI_HOST: ${{ secrets.RAPIDAPI_HOST }}
+          EBAY_APP_ID: ${{ secrets.EBAY_APP_ID }}
+          EBAY_CAMPAIGN_ID: ${{ secrets.EBAY_CAMPAIGN_ID }}
+          ETSY_API_KEY: ${{ secrets.ETSY_API_KEY }}
+          AWIN_API_TOKEN: ${{ secrets.AWIN_API_TOKEN }}
+          AWIN_PUBLISHER_ID: ${{ secrets.AWIN_PUBLISHER_ID }}
+          SKIMLINKS_PUBLISHER_ID: ${{ secrets.SKIMLINKS_PUBLISHER_ID }}
+          SKIMLINKS_CLIENT_ID: ${{ secrets.SKIMLINKS_CLIENT_ID }}
+          SKIMLINKS_CLIENT_SECRET: ${{ secrets.SKIMLINKS_CLIENT_SECRET }}
+          SKIMLINKS_PUBLISHER_DOMAIN_ID: ${{ secrets.SKIMLINKS_PUBLISHER_DOMAIN_ID }}
+          CJ_ACCOUNT_ID: ${{ secrets.CJ_ACCOUNT_ID }}
+          CJ_API_KEY: ${{ secrets.CJ_API_KEY }}
+          CJ_WEBSITE_ID: ${{ secrets.CJ_WEBSITE_ID }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+
+          # Database path
+          DATABASE_PATH: ./data/products.db
+        run: |
+          if [ "${{ github.event.inputs.retailer }}" != "" ]; then
+            echo "Manual refresh triggered for: ${{ github.event.inputs.retailer }}"
+            python products/refresh.py ${{ github.event.inputs.retailer }}
+          else
+            echo "Scheduled refresh triggered for all retailers"
+            python products/refresh.py all
+          fi
+
+      - name: Upload database artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: products-db-${{ github.run_number }}
+          path: data/products.db
+          retention-days: 7
+
+      - name: Check database size
+        run: |
+          if [ -f data/products.db ]; then
+            echo "Database size: $(du -h data/products.db | cut -f1)"
+            echo "Database row count:"
+            sqlite3 data/products.db "SELECT COUNT(*) as total FROM products WHERE removed_at IS NULL;" || echo "Unable to count rows"
+          else
+            echo "Database file not found"
+          fi
+
+      - name: Commit and push database
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'actions@github.com'
+          git add data/products.db
+          git diff --staged --quiet || git commit -m "Auto-refresh product database - $(date -u +%Y-%m-%d)"
+          git push || echo "Nothing to push or push failed"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "Product refresh failed! Check logs above for errors."
+          echo "Common issues:"
+          echo "  - API credentials missing or invalid"
+          echo "  - Rate limits exceeded"
+          echo "  - Network connectivity issues"

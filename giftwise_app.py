@@ -3581,12 +3581,53 @@ def api_usage():
     """API endpoint for usage data (JSON)"""
     if not USAGE_TRACKING_AVAILABLE:
         return jsonify({'error': 'Usage tracking not available'}), 503
-    
+
     try:
         summary = get_usage_summary()
         return jsonify(summary)
     except Exception as e:
         logger.error(f"Error getting usage data: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# ============================================================================
+# ADMIN DASHBOARD - Database Health Monitoring
+# ============================================================================
+
+@app.route('/admin/stats')
+def admin_stats():
+    """
+    Admin dashboard showing database health and product inventory status
+
+    Displays:
+    - Total products by retailer
+    - Recently added products
+    - Stale product count
+    - Last refresh timestamp
+    - Top brands
+    - Profile cache statistics
+    """
+    try:
+        import database
+        stats = database.get_database_stats()
+
+        return render_template('admin_stats.html',
+                             stats=stats,
+                             error=None)
+    except Exception as e:
+        logger.error(f"Error loading admin stats: {e}")
+        return render_template('admin_stats.html',
+                             stats=None,
+                             error=f"Error loading stats: {str(e)}")
+
+@app.route('/api/admin/stats')
+def api_admin_stats():
+    """API endpoint for database stats (JSON)"""
+    try:
+        import database
+        stats = database.get_database_stats()
+        return jsonify(stats)
+    except Exception as e:
+        logger.error(f"Error getting admin stats: {e}")
         return jsonify({'error': str(e)}), 500
 
 # ============================================================================

@@ -65,6 +65,49 @@ def search_products_multi_retailer(
     )
 
     all_products = []
+
+    # 0. Query database FIRST (added Feb 2026 for cost reduction)
+    try:
+        import config
+        import database
+        from models import Product
+
+        if config.FEATURES.get('database_first', True):
+            logger.info("Querying product database for cached products...")
+
+            # Extract interests from profile
+            interests = []
+            if isinstance(profile.get('interests'), list):
+                interests = [i.get('name', i) if isinstance(i, dict) else str(i) for i in profile.get('interests', [])]
+
+            if interests:
+                # Query database for products matching interests
+                db_products = database.search_products_by_interests(interests, limit=target_count * 2)
+
+                if db_products:
+                    # Convert database rows to product dicts
+                    for row in db_products:
+                        try:
+                            product = Product.from_db_row(row)
+                            all_products.append(product.to_curator_format())
+                        except Exception as e:
+                            logger.error(f"Error converting database product: {e}")
+
+                    logger.info(f"Got {len(all_products)} products from database cache")
+
+                    # If we have enough from database, skip live APIs
+                    if len(all_products) >= target_count:
+                        logger.info(f"Database provided enough products ({len(all_products)} >= {target_count}), skipping live API calls")
+                        return all_products[:MAX_INVENTORY_SIZE]
+                else:
+                    logger.info("No products found in database for these interests")
+            else:
+                logger.warning("No interests in profile, skipping database query")
+    except ImportError:
+        logger.info("Database module not available, proceeding with live APIs only")
+    except Exception as e:
+        logger.error(f"Database query failed: {e}, proceeding with live APIs")
+
     # Request target_count from each vendor and merge into one large pool (no per-vendor cap).
     # Curator will pick the best N; if they're all from one vendor, that's fine.
     per_vendor_target = min(target_count, MAX_INVENTORY_SIZE // 5)  # so 5 vendors don't exceed MAX

@@ -56,9 +56,40 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
     """
     if not model:
         model = "claude-sonnet-4-20250514"
-    
+
     logger.info("Building deep recipient profile...")
-    
+
+    # Profile caching (added Feb 2026 for cost reduction)
+    profile_hash = None
+    try:
+        import config
+        import database
+        import hashlib
+
+        if config.FEATURES.get('profile_caching', True):
+            # Generate hash from platform data for cache lookup
+            cache_data = {
+                'instagram': platforms.get('instagram', {}).get('data', {}),
+                'tiktok': platforms.get('tiktok', {}).get('data', {}),
+                'pinterest': platforms.get('pinterest', {}).get('data', {}),
+                'spotify_wrapped': platforms.get('spotify_wrapped', {}).get('wrapped_text', ''),
+                'relationship': relationship,
+            }
+            cache_str = json.dumps(cache_data, sort_keys=True)
+            profile_hash = hashlib.sha256(cache_str.encode()).hexdigest()
+
+            # Check cache for existing profile
+            cached_profile = database.get_cached_profile(profile_hash)
+            if cached_profile:
+                logger.info(f"Profile found in cache (hash: {profile_hash[:8]}...), skipping Claude call")
+                return cached_profile
+
+            logger.info(f"Profile not in cache (hash: {profile_hash[:8]}...), proceeding with Claude analysis")
+    except ImportError:
+        logger.info("Database/config not available, skipping profile caching")
+    except Exception as e:
+        logger.error(f"Profile cache lookup failed: {e}, proceeding with Claude call")
+
     # Extract raw data from platforms
     instagram_data = platforms.get('instagram', {}).get('data', {})
     tiktok_data = platforms.get('tiktok', {}).get('data', {})
@@ -428,9 +459,23 @@ Return ONLY the JSON object, no markdown, no backticks, no explanation."""
         
         # Parse JSON
         profile = json.loads(response_text)
-        
+
         logger.info(f"Profile built successfully: {len(profile.get('interests', []))} interests identified")
-        
+
+        # Cache profile for future use (added Feb 2026 for cost reduction)
+        if profile_hash:
+            try:
+                import config
+                import database
+
+                if config.FEATURES.get('profile_caching', True):
+                    profile_json = json.dumps(profile)
+                    ttl_days = config.PROFILE_CACHE_TTL_DAYS
+                    database.cache_profile(profile_hash, profile_json, ttl_days)
+                    logger.info(f"Profile cached (hash: {profile_hash[:8]}..., TTL: {ttl_days} days)")
+            except Exception as e:
+                logger.error(f"Failed to cache profile: {e}")
+
         return profile
         
     except Exception as e:

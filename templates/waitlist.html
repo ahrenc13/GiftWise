@@ -261,11 +261,32 @@
             <form id="waitlistForm">
                 <div class="input-group">
                     <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        placeholder="Enter your email"
+                        type="text"
+                        id="handle"
+                        name="handle"
+                        placeholder="Your Instagram or TikTok handle (@username)"
                         required
+                        pattern="@?[a-zA-Z0-9._]+"
+                        title="Enter a valid Instagram or TikTok handle"
+                    >
+                </div>
+
+                <div class="input-group">
+                    <select id="platform" name="platform" required>
+                        <option value="">Where should we follow you?</option>
+                        <option value="instagram">Instagram</option>
+                        <option value="tiktok">TikTok</option>
+                        <option value="both">Both</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <input
+                        type="tel"
+                        id="phone"
+                        name="phone"
+                        placeholder="Phone number for launch day SMS (optional)"
+                        pattern="[0-9\-\+\(\) ]+"
                     >
                 </div>
 
@@ -282,23 +303,12 @@
                     </select>
                 </div>
 
-                <div class="input-group">
-                    <select id="source" name="source">
-                        <option value="">How'd you hear about us? (optional)</option>
-                        <option value="tiktok">TikTok</option>
-                        <option value="instagram">Instagram</option>
-                        <option value="friend">Friend recommendation</option>
-                        <option value="search">Google search</option>
-                        <option value="other">Other</option>
-                    </select>
-                </div>
-
                 <button type="submit">Join the Waitlist</button>
             </form>
 
             <p class="guarantee">
-                📧 We'll email you when it's ready (estimated Spring 2026)<br>
-                No spam. Unsubscribe anytime.
+                📱 We'll DM you when it's ready (estimated Spring 2026)<br>
+                No spam. You control your inbox.
             </p>
         </div>
 
@@ -306,14 +316,20 @@
         <div class="success-state" id="successState">
             <div class="success-icon">🎉</div>
             <h1>You're On The List!</h1>
-            <p class="subtitle">Check your email for confirmation.</p>
+            <p class="subtitle">Your personal dashboard is ready.</p>
 
             <div class="position-number" id="positionNumber">#1,248</div>
-            <p style="color: #718096; margin-bottom: 30px;">You're in position <strong id="positionText">1,248</strong> on the waitlist</p>
+            <p style="color: #718096; margin-bottom: 20px;">You're in position <strong id="positionText">1,248</strong> on the waitlist</p>
+
+            <div style="background: #f7fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 30px;">
+                <p style="font-size: 14px; color: #4a5568; margin-bottom: 10px;"><strong>Your Personal Dashboard:</strong></p>
+                <a href="#" id="dashboardUrl" style="color: #667eea; font-weight: 600; word-break: break-all;" target="_blank">https://giftwise.fit/spot/@yourhandle</a>
+                <p style="font-size: 13px; color: #718096; margin-top: 10px;">Track your position, see live stats, and access your referral link anytime</p>
+            </div>
 
             <p style="font-size: 18px; color: #2d3748; margin-bottom: 20px;">
                 <strong>Want to move up the list?</strong><br>
-                Share GiftWise with friends:
+                Share your referral link with friends:
             </p>
 
             <div class="share-buttons">
@@ -322,28 +338,47 @@
             </div>
 
             <p style="margin-top: 30px; font-size: 14px; color: #718096;">
-                We'll email you at <strong id="confirmedEmail"></strong> when we launch.<br>
+                We'll DM you at <strong id="confirmedHandle">@yourhandle</strong> when we launch.<br>
                 Estimated: <strong>Spring 2026</strong>
             </p>
         </div>
     </div>
 
     <script>
-        // Simulate current waitlist count (update this daily or connect to real counter)
-        let waitlistCount = 1247;
+        // Fetch current waitlist count from API
+        let waitlistCount = 1247; // Fallback
 
-        // Update count on page load
-        document.getElementById('waitlistCount').textContent = waitlistCount.toLocaleString();
+        // Capture referral source from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const referrer = urlParams.get('ref') || '';
+
+        // Load real count on page load
+        fetch('/api/waitlist/stats')
+            .then(response => response.json())
+            .then(data => {
+                waitlistCount = data.count || 1247;
+                document.getElementById('waitlistCount').textContent = waitlistCount.toLocaleString();
+            })
+            .catch(err => {
+                console.error('Failed to load waitlist count:', err);
+                document.getElementById('waitlistCount').textContent = waitlistCount.toLocaleString();
+            });
 
         // Form submission
         document.getElementById('waitlistForm').addEventListener('submit', async function(e) {
             e.preventDefault();
 
-            const email = document.getElementById('email').value;
-            const shoppingFor = document.getElementById('shopping_for').value;
-            const source = document.getElementById('source').value;
+            let handle = document.getElementById('handle').value.trim();
+            // Remove @ if user included it
+            if (handle.startsWith('@')) {
+                handle = handle.substring(1);
+            }
 
-            // Submit to your backend (create /api/waitlist endpoint)
+            const platform = document.getElementById('platform').value;
+            const phone = document.getElementById('phone').value;
+            const shoppingFor = document.getElementById('shopping_for').value;
+
+            // Submit to backend
             try {
                 const response = await fetch('/api/waitlist', {
                     method: 'POST',
@@ -351,48 +386,57 @@
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        email: email,
+                        handle: handle,
+                        platform: platform,
+                        phone: phone,
                         shopping_for: shoppingFor,
-                        source: source,
+                        referrer: referrer,
                         timestamp: new Date().toISOString()
                     })
                 });
 
                 if (response.ok) {
                     const data = await response.json();
-                    showSuccessState(email, data.position || waitlistCount + 1);
+                    showSuccessState(handle, data.position || waitlistCount + 1, platform);
                 } else {
                     alert('Oops! Something went wrong. Please try again.');
                 }
             } catch (error) {
                 console.error('Error:', error);
                 // Fallback: show success anyway (better UX than error)
-                showSuccessState(email, waitlistCount + 1);
+                showSuccessState(handle, waitlistCount + 1, platform);
             }
         });
 
-        function showSuccessState(email, position) {
+        function showSuccessState(handle, position, platform) {
             // Hide form, show success
             document.getElementById('formState').classList.add('hidden');
             document.getElementById('successState').classList.add('active');
 
             // Update success state with user info
-            document.getElementById('confirmedEmail').textContent = email;
+            const displayHandle = '@' + handle;
+            document.getElementById('confirmedHandle').textContent = displayHandle;
             document.getElementById('positionNumber').textContent = '#' + position.toLocaleString();
             document.getElementById('positionText').textContent = position.toLocaleString();
 
-            // Set up share buttons
-            const shareText = encodeURIComponent('I just joined the waitlist for GiftWise - AI that finds the perfect gift by analyzing social media. Join me:');
-            const shareUrl = encodeURIComponent('https://giftwise.fit/beta');
+            // Set personal dashboard URL
+            const dashboardUrl = `https://giftwise.fit/spot/@${handle}`;
+            document.getElementById('dashboardUrl').href = dashboardUrl;
+            document.getElementById('dashboardUrl').textContent = dashboardUrl;
 
-            document.getElementById('twitterShare').href = `https://twitter.com/intent/tweet?text=${shareText}&url=${shareUrl}`;
-            document.getElementById('facebookShare').href = `https://www.facebook.com/sharer/sharer.php?u=${shareUrl}`;
+            // Set up share buttons with referral link
+            const referralUrl = encodeURIComponent(`https://giftwise.fit/beta?ref=${handle}`);
+            const shareText = encodeURIComponent(`I just joined the waitlist for GiftWise - AI that finds the perfect gift by analyzing social media. Join me:`);
+
+            document.getElementById('twitterShare').href = `https://twitter.com/intent/tweet?text=${shareText}&url=${referralUrl}`;
+            document.getElementById('facebookShare').href = `https://www.facebook.com/sharer/sharer.php?u=${referralUrl}`;
 
             // Track conversion (if you have analytics)
             if (typeof gtag !== 'undefined') {
                 gtag('event', 'waitlist_signup', {
                     'event_category': 'engagement',
-                    'event_label': email
+                    'event_label': displayHandle,
+                    'platform': platform
                 });
             }
         }

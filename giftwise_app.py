@@ -26,6 +26,7 @@ import sys
 import json
 import time
 import uuid
+import csv
 import threading
 import signal
 import re
@@ -3921,6 +3922,156 @@ def api_referral_stats():
     stats['valentines_bonus'] = vday_bonus
     
     return jsonify(stats)
+
+
+# ============================================================================
+# WAITLIST ROUTES (handle-based for Gen Z)
+# ============================================================================
+
+WAITLIST_CSV = 'data/waitlist.csv'
+WAITLIST_FIELDS = ['handle', 'platform', 'phone', 'referrer', 'timestamp', 'position']
+os.makedirs('data', exist_ok=True)
+
+
+def _read_waitlist():
+    """Read all waitlist entries from CSV. Returns list of dicts."""
+    if not os.path.exists(WAITLIST_CSV):
+        return []
+    with open(WAITLIST_CSV, 'r', newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        return list(reader)
+
+
+def _write_waitlist(rows):
+    """Write all waitlist entries to CSV."""
+    with open(WAITLIST_CSV, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=WAITLIST_FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def _find_waitlist_entry(handle):
+    """Find a waitlist entry by handle (case-insensitive). Returns (entry, index) or (None, -1)."""
+    rows = _read_waitlist()
+    handle_lower = handle.lower()
+    for i, row in enumerate(rows):
+        if row['handle'].lower() == handle_lower:
+            return row, i
+    return None, -1
+
+
+@app.route('/beta')
+@app.route('/waitlist')
+def waitlist_page():
+    """Waitlist signup page — handle-based for Gen Z."""
+    referrer = request.args.get('ref', '').strip().lstrip('@')
+    return render_template('waitlist.html', referrer=referrer)
+
+
+@app.route('/api/waitlist', methods=['POST'])
+def api_waitlist_signup():
+    """Handle waitlist signup. Stores handle + platform + optional phone in CSV."""
+    data = request.get_json(silent=True) or {}
+    handle = data.get('handle', '').strip().lstrip('@').lower()
+    platform = data.get('platform', '').strip().lower()
+    phone = data.get('phone', '').strip()
+    referrer = data.get('referrer', '').strip().lstrip('@').lower()
+
+    # Validate handle
+    if not handle:
+        return jsonify({'error': 'Handle is required.'}), 400
+    if not re.match(r'^[a-zA-Z0-9._]{1,30}$', handle):
+        return jsonify({'error': 'Invalid handle. Letters, numbers, dots, and underscores only.'}), 400
+
+    # Validate platform
+    if platform not in ('instagram', 'tiktok'):
+        return jsonify({'error': 'Pick Instagram or TikTok.'}), 400
+
+    # Check for duplicate
+    existing, _ = _find_waitlist_entry(handle)
+    if existing:
+        return jsonify({'error': f'@{handle} is already on the waitlist.', 'handle': handle}), 409
+
+    # Read current list, append new entry
+    rows = _read_waitlist()
+    position = len(rows) + 1
+
+    new_entry = {
+        'handle': handle,
+        'platform': platform,
+        'phone': phone,
+        'referrer': referrer if referrer and referrer != handle else '',
+        'timestamp': datetime.now().isoformat(),
+        'position': str(position),
+    }
+    rows.append(new_entry)
+    _write_waitlist(rows)
+
+    # Track referral — bump the referrer up by recalculating positions
+    if referrer and referrer != handle:
+        _process_referral_bump(referrer, rows)
+
+    track_event('signup')
+    logger.info(f"Waitlist signup: @{handle} ({platform}), position #{position}, referrer={referrer or 'none'}")
+
+    return jsonify({
+        'handle': handle,
+        'position': position,
+        'total': len(rows),
+    })
+
+
+def _process_referral_bump(referrer_handle, rows):
+    """When someone signs up with a referral, bump the referrer up one spot (min position 1)."""
+    referrer_lower = referrer_handle.lower()
+    referrer_idx = None
+    for i, row in enumerate(rows):
+        if row['handle'].lower() == referrer_lower:
+            referrer_idx = i
+            break
+    if referrer_idx is None or referrer_idx == 0:
+        return  # Referrer not found or already #1
+
+    # Swap with the person above them
+    rows[referrer_idx], rows[referrer_idx - 1] = rows[referrer_idx - 1], rows[referrer_idx]
+    # Recalculate positions
+    for i, row in enumerate(rows):
+        row['position'] = str(i + 1)
+    _write_waitlist(rows)
+
+
+@app.route('/api/waitlist/stats')
+def api_waitlist_stats():
+    """Return live waitlist count for the signup page."""
+    rows = _read_waitlist()
+    return jsonify({'total': len(rows)})
+
+
+@app.route('/spot/@<handle>')
+def waitlist_dashboard(handle):
+    """Personal waitlist dashboard at /spot/@username."""
+    entry, idx = _find_waitlist_entry(handle)
+    if not entry:
+        return render_template('error.html', error_message="Handle not found on the waitlist."), 404
+
+    rows = _read_waitlist()
+    total = len(rows)
+
+    # Count referrals for this user
+    handle_lower = handle.lower()
+    referral_count = sum(1 for r in rows if r.get('referrer', '').lower() == handle_lower)
+
+    # Days to launch (target: ~12 weeks out from Feb 11 = May 6)
+    launch_date = datetime(2026, 5, 6)
+    days_to_launch = max(0, (launch_date - datetime.now()).days)
+
+    return render_template('waitlist_dashboard.html',
+                           handle=entry['handle'],
+                           platform=entry['platform'].title(),
+                           position=entry['position'],
+                           total=total,
+                           referral_count=referral_count,
+                           days_to_launch=days_to_launch)
 
 
 # Error handlers for better crash reporting

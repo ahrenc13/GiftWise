@@ -1463,6 +1463,65 @@ def gift_guide_detail(slug):
         return render_template(template)
     return render_template('error.html', error_message="Guide not found."), 404
 
+# ============================================================================
+# WAITLIST ROUTES (Pre-Launch)
+# ============================================================================
+
+@app.route('/beta')
+@app.route('/waitlist')
+def waitlist():
+    """Waitlist landing page for pre-launch signups"""
+    return render_template('waitlist.html')
+
+@app.route('/api/waitlist', methods=['POST'])
+def api_waitlist():
+    """Save waitlist signup"""
+    import csv
+    import os
+    from datetime import datetime
+
+    try:
+        data = request.get_json()
+        email = data.get('email', '').strip().lower()
+        shopping_for = data.get('shopping_for', '')
+        source = data.get('source', '')
+        timestamp = data.get('timestamp', datetime.now().isoformat())
+
+        if not email:
+            return jsonify({'error': 'Email required'}), 400
+
+        # Create data directory if it doesn't exist
+        os.makedirs('data', exist_ok=True)
+
+        # Append to CSV file
+        waitlist_file = 'data/waitlist.csv'
+        file_exists = os.path.isfile(waitlist_file)
+
+        # Count current signups to return position
+        position = 1
+        if file_exists:
+            with open(waitlist_file, 'r') as f:
+                position = sum(1 for line in f) - 1 + 1  # -1 for header, +1 for this signup
+
+        # Write signup
+        with open(waitlist_file, 'a', newline='') as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(['email', 'shopping_for', 'source', 'timestamp', 'position'])
+            writer.writerow([email, shopping_for, source, timestamp, position])
+
+        logger.info(f"Waitlist signup: {email} (position #{position})")
+
+        return jsonify({
+            'success': True,
+            'position': position,
+            'message': 'Welcome to the waitlist!'
+        })
+
+    except Exception as e:
+        logger.error(f"Waitlist signup error: {e}")
+        return jsonify({'error': 'Something went wrong'}), 500
+
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     """Signup page with 4-tier relationship selection"""

@@ -185,20 +185,20 @@
                 </a>
                 {% endfor %}
                 {% elif rec.purchase_link and (rec.experience_search_fallback or not rec.reservation_link and not rec.venue_website) %}
-                <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" style="background: #0ea5e9;">
+                <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" onclick="trackClick('{{ rec.purchase_link }}', 'experience');" style="background: #0ea5e9;">
                     Find options →
                 </a>
                 {% endif %}
                 {% endif %}
                 {% if rec.gift_type == 'physical' and rec.purchase_link %}
-                <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link">
-                    View Product →
+                <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" onclick="trackClick('{{ rec.purchase_link }}', 'physical');">
+                    Shop Now →
                 </a>
                 {% endif %}
             </div>
             {% endfor %}
         </div>
-        
+
         <div class="cta-section">
             <h2 style="font-size: 1.6em; margin-bottom: 8px;">These picks were made by AI in under 2 minutes</h2>
             <p style="color: #6b7280; font-size: 1.05em;">Giftwise analyzes social media and finds gifts they'll actually love. No more guessing.</p>
@@ -206,6 +206,15 @@
             <p style="color: #9ca3af; font-size: 0.85em; margin-top: 12px;">No credit card required</p>
         </div>
     </div>
+    <script>
+    function trackClick(url, source) {
+        fetch('/api/track-click', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({url: url, source: source || 'physical'})
+        }).catch(() => {});
+    }
+    </script>
     <script type="text/javascript" src="https://s.skimresources.com/js/298548X178612"></script>
 </body>
 </html>

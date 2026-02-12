@@ -284,6 +284,7 @@ ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
 STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID')
 AMAZON_AFFILIATE_TAG = os.environ.get('AMAZON_AFFILIATE_TAG', '')  # Optional: for affiliate links
+SKIMLINKS_PUBLISHER_ID = os.environ.get('SKIMLINKS_PUBLISHER_ID', '')  # Set when Skimlinks approved
 
 # Claude model selection — toggle in Render env vars for A/B testing Opus vs Sonnet
 # Defaults to Sonnet for both. Set CLAUDE_CURATOR_MODEL to test Opus on curation.
@@ -2534,6 +2535,29 @@ def api_places_autocomplete():
         return jsonify([])
 
 
+def _apply_affiliate_tag(url):
+    """Apply affiliate tracking to an outbound product URL.
+
+    1. Amazon links: append affiliate tag if set
+    2. All merchant links: wrap with Skimlinks redirect if publisher ID is set
+    Returns the tagged URL, or the original if no tags apply.
+    """
+    if not url or not isinstance(url, str):
+        return url
+
+    # Step 1: Amazon affiliate tag
+    if AMAZON_AFFILIATE_TAG and 'amazon.com' in url.lower():
+        if 'tag=' not in url:
+            sep = '&' if '?' in url else '?'
+            url = f"{url}{sep}tag={AMAZON_AFFILIATE_TAG}"
+
+    # Step 2: Skimlinks server-side wrapping (when approved)
+    if SKIMLINKS_PUBLISHER_ID and not url.startswith('https://go.skimresources.com'):
+        url = f"https://go.skimresources.com/?id={SKIMLINKS_PUBLISHER_ID}&url={quote(url)}"
+
+    return url
+
+
 def _normalize_url_for_matching(u):
     """Normalize a URL for inventory matching: strip whitespace, trailing slash, tracking params."""
     if not u or not isinstance(u, str):
@@ -2793,6 +2817,9 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
                 m['where_to_buy'] = 'Search Amazon'
             m['is_search_link'] = True
             logger.info(f"MATERIALS: No match for '{item_name[:40]}' → search fallback ({m['where_to_buy']})")
+        # Apply affiliate tracking to all material links
+        if m.get('product_url'):
+            m['product_url'] = _apply_affiliate_tag(m['product_url'])
         out.append(m)
     return out
 
@@ -3044,7 +3071,7 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                     'price_range': gift.get('price', 'Price unknown'),
                     'where_to_buy': gift.get('where_to_buy', 'Online'),
                     'product_url': product_url,
-                    'purchase_link': product_url,
+                    'purchase_link': _apply_affiliate_tag(product_url),
                     'image_url': image_url,
                     'image': image_url,
                     'gift_type': 'physical',
@@ -3119,6 +3146,10 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                 except Exception as ep_err:
                     logger.warning(f"Experience provider lookup failed: {ep_err}")
 
+                # Apply affiliate tracking to provider links
+                for ep in experience_provider_links:
+                    ep['url'] = _apply_affiliate_tag(ep['url'])
+
                 if not primary_link and experience_provider_links:
                     # Use first provider as primary link instead of Google search
                     primary_link = experience_provider_links[0]['url']
@@ -3137,8 +3168,8 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                     'price_range': 'Variable',
                     'where_to_buy': f"Experience{location_info}",
                     'product_url': primary_link or None,
-                    'purchase_link': primary_link or None,
-                    'reservation_link': reservation_link or None,
+                    'purchase_link': _apply_affiliate_tag(primary_link) if primary_link else None,
+                    'reservation_link': _apply_affiliate_tag(reservation_link) if reservation_link else None,
                     'venue_website': venue_website or None,
                     'experience_search_fallback': experience_search_fallback,
                     'experience_providers': experience_provider_links,
@@ -3361,6 +3392,18 @@ def toggle_favorite(rec_index):
     save_user(user_id, {'favorites': favorites})
     
     return jsonify({'success': True, 'action': action, 'favorited': rec_index in favorites})
+
+@app.route('/api/track-click', methods=['POST'])
+def track_product_click():
+    """Track outbound product link clicks for conversion analytics."""
+    data = request.get_json(silent=True) or {}
+    url = data.get('url', '')
+    source = data.get('source', '')  # 'physical', 'experience', 'material', 'provider'
+    if url:
+        track_event('product_click')
+        logger.info(f"Product click: source={source}, url={url[:80]}")
+    return jsonify({'ok': True})
+
 
 @app.route('/api/share', methods=['POST'])
 def create_share():
@@ -3929,7 +3972,7 @@ def api_referral_stats():
 # ============================================================================
 
 WAITLIST_CSV = 'data/waitlist.csv'
-WAITLIST_FIELDS = ['handle', 'platform', 'phone', 'referrer', 'timestamp', 'position']
+WAITLIST_FIELDS = ['handle', 'platform', 'email', 'phone', 'referrer', 'timestamp', 'position']
 os.makedirs('data', exist_ok=True)
 
 
@@ -3974,6 +4017,7 @@ def api_waitlist_signup():
     data = request.get_json(silent=True) or {}
     handle = data.get('handle', '').strip().lstrip('@').lower()
     platform = data.get('platform', '').strip().lower()
+    email = data.get('email', '').strip().lower()
     phone = data.get('phone', '').strip()
     referrer = data.get('referrer', '').strip().lstrip('@').lower()
 
@@ -3999,6 +4043,7 @@ def api_waitlist_signup():
     new_entry = {
         'handle': handle,
         'platform': platform,
+        'email': email,
         'phone': phone,
         'referrer': referrer if referrer and referrer != handle else '',
         'timestamp': datetime.now().isoformat(),

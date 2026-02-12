@@ -37,6 +37,9 @@ def search_products_multi_retailer(
     skimlinks_client_id=None,
     skimlinks_client_secret=None,
     skimlinks_domain_id=None,
+    cj_api_key=None,
+    cj_account_id=None,
+    cj_website_id=None,
     target_count=20,
     enhanced_search_terms=None,
     progress_callback=None,
@@ -49,6 +52,8 @@ def search_products_multi_retailer(
     - Add Awin products (feed-based)
     - Add eBay products (Browse API)
     - Add ShareASale products (brand names, legacy)
+    - Add Skimlinks products (48,500+ merchants)
+    - Add CJ Affiliate products (approved advertisers only)
     - Use Amazon as fallback if needed
 
     Returns mixed list of products from all sources.
@@ -56,10 +61,53 @@ def search_products_multi_retailer(
     """
     logger.info(f"Multi-retailer search: target {target_count} products")
     logger.info(
-        f"Available: Etsy={bool(etsy_key)}, Awin={bool(awin_data_feed_api_key)}, eBay={bool(ebay_client_id and ebay_client_secret)}, ShareASale={bool(shareasale_id)}, Skimlinks={bool(skimlinks_publisher_id)}, Amazon={bool(amazon_key)}"
+        f"Available: Etsy={bool(etsy_key)}, Awin={bool(awin_data_feed_api_key)}, eBay={bool(ebay_client_id and ebay_client_secret)}, ShareASale={bool(shareasale_id)}, Skimlinks={bool(skimlinks_publisher_id)}, CJ={bool(cj_api_key)}, Amazon={bool(amazon_key)}"
     )
 
     all_products = []
+
+    # 0. Query database FIRST (added Feb 2026 for cost reduction)
+    try:
+        import config
+        import database
+        from models import Product
+
+        if config.FEATURES.get('database_first', True):
+            logger.info("Querying product database for cached products...")
+
+            # Extract interests from profile
+            interests = []
+            if isinstance(profile.get('interests'), list):
+                interests = [i.get('name', i) if isinstance(i, dict) else str(i) for i in profile.get('interests', [])]
+
+            if interests:
+                # Query database for products matching interests
+                db_products = database.search_products_by_interests(interests, limit=target_count * 2)
+
+                if db_products:
+                    # Convert database rows to product dicts
+                    for row in db_products:
+                        try:
+                            product = Product.from_db_row(row)
+                            all_products.append(product.to_curator_format())
+                        except Exception as e:
+                            logger.error(f"Error converting database product: {e}")
+
+                    logger.info(f"Got {len(all_products)} products from database cache")
+
+                    # If we have enough from database, skip live APIs
+                    if len(all_products) >= target_count:
+                        logger.info(f"Database provided enough products ({len(all_products)} >= {target_count}), skipping live API calls")
+                        return all_products[:MAX_INVENTORY_SIZE]
+                else:
+                    logger.info("No products found in database for these interests")
+            else:
+                logger.warning("No interests in profile, skipping database query")
+    except ImportError:
+        logger.info("Database module not available, proceeding with live APIs only")
+    except Exception as e:
+        logger.error(f"Database query failed: {e}, proceeding with live APIs")
+
     # Request target_count from each vendor and merge into one large pool (no per-vendor cap).
     # Curator will pick the best N; if they're all from one vendor, that's fine.
     per_vendor_target = min(target_count, MAX_INVENTORY_SIZE // 5)  # so 5 vendors don't exceed MAX
@@ -197,7 +245,34 @@ def search_products_multi_retailer(
     else:
         logger.info("Skimlinks credentials not set - skipping Skimlinks")
 
-    # 6. Amazon
+    # 6. CJ Affiliate
+    if cj_api_key:
+        try:
+            from cj_searcher import search_products_cj
+
+            _notify('CJ Affiliate', searching=True)
+            logger.info(f"Searching CJ Affiliate for {per_vendor_target} products...")
+            cj_products = search_products_cj(
+                profile,
+                cj_api_key,
+                account_id=cj_account_id,
+                website_id=cj_website_id,
+                target_count=per_vendor_target,
+                enhanced_search_terms=enhanced_search_terms,
+            )
+            all_products.extend(cj_products)
+            logger.info(f"Got {len(cj_products)} products from CJ Affiliate")
+            _notify('CJ Affiliate', count=len(cj_products), done=True)
+        except ImportError as e:
+            logger.warning(f"cj_searcher not available: {e}")
+            _notify('CJ Affiliate', skipped=True)
+        except Exception as e:
+            logger.error(f"CJ Affiliate search failed: {e}")
+            _notify('CJ Affiliate', count=0, done=True)
+    else:
+        logger.info("CJ Affiliate credentials not set - skipping CJ")
+
+    # 7. Amazon
     if amazon_key:
         try:
             from rapidapi_amazon_searcher import search_products_rapidapi_amazon

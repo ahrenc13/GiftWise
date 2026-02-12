@@ -749,7 +749,7 @@
                         {% for m in rec.materials_needed[:5] %}
                             <li style="margin: 4px 0;">
                                 {% if m.product_url %}
-                                <a href="{{ m.product_url }}" target="_blank" onclick="event.stopPropagation();" style="color: #be123c;">{{ m.item }}</a>{% if m.is_search_link %}<span style="color: #6b7280; font-size: 0.9em;"> — find online</span>{% endif %}
+                                <a href="{{ m.product_url }}" target="_blank" onclick="event.stopPropagation(); trackClick('{{ m.product_url }}', 'material');" style="color: #be123c;">{{ m.item }}</a>{% if m.is_search_link %}<span style="color: #6b7280; font-size: 0.9em;"> — find online</span>{% endif %}
                                 {% else %}
                                 {{ m.item }}
                                 {% endif %}
@@ -771,7 +771,7 @@
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                             {% if rec.gift_type == 'experience' %}
                             {% if rec.reservation_link %}
-                            <a href="{{ rec.reservation_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation();" style="background: #059669;">
+                            <a href="{{ rec.reservation_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation(); trackClick('{{ rec.reservation_link }}', 'reservation');" style="background: #059669;">
                                 Reserve / Book →
                             </a>
                             {% endif %}
@@ -782,19 +782,19 @@
                             {% endif %}
                             {% if rec.experience_providers and not rec.reservation_link %}
                             {% for provider in rec.experience_providers[:2] %}
-                            <a href="{{ provider.url }}" target="_blank" class="rec-link" onclick="event.stopPropagation();" style="background: #7c3aed;">
+                            <a href="{{ provider.url }}" target="_blank" class="rec-link" onclick="event.stopPropagation(); trackClick('{{ provider.url }}', 'provider');" style="background: #7c3aed;">
                                 {{ provider.name }} →
                             </a>
                             {% endfor %}
                             {% elif rec.purchase_link and (rec.experience_search_fallback or (not rec.reservation_link and not rec.venue_website)) %}
-                            <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation();" style="background: #0ea5e9;">
+                            <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation(); trackClick('{{ rec.purchase_link }}', 'experience');" style="background: #0ea5e9;">
                                 Find options →
                             </a>
                             {% endif %}
                             {% endif %}
                             {% if rec.gift_type == 'physical' and rec.purchase_link %}
-                            <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation();">
-                                View Product →
+                            <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation(); trackClick('{{ rec.purchase_link }}', 'physical');">
+                                Shop Now →
                             </a>
                             <button onclick="event.stopPropagation(); copyLink('{{ rec.purchase_link }}', this)" class="rec-link" style="background: #6b7280; cursor: pointer; border: none;">
                                 📋 Copy Link
@@ -850,6 +850,15 @@
         </div>
         
         <script>
+        // Track outbound product clicks (fire-and-forget, non-blocking)
+        function trackClick(url, source) {
+            fetch('/api/track-click', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({url: url, source: source || 'physical'})
+            }).catch(() => {});
+        }
+
         // Copy link to clipboard
         function copyLink(url, button) {
             navigator.clipboard.writeText(url).then(() => {

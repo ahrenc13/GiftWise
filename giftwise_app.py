@@ -26,6 +26,7 @@ import sys
 import json
 import time
 import uuid
+import csv
 import threading
 import signal
 import re
@@ -283,6 +284,7 @@ ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
 STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID')
 AMAZON_AFFILIATE_TAG = os.environ.get('AMAZON_AFFILIATE_TAG', '')  # Optional: for affiliate links
+SKIMLINKS_PUBLISHER_ID = os.environ.get('SKIMLINKS_PUBLISHER_ID', '')  # Set when Skimlinks approved
 
 # Claude model selection — toggle in Render env vars for A/B testing Opus vs Sonnet
 # Defaults to Sonnet for both. Set CLAUDE_CURATOR_MODEL to test Opus on curation.
@@ -1474,6 +1476,150 @@ def gift_guide_detail(slug):
         return render_template(template)
     return render_template('error.html', error_message="Guide not found."), 404
 
+# ============================================================================
+# WAITLIST ROUTES (Pre-Launch)
+# ============================================================================
+
+@app.route('/beta')
+@app.route('/waitlist')
+def waitlist():
+    """Waitlist landing page for pre-launch signups"""
+    return render_template('waitlist.html')
+
+@app.route('/api/waitlist', methods=['POST'])
+def api_waitlist():
+    """Save waitlist signup (handle-based for Gen Z)"""
+    import csv
+    import os
+    from datetime import datetime
+
+    try:
+        data = request.get_json()
+        handle = data.get('handle', '').strip().lower()
+        # Remove @ prefix if included
+        if handle.startswith('@'):
+            handle = handle[1:]
+
+        platform = data.get('platform', '')
+        phone = data.get('phone', '').strip()
+        shopping_for = data.get('shopping_for', '')
+        timestamp = data.get('timestamp', datetime.now().isoformat())
+        referrer = data.get('referrer', '')  # For tracking referral source
+
+        if not handle:
+            return jsonify({'error': 'Handle required'}), 400
+
+        if not platform:
+            return jsonify({'error': 'Platform required'}), 400
+
+        # Create data directory if it doesn't exist
+        os.makedirs('data', exist_ok=True)
+
+        # Append to CSV file
+        waitlist_file = 'data/waitlist.csv'
+        file_exists = os.path.isfile(waitlist_file)
+
+        # Count current signups to return position
+        position = 1
+        if file_exists:
+            with open(waitlist_file, 'r') as f:
+                position = sum(1 for line in f) - 1 + 1  # -1 for header, +1 for this signup
+
+        # Write signup
+        with open(waitlist_file, 'a', newline='') as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(['handle', 'platform', 'phone', 'shopping_for', 'referrer', 'timestamp', 'position'])
+            writer.writerow([handle, platform, phone, shopping_for, referrer, timestamp, position])
+
+        logger.info(f"Waitlist signup: @{handle} on {platform} (position #{position})")
+
+        return jsonify({
+            'success': True,
+            'position': position,
+            'handle': handle,
+            'message': 'Welcome to the waitlist!'
+        })
+
+    except Exception as e:
+        logger.error(f"Waitlist signup error: {e}")
+        return jsonify({'error': 'Something went wrong'}), 500
+
+@app.route('/api/waitlist/stats')
+def waitlist_stats():
+    """Return current waitlist count for display on signup page"""
+    import csv
+    import os
+
+    waitlist_file = 'data/waitlist.csv'
+    if not os.path.exists(waitlist_file):
+        return jsonify({'count': 0})
+
+    try:
+        with open(waitlist_file, 'r') as f:
+            count = sum(1 for line in f) - 1  # -1 for header
+        return jsonify({'count': max(0, count)})
+    except Exception as e:
+        logger.error(f"Waitlist stats error: {e}")
+        return jsonify({'count': 0})
+
+@app.route('/spot/@<handle>')
+def waitlist_dashboard(handle):
+    """Personal waitlist dashboard for tracking position and referrals"""
+    import csv
+    import os
+    from datetime import datetime
+
+    # Clean handle
+    handle = handle.lower().strip()
+
+    waitlist_file = 'data/waitlist.csv'
+    if not os.path.exists(waitlist_file):
+        return "Waitlist not found", 404
+
+    # Find user's position and signup data
+    user_position = None
+    user_platform = None
+    user_signup_time = None
+    total_signups = 0
+    referral_count = 0
+
+    try:
+        with open(waitlist_file, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                total_signups += 1
+                if row.get('handle', '').lower() == handle:
+                    user_position = int(row.get('position', total_signups))
+                    user_platform = row.get('platform', 'unknown')
+                    user_signup_time = row.get('timestamp', '')
+                # Count referrals
+                if row.get('referrer', '').lower() == handle:
+                    referral_count += 1
+
+        if user_position is None:
+            return "Handle not found on waitlist", 404
+
+        # Calculate days until launch (Spring 2026 = ~April 1, 2026)
+        try:
+            launch_date = datetime(2026, 4, 1)
+            days_remaining = (launch_date - datetime.now()).days
+        except:
+            days_remaining = 45  # Fallback
+
+        return render_template('waitlist_dashboard.html',
+                             handle=handle,
+                             position=user_position,
+                             total_signups=total_signups,
+                             platform=user_platform,
+                             referral_count=referral_count,
+                             days_remaining=max(0, days_remaining),
+                             signup_time=user_signup_time)
+
+    except Exception as e:
+        logger.error(f"Dashboard error for @{handle}: {e}")
+        return "Error loading dashboard", 500
+
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     """Signup page with 4-tier relationship selection"""
@@ -2533,6 +2679,29 @@ def api_places_autocomplete():
         return jsonify([])
 
 
+def _apply_affiliate_tag(url):
+    """Apply affiliate tracking to an outbound product URL.
+
+    1. Amazon links: append affiliate tag if set
+    2. All merchant links: wrap with Skimlinks redirect if publisher ID is set
+    Returns the tagged URL, or the original if no tags apply.
+    """
+    if not url or not isinstance(url, str):
+        return url
+
+    # Step 1: Amazon affiliate tag
+    if AMAZON_AFFILIATE_TAG and 'amazon.com' in url.lower():
+        if 'tag=' not in url:
+            sep = '&' if '?' in url else '?'
+            url = f"{url}{sep}tag={AMAZON_AFFILIATE_TAG}"
+
+    # Step 2: Skimlinks server-side wrapping (when approved)
+    if SKIMLINKS_PUBLISHER_ID and not url.startswith('https://go.skimresources.com'):
+        url = f"https://go.skimresources.com/?id={SKIMLINKS_PUBLISHER_ID}&url={quote(url)}"
+
+    return url
+
+
 def _normalize_url_for_matching(u):
     """Normalize a URL for inventory matching: strip whitespace, trailing slash, tracking params."""
     if not u or not isinstance(u, str):
@@ -2792,6 +2961,9 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
                 m['where_to_buy'] = 'Search Amazon'
             m['is_search_link'] = True
             logger.info(f"MATERIALS: No match for '{item_name[:40]}' → search fallback ({m['where_to_buy']})")
+        # Apply affiliate tracking to all material links
+        if m.get('product_url'):
+            m['product_url'] = _apply_affiliate_tag(m['product_url'])
         out.append(m)
     return out
 
@@ -3043,7 +3215,7 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                     'price_range': gift.get('price', 'Price unknown'),
                     'where_to_buy': gift.get('where_to_buy', 'Online'),
                     'product_url': product_url,
-                    'purchase_link': product_url,
+                    'purchase_link': _apply_affiliate_tag(product_url),
                     'image_url': image_url,
                     'image': image_url,
                     'gift_type': 'physical',
@@ -3118,6 +3290,10 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                 except Exception as ep_err:
                     logger.warning(f"Experience provider lookup failed: {ep_err}")
 
+                # Apply affiliate tracking to provider links
+                for ep in experience_provider_links:
+                    ep['url'] = _apply_affiliate_tag(ep['url'])
+
                 if not primary_link and experience_provider_links:
                     # Use first provider as primary link instead of Google search
                     primary_link = experience_provider_links[0]['url']
@@ -3136,8 +3312,8 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                     'price_range': 'Variable',
                     'where_to_buy': f"Experience{location_info}",
                     'product_url': primary_link or None,
-                    'purchase_link': primary_link or None,
-                    'reservation_link': reservation_link or None,
+                    'purchase_link': _apply_affiliate_tag(primary_link) if primary_link else None,
+                    'reservation_link': _apply_affiliate_tag(reservation_link) if reservation_link else None,
                     'venue_website': venue_website or None,
                     'experience_search_fallback': experience_search_fallback,
                     'experience_providers': experience_provider_links,
@@ -3360,6 +3536,18 @@ def toggle_favorite(rec_index):
     save_user(user_id, {'favorites': favorites})
     
     return jsonify({'success': True, 'action': action, 'favorited': rec_index in favorites})
+
+@app.route('/api/track-click', methods=['POST'])
+def track_product_click():
+    """Track outbound product link clicks for conversion analytics."""
+    data = request.get_json(silent=True) or {}
+    url = data.get('url', '')
+    source = data.get('source', '')  # 'physical', 'experience', 'material', 'provider'
+    if url:
+        track_event('product_click')
+        logger.info(f"Product click: source={source}, url={url[:80]}")
+    return jsonify({'ok': True})
+
 
 @app.route('/api/share', methods=['POST'])
 def create_share():
@@ -3596,12 +3784,53 @@ def api_usage():
     """API endpoint for usage data (JSON)"""
     if not USAGE_TRACKING_AVAILABLE:
         return jsonify({'error': 'Usage tracking not available'}), 503
-    
+
     try:
         summary = get_usage_summary()
         return jsonify(summary)
     except Exception as e:
         logger.error(f"Error getting usage data: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# ============================================================================
+# ADMIN DASHBOARD - Database Health Monitoring
+# ============================================================================
+
+@app.route('/admin/stats')
+def admin_stats():
+    """
+    Admin dashboard showing database health and product inventory status
+
+    Displays:
+    - Total products by retailer
+    - Recently added products
+    - Stale product count
+    - Last refresh timestamp
+    - Top brands
+    - Profile cache statistics
+    """
+    try:
+        import database
+        stats = database.get_database_stats()
+
+        return render_template('admin_stats.html',
+                             stats=stats,
+                             error=None)
+    except Exception as e:
+        logger.error(f"Error loading admin stats: {e}")
+        return render_template('admin_stats.html',
+                             stats=None,
+                             error=f"Error loading stats: {str(e)}")
+
+@app.route('/api/admin/stats')
+def api_admin_stats():
+    """API endpoint for database stats (JSON)"""
+    try:
+        import database
+        stats = database.get_database_stats()
+        return jsonify(stats)
+    except Exception as e:
+        logger.error(f"Error getting admin stats: {e}")
         return jsonify({'error': str(e)}), 500
 
 # ============================================================================
@@ -3921,6 +4150,158 @@ def api_referral_stats():
     stats['valentines_bonus'] = vday_bonus
     
     return jsonify(stats)
+
+
+# ============================================================================
+# WAITLIST ROUTES (handle-based for Gen Z)
+# ============================================================================
+
+WAITLIST_CSV = 'data/waitlist.csv'
+WAITLIST_FIELDS = ['handle', 'platform', 'email', 'phone', 'referrer', 'timestamp', 'position']
+os.makedirs('data', exist_ok=True)
+
+
+def _read_waitlist():
+    """Read all waitlist entries from CSV. Returns list of dicts."""
+    if not os.path.exists(WAITLIST_CSV):
+        return []
+    with open(WAITLIST_CSV, 'r', newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        return list(reader)
+
+
+def _write_waitlist(rows):
+    """Write all waitlist entries to CSV."""
+    with open(WAITLIST_CSV, 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=WAITLIST_FIELDS)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def _find_waitlist_entry(handle):
+    """Find a waitlist entry by handle (case-insensitive). Returns (entry, index) or (None, -1)."""
+    rows = _read_waitlist()
+    handle_lower = handle.lower()
+    for i, row in enumerate(rows):
+        if row['handle'].lower() == handle_lower:
+            return row, i
+    return None, -1
+
+
+@app.route('/beta')
+@app.route('/waitlist')
+def waitlist_page():
+    """Waitlist signup page — handle-based for Gen Z."""
+    referrer = request.args.get('ref', '').strip().lstrip('@')
+    return render_template('waitlist.html', referrer=referrer)
+
+
+@app.route('/api/waitlist', methods=['POST'])
+def api_waitlist_signup():
+    """Handle waitlist signup. Stores handle + platform + optional phone in CSV."""
+    data = request.get_json(silent=True) or {}
+    handle = data.get('handle', '').strip().lstrip('@').lower()
+    platform = data.get('platform', '').strip().lower()
+    email = data.get('email', '').strip().lower()
+    phone = data.get('phone', '').strip()
+    referrer = data.get('referrer', '').strip().lstrip('@').lower()
+
+    # Validate handle
+    if not handle:
+        return jsonify({'error': 'Handle is required.'}), 400
+    if not re.match(r'^[a-zA-Z0-9._]{1,30}$', handle):
+        return jsonify({'error': 'Invalid handle. Letters, numbers, dots, and underscores only.'}), 400
+
+    # Validate platform
+    if platform not in ('instagram', 'tiktok'):
+        return jsonify({'error': 'Pick Instagram or TikTok.'}), 400
+
+    # Check for duplicate
+    existing, _ = _find_waitlist_entry(handle)
+    if existing:
+        return jsonify({'error': f'@{handle} is already on the waitlist.', 'handle': handle}), 409
+
+    # Read current list, append new entry
+    rows = _read_waitlist()
+    position = len(rows) + 1
+
+    new_entry = {
+        'handle': handle,
+        'platform': platform,
+        'email': email,
+        'phone': phone,
+        'referrer': referrer if referrer and referrer != handle else '',
+        'timestamp': datetime.now().isoformat(),
+        'position': str(position),
+    }
+    rows.append(new_entry)
+    _write_waitlist(rows)
+
+    # Track referral — bump the referrer up by recalculating positions
+    if referrer and referrer != handle:
+        _process_referral_bump(referrer, rows)
+
+    track_event('signup')
+    logger.info(f"Waitlist signup: @{handle} ({platform}), position #{position}, referrer={referrer or 'none'}")
+
+    return jsonify({
+        'handle': handle,
+        'position': position,
+        'total': len(rows),
+    })
+
+
+def _process_referral_bump(referrer_handle, rows):
+    """When someone signs up with a referral, bump the referrer up one spot (min position 1)."""
+    referrer_lower = referrer_handle.lower()
+    referrer_idx = None
+    for i, row in enumerate(rows):
+        if row['handle'].lower() == referrer_lower:
+            referrer_idx = i
+            break
+    if referrer_idx is None or referrer_idx == 0:
+        return  # Referrer not found or already #1
+
+    # Swap with the person above them
+    rows[referrer_idx], rows[referrer_idx - 1] = rows[referrer_idx - 1], rows[referrer_idx]
+    # Recalculate positions
+    for i, row in enumerate(rows):
+        row['position'] = str(i + 1)
+    _write_waitlist(rows)
+
+
+@app.route('/api/waitlist/stats')
+def api_waitlist_stats():
+    """Return live waitlist count for the signup page."""
+    rows = _read_waitlist()
+    return jsonify({'total': len(rows)})
+
+
+@app.route('/spot/@<handle>')
+def waitlist_dashboard(handle):
+    """Personal waitlist dashboard at /spot/@username."""
+    entry, idx = _find_waitlist_entry(handle)
+    if not entry:
+        return render_template('error.html', error_message="Handle not found on the waitlist."), 404
+
+    rows = _read_waitlist()
+    total = len(rows)
+
+    # Count referrals for this user
+    handle_lower = handle.lower()
+    referral_count = sum(1 for r in rows if r.get('referrer', '').lower() == handle_lower)
+
+    # Days to launch (target: ~12 weeks out from Feb 11 = May 6)
+    launch_date = datetime(2026, 5, 6)
+    days_to_launch = max(0, (launch_date - datetime.now()).days)
+
+    return render_template('waitlist_dashboard.html',
+                           handle=entry['handle'],
+                           platform=entry['platform'].title(),
+                           position=entry['position'],
+                           total=total,
+                           referral_count=referral_count,
+                           days_to_launch=days_to_launch)
 
 
 # Error handlers for better crash reporting

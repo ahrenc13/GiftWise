@@ -53,3 +53,4 @@ htmlcov/
 # Deployment
 *.bak
 *.tmp
+data/waitlist.csv

@@ -271,6 +271,23 @@ else:
         "Ensure enrichment_engine.py, enrichment_data.py, experience_architect.py, payment_model.py are present and importable."
     )
 
+# ============================================================================
+# PHASE 1 REFACTORING: Repository Pattern, Auth Middleware, Config Management
+# ============================================================================
+# Import new decoupled modules to reduce code duplication and improve testability
+try:
+    from repositories import get_user_repository
+    from middleware.auth import require_login, require_tier, optional_login, api_route
+    from config import get_settings
+    REFACTORED_MODULES_AVAILABLE = True
+    logger.info("✅ Phase 1 refactoring modules loaded (repository, auth middleware, config)")
+except ImportError as e:
+    REFACTORED_MODULES_AVAILABLE = False
+    logger.warning(f"⚠️ Refactored modules not available, using legacy code: {e}")
+    # Fallback to legacy functions if refactored modules aren't available
+    get_user_repository = None
+    get_settings = None
+
 app = Flask(__name__)
 
 # SECURITY FIX: Fail fast if SECRET_KEY not set
@@ -518,48 +535,66 @@ def _clear_gen_progress(user_id):
         _generation_progress.pop(user_id, None)
 
 # ============================================================================
-# DATABASE HELPERS (Fixed: Thread-safe operations)
+# DATABASE HELPERS - REFACTORED TO USE REPOSITORY PATTERN
 # ============================================================================
+# Legacy database functions are now thin wrappers around the repository
+# This maintains backward compatibility while enabling future migration to Postgres/Redis/etc.
 
-# Thread locks for database operations
+# Thread locks for database operations (still used by legacy code)
 db_locks = {}
 lock_lock = threading.Lock()
 
 def get_db_lock(user_id):
-    """Get or create a lock for a specific user"""
+    """Get or create a lock for a specific user (legacy - repository handles locking internally)"""
     with lock_lock:
         if user_id not in db_locks:
             db_locks[user_id] = threading.Lock()
         return db_locks[user_id]
 
 def get_user(user_id):
-    """Get user data from database"""
-    if not user_id:
-        return None
-    try:
-        with shelve.open('giftwise_db') as db:
-            return db.get(f'user_{user_id}')
-    except Exception as e:
-        logger.error(f"Error getting user {user_id}: {e}")
-        return None
+    """
+    Get user data from database
+    REFACTORED: Now uses repository pattern for better testability and flexibility
+    """
+    if REFACTORED_MODULES_AVAILABLE and get_user_repository:
+        repo = get_user_repository()
+        return repo.get(user_id)
+    else:
+        # Fallback to legacy shelve code
+        if not user_id:
+            return None
+        try:
+            with shelve.open('giftwise_db') as db:
+                return db.get(f'user_{user_id}')
+        except Exception as e:
+            logger.error(f"Error getting user {user_id}: {e}")
+            return None
 
 def save_user(user_id, data):
-    """Save user data to database (thread-safe)"""
-    if not user_id:
-        logger.error("Attempted to save user with no user_id")
-        return False
-    
-    lock = get_db_lock(user_id)
-    try:
-        with lock:
-            with shelve.open('giftwise_db') as db:
-                existing = db.get(f'user_{user_id}', {})
-                existing.update(data)
-                db[f'user_{user_id}'] = existing
-        return True
-    except Exception as e:
-        logger.error(f"Error saving user {user_id}: {e}")
-        return False
+    """
+    Save user data to database (thread-safe)
+    REFACTORED: Now uses repository pattern for better testability
+    """
+    if REFACTORED_MODULES_AVAILABLE and get_user_repository:
+        repo = get_user_repository()
+        return repo.save(user_id, data)
+    else:
+        # Fallback to legacy shelve code
+        if not user_id:
+            logger.error("Attempted to save user with no user_id")
+            return False
+
+        lock = get_db_lock(user_id)
+        try:
+            with lock:
+                with shelve.open('giftwise_db') as db:
+                    existing = db.get(f'user_{user_id}', {})
+                    existing.update(data)
+                    db[f'user_{user_id}'] = existing
+            return True
+        except Exception as e:
+            logger.error(f"Error saving user {user_id}: {e}")
+            return False
 
 def get_session_user():
     """Get current user from session"""
@@ -3456,12 +3491,18 @@ def api_generation_progress():
     return jsonify(progress)
 
 @app.route('/recommendations')
-def view_recommendations():
-    """Display recommendations with fix link buttons"""
-    user = get_session_user()
-    if not user:
-        return redirect('/signup')
-    
+@require_login() if REFACTORED_MODULES_AVAILABLE else lambda f: f
+def view_recommendations(user=None):
+    """
+    Display recommendations with fix link buttons
+    REFACTORED: Uses @require_login middleware - user is automatically injected
+    """
+    # Fallback for when refactored modules aren't available
+    if not REFACTORED_MODULES_AVAILABLE:
+        user = get_session_user()
+        if not user:
+            return redirect('/signup')
+
     recommendations = user.get('recommendations', [])
     
     if not recommendations:
@@ -3482,11 +3523,17 @@ def view_recommendations():
 
 
 @app.route('/recommendations/experience/<int:index>')
-def view_experience_detail(index):
-    """Dedicated page for a single experience gift: full description, links, shopping list."""
-    user = get_session_user()
-    if not user:
-        return redirect('/signup')
+@require_login() if REFACTORED_MODULES_AVAILABLE else lambda f: f
+def view_experience_detail(index, user=None):
+    """
+    Dedicated page for a single experience gift: full description, links, shopping list.
+    REFACTORED: Uses @require_login middleware
+    """
+    # Fallback for when refactored modules aren't available
+    if not REFACTORED_MODULES_AVAILABLE:
+        user = get_session_user()
+        if not user:
+            return redirect('/signup')
     recommendations = user.get('recommendations', [])
     if not recommendations:
         return redirect('/connect-platforms?error=no_recommendations')
@@ -3506,11 +3553,17 @@ def view_experience_detail(index):
 
 
 @app.route('/api/favorite/<int:rec_index>', methods=['POST'])
-def toggle_favorite(rec_index):
-    """Add or remove favorite"""
-    user = get_session_user()
-    if not user:
-        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+@require_login(api_mode=True) if REFACTORED_MODULES_AVAILABLE else lambda f: f
+def toggle_favorite(rec_index, user=None):
+    """
+    Add or remove favorite
+    REFACTORED: Uses @require_login(api_mode=True) - returns JSON 401 if not authenticated
+    """
+    # Fallback for when refactored modules aren't available
+    if not REFACTORED_MODULES_AVAILABLE:
+        user = get_session_user()
+        if not user:
+            return jsonify({'success': False, 'error': 'Not logged in'}), 401
     
     if not FAVORITES_AVAILABLE:
         return jsonify({'success': False, 'error': 'Favorites not available'}), 503

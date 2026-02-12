@@ -85,14 +85,14 @@ CATEGORY_PATTERNS = {
     'mug': r'\b(?:mug|cup|tumbler)[s]?\b',
     't-shirt': r'\b(?:t-?shirt|tee|tshirt)[s]?\b',
     'poster': r'\b(?:poster|wall art|print|art print)[s]?\b',
-    'book': r'\b(?:book|novel|guide|cookbook)[s]?\b',
+    'book': r'\b(?:book|novel|guide|cookbook|planner)[s]?\b',
     'jewelry': r'\b(?:necklace|bracelet|earring|ring|pendant|charm)[s]?\b',
     'hat': r'\b(?:hat|cap|beanie)[s]?\b',
     'blanket': r'\b(?:blanket|throw|quilt)[s]?\b',
     'puzzle': r'\b(?:puzzle|jigsaw)[s]?\b',
     'game': r'\b(?:board game|card game|game set)\b',
     'socks': r'\b(?:socks|sock set)\b',
-    'bag': r'\b(?:bag|tote|backpack|purse|clutch)[s]?\b',
+    'bag': r'\b(?:bag|tote|backpack|purse|clutch|toiletry)[s]?\b',
     'keychain': r'\b(?:keychain|key chain|key ring)[s]?\b',
     'sticker': r'\b(?:sticker|decal)[s]?\b',
     'ornament': r'\b(?:ornament|decoration)[s]?\b',
@@ -101,6 +101,10 @@ CATEGORY_PATTERNS = {
     'magnet': r'\b(?:magnet|fridge magnet)[s]?\b',
     'phone case': r'\b(?:phone case|iphone case|case for)\b',
     'wallet': r'\b(?:wallet|card holder)\b',
+    'adapter': r'\b(?:adapter|converter|plug|charger)[s]?\b',
+    'kit': r'\b(?:essentials kit|starter kit|travel kit|care kit)\b',
+    'glass': r'\b(?:glass|glasses|pint glass|wine glass|glassware)\b',
+    'hook': r'\b(?:hook[s]?|hanger[s]?|door hook)\b',
 }
 
 

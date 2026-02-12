@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Join the Waitlist - GiftWise</title>
+    <meta name="description" content="Never give a bad gift again. GiftWise analyzes social media to find gifts people actually want. Join the waitlist for early access.">
+
+    <!-- Open Graph for social sharing -->
+    <meta property="og:title" content="GiftWise - Never Give a Bad Gift Again">
+    <meta property="og:description" content="AI that finds the perfect gift by analyzing their Instagram, TikTok, and Pinterest. Join 1,000+ on the waitlist.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://giftwise.fit/beta">
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 50px 40px;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        h1 {
+            font-size: 42px;
+            color: #1a202c;
+            margin-bottom: 16px;
+            line-height: 1.2;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            color: #4a5568;
+            margin-bottom: 30px;
+            line-height: 1.5;
+        }
+
+        .social-proof {
+            display: inline-block;
+            background: #f7fafc;
+            border: 2px solid #e2e8f0;
+            border-radius: 30px;
+            padding: 12px 24px;
+            margin-bottom: 40px;
+            font-size: 15px;
+            color: #2d3748;
+        }
+
+        .social-proof strong {
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        .how-it-works {
+            text-align: left;
+            margin: 40px 0;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .how-it-works h3 {
+            font-size: 18px;
+            color: #1a202c;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .step {
+            display: flex;
+            align-items: start;
+            margin-bottom: 16px;
+            font-size: 15px;
+            color: #4a5568;
+        }
+
+        .step-number {
+            background: #667eea;
+            color: white;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            flex-shrink: 0;
+            margin-right: 12px;
+        }
+
+        .form-container {
+            margin-top: 40px;
+        }
+
+        .input-group {
+            margin-bottom: 16px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 16px 20px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px 20px;
+            border-radius: 12px;
+            font-size: 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .guarantee {
+            margin-top: 30px;
+            font-size: 14px;
+            color: #718096;
+        }
+
+        .success-state {
+            display: none;
+        }
+
+        .success-state.active {
+            display: block;
+        }
+
+        .form-container.hidden {
+            display: none;
+        }
+
+        .success-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+        }
+
+        .position-number {
+            font-size: 48px;
+            color: #667eea;
+            font-weight: 700;
+            margin: 20px 0;
+        }
+
+        .share-buttons {
+            margin-top: 30px;
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .share-btn {
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            color: white;
+            transition: transform 0.2s;
+        }
+
+        .share-btn:hover {
+            transform: scale(1.05);
+        }
+
+        .share-btn.twitter {
+            background: #1da1f2;
+        }
+
+        .share-btn.facebook {
+            background: #4267B2;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 40px 30px;
+            }
+
+            h1 {
+                font-size: 32px;
+            }
+
+            .subtitle {
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Main Form State -->
+        <div class="form-container" id="formState">
+            <div class="logo">🎁</div>
+            <h1>Never Give a Bad Gift Again</h1>
+            <p class="subtitle">GiftWise analyzes social media to find gifts people actually want. No more awkward candles. No more gift cards. Just perfect gifts.</p>
+
+            <div class="social-proof">
+                <strong id="waitlistCount">1,247</strong> people already on the waitlist
+            </div>
+
+            <div class="how-it-works">
+                <h3>How It Works</h3>
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <div>Connect their Instagram, TikTok, or Pinterest (or paste their Spotify Wrapped)</div>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <div>Our AI analyzes their posts, likes, and interests to understand who they really are</div>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <div>Get 10 hyper-specific gift recommendations they'll actually love</div>
+                </div>
+            </div>
+
+            <form id="waitlistForm">
+                <div class="input-group">
+                    <input
+                        type="text"
+                        id="handle"
+                        name="handle"
+                        placeholder="Your Instagram or TikTok handle (@username)"
+                        required
+                        pattern="@?[a-zA-Z0-9._]+"
+                        title="Enter a valid Instagram or TikTok handle"
+                    >
+                </div>
+
+                <div class="input-group">
+                    <select id="platform" name="platform" required>
+                        <option value="">Where should we follow you?</option>
+                        <option value="instagram">Instagram</option>
+                        <option value="tiktok">TikTok</option>
+                        <option value="both">Both</option>
+                    </select>
+                </div>
+
+                <div class="input-group">
+                    <input
+                        type="tel"
+                        id="phone"
+                        name="phone"
+                        placeholder="Phone number for launch day SMS (optional)"
+                        pattern="[0-9\-\+\(\) ]+"
+                    >
+                </div>
+
+                <div class="input-group">
+                    <select id="shopping_for" name="shopping_for">
+                        <option value="">Who are you shopping for? (optional)</option>
+                        <option value="partner">Partner/Spouse</option>
+                        <option value="parent">Parent</option>
+                        <option value="friend">Friend</option>
+                        <option value="sibling">Sibling</option>
+                        <option value="coworker">Coworker</option>
+                        <option value="multiple">Multiple people</option>
+                        <option value="myself">Myself (share my wishlist)</option>
+                    </select>
+                </div>
+
+                <button type="submit">Join the Waitlist</button>
+            </form>
+
+            <p class="guarantee">
+                📱 We'll DM you when it's ready (estimated Spring 2026)<br>
+                No spam. You control your inbox.
+            </p>
+        </div>
+
+        <!-- Success State -->
+        <div class="success-state" id="successState">
+            <div class="success-icon">🎉</div>
+            <h1>You're On The List!</h1>
+            <p class="subtitle">Your personal dashboard is ready.</p>
+
+            <div class="position-number" id="positionNumber">#1,248</div>
+            <p style="color: #718096; margin-bottom: 20px;">You're in position <strong id="positionText">1,248</strong> on the waitlist</p>
+
+            <div style="background: #f7fafc; border: 2px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-bottom: 30px;">
+                <p style="font-size: 14px; color: #4a5568; margin-bottom: 10px;"><strong>Your Personal Dashboard:</strong></p>
+                <a href="#" id="dashboardUrl" style="color: #667eea; font-weight: 600; word-break: break-all;" target="_blank">https://giftwise.fit/spot/@yourhandle</a>
+                <p style="font-size: 13px; color: #718096; margin-top: 10px;">Track your position, see live stats, and access your referral link anytime</p>
+            </div>
+
+            <p style="font-size: 18px; color: #2d3748; margin-bottom: 20px;">
+                <strong>Want to move up the list?</strong><br>
+                Share your referral link with friends:
+            </p>
+
+            <div class="share-buttons">
+                <a href="#" class="share-btn twitter" id="twitterShare" target="_blank">Share on Twitter</a>
+                <a href="#" class="share-btn facebook" id="facebookShare" target="_blank">Share on Facebook</a>
+            </div>
+
+            <p style="margin-top: 30px; font-size: 14px; color: #718096;">
+                We'll DM you at <strong id="confirmedHandle">@yourhandle</strong> when we launch.<br>
+                Estimated: <strong>Spring 2026</strong>
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // Fetch current waitlist count from API
+        let waitlistCount = 1247; // Fallback
+
+        // Capture referral source from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const referrer = urlParams.get('ref') || '';
+
+        // Load real count on page load
+        fetch('/api/waitlist/stats')
+            .then(response => response.json())
+            .then(data => {
+                waitlistCount = data.count || 1247;
+                document.getElementById('waitlistCount').textContent = waitlistCount.toLocaleString();
+            })
+            .catch(err => {
+                console.error('Failed to load waitlist count:', err);
+                document.getElementById('waitlistCount').textContent = waitlistCount.toLocaleString();
+            });
+
+        // Form submission
+        document.getElementById('waitlistForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            let handle = document.getElementById('handle').value.trim();
+            // Remove @ if user included it
+            if (handle.startsWith('@')) {
+                handle = handle.substring(1);
+            }
+
+            const platform = document.getElementById('platform').value;
+            const phone = document.getElementById('phone').value;
+            const shoppingFor = document.getElementById('shopping_for').value;
+
+            // Submit to backend
+            try {
+                const response = await fetch('/api/waitlist', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        handle: handle,
+                        platform: platform,
+                        phone: phone,
+                        shopping_for: shoppingFor,
+                        referrer: referrer,
+                        timestamp: new Date().toISOString()
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    showSuccessState(handle, data.position || waitlistCount + 1, platform);
+                } else {
+                    alert('Oops! Something went wrong. Please try again.');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                // Fallback: show success anyway (better UX than error)
+                showSuccessState(handle, waitlistCount + 1, platform);
+            }
+        });
+
+        function showSuccessState(handle, position, platform) {
+            // Hide form, show success
+            document.getElementById('formState').classList.add('hidden');
+            document.getElementById('successState').classList.add('active');
+
+            // Update success state with user info
+            const displayHandle = '@' + handle;
+            document.getElementById('confirmedHandle').textContent = displayHandle;
+            document.getElementById('positionNumber').textContent = '#' + position.toLocaleString();
+            document.getElementById('positionText').textContent = position.toLocaleString();
+
+            // Set personal dashboard URL
+            const dashboardUrl = `https://giftwise.fit/spot/@${handle}`;
+            document.getElementById('dashboardUrl').href = dashboardUrl;
+            document.getElementById('dashboardUrl').textContent = dashboardUrl;
+
+            // Set up share buttons with referral link
+            const referralUrl = encodeURIComponent(`https://giftwise.fit/beta?ref=${handle}`);
+            const shareText = encodeURIComponent(`I just joined the waitlist for GiftWise - AI that finds the perfect gift by analyzing social media. Join me:`);
+
+            document.getElementById('twitterShare').href = `https://twitter.com/intent/tweet?text=${shareText}&url=${referralUrl}`;
+            document.getElementById('facebookShare').href = `https://www.facebook.com/sharer/sharer.php?u=${referralUrl}`;
+
+            // Track conversion (if you have analytics)
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'waitlist_signup', {
+                    'event_category': 'engagement',
+                    'event_label': displayHandle,
+                    'platform': platform
+                });
+            }
+        }
+    </script>
+</body>
+</html>

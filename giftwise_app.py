@@ -1463,6 +1463,150 @@ def gift_guide_detail(slug):
         return render_template(template)
     return render_template('error.html', error_message="Guide not found."), 404
 
+# ============================================================================
+# WAITLIST ROUTES (Pre-Launch)
+# ============================================================================
+
+@app.route('/beta')
+@app.route('/waitlist')
+def waitlist():
+    """Waitlist landing page for pre-launch signups"""
+    return render_template('waitlist.html')
+
+@app.route('/api/waitlist', methods=['POST'])
+def api_waitlist():
+    """Save waitlist signup (handle-based for Gen Z)"""
+    import csv
+    import os
+    from datetime import datetime
+
+    try:
+        data = request.get_json()
+        handle = data.get('handle', '').strip().lower()
+        # Remove @ prefix if included
+        if handle.startswith('@'):
+            handle = handle[1:]
+
+        platform = data.get('platform', '')
+        phone = data.get('phone', '').strip()
+        shopping_for = data.get('shopping_for', '')
+        timestamp = data.get('timestamp', datetime.now().isoformat())
+        referrer = data.get('referrer', '')  # For tracking referral source
+
+        if not handle:
+            return jsonify({'error': 'Handle required'}), 400
+
+        if not platform:
+            return jsonify({'error': 'Platform required'}), 400
+
+        # Create data directory if it doesn't exist
+        os.makedirs('data', exist_ok=True)
+
+        # Append to CSV file
+        waitlist_file = 'data/waitlist.csv'
+        file_exists = os.path.isfile(waitlist_file)
+
+        # Count current signups to return position
+        position = 1
+        if file_exists:
+            with open(waitlist_file, 'r') as f:
+                position = sum(1 for line in f) - 1 + 1  # -1 for header, +1 for this signup
+
+        # Write signup
+        with open(waitlist_file, 'a', newline='') as f:
+            writer = csv.writer(f)
+            if not file_exists:
+                writer.writerow(['handle', 'platform', 'phone', 'shopping_for', 'referrer', 'timestamp', 'position'])
+            writer.writerow([handle, platform, phone, shopping_for, referrer, timestamp, position])
+
+        logger.info(f"Waitlist signup: @{handle} on {platform} (position #{position})")
+
+        return jsonify({
+            'success': True,
+            'position': position,
+            'handle': handle,
+            'message': 'Welcome to the waitlist!'
+        })
+
+    except Exception as e:
+        logger.error(f"Waitlist signup error: {e}")
+        return jsonify({'error': 'Something went wrong'}), 500
+
+@app.route('/api/waitlist/stats')
+def waitlist_stats():
+    """Return current waitlist count for display on signup page"""
+    import csv
+    import os
+
+    waitlist_file = 'data/waitlist.csv'
+    if not os.path.exists(waitlist_file):
+        return jsonify({'count': 0})
+
+    try:
+        with open(waitlist_file, 'r') as f:
+            count = sum(1 for line in f) - 1  # -1 for header
+        return jsonify({'count': max(0, count)})
+    except Exception as e:
+        logger.error(f"Waitlist stats error: {e}")
+        return jsonify({'count': 0})
+
+@app.route('/spot/@<handle>')
+def waitlist_dashboard(handle):
+    """Personal waitlist dashboard for tracking position and referrals"""
+    import csv
+    import os
+    from datetime import datetime
+
+    # Clean handle
+    handle = handle.lower().strip()
+
+    waitlist_file = 'data/waitlist.csv'
+    if not os.path.exists(waitlist_file):
+        return "Waitlist not found", 404
+
+    # Find user's position and signup data
+    user_position = None
+    user_platform = None
+    user_signup_time = None
+    total_signups = 0
+    referral_count = 0
+
+    try:
+        with open(waitlist_file, 'r') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                total_signups += 1
+                if row.get('handle', '').lower() == handle:
+                    user_position = int(row.get('position', total_signups))
+                    user_platform = row.get('platform', 'unknown')
+                    user_signup_time = row.get('timestamp', '')
+                # Count referrals
+                if row.get('referrer', '').lower() == handle:
+                    referral_count += 1
+
+        if user_position is None:
+            return "Handle not found on waitlist", 404
+
+        # Calculate days until launch (Spring 2026 = ~April 1, 2026)
+        try:
+            launch_date = datetime(2026, 4, 1)
+            days_remaining = (launch_date - datetime.now()).days
+        except:
+            days_remaining = 45  # Fallback
+
+        return render_template('waitlist_dashboard.html',
+                             handle=handle,
+                             position=user_position,
+                             total_signups=total_signups,
+                             platform=user_platform,
+                             referral_count=referral_count,
+                             days_remaining=max(0, days_remaining),
+                             signup_time=user_signup_time)
+
+    except Exception as e:
+        logger.error(f"Dashboard error for @{handle}: {e}")
+        return "Error loading dashboard", 500
+
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     """Signup page with 4-tier relationship selection"""
@@ -3581,12 +3725,53 @@ def api_usage():
     """API endpoint for usage data (JSON)"""
     if not USAGE_TRACKING_AVAILABLE:
         return jsonify({'error': 'Usage tracking not available'}), 503
-    
+
     try:
         summary = get_usage_summary()
         return jsonify(summary)
     except Exception as e:
         logger.error(f"Error getting usage data: {e}")
+        return jsonify({'error': str(e)}), 500
+
+# ============================================================================
+# ADMIN DASHBOARD - Database Health Monitoring
+# ============================================================================
+
+@app.route('/admin/stats')
+def admin_stats():
+    """
+    Admin dashboard showing database health and product inventory status
+
+    Displays:
+    - Total products by retailer
+    - Recently added products
+    - Stale product count
+    - Last refresh timestamp
+    - Top brands
+    - Profile cache statistics
+    """
+    try:
+        import database
+        stats = database.get_database_stats()
+
+        return render_template('admin_stats.html',
+                             stats=stats,
+                             error=None)
+    except Exception as e:
+        logger.error(f"Error loading admin stats: {e}")
+        return render_template('admin_stats.html',
+                             stats=None,
+                             error=f"Error loading stats: {str(e)}")
+
+@app.route('/api/admin/stats')
+def api_admin_stats():
+    """API endpoint for database stats (JSON)"""
+    try:
+        import database
+        stats = database.get_database_stats()
+        return jsonify(stats)
+    except Exception as e:
+        logger.error(f"Error getting admin stats: {e}")
         return jsonify({'error': str(e)}), 500
 
 # ============================================================================

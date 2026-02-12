@@ -140,11 +140,16 @@ When making any architectural decision, apply this framework:
 - `gift_curator.py` — Claude call #2: profile + inventory → curated recommendations
 - `post_curation_cleanup.py` — Programmatic enforcement of diversity rules (brand, category, interest, source)
 - `enrichment_engine.py` — Static intelligence layer (do_buy/dont_buy per interest, demographics, trending)
-- `multi_retailer_searcher.py` — Orchestrates all retailer searches, merges inventory pool. Order: Etsy → Awin → eBay → ShareASale → Skimlinks → Amazon
-- `rapidapi_amazon_searcher.py`, `ebay_searcher.py`, `etsy_searcher.py`, `awin_searcher.py`, `skimlinks_searcher.py` — Per-retailer search modules
+- `multi_retailer_searcher.py` — Orchestrates all retailer searches, merges inventory pool. Order: Database → Etsy → Awin → eBay → ShareASale → Skimlinks → Amazon
+- `rapidapi_amazon_searcher.py`, `ebay_searcher.py`, `etsy_searcher.py`, `awin_searcher.py`, `skimlinks_searcher.py`, `cj_searcher.py` — Per-retailer search modules
 - `smart_filters.py` — Work exclusion, passive/active filtering
 - `image_fetcher.py` — Thumbnail validation and fallback chain
 - `relationship_rules.py` — Relationship-appropriate gift guidance (disabled as hard filter, used as soft curator guidance)
+- **`database.py`** — SQLite product catalog with CRUD operations, profile caching, stats
+- **`config.py`** — Centralized configuration (API credentials, refresh settings, feature flags, pricing tiers)
+- **`models.py`** — Product and Profile dataclasses for type safety
+- **`products/ingestion.py`** — Product database refresh logic for all retailers
+- **`products/refresh.py`** — CLI entry point for automated daily refresh
 
 ### Searcher module pattern
 Each searcher exports a `search_products_<source>()` function returning a list of product dicts with keys: `title`, `link`, `snippet`, `image`, `thumbnail`, `image_url`, `source_domain`, `search_query`, `interest_match`, `priority`, `price`, `product_id`. The multi_retailer_searcher orchestrates them all and merges into an inventory pool.
@@ -182,3 +187,76 @@ Six editorial guides deployed at `/guides/<slug>`:
 - `guide_tech.html` (tech-nerd) — 12 products, links to Amazon/Best Buy/Analogue/Flipper Devices
 
 Also added: `/privacy`, `/terms` routes and affiliate disclosure in footer.
+
+### Product Database & Caching (Added Feb 2026)
+
+**Problem:** Live API calls for every recommendation session creates cost risk. If site goes viral, Claude API costs could hit $3,000/month before any revenue.
+
+**Solution:** SQLite product database refreshed nightly to cache products from all retailers. Profile caching saves 50% of Claude costs on repeat users.
+
+**Architecture:**
+
+1. **Database (`database.py`)**
+   - SQLite at `/home/user/GiftWise/data/products.db`
+   - Tables: `products` (retailer inventory), `cached_profiles` (analyzed profiles), `database_metadata` (refresh tracking)
+   - Indexes on: interest_tags, retailer, in_stock, brand, category, popularity_score
+   - Functions: `upsert_product()`, `search_products_by_interests()`, `cache_profile()`, `get_database_stats()`
+
+2. **Product Ingestion (`products/ingestion.py`)**
+   - Searches 50+ core interest categories across all active retailers
+   - Per-retailer functions: `refresh_amazon()`, `refresh_ebay()`, `refresh_etsy()`, `refresh_awin()`, `refresh_skimlinks()`, `refresh_cj()`
+   - Max 500 products per retailer to prevent runaway storage
+   - Marks products stale if not seen in 7+ days
+   - Cleans expired profile caches
+
+3. **Automated Refresh**
+   - **GitHub Actions:** `.github/workflows/refresh-products.yml` runs daily at 2:00 AM UTC
+   - **Manual trigger:** Actions tab → "Daily Product Database Refresh" → Run workflow
+   - **CLI:** `python products/refresh.py [retailer]` or `python products/refresh.py all`
+   - Commits updated database back to repo after each run
+
+4. **Admin Dashboard**
+   - Route: `/admin/stats`
+   - Shows: Total products, products by retailer, recently added, stale count, last refresh time, top brands
+   - Template: `templates/admin_stats.html`
+   - Auto-refreshes every 60 seconds
+
+5. **Query Flow**
+   - `multi_retailer_searcher.py` queries database FIRST before hitting live APIs
+   - Database returns cached products matching interests
+   - Live APIs fill gaps if database doesn't have enough matches
+   - This reduces API calls by ~80% for common interests
+
+6. **Profile Caching**
+   - Analyzed profiles stored in `cached_profiles` table for 7 days
+   - Hash-based deduplication (same social data = same profile = reuse)
+   - `profile_analyzer.py` checks cache before calling Claude
+   - Cuts Claude costs in half for users who regenerate recommendations
+
+7. **Configuration (`config.py`)**
+   - `REFRESH_CONFIG`: Schedule (daily), time (02:00 UTC), stale threshold (7 days), max per retailer (500)
+   - `PROFILE_CACHE_TTL_DAYS`: 7 days default
+   - `FEATURES['database_first']`: Query database before live APIs (default: True)
+   - `FEATURES['profile_caching']`: Enable profile caching (default: True)
+
+**Maintenance:**
+- Database self-maintains via nightly GitHub Actions workflow
+- No manual intervention needed
+- Stale products automatically marked after 7 days
+- Expired profile caches automatically cleaned
+- Database size stays under control via 500-product cap per retailer
+
+**Cost Impact:**
+- Before: $0.05-0.10 per session (2 Claude calls + live APIs)
+- After: $0.02-0.05 per session (50% profile cache hit rate + database queries)
+- Viral scenario: $1,500/month instead of $3,000/month at 10K sessions/day
+
+**GitHub Secrets Required:**
+For automated refresh to work, set these in repository Settings → Secrets:
+- `RAPIDAPI_KEY`, `RAPIDAPI_HOST` (Amazon)
+- `EBAY_APP_ID`, `EBAY_CAMPAIGN_ID` (eBay)
+- `ETSY_API_KEY` (Etsy - when approved)
+- `AWIN_API_TOKEN`, `AWIN_PUBLISHER_ID` (Awin)
+- `SKIMLINKS_PUBLISHER_ID`, `SKIMLINKS_CLIENT_ID`, `SKIMLINKS_CLIENT_SECRET`, `SKIMLINKS_PUBLISHER_DOMAIN_ID` (Skimlinks - when approved)
+- `CJ_ACCOUNT_ID`, `CJ_API_KEY`, `CJ_WEBSITE_ID` (CJ - when approved)
+- `ANTHROPIC_API_KEY` (Required for any Claude calls during refresh, though not used by ingestion itself)

@@ -90,7 +90,7 @@ def get_dashboard_data():
     }
     """
     events = ['signup', 'rec_run', 'share_create', 'share_view',
-              'valentine_hit', 'guide_hit', 'product_click', 'error']
+              'valentine_hit', 'guide_hit', 'product_click', 'error', 'demo_mode']
 
     today_str = _today()
     week_keys = _this_week_keys()

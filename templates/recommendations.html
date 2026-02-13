@@ -857,12 +857,11 @@
 
             <!-- Locked Recommendations (Share to Unlock) -->
             {% if locked_count > 0 %}
-            {% for i in range(locked_count) %}
             <div class="recommendation-card locked-card" style="opacity: 0.6; position: relative; cursor: default;">
                 <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 10; border-radius: 16px;">
                     <div style="text-align: center; color: white; padding: 20px;">
                         <div style="font-size: 48px; margin-bottom: 12px;">🔒</div>
-                        <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">{{ locked_count - i }} more pick{{ 's' if (locked_count - i) != 1 else '' }} locked</div>
+                        <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">{{ locked_count }} more pick{{ 's' if locked_count != 1 else '' }} locked</div>
                         <div style="font-size: 14px; opacity: 0.9;">Share to unlock</div>
                     </div>
                 </div>
@@ -873,8 +872,6 @@
                     <h2 class="rec-name">Hidden Gift</h2>
                 </div>
             </div>
-            {% if loop.first %}{% break %}{% endif %}
-            {% endfor %}
             {% endif %}
         </div>
 

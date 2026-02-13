@@ -1598,63 +1598,6 @@ def waitlist_stats():
         logger.error(f"Waitlist stats error: {e}")
         return jsonify({'count': 0})
 
-@app.route('/spot/@<handle>')
-def waitlist_dashboard(handle):
-    """Personal waitlist dashboard for tracking position and referrals"""
-    import csv
-    import os
-    from datetime import datetime
-
-    # Clean handle
-    handle = handle.lower().strip()
-
-    waitlist_file = 'data/waitlist.csv'
-    if not os.path.exists(waitlist_file):
-        return "Waitlist not found", 404
-
-    # Find user's position and signup data
-    user_position = None
-    user_platform = None
-    user_signup_time = None
-    total_signups = 0
-    referral_count = 0
-
-    try:
-        with open(waitlist_file, 'r') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                total_signups += 1
-                if row.get('handle', '').lower() == handle:
-                    user_position = int(row.get('position', total_signups))
-                    user_platform = row.get('platform', 'unknown')
-                    user_signup_time = row.get('timestamp', '')
-                # Count referrals
-                if row.get('referrer', '').lower() == handle:
-                    referral_count += 1
-
-        if user_position is None:
-            return "Handle not found on waitlist", 404
-
-        # Calculate days until launch (Spring 2026 = ~April 1, 2026)
-        try:
-            launch_date = datetime(2026, 4, 1)
-            days_remaining = (launch_date - datetime.now()).days
-        except:
-            days_remaining = 45  # Fallback
-
-        return render_template('waitlist_dashboard.html',
-                             handle=handle,
-                             position=user_position,
-                             total_signups=total_signups,
-                             platform=user_platform,
-                             referral_count=referral_count,
-                             days_remaining=max(0, days_remaining),
-                             signup_time=user_signup_time)
-
-    except Exception as e:
-        logger.error(f"Dashboard error for @{handle}: {e}")
-        return "Error loading dashboard", 500
-
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     """Signup page with 4-tier relationship selection"""

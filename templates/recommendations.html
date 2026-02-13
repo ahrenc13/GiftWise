@@ -645,8 +645,24 @@
     <div class="container">
         <h1 class="page-title">Your Gift Recommendations</h1>
         <p class="page-subtitle">Based on social media insights • {{ recommendations|length }} gifts found</p>
-        <div class="retailer-attribution">
-            <span class="retailer-note">Currently sourcing from Amazon & eBay &mdash; we're adding Etsy, Skimlinks (48,500 stores!), and dozens more specialty retailers very soon</span>
+
+        <!-- Early Access Reality Check -->
+        <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid #f59e0b; border-radius: 16px; padding: 24px; margin-bottom: 30px;">
+            <div style="display: flex; align-items: start; gap: 16px;">
+                <div style="font-size: 32px; flex-shrink: 0;">🚧</div>
+                <div>
+                    <h3 style="font-size: 18px; font-weight: 700; color: #92400e; margin-bottom: 8px;">You're early. Here's what that means:</h3>
+                    <p style="color: #78350f; line-height: 1.6; margin-bottom: 12px;">
+                        Right now, we're pulling from <strong>Amazon + eBay</strong>. That's it. We've got applications pending with Etsy, Skimlinks (48,500 retailers), Awin (Lululemon, UGG, boutique brands), and a dozen other networks. The AI works. We're just waiting on approvals.
+                    </p>
+                    <p style="color: #78350f; line-height: 1.6; margin-bottom: 12px;">
+                        <strong>Translation:</strong> Some picks will be great. Some will feel generic. That's the reality of thin inventory, not bad AI.
+                    </p>
+                    <p style="color: #78350f; line-height: 1.6; font-weight: 600;">
+                        <strong>Why you should try it anyway:</strong> Every search you run tells us which retailers to chase first. The more people use it, the faster we unlock the good stuff. You're not just getting recommendations — you're helping build this.
+                    </p>
+                </div>
+            </div>
         </div>
         
         <!-- Filters Section -->

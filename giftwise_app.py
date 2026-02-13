@@ -2975,6 +2975,31 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
             matched_link = (best.get('link') or '').strip()
             m['product_url'] = matched_link
             m['where_to_buy'] = best.get('source_domain') or (best.get('where_to_buy') or 'Online')
+
+            # VALIDATE THUMBNAIL: Same validation as physical products
+            try:
+                from image_fetcher import extract_image_from_url, validate_image_url
+
+                # Try to get thumbnail from matched product
+                thumb = best.get('thumbnail') or best.get('image_url') or best.get('image')
+                if thumb and validate_image_url(thumb):
+                    m['thumbnail'] = thumb
+                    m['thumbnail_source'] = 'inventory'
+                    logger.debug(f"MATERIALS: Validated thumbnail from inventory for '{item_name[:40]}'")
+                else:
+                    # Extract from product page (same as physical products)
+                    extracted = extract_image_from_url(matched_link)
+                    if extracted:
+                        m['thumbnail'] = extracted
+                        m['thumbnail_source'] = 'product_page'
+                        logger.debug(f"MATERIALS: Extracted thumbnail from product page for '{item_name[:40]}'")
+                    else:
+                        m['thumbnail'] = None
+                        logger.debug(f"MATERIALS: No valid thumbnail for '{item_name[:40]}'")
+            except Exception as e:
+                logger.error(f"Failed to validate material thumbnail: {e}")
+                m['thumbnail'] = None
+
             logger.info(f"MATERIALS: Matched '{item_name[:40]}' → '{best.get('title', '')[:50]}' (score={best_score})")
         else:
             # Fallback: search link — use the retailer most likely to have the item

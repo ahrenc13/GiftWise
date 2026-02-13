@@ -285,6 +285,20 @@
             background: #fce7f3;
             color: #9f1239;
         }
+
+        .badge.bookable {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            font-size: 0.8em;
+            margin-left: 8px;
+        }
+
+        .badge.diy {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+            font-size: 0.8em;
+            margin-left: 8px;
+        }
         
         .rec-image-container {
             width: 100%;
@@ -714,6 +728,13 @@
                                 <span class="badge {{ rec.gift_type }}">
                                     {{ rec.gift_type|capitalize }}
                                 </span>
+                                {% if rec.gift_type == 'experience' %}
+                                    {% if rec.reservation_link or rec.venue_website or rec.experience_providers %}
+                                    <span class="badge bookable">📅 Book</span>
+                                    {% elif rec.materials_needed %}
+                                    <span class="badge diy">🛠️ Plan</span>
+                                    {% endif %}
+                                {% endif %}
                             </div>
                             <button onclick="event.stopPropagation(); toggleFavorite({{ loop.index0 }}, this)" 
                                     class="favorite-btn {% if loop.index0 in favorites %}favorited{% endif %}"
@@ -745,16 +766,21 @@
                     <p style="font-size: 12px; color: #6b7280; margin-bottom: 6px;">Shopping list (click to get items):</p>
                     <div class="rec-materials" style="margin: 12px 0; padding: 10px; background: #f8fafc; border-radius: 8px;">
                         <strong>What you'll need (click to get):</strong>
-                        <ul style="margin: 6px 0 0 16px; padding: 0;">
+                        <ul style="margin: 6px 0 0 0; padding: 0; list-style: none;">
                         {% for m in rec.materials_needed[:5] %}
-                            <li style="margin: 4px 0;">
-                                {% if m.product_url %}
-                                <a href="{{ m.product_url }}" target="_blank" onclick="event.stopPropagation(); trackClick('{{ m.product_url }}', 'material');" style="color: #be123c;">{{ m.item }}</a>{% if m.is_search_link %}<span style="color: #6b7280; font-size: 0.9em;"> — find online</span>{% endif %}
-                                {% else %}
-                                {{ m.item }}
+                            <li style="margin: 8px 0; display: flex; align-items: center; gap: 10px;">
+                                {% if m.thumbnail %}
+                                <img src="{{ m.thumbnail }}" alt="{{ m.item }}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 6px; flex-shrink: 0;" onerror="this.style.display='none'">
                                 {% endif %}
-                                {% if m.estimated_price %} ({{ m.estimated_price }}){% endif %}
-                                {% if m.where_to_buy and not m.is_search_link %} — {{ m.where_to_buy }}{% endif %}
+                                <div style="flex: 1;">
+                                    {% if m.product_url %}
+                                    <a href="{{ m.product_url }}" target="_blank" onclick="event.stopPropagation(); trackClick('{{ m.product_url }}', 'material');" style="color: #be123c; font-weight: 500; text-decoration: none;">{{ m.item }}</a>{% if m.is_search_link %}<span style="color: #6b7280; font-size: 0.85em;"> — find online</span>{% endif %}
+                                    {% else %}
+                                    <span style="font-weight: 500;">{{ m.item }}</span>
+                                    {% endif %}
+                                    {% if m.estimated_price %}<span style="color: #6b7280; font-size: 0.9em;"> {{ m.estimated_price }}</span>{% endif %}
+                                    {% if m.where_to_buy and not m.is_search_link %}<span style="color: #9ca3af; font-size: 0.85em;"> — {{ m.where_to_buy }}</span>{% endif %}
+                                </div>
                             </li>
                         {% endfor %}
                         </ul>

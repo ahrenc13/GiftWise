@@ -4375,6 +4375,94 @@ def admin_stats():
     return render_template('admin_stats.html', data=data)
 
 
+@app.route('/admin/test')
+def admin_test():
+    """Admin test route - run the real pipeline with owner's Instagram."""
+    key = request.args.get('key', '')
+    if not ADMIN_KEY or key != ADMIN_KEY:
+        return render_template('error.html', error="Not found.", error_code=404), 404
+
+    # Create or get admin test user
+    admin_test_user_id = 'admin_test_user'
+    admin_user = get_user(admin_test_user_id)
+
+    if not admin_user:
+        # Create admin test user with @chadahren pre-configured
+        admin_user = {
+            'user_id': admin_test_user_id,
+            'email': 'admin@giftwise.fit',
+            'name': 'Admin Test',
+            'recipient_type': 'myself',
+            'platforms': {},
+            'created_at': datetime.now().isoformat()
+        }
+        save_user(admin_test_user_id, admin_user)
+
+    # Set session
+    session['user_id'] = admin_test_user_id
+    session.permanent = True
+
+    # Check if we have data or need to scrape
+    platforms = admin_user.get('platforms', {})
+    ig_data = platforms.get('instagram', {}).get('data')
+
+    if ig_data:
+        status = 'has_data'
+        post_count = len(ig_data.get('posts', []))
+        bio = ig_data.get('bio', '')
+    else:
+        status = 'needs_scrape'
+        post_count = 0
+        bio = ''
+
+    return render_template('admin_test.html',
+                         status=status,
+                         instagram_handle='chadahren',
+                         post_count=post_count,
+                         bio=bio,
+                         admin_key=key)
+
+
+@app.route('/admin/test/scrape', methods=['POST'])
+def admin_test_scrape():
+    """Trigger Instagram scraping for admin test user."""
+    key = request.args.get('key', '')
+    if not ADMIN_KEY or key != ADMIN_KEY:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    admin_test_user_id = 'admin_test_user'
+    admin_user = get_user(admin_test_user_id)
+
+    if not admin_user:
+        return jsonify({'error': 'Admin test user not found'}), 404
+
+    # Set up Instagram scraping
+    platforms = admin_user.get('platforms', {})
+    platforms['instagram'] = {
+        'username': 'chadahren',
+        'status': 'ready',
+        'method': 'scraping',
+        'connected_at': datetime.now().isoformat()
+    }
+    save_user(admin_test_user_id, {'platforms': platforms})
+
+    return jsonify({'success': True, 'message': 'Scraping queued. Redirect to /generate-recommendations'})
+
+
+@app.route('/admin/test/generate', methods=['POST'])
+def admin_test_generate():
+    """Run the full recommendation pipeline for admin test user."""
+    key = request.args.get('key', '')
+    if not ADMIN_KEY or key != ADMIN_KEY:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    admin_test_user_id = 'admin_test_user'
+    session['user_id'] = admin_test_user_id
+
+    # Trigger the real pipeline
+    return jsonify({'success': True, 'redirect': '/generate-recommendations'})
+
+
 # ========================================
 # VALENTINE'S DAY ROUTES
 # ========================================

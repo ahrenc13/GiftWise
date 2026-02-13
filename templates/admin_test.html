@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Test Pipeline</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #111827; color: #f3f4f6; padding: 20px;
+            max-width: 800px; margin: 0 auto;
+        }
+        h1 { font-size: 24px; color: #f9fafb; margin-bottom: 8px; }
+        .subtitle { font-size: 14px; color: #6b7280; margin-bottom: 32px; }
+        .section {
+            background: #1f2937; border-radius: 12px; padding: 24px; margin-bottom: 20px;
+        }
+        h2 { font-size: 16px; color: #9ca3af; margin-bottom: 16px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .info-grid {
+            display: grid; gap: 12px; font-size: 14px;
+        }
+        .info-row { display: flex; justify-content: space-between; }
+        .label { color: #9ca3af; }
+        .value { color: #f9fafb; font-weight: 500; }
+        .btn {
+            background: #3b82f6; color: white; border: none; border-radius: 8px;
+            padding: 12px 24px; font-size: 14px; font-weight: 600;
+            cursor: pointer; width: 100%; margin-top: 12px;
+            transition: background 0.2s;
+        }
+        .btn:hover { background: #2563eb; }
+        .btn:disabled { background: #4b5563; cursor: not-allowed; }
+        .btn.success { background: #10b981; }
+        .btn.success:hover { background: #059669; }
+        .status {
+            padding: 8px 12px; border-radius: 6px; display: inline-block;
+            font-size: 13px; font-weight: 600; margin-bottom: 16px;
+        }
+        .status.has-data { background: #064e3b; color: #6ee7b7; }
+        .status.needs-scrape { background: #7c2d12; color: #fca5a5; }
+        .bio {
+            background: #111827; padding: 12px; border-radius: 6px;
+            font-size: 13px; color: #d1d5db; margin-top: 12px;
+            font-style: italic;
+        }
+        .warning {
+            background: #7c2d12; color: #fca5a5; padding: 12px; border-radius: 6px;
+            font-size: 13px; margin-bottom: 20px;
+        }
+        .flow {
+            background: #111827; padding: 16px; border-radius: 6px;
+            font-size: 13px; line-height: 2;
+        }
+        .flow-step { color: #9ca3af; }
+        .flow-step strong { color: #60a5fa; }
+        .code {
+            background: #000; padding: 12px; border-radius: 6px;
+            font-family: 'Courier New', monospace; font-size: 12px;
+            color: #10b981; margin-top: 12px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Admin Test Pipeline</h1>
+    <div class="subtitle">Run the REAL scraping + analysis + curation on your Instagram</div>
+
+    <div class="section">
+        <h2>Instagram: @{{ instagram_handle }}</h2>
+
+        {% if status == 'has_data' %}
+        <div class="status has-data">✓ Data Available</div>
+        <div class="info-grid">
+            <div class="info-row">
+                <span class="label">Posts Scraped:</span>
+                <span class="value">{{ post_count }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Bio:</span>
+                <span class="value">{{ 'Yes' if bio else 'No' }}</span>
+            </div>
+        </div>
+        {% if bio %}
+        <div class="bio">"{{ bio[:200] }}{{ '...' if bio|length > 200 else '' }}"</div>
+        {% endif %}
+        <button class="btn success" onclick="generateRecs()">Generate Recommendations</button>
+        <button class="btn" onclick="rescrape()" style="margin-top: 8px; background: #6b7280;">Re-scrape Fresh Data</button>
+
+        {% else %}
+        <div class="status needs-scrape">⚠ No Data - Scrape Required</div>
+        <div class="info-grid">
+            <div class="info-row">
+                <span class="label">Handle:</span>
+                <span class="value">@{{ instagram_handle }}</span>
+            </div>
+        </div>
+        <button class="btn" onclick="startScrape()">Scrape Instagram Now</button>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <h2>How This Works</h2>
+        <div class="flow">
+            <div class="flow-step">1. <strong>Scrape Instagram</strong> → Pulls posts, bio, follower count from @{{ instagram_handle }}</div>
+            <div class="flow-step">2. <strong>Profile Analysis</strong> → Claude analyzes posts to extract interests, personality</div>
+            <div class="flow-step">3. <strong>Multi-Retailer Search</strong> → Searches Amazon, eBay, Etsy, Awin, Skimlinks</div>
+            <div class="flow-step">4. <strong>Gift Curation</strong> → Claude picks the best 10 products + 3 experiences</div>
+            <div class="flow-step">5. <strong>Post-Curation Cleanup</strong> → Enforces diversity rules, deduplicates</div>
+            <div class="flow-step">6. <strong>Display</strong> → Shows recommendations with affiliate links</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Admin Shortcuts</h2>
+        <div class="info-grid">
+            <div class="code">Dashboard: /admin/stats?key={{ admin_key }}</div>
+            <div class="code">Test Pipeline: /admin/test?key={{ admin_key }}</div>
+            <div class="code">View Recs: /recommendations</div>
+        </div>
+    </div>
+
+    <script>
+        function startScrape() {
+            if (!confirm('Scrape Instagram for @{{ instagram_handle }}? This will take 30-60 seconds.')) return;
+
+            fetch('/admin/test/scrape?key={{ admin_key }}', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        alert('Scraping queued! Redirecting to scraping progress page...');
+                        window.location.href = '/generate-recommendations';
+                    } else {
+                        alert('Error: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(err => alert('Network error: ' + err));
+        }
+
+        function rescrape() {
+            startScrape();
+        }
+
+        function generateRecs() {
+            if (!confirm('Run the FULL pipeline? This will:\n1. Analyze profile with Claude\n2. Search 5+ retailers\n3. Curate gifts with Claude\n\nCost: ~$0.10-0.50 depending on model')) return;
+
+            fetch('/admin/test/generate?key={{ admin_key }}', { method: 'POST' })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success && data.redirect) {
+                        window.location.href = data.redirect;
+                    } else {
+                        alert('Error: ' + (data.error || 'Unknown error'));
+                    }
+                })
+                .catch(err => alert('Network error: ' + err));
+        }
+    </script>
+</body>
+</html>

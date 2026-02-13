@@ -2,7 +2,7 @@
 
 **Purpose:** This document is a comprehensive audit checklist for a high-quality review of GiftWise's recommendation pipeline. It identifies specific code locations, UX issues, and curation quality gaps. The reviewer (Opus or future session) should treat this as a prioritized punch list, not a feature request backlog. Each item has a clear problem, a file/line location, and a suggested fix.
 
-**Context:** As of Feb 2026, the site runs on Amazon (RapidAPI) + eBay. Etsy (403), Awin (0 joined), and Skimlinks (pending approval) are not contributing inventory yet. The curator currently uses Sonnet. Toggle to Opus via `CLAUDE_CURATOR_MODEL=claude-opus-4-20250514` in Render env vars.
+**Context:** As of Feb 2026, the site runs on Amazon (RapidAPI) + eBay. Etsy (403), Awin (0 joined), and Skimlinks (pending approval) are not contributing inventory yet. The curator currently uses Sonnet. Toggle to Opus via `CLAUDE_CURATOR_MODEL=claude-opus-4-20250514` in Railway env vars (Settings → Variables).
 
 ---
 
@@ -104,7 +104,7 @@ A good gift makes someone say "you GET me." A travel adapter makes them say "tha
 
 When running an Opus A/B test:
 
-1. **Toggle:** Set `CLAUDE_CURATOR_MODEL=claude-opus-4-20250514` in Render env vars
+1. **Toggle:** Set `CLAUDE_CURATOR_MODEL=claude-opus-4-20250514` in Railway env vars (Settings → Variables)
 2. **Test:** Run the same profile through both Sonnet and Opus curation
 3. **Compare on:**
    - Does Opus avoid boring practical items without being told to? (gift taste)

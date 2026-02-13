@@ -114,7 +114,61 @@ def init_database():
             )
         """)
 
-        logger.info("Database schema initialized")
+        # Product intelligence (learn which products are good gifts)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS product_intelligence (
+                product_id TEXT,
+                retailer TEXT,
+
+                -- Gift quality metrics (learned from curation)
+                gift_worthiness_score REAL DEFAULT 0.5,  -- 0.0-1.0
+                best_for_interests TEXT,                 -- JSON: ["taylor-swift", "music"]
+                best_for_relationship TEXT,              -- JSON: ["friend", "partner"]
+                avoid_reasons TEXT,                      -- JSON: ["too generic", "low quality"]
+
+                -- Performance metrics (learn what converts)
+                times_recommended INTEGER DEFAULT 0,
+                times_clicked INTEGER DEFAULT 0,
+                times_favorited INTEGER DEFAULT 0,
+                click_through_rate REAL DEFAULT 0.0,
+
+                -- Commission tracking (prioritize high-commission products)
+                commission_rate REAL DEFAULT 0.01,
+                estimated_commission_per_sale REAL,
+
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+                PRIMARY KEY (product_id, retailer)
+            )
+        """)
+
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_gift_worthiness ON product_intelligence(gift_worthiness_score)")
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_ctr ON product_intelligence(click_through_rate)")
+
+        # Interest intelligence (cache what works for each interest)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS interest_intelligence (
+                interest_name TEXT PRIMARY KEY,
+
+                -- Static intelligence (from enrichment_data.py)
+                do_buy TEXT,              -- JSON: ["concert tickets", "vinyl records"]
+                dont_buy TEXT,            -- JSON: ["generic music player"]
+                demographics TEXT,        -- Who has this interest
+                trending_level TEXT,      -- "evergreen|trending|declining"
+
+                -- Dynamic intelligence (learned from sessions)
+                top_products TEXT,        -- JSON: product_ids that converted well
+                top_brands TEXT,          -- JSON: brands that work
+                avg_price_point REAL,     -- What people actually buy
+
+                times_seen INTEGER DEFAULT 0,  -- How many profiles have this interest
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        cursor.execute("CREATE INDEX IF NOT EXISTS idx_interest_times_seen ON interest_intelligence(times_seen)")
+
+        logger.info("Database schema initialized (with product/interest intelligence)")
 
 
 # =============================================================================
@@ -362,6 +416,163 @@ def clean_expired_profiles() -> int:
         count = cursor.rowcount
         logger.info(f"Cleaned {count} expired profile caches")
         return count
+
+
+# =============================================================================
+# PRODUCT INTELLIGENCE (Revenue Optimization)
+# =============================================================================
+
+def get_product_intelligence(product_id: str, retailer: str) -> Optional[Dict]:
+    """Get intelligence data for a product"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT * FROM product_intelligence
+            WHERE product_id = ? AND retailer = ?
+        """, (product_id, retailer))
+
+        row = cursor.fetchone()
+        if row:
+            return dict(row)
+        return None
+
+
+def update_product_intelligence(product_id: str, retailer: str, updates: Dict):
+    """Update product intelligence metrics"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        # Build SET clause dynamically from updates dict
+        set_clauses = [f"{key} = ?" for key in updates.keys()]
+        set_clause = ", ".join(set_clauses)
+        values = list(updates.values())
+
+        cursor.execute(f"""
+            INSERT INTO product_intelligence (product_id, retailer, {', '.join(updates.keys())}, last_updated)
+            VALUES (?, ?, {', '.join(['?' for _ in updates])}, ?)
+            ON CONFLICT(product_id, retailer) DO UPDATE SET
+                {set_clause},
+                last_updated = ?
+        """, [product_id, retailer] + values + [datetime.now().isoformat()] + values + [datetime.now().isoformat()])
+
+
+def track_product_recommended(product_id: str, retailer: str):
+    """Increment recommended count for a product"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO product_intelligence (product_id, retailer, times_recommended, last_updated)
+            VALUES (?, ?, 1, ?)
+            ON CONFLICT(product_id, retailer) DO UPDATE SET
+                times_recommended = times_recommended + 1,
+                last_updated = ?
+        """, (product_id, retailer, datetime.now().isoformat(), datetime.now().isoformat()))
+
+
+def track_product_clicked(product_id: str, retailer: str):
+    """Increment clicked count and update CTR"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE product_intelligence
+            SET times_clicked = times_clicked + 1,
+                click_through_rate = CAST(times_clicked + 1 AS REAL) / NULLIF(times_recommended, 0),
+                last_updated = ?
+            WHERE product_id = ? AND retailer = ?
+        """, (datetime.now().isoformat(), product_id, retailer))
+
+
+def track_product_favorited(product_id: str, retailer: str):
+    """Increment favorited count"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE product_intelligence
+            SET times_favorited = times_favorited + 1,
+                last_updated = ?
+            WHERE product_id = ? AND retailer = ?
+        """, (datetime.now().isoformat(), product_id, retailer))
+
+
+# =============================================================================
+# INTEREST INTELLIGENCE (Reuse Analysis)
+# =============================================================================
+
+def get_interest_intelligence(interest_name: str) -> Optional[Dict]:
+    """Get intelligence data for an interest"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT * FROM interest_intelligence
+            WHERE interest_name = ?
+        """, (interest_name.lower(),))
+
+        row = cursor.fetchone()
+        if row:
+            intel = dict(row)
+            # Parse JSON fields
+            for field in ['do_buy', 'dont_buy', 'top_products', 'top_brands']:
+                if intel.get(field):
+                    try:
+                        intel[field] = json.loads(intel[field])
+                    except:
+                        intel[field] = []
+            return intel
+        return None
+
+
+def upsert_interest_intelligence(interest_name: str, data: Dict):
+    """Insert or update interest intelligence"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        # Serialize JSON fields
+        do_buy = json.dumps(data.get('do_buy', []))
+        dont_buy = json.dumps(data.get('dont_buy', []))
+        top_products = json.dumps(data.get('top_products', []))
+        top_brands = json.dumps(data.get('top_brands', []))
+
+        cursor.execute("""
+            INSERT INTO interest_intelligence (
+                interest_name, do_buy, dont_buy, demographics, trending_level,
+                top_products, top_brands, avg_price_point, times_seen, last_updated
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(interest_name) DO UPDATE SET
+                do_buy = excluded.do_buy,
+                dont_buy = excluded.dont_buy,
+                demographics = excluded.demographics,
+                trending_level = excluded.trending_level,
+                top_products = excluded.top_products,
+                top_brands = excluded.top_brands,
+                avg_price_point = excluded.avg_price_point,
+                times_seen = times_seen + 1,
+                last_updated = excluded.last_updated
+        """, (
+            interest_name.lower(),
+            do_buy,
+            dont_buy,
+            data.get('demographics', ''),
+            data.get('trending_level', 'evergreen'),
+            top_products,
+            top_brands,
+            data.get('avg_price_point', 0.0),
+            1,
+            datetime.now().isoformat()
+        ))
+
+
+def increment_interest_seen(interest_name: str):
+    """Track that we've seen this interest in a profile"""
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO interest_intelligence (interest_name, times_seen, last_updated)
+            VALUES (?, 1, ?)
+            ON CONFLICT(interest_name) DO UPDATE SET
+                times_seen = times_seen + 1,
+                last_updated = ?
+        """, (interest_name.lower(), datetime.now().isoformat(), datetime.now().isoformat()))
 
 
 # =============================================================================

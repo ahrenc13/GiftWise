@@ -3,9 +3,17 @@
 ## Environment Notes
 - **Git is installed and working.** Do not prompt the user to install git, git for windows, or any other tooling. The repo is active with full commit history. Just use it.
 - **Python/Flask app.** Run with `python giftwise_app.py` or via deployment. No special build step.
-- **Branch:** Primary dev branch is `claude/debug-awin-links-Tq5On`. Check `git branch` before making changes. **Merges to `main` must happen via GitHub PR** — the deployment platform watches `main`.
+- **Branch:** Primary dev branch is `claude/debug-awin-links-Tq5On`. Check `git branch` before making changes. **Merges to `main` must happen via GitHub PR** — Railway watches `main` for auto-deploy.
 - **Domain:** giftwise.fit (NOT giftwise.me, NOT giftwise.app, NOT giftwise.com)
-- **Deployment:** Render.com. Deploys from `main` branch automatically on merge.
+
+## Deployment (Railway.app)
+- **Platform:** Railway.app (NOT Render, NOT Heroku)
+- **Auto-deploy branch:** `main` (pushes to `main` trigger automatic deployment)
+- **Config file:** `railway.json` (Nixpacks builder, Gunicorn start command)
+- **Start command:** `gunicorn giftwise_app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 600`
+- **Environment variables:** Set in Railway dashboard → Settings → Variables (see RAILWAY_DEBUG_GUIDE.md for required vars)
+- **Logs:** Railway dashboard → Deployments → View Logs (or `railway logs` via CLI)
+- **Database:** Uses shelve (ephemeral filesystem) — consider migrating to Railway Postgres for persistence across deploys
 
 ## What This Is
 AI-powered gift recommendation app. Flask pipeline: scrape social media → Claude analyzes profile → enrich with static data → search retailers → Claude curates gifts → programmatic cleanup → display.
@@ -108,7 +116,7 @@ Each searcher exports a `search_products_<source>()` function returning a list o
 
 ### Admin dashboard
 - Route: `/admin/stats?key=ADMIN_DASHBOARD_KEY`
-- Env var: `ADMIN_DASHBOARD_KEY` (set in Render, any secret string)
+- Env var: `ADMIN_DASHBOARD_KEY` (set in Railway dashboard → Settings → Variables)
 - Tracks: signups, rec_run, share_create, share_view, valentine_hit, guide_hit, error
 - Mobile-friendly dark UI, today/week/7-day breakdown, "What to do" trigger rules
 

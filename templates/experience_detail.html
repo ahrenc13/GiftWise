@@ -100,13 +100,18 @@
             <ul class="shopping-list">
                 {% for m in rec.materials_needed %}
                 <li>
-                    {% if m.product_url %}
-                    <a href="{{ m.product_url }}" target="_blank">{{ m.item }}</a>{% if m.is_search_link %}<span class="where"> — find online</span>{% endif %}
-                    {% else %}
-                    <span>{{ m.item }}</span>
+                    {% if m.thumbnail %}
+                    <img src="{{ m.thumbnail }}" alt="{{ m.item }}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 8px; flex-shrink: 0; margin-right: 12px;" onerror="this.style.display='none'">
                     {% endif %}
-                    {% if m.estimated_price %}<span class="price">{{ m.estimated_price }}</span>{% endif %}
-                    {% if m.where_to_buy and not m.is_search_link %}<span class="where">— {{ m.where_to_buy }}</span>{% endif %}
+                    <div style="flex: 1;">
+                        {% if m.product_url %}
+                        <a href="{{ m.product_url }}" target="_blank" style="font-weight: 600;">{{ m.item }}</a>{% if m.is_search_link %}<span class="where"> — find online</span>{% endif %}
+                        {% else %}
+                        <span style="font-weight: 600;">{{ m.item }}</span>
+                        {% endif %}
+                        {% if m.estimated_price %}<span class="price">{{ m.estimated_price }}</span>{% endif %}
+                        {% if m.where_to_buy and not m.is_search_link %}<span class="where">— {{ m.where_to_buy }}</span>{% endif %}
+                    </div>
                 </li>
                 {% endfor %}
             </ul>

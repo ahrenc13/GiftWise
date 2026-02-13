@@ -271,6 +271,23 @@ else:
         "Ensure enrichment_engine.py, enrichment_data.py, experience_architect.py, payment_model.py are present and importable."
     )
 
+# ============================================================================
+# PHASE 1 REFACTORING: Repository Pattern, Auth Middleware, Config Management
+# ============================================================================
+# Import new decoupled modules to reduce code duplication and improve testability
+try:
+    from repositories import get_user_repository
+    from middleware.auth import require_login, require_tier, optional_login, api_route
+    from config import get_settings
+    REFACTORED_MODULES_AVAILABLE = True
+    logger.info("✅ Phase 1 refactoring modules loaded (repository, auth middleware, config)")
+except ImportError as e:
+    REFACTORED_MODULES_AVAILABLE = False
+    logger.warning(f"⚠️ Refactored modules not available, using legacy code: {e}")
+    # Fallback to legacy functions if refactored modules aren't available
+    get_user_repository = None
+    get_settings = None
+
 app = Flask(__name__)
 
 # SECURITY FIX: Fail fast if SECRET_KEY not set
@@ -518,48 +535,66 @@ def _clear_gen_progress(user_id):
         _generation_progress.pop(user_id, None)
 
 # ============================================================================
-# DATABASE HELPERS (Fixed: Thread-safe operations)
+# DATABASE HELPERS - REFACTORED TO USE REPOSITORY PATTERN
 # ============================================================================
+# Legacy database functions are now thin wrappers around the repository
+# This maintains backward compatibility while enabling future migration to Postgres/Redis/etc.
 
-# Thread locks for database operations
+# Thread locks for database operations (still used by legacy code)
 db_locks = {}
 lock_lock = threading.Lock()
 
 def get_db_lock(user_id):
-    """Get or create a lock for a specific user"""
+    """Get or create a lock for a specific user (legacy - repository handles locking internally)"""
     with lock_lock:
         if user_id not in db_locks:
             db_locks[user_id] = threading.Lock()
         return db_locks[user_id]
 
 def get_user(user_id):
-    """Get user data from database"""
-    if not user_id:
-        return None
-    try:
-        with shelve.open('giftwise_db') as db:
-            return db.get(f'user_{user_id}')
-    except Exception as e:
-        logger.error(f"Error getting user {user_id}: {e}")
-        return None
+    """
+    Get user data from database
+    REFACTORED: Now uses repository pattern for better testability and flexibility
+    """
+    if REFACTORED_MODULES_AVAILABLE and get_user_repository:
+        repo = get_user_repository()
+        return repo.get(user_id)
+    else:
+        # Fallback to legacy shelve code
+        if not user_id:
+            return None
+        try:
+            with shelve.open('giftwise_db') as db:
+                return db.get(f'user_{user_id}')
+        except Exception as e:
+            logger.error(f"Error getting user {user_id}: {e}")
+            return None
 
 def save_user(user_id, data):
-    """Save user data to database (thread-safe)"""
-    if not user_id:
-        logger.error("Attempted to save user with no user_id")
-        return False
-    
-    lock = get_db_lock(user_id)
-    try:
-        with lock:
-            with shelve.open('giftwise_db') as db:
-                existing = db.get(f'user_{user_id}', {})
-                existing.update(data)
-                db[f'user_{user_id}'] = existing
-        return True
-    except Exception as e:
-        logger.error(f"Error saving user {user_id}: {e}")
-        return False
+    """
+    Save user data to database (thread-safe)
+    REFACTORED: Now uses repository pattern for better testability
+    """
+    if REFACTORED_MODULES_AVAILABLE and get_user_repository:
+        repo = get_user_repository()
+        return repo.save(user_id, data)
+    else:
+        # Fallback to legacy shelve code
+        if not user_id:
+            logger.error("Attempted to save user with no user_id")
+            return False
+
+        lock = get_db_lock(user_id)
+        try:
+            with lock:
+                with shelve.open('giftwise_db') as db:
+                    existing = db.get(f'user_{user_id}', {})
+                    existing.update(data)
+                    db[f'user_{user_id}'] = existing
+            return True
+        except Exception as e:
+            logger.error(f"Error saving user {user_id}: {e}")
+            return False
 
 def get_session_user():
     """Get current user from session"""
@@ -2940,6 +2975,31 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
             matched_link = (best.get('link') or '').strip()
             m['product_url'] = matched_link
             m['where_to_buy'] = best.get('source_domain') or (best.get('where_to_buy') or 'Online')
+
+            # VALIDATE THUMBNAIL: Same validation as physical products
+            try:
+                from image_fetcher import extract_image_from_url, validate_image_url
+
+                # Try to get thumbnail from matched product
+                thumb = best.get('thumbnail') or best.get('image_url') or best.get('image')
+                if thumb and validate_image_url(thumb):
+                    m['thumbnail'] = thumb
+                    m['thumbnail_source'] = 'inventory'
+                    logger.debug(f"MATERIALS: Validated thumbnail from inventory for '{item_name[:40]}'")
+                else:
+                    # Extract from product page (same as physical products)
+                    extracted = extract_image_from_url(matched_link)
+                    if extracted:
+                        m['thumbnail'] = extracted
+                        m['thumbnail_source'] = 'product_page'
+                        logger.debug(f"MATERIALS: Extracted thumbnail from product page for '{item_name[:40]}'")
+                    else:
+                        m['thumbnail'] = None
+                        logger.debug(f"MATERIALS: No valid thumbnail for '{item_name[:40]}'")
+            except Exception as e:
+                logger.error(f"Failed to validate material thumbnail: {e}")
+                m['thumbnail'] = None
+
             logger.info(f"MATERIALS: Matched '{item_name[:40]}' → '{best.get('title', '')[:50]}' (score={best_score})")
         else:
             # Fallback: search link — use the retailer most likely to have the item
@@ -3131,7 +3191,35 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                 'enriched_interests': (enriched_profile or {}).get('enriched_interests', []),
             } if enriched_profile else {}
 
-            curated = curate_gifts(profile_for_backend, products, recipient_type, relationship,
+            # REVENUE OPTIMIZATION: Intelligent pre-filtering before curator
+            # Send 30 high-quality products instead of 100 random ones
+            # Saves API tokens, improves output quality, prioritizes high-commission products
+            try:
+                from revenue_optimizer import intelligent_product_filter, track_profile_interests
+
+                logger.info(f"Pre-filtering: {len(products)} products before curator")
+
+                # Track interests for learning
+                track_profile_interests(profile_for_backend)
+
+                # Smart filter: 100 products → 30 high-quality candidates
+                products_for_curator = intelligent_product_filter(
+                    products=products,
+                    profile=profile_for_backend,
+                    relationship=relationship,
+                    target_count=30  # Curator gets 30 products instead of 100
+                )
+
+                logger.info(f"After intelligent pre-filtering: {len(products_for_curator)} high-quality products")
+
+            except ImportError:
+                logger.warning("Revenue optimizer not available, sending all products to curator")
+                products_for_curator = products
+            except Exception as e:
+                logger.error(f"Pre-filtering failed: {e}, sending all products to curator")
+                products_for_curator = products
+
+            curated = curate_gifts(profile_for_backend, products_for_curator, recipient_type, relationship,
                                    claude_client, rec_count=product_rec_count + 4,
                                    enhanced_search_terms=enhanced_search_terms,
                                    enrichment_context=enrichment_context,
@@ -3139,6 +3227,17 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
 
             product_gifts = curated.get('product_gifts', [])
             experience_gifts = curated.get('experience_gifts', [])
+
+            # REVENUE OPTIMIZATION: Track all recommended products to build intelligence
+            try:
+                from revenue_optimizer import track_curation_outcome
+                for gift in product_gifts:
+                    product_id = gift.get('product_id', '') or gift.get('product_url', '')
+                    retailer = gift.get('source_domain', '') or gift.get('retailer', '')
+                    if product_id and retailer:
+                        track_curation_outcome({'product_id': product_id, 'retailer': retailer}, 'recommended')
+            except Exception as e:
+                logger.error(f"Failed to track recommended products: {e}")
 
             # Post-curation cleanup
             _set_gen_progress(user_id, stage='cleanup',
@@ -3456,12 +3555,18 @@ def api_generation_progress():
     return jsonify(progress)
 
 @app.route('/recommendations')
-def view_recommendations():
-    """Display recommendations with fix link buttons"""
-    user = get_session_user()
-    if not user:
-        return redirect('/signup')
-    
+@require_login() if REFACTORED_MODULES_AVAILABLE else lambda f: f
+def view_recommendations(user=None):
+    """
+    Display recommendations with fix link buttons
+    REFACTORED: Uses @require_login middleware - user is automatically injected
+    """
+    # Fallback for when refactored modules aren't available
+    if not REFACTORED_MODULES_AVAILABLE:
+        user = get_session_user()
+        if not user:
+            return redirect('/signup')
+
     recommendations = user.get('recommendations', [])
     
     if not recommendations:
@@ -3482,11 +3587,17 @@ def view_recommendations():
 
 
 @app.route('/recommendations/experience/<int:index>')
-def view_experience_detail(index):
-    """Dedicated page for a single experience gift: full description, links, shopping list."""
-    user = get_session_user()
-    if not user:
-        return redirect('/signup')
+@require_login() if REFACTORED_MODULES_AVAILABLE else lambda f: f
+def view_experience_detail(index, user=None):
+    """
+    Dedicated page for a single experience gift: full description, links, shopping list.
+    REFACTORED: Uses @require_login middleware
+    """
+    # Fallback for when refactored modules aren't available
+    if not REFACTORED_MODULES_AVAILABLE:
+        user = get_session_user()
+        if not user:
+            return redirect('/signup')
     recommendations = user.get('recommendations', [])
     if not recommendations:
         return redirect('/connect-platforms?error=no_recommendations')
@@ -3506,11 +3617,17 @@ def view_experience_detail(index):
 
 
 @app.route('/api/favorite/<int:rec_index>', methods=['POST'])
-def toggle_favorite(rec_index):
-    """Add or remove favorite"""
-    user = get_session_user()
-    if not user:
-        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+@require_login(api_mode=True) if REFACTORED_MODULES_AVAILABLE else lambda f: f
+def toggle_favorite(rec_index, user=None):
+    """
+    Add or remove favorite
+    REFACTORED: Uses @require_login(api_mode=True) - returns JSON 401 if not authenticated
+    """
+    # Fallback for when refactored modules aren't available
+    if not REFACTORED_MODULES_AVAILABLE:
+        user = get_session_user()
+        if not user:
+            return jsonify({'success': False, 'error': 'Not logged in'}), 401
     
     if not FAVORITES_AVAILABLE:
         return jsonify({'success': False, 'error': 'Favorites not available'}), 503
@@ -3531,7 +3648,18 @@ def toggle_favorite(rec_index):
         # Add favorite
         favorites.append(rec_index)
         action = 'added'
-    
+
+        # REVENUE OPTIMIZATION: Track favorites to learn which products users love
+        try:
+            from revenue_optimizer import track_curation_outcome
+            rec = recommendations[rec_index]
+            product_id = rec.get('product_id', '') or rec.get('product_url', '')
+            retailer = rec.get('source_domain', '') or rec.get('retailer', '')
+            if product_id and retailer:
+                track_curation_outcome({'product_id': product_id, 'retailer': retailer}, 'favorited')
+        except Exception as e:
+            logger.error(f"Failed to track favorite outcome: {e}")
+
     user['favorites'] = favorites
     save_user(user_id, {'favorites': favorites})
     
@@ -3543,9 +3671,21 @@ def track_product_click():
     data = request.get_json(silent=True) or {}
     url = data.get('url', '')
     source = data.get('source', '')  # 'physical', 'experience', 'material', 'provider'
+    product_id = data.get('product_id', '')
+    retailer = data.get('retailer', '')
+
     if url:
         track_event('product_click')
         logger.info(f"Product click: source={source}, url={url[:80]}")
+
+        # REVENUE OPTIMIZATION: Track clicks to learn which products convert
+        if product_id and retailer:
+            try:
+                from revenue_optimizer import track_curation_outcome
+                track_curation_outcome({'product_id': product_id, 'retailer': retailer}, 'clicked')
+            except Exception as e:
+                logger.error(f"Failed to track click outcome: {e}")
+
     return jsonify({'ok': True})
 
 
@@ -3790,47 +3930,6 @@ def api_usage():
         return jsonify(summary)
     except Exception as e:
         logger.error(f"Error getting usage data: {e}")
-        return jsonify({'error': str(e)}), 500
-
-# ============================================================================
-# ADMIN DASHBOARD - Database Health Monitoring
-# ============================================================================
-
-@app.route('/admin/stats')
-def admin_stats():
-    """
-    Admin dashboard showing database health and product inventory status
-
-    Displays:
-    - Total products by retailer
-    - Recently added products
-    - Stale product count
-    - Last refresh timestamp
-    - Top brands
-    - Profile cache statistics
-    """
-    try:
-        import database
-        stats = database.get_database_stats()
-
-        return render_template('admin_stats.html',
-                             stats=stats,
-                             error=None)
-    except Exception as e:
-        logger.error(f"Error loading admin stats: {e}")
-        return render_template('admin_stats.html',
-                             stats=None,
-                             error=f"Error loading stats: {str(e)}")
-
-@app.route('/api/admin/stats')
-def api_admin_stats():
-    """API endpoint for database stats (JSON)"""
-    try:
-        import database
-        stats = database.get_database_stats()
-        return jsonify(stats)
-    except Exception as e:
-        logger.error(f"Error getting admin stats: {e}")
         return jsonify({'error': str(e)}), 500
 
 # ============================================================================

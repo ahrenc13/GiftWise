@@ -644,7 +644,14 @@
 
     <div class="container">
         <h1 class="page-title">Your Gift Recommendations</h1>
-        <p class="page-subtitle">Based on social media insights • {{ recommendations|length }} gifts found</p>
+        <p class="page-subtitle">
+            Based on social media insights • {{ total_count }} gifts found
+            {% if position_number %}
+            <span style="display: inline-block; margin-left: 12px; padding: 6px 14px; background: linear-gradient(135deg, #f43f5e, #be123c); color: white; border-radius: 20px; font-size: 13px; font-weight: 700;">
+                You're pick #{{ position_number }}
+            </span>
+            {% endif %}
+        </p>
 
         <!-- Honest Note About Where We're At -->
         <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid #f59e0b; border-radius: 16px; padding: 24px; margin-bottom: 30px;">
@@ -847,13 +854,61 @@
                 </div>
             </div>
             {% endfor %}
+
+            <!-- Locked Recommendations (Share to Unlock) -->
+            {% if locked_count > 0 %}
+            {% for i in range(locked_count) %}
+            <div class="recommendation-card locked-card" style="opacity: 0.6; position: relative; cursor: default;">
+                <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(4px); display: flex; align-items: center; justify-content: center; z-index: 10; border-radius: 16px;">
+                    <div style="text-align: center; color: white; padding: 20px;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">🔒</div>
+                        <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px;">{{ locked_count - i }} more pick{{ 's' if (locked_count - i) != 1 else '' }} locked</div>
+                        <div style="font-size: 14px; opacity: 0.9;">Share to unlock</div>
+                    </div>
+                </div>
+                <div class="rec-compact-view">
+                    <div class="rec-image-container">
+                        <div class="rec-image-placeholder">🎁</div>
+                    </div>
+                    <h2 class="rec-name">Hidden Gift</h2>
+                </div>
+            </div>
+            {% if loop.first %}{% break %}{% endif %}
+            {% endfor %}
+            {% endif %}
         </div>
-        
+
         <div class="no-results" id="no-results" style="display: none;">
             No recommendations match your current filters. Try adjusting your selection!
         </div>
-        
-        <!-- Share Section -->
+
+        <!-- Share-to-Unlock Section (if locked) OR Share Section (if unlocked) -->
+        {% if not unlocked %}
+        <div class="share-section" style="margin: 40px auto; max-width: 700px; text-align: center;">
+            <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border: 3px solid #f59e0b; border-radius: 16px; padding: 40px;">
+                <div style="font-size: 56px; margin-bottom: 16px;">🔓</div>
+                <h3 style="font-size: 28px; color: #92400e; margin-bottom: 12px; font-weight: 800;">Want to see all {{ total_count }} picks?</h3>
+                <p style="color: #78350f; margin-bottom: 24px; font-size: 16px; line-height: 1.6;">
+                    You've got {{ locked_count }} more personalized gifts waiting. Share your picks to unlock the full list. It helps us grow, and you get everything we found for you.
+                </p>
+                <button onclick="shareToUnlock()" class="action-button primary" style="border: none; cursor: pointer; background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 18px 40px; border-radius: 12px; font-weight: 700; font-size: 18px; box-shadow: 0 8px 20px rgba(245, 158, 11, 0.3);">
+                    Share to Unlock All {{ total_count }} Picks 🚀
+                </button>
+                <div id="unlock-result" style="display: none; margin-top: 20px;">
+                    <div style="background: rgba(16, 185, 129, 0.1); border: 2px solid #10b981; border-radius: 12px; padding: 20px; margin-bottom: 16px;">
+                        <div style="font-size: 32px; margin-bottom: 8px;">✅</div>
+                        <div style="font-size: 18px; font-weight: 700; color: #065f46; margin-bottom: 8px;">Unlocked!</div>
+                        <div style="color: #047857; font-size: 14px;">Scroll up to see all {{ total_count }} picks</div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                        <input id="share-url" type="text" readonly style="padding: 10px 14px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; width: 320px; max-width: 80vw; background: white;">
+                        <button onclick="copyShareUrl()" style="padding: 10px 16px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">Copy Link</button>
+                    </div>
+                    <p style="color: #6b7280; font-size: 12px; margin-top: 8px;">Share this link on TikTok, IG, or with friends</p>
+                </div>
+            </div>
+        </div>
+        {% else %}
         <div class="share-section" style="margin: 40px auto; max-width: 700px; text-align: center;">
             <div style="background: linear-gradient(135deg, #f0f9ff, #e0f2fe); border: 2px solid #0ea5e9; border-radius: 16px; padding: 30px;">
                 <h3 style="font-size: 22px; color: #0369a1; margin-bottom: 8px;">Share these picks with someone</h3>
@@ -875,6 +930,7 @@
                 </div>
             </div>
         </div>
+        {% endif %}
 
         <!-- Actions Section -->
         <div class="actions-section">
@@ -937,7 +993,31 @@
             });
         }
         
-        // Share recommendations
+        // Share to unlock (for locked users)
+        function shareToUnlock() {
+            fetch('/api/share', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'}
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('share-url').value = data.share_url;
+                    document.getElementById('unlock-result').style.display = 'block';
+                    navigator.clipboard.writeText(data.share_url).catch(() => {});
+
+                    // Show success message and reload page after 2 seconds to show unlocked picks
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 2000);
+                } else {
+                    alert(data.error || 'Could not create share link');
+                }
+            })
+            .catch(() => alert('Could not create share link. Try again?'));
+        }
+
+        // Share recommendations (for already unlocked users)
         function shareRecommendations() {
             fetch('/api/share', {
                 method: 'POST',

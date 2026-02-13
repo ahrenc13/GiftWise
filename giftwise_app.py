@@ -3166,7 +3166,35 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                 'enriched_interests': (enriched_profile or {}).get('enriched_interests', []),
             } if enriched_profile else {}
 
-            curated = curate_gifts(profile_for_backend, products, recipient_type, relationship,
+            # REVENUE OPTIMIZATION: Intelligent pre-filtering before curator
+            # Send 30 high-quality products instead of 100 random ones
+            # Saves API tokens, improves output quality, prioritizes high-commission products
+            try:
+                from revenue_optimizer import intelligent_product_filter, track_profile_interests
+
+                logger.info(f"Pre-filtering: {len(products)} products before curator")
+
+                # Track interests for learning
+                track_profile_interests(profile_for_backend)
+
+                # Smart filter: 100 products → 30 high-quality candidates
+                products_for_curator = intelligent_product_filter(
+                    products=products,
+                    profile=profile_for_backend,
+                    relationship=relationship,
+                    target_count=30  # Curator gets 30 products instead of 100
+                )
+
+                logger.info(f"After intelligent pre-filtering: {len(products_for_curator)} high-quality products")
+
+            except ImportError:
+                logger.warning("Revenue optimizer not available, sending all products to curator")
+                products_for_curator = products
+            except Exception as e:
+                logger.error(f"Pre-filtering failed: {e}, sending all products to curator")
+                products_for_curator = products
+
+            curated = curate_gifts(profile_for_backend, products_for_curator, recipient_type, relationship,
                                    claude_client, rec_count=product_rec_count + 4,
                                    enhanced_search_terms=enhanced_search_terms,
                                    enrichment_context=enrichment_context,
@@ -3174,6 +3202,17 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
 
             product_gifts = curated.get('product_gifts', [])
             experience_gifts = curated.get('experience_gifts', [])
+
+            # REVENUE OPTIMIZATION: Track all recommended products to build intelligence
+            try:
+                from revenue_optimizer import track_curation_outcome
+                for gift in product_gifts:
+                    product_id = gift.get('product_id', '') or gift.get('product_url', '')
+                    retailer = gift.get('source_domain', '') or gift.get('retailer', '')
+                    if product_id and retailer:
+                        track_curation_outcome({'product_id': product_id, 'retailer': retailer}, 'recommended')
+            except Exception as e:
+                logger.error(f"Failed to track recommended products: {e}")
 
             # Post-curation cleanup
             _set_gen_progress(user_id, stage='cleanup',
@@ -3584,7 +3623,18 @@ def toggle_favorite(rec_index, user=None):
         # Add favorite
         favorites.append(rec_index)
         action = 'added'
-    
+
+        # REVENUE OPTIMIZATION: Track favorites to learn which products users love
+        try:
+            from revenue_optimizer import track_curation_outcome
+            rec = recommendations[rec_index]
+            product_id = rec.get('product_id', '') or rec.get('product_url', '')
+            retailer = rec.get('source_domain', '') or rec.get('retailer', '')
+            if product_id and retailer:
+                track_curation_outcome({'product_id': product_id, 'retailer': retailer}, 'favorited')
+        except Exception as e:
+            logger.error(f"Failed to track favorite outcome: {e}")
+
     user['favorites'] = favorites
     save_user(user_id, {'favorites': favorites})
     
@@ -3596,9 +3646,21 @@ def track_product_click():
     data = request.get_json(silent=True) or {}
     url = data.get('url', '')
     source = data.get('source', '')  # 'physical', 'experience', 'material', 'provider'
+    product_id = data.get('product_id', '')
+    retailer = data.get('retailer', '')
+
     if url:
         track_event('product_click')
         logger.info(f"Product click: source={source}, url={url[:80]}")
+
+        # REVENUE OPTIMIZATION: Track clicks to learn which products convert
+        if product_id and retailer:
+            try:
+                from revenue_optimizer import track_curation_outcome
+                track_curation_outcome({'product_id': product_id, 'retailer': retailer}, 'clicked')
+            except Exception as e:
+                logger.error(f"Failed to track click outcome: {e}")
+
     return jsonify({'ok': True})
 
 

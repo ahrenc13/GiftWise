@@ -3554,6 +3554,24 @@ def view_recommendations(user=None):
     position_number = session.get('position_number', 0)
     unlocked = session.get('unlocked', False)
 
+    # ADMIN BYPASS: Auto-unlock for admin emails (owner testing)
+    admin_emails = os.getenv('ADMIN_EMAILS', '').split(',')
+    user_email = user.get('email', '').strip().lower()
+    is_admin = user_email in [e.strip().lower() for e in admin_emails if e.strip()]
+
+    # URL parameter bypass: ?unlock=true (for quick testing)
+    unlock_param = request.args.get('unlock')
+    if unlock_param == 'true' and is_admin:
+        session['unlocked'] = True
+        session.modified = True
+        unlocked = True
+
+    if is_admin and not unlocked:
+        # Auto-unlock for admins silently
+        session['unlocked'] = True
+        session.modified = True
+        unlocked = True
+
     # Limit to 3 recommendations if not unlocked (share-to-unlock viral loop)
     visible_recommendations = recommendations if unlocked else recommendations[:3]
     total_count = len(recommendations)

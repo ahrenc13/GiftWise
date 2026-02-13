@@ -1613,6 +1613,14 @@ def signup():
                                  relationship_options=RELATIONSHIP_OPTIONS,
                                  error='Email is required')
 
+        # VIRAL GROWTH: Capture UTM attribution from session (set on GET request)
+        utm_data = {
+            'utm_source': session.get('utm_source'),
+            'utm_medium': session.get('utm_medium'),
+            'utm_campaign': session.get('utm_campaign'),
+            'referrer': session.get('referrer')
+        }
+
         # Create user
         user_id = email
         save_user(user_id, {
@@ -1622,7 +1630,8 @@ def signup():
             'recipient_age': int(recipient_age) if recipient_age else None,
             'recipient_gender': recipient_gender or None,
             'subscription_tier': 'free',  # Default to free tier
-            'created_at': datetime.now().isoformat()
+            'created_at': datetime.now().isoformat(),
+            **utm_data  # Include UTM attribution
         })
 
         session['user_id'] = user_id
@@ -1633,9 +1642,24 @@ def signup():
             session['recipient_gender'] = recipient_gender
         logger.info(f"New user signed up: {email}")
         track_event('signup')
-        
+
         return redirect('/connect-platforms')
-    
+
+    # GET request: Capture UTM params for viral attribution tracking
+    utm_source = request.args.get('utm_source')
+    utm_medium = request.args.get('utm_medium')
+    utm_campaign = request.args.get('utm_campaign')
+    referrer = request.args.get('ref')  # Position number of referrer
+
+    if utm_source:
+        session['utm_source'] = utm_source
+    if utm_medium:
+        session['utm_medium'] = utm_medium
+    if utm_campaign:
+        session['utm_campaign'] = utm_campaign
+    if referrer:
+        session['referrer'] = referrer
+
     return render_template('signup.html', relationship_options=RELATIONSHIP_OPTIONS)
 
 
@@ -3511,22 +3535,40 @@ def view_recommendations(user=None):
             return redirect('/signup')
 
     recommendations = user.get('recommendations', [])
-    
+
     if not recommendations:
         return redirect('/connect-platforms?error=no_recommendations')
-    
+
     data_quality = user.get('data_quality', {})
     connected_count = len(user.get('platforms', {}))
-    
+
     # Mark favorites
     favorites = user.get('favorites', [])
-    
-    return render_template('recommendations.html', 
-                         recommendations=recommendations,
+
+    # VIRAL GROWTH: Assign position number and check unlock status
+    if 'position_number' not in session:
+        from site_stats import get_and_increment_position
+        session['position_number'] = get_and_increment_position()
+        session.modified = True
+
+    position_number = session.get('position_number', 0)
+    unlocked = session.get('unlocked', False)
+
+    # Limit to 3 recommendations if not unlocked (share-to-unlock viral loop)
+    visible_recommendations = recommendations if unlocked else recommendations[:3]
+    total_count = len(recommendations)
+    locked_count = 0 if unlocked else max(0, total_count - 3)
+
+    return render_template('recommendations.html',
+                         recommendations=visible_recommendations,
                          data_quality=data_quality,
                          connected_count=connected_count,
                          user=user,
-                         favorites=favorites)
+                         favorites=favorites,
+                         position_number=position_number,
+                         unlocked=unlocked,
+                         total_count=total_count,
+                         locked_count=locked_count)
 
 
 @app.route('/recommendations/experience/<int:index>')
@@ -3634,27 +3676,33 @@ def track_product_click():
 
 @app.route('/api/share', methods=['POST'])
 def create_share():
-    """Create shareable link"""
+    """Create shareable link and unlock full recommendations (viral growth)"""
     user = get_session_user()
     if not user:
         return jsonify({'success': False, 'error': 'Not logged in'}), 401
-    
+
     if not FAVORITES_AVAILABLE:
         return jsonify({'success': False, 'error': 'Sharing not available'}), 503
-    
+
     user_id = session['user_id']
     recommendations = user.get('recommendations', [])
-    
+
     if not recommendations:
         return jsonify({'success': False, 'error': 'No recommendations to share'}), 400
-    
+
     share_id = generate_share_id(recommendations, user_id)
     save_share(share_id, recommendations, user_id)
     track_event('share_create')
 
-    share_url = request.url_root.rstrip('/') + f'/share/{share_id}'
-    
-    return jsonify({'success': True, 'share_url': share_url, 'share_id': share_id})
+    # VIRAL GROWTH: Unlock full recommendations when user shares
+    session['unlocked'] = True
+    session.modified = True
+
+    # Add UTM params for viral attribution tracking
+    position = session.get('position_number', 0)
+    share_url = request.url_root.rstrip('/') + f'/share/{share_id}?utm_source=giftwise&utm_medium=share&utm_campaign=valentine2026&ref={position}'
+
+    return jsonify({'success': True, 'share_url': share_url, 'share_id': share_id, 'unlocked': True})
 
 @app.route('/share/<share_id>')
 def view_shared_recommendations(share_id):

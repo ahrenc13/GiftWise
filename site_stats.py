@@ -47,6 +47,26 @@ def track_event(event_name):
             db.close()
 
 
+def get_and_increment_position():
+    """
+    Get and increment global position counter for viral growth tracking.
+    Returns the position number (e.g., 2847 means "You're pick #2,847").
+
+    This is used for social currency - showing users they're early adopters.
+    """
+    key = 'global:position_counter'
+    with _lock:
+        db = shelve.open(STATS_DB_PATH, writeback=True)
+        try:
+            current = db.get(key, 0)
+            new_position = current + 1
+            db[key] = new_position
+            db.sync()
+            return new_position
+        finally:
+            db.close()
+
+
 def get_count(event_name, date_str=None):
     """Get count for a specific event on a specific date (default: today)."""
     date_str = date_str or _today()

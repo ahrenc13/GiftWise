@@ -1472,6 +1472,180 @@ def index():
     """Landing page"""
     return render_template('index.html')
 
+@app.route('/demo')
+def demo_mode():
+    """
+    Skip-to-demo mode for testing UX without connecting social accounts.
+    Generates sample recommendations with pre-canned data.
+    """
+    user = get_session_user()
+    if not user:
+        # Create a demo user if not logged in
+        demo_email = f"demo_{datetime.now().timestamp()}@demo.giftwise.fit"
+        user_id = demo_email
+        save_user(user_id, {
+            'email': demo_email,
+            'recipient_type': 'myself',
+            'relationship': 'self',
+            'subscription_tier': 'free',
+            'created_at': datetime.now().isoformat(),
+            'is_demo': True
+        })
+        session['user_id'] = user_id
+        user = get_user(user_id)
+
+    # Generate sample recommendations (pre-canned for demo)
+    demo_recommendations = [
+        {
+            'name': 'Portable Espresso Maker',
+            'price': '$89',
+            'purchase_link': 'https://amazon.com/demo',
+            'image_url': 'https://via.placeholder.com/300x300?text=Espresso+Maker',
+            'thumbnail': 'https://via.placeholder.com/150x150?text=Espresso',
+            'snippet': 'Compact espresso maker for coffee lovers on the go',
+            'why_perfect': 'Perfect for someone who loves coffee culture and appreciates quality brewing. This portable maker lets them enjoy cafe-quality espresso anywhere.',
+            'interest_match': 'Coffee enthusiast',
+            'source_domain': 'amazon.com',
+            'category': 'kitchen',
+            'gift_type': 'product'
+        },
+        {
+            'name': 'Vintage Vinyl Record Player',
+            'price': '$149',
+            'purchase_link': 'https://amazon.com/demo',
+            'image_url': 'https://via.placeholder.com/300x300?text=Record+Player',
+            'thumbnail': 'https://via.placeholder.com/150x150?text=Vinyl',
+            'snippet': 'Modern turntable with vintage aesthetic, Bluetooth compatible',
+            'why_perfect': 'Great for someone who appreciates analog experiences and quality music. Combines retro charm with modern functionality.',
+            'interest_match': 'Music lover',
+            'source_domain': 'amazon.com',
+            'category': 'music',
+            'gift_type': 'product'
+        },
+        {
+            'name': 'Japanese Ceramic Tea Set',
+            'price': '$65',
+            'purchase_link': 'https://etsy.com/demo',
+            'image_url': 'https://via.placeholder.com/300x300?text=Tea+Set',
+            'thumbnail': 'https://via.placeholder.com/150x150?text=Tea',
+            'snippet': 'Handcrafted ceramic teapot and cups with minimalist design',
+            'why_perfect': 'Ideal for someone who values mindfulness and quality rituals. This artisan set turns tea time into a meditative practice.',
+            'interest_match': 'Mindfulness & wellness',
+            'source_domain': 'etsy.com',
+            'category': 'home',
+            'gift_type': 'product'
+        },
+        {
+            'name': 'Leather Journal & Fountain Pen',
+            'price': '$78',
+            'purchase_link': 'https://amazon.com/demo',
+            'image_url': 'https://via.placeholder.com/300x300?text=Journal+Set',
+            'thumbnail': 'https://via.placeholder.com/150x150?text=Journal',
+            'snippet': 'Premium leather journal with refillable fountain pen',
+            'why_perfect': 'Perfect for someone who appreciates analog thinking and quality craftsmanship. Great for journaling, sketching, or daily reflection.',
+            'interest_match': 'Creative writing',
+            'source_domain': 'amazon.com',
+            'category': 'stationery',
+            'gift_type': 'product'
+        },
+        {
+            'name': 'Cooking Class Experience',
+            'price': 'Varies',
+            'purchase_link': 'https://cozymeal.com/demo',
+            'image_url': 'https://via.placeholder.com/300x300?text=Cooking+Class',
+            'thumbnail': 'https://via.placeholder.com/150x150?text=Cooking',
+            'snippet': 'Learn to cook authentic Italian pasta from a professional chef',
+            'why_perfect': 'A hands-on experience that creates lasting memories. Perfect for someone who loves food and learning new skills.',
+            'interest_match': 'Culinary arts',
+            'source_domain': 'cozymeal.com',
+            'category': 'experience',
+            'gift_type': 'experience',
+            'experience_category': 'cooking'
+        },
+        {
+            'name': 'Sustainable Canvas Tote Set',
+            'price': '$42',
+            'purchase_link': 'https://etsy.com/demo',
+            'image_url': 'https://via.placeholder.com/300x300?text=Tote+Set',
+            'thumbnail': 'https://via.placeholder.com/150x150?text=Tote',
+            'snippet': 'Set of 3 organic cotton totes with minimalist design',
+            'why_perfect': 'Great for someone who values sustainability and practical style. These versatile totes work for groceries, gym, or daily errands.',
+            'interest_match': 'Eco-conscious',
+            'source_domain': 'etsy.com',
+            'category': 'fashion',
+            'gift_type': 'product'
+        },
+        {
+            'name': 'Indoor Herb Garden Kit',
+            'price': '$55',
+            'purchase_link': 'https://amazon.com/demo',
+            'image_url': 'https://via.placeholder.com/300x300?text=Herb+Garden',
+            'thumbnail': 'https://via.placeholder.com/150x150?text=Herbs',
+            'snippet': 'Self-watering indoor garden with grow lights and herb seeds',
+            'why_perfect': 'Perfect for someone who loves fresh ingredients and sustainable living. Brings the garden indoors year-round.',
+            'interest_match': 'Home gardening',
+            'source_domain': 'amazon.com',
+            'category': 'home',
+            'gift_type': 'product'
+        },
+        {
+            'name': 'Wireless Noise-Canceling Headphones',
+            'price': '$199',
+            'purchase_link': 'https://amazon.com/demo',
+            'image_url': 'https://via.placeholder.com/300x300?text=Headphones',
+            'thumbnail': 'https://via.placeholder.com/150x150?text=Audio',
+            'snippet': 'Premium over-ear headphones with active noise cancellation',
+            'why_perfect': 'Ideal for someone who values quality audio and focus. Great for music, work, or travel.',
+            'interest_match': 'Audiophile',
+            'source_domain': 'amazon.com',
+            'category': 'tech',
+            'gift_type': 'product'
+        },
+        {
+            'name': 'Artisan Chocolate Tasting Box',
+            'price': '$58',
+            'purchase_link': 'https://etsy.com/demo',
+            'image_url': 'https://via.placeholder.com/300x300?text=Chocolate+Box',
+            'thumbnail': 'https://via.placeholder.com/150x150?text=Chocolate',
+            'snippet': 'Curated selection of 12 single-origin chocolates from around the world',
+            'why_perfect': 'A sensory journey for someone who appreciates fine foods and unique experiences. Each piece tells a story.',
+            'interest_match': 'Foodie',
+            'source_domain': 'etsy.com',
+            'category': 'food',
+            'gift_type': 'product'
+        },
+        {
+            'name': 'Museum Membership Experience',
+            'price': 'Varies',
+            'purchase_link': 'https://museumstore.org/demo',
+            'image_url': 'https://via.placeholder.com/300x300?text=Museum+Pass',
+            'thumbnail': 'https://via.placeholder.com/150x150?text=Museum',
+            'snippet': 'Annual membership to local art or science museum',
+            'why_perfect': 'A gift that keeps giving throughout the year. Perfect for someone who loves learning and cultural experiences.',
+            'interest_match': 'Art & culture',
+            'source_domain': 'museumstore.org',
+            'category': 'experience',
+            'gift_type': 'experience',
+            'experience_category': 'cultural'
+        }
+    ]
+
+    # Save to user
+    user['recommendations'] = demo_recommendations
+    user['data_quality'] = {'instagram': 'demo', 'overall': 'demo'}
+    user['platforms'] = {'demo': {'status': 'complete', 'data': 'Sample data for demo'}}
+    save_user(session['user_id'], user)
+
+    # Auto-unlock for demo users
+    session['unlocked'] = True
+    session.modified = True
+
+    logger.info(f"Demo mode activated for user {session['user_id']}")
+    track_event('demo_mode')
+
+    return redirect('/recommendations')
+
+
 @app.route('/valentine')
 @app.route('/valentines')
 def valentines_landing():

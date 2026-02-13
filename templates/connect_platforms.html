@@ -478,12 +478,24 @@
         <div class="continue-section">
             <h2>Ready to Generate Recommendations?</h2>
             <p>Connect at least one platform to get started</p>
-            
+
             <form method="POST" action="/start-scraping">
                 <button type="submit" class="btn-continue" id="continueBtn" {% if connected_count == 0 %}disabled{% endif %}>
                     Continue to Analysis
                 </button>
             </form>
+
+            <div style="margin: 24px 0; padding: 20px 0; border-top: 2px solid #e5e7eb; border-bottom: 2px solid #e5e7eb;">
+                <p style="color: #666; font-size: 14px; margin-bottom: 12px;">
+                    <strong>Just want to see how it works?</strong>
+                </p>
+                <button onclick="window.location.href='/demo'" class="btn-continue" style="background: linear-gradient(135deg, #6b7280, #4b5563); margin-top: 0;">
+                    Skip / Try Demo
+                </button>
+                <p style="color: #9ca3af; font-size: 12px; margin-top: 8px;">
+                    Uses sample data to show you the experience
+                </p>
+            </div>
 
             <div class="tier-info">
                 <strong>Your tier:</strong> {{ subscription_tier | title }}<br>

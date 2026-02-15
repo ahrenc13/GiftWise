@@ -1996,25 +1996,24 @@ def connect_platforms():
 
 @app.route('/api/validate-username', methods=['POST'])
 def validate_username():
-    """Instant username validation endpoint"""
+    """Instant username validation endpoint - VALIDATION DISABLED FOR OWNER TESTING"""
     try:
         data = request.get_json()
         platform = data.get('platform')
         username = sanitize_username(data.get('username', ''))
-        
+
         if not username:
             return jsonify({'valid': False, 'message': 'Username required'})
-        
-        if platform == 'instagram':
-            result = check_instagram_privacy(username)
-        elif platform == 'tiktok':
-            result = check_tiktok_privacy(username)
-        elif platform == 'pinterest':
-            result = check_pinterest_profile(username)
-        else:
-            return jsonify({'valid': False, 'message': 'Invalid platform'})
-        
-        return jsonify(result)
+
+        # OWNER TESTING: Skip all validation, just accept any username
+        logger.info(f"Validation bypassed for {platform}: @{username} (owner testing mode)")
+        return jsonify({
+            'valid': True,
+            'exists': True,
+            'message': f'✓ @{username} ready to connect',
+            'icon': '✅'
+        })
+
     except Exception as e:
         logger.error(f"Username validation error: {e}")
         return jsonify({'valid': False, 'message': 'Validation error occurred'}), 500

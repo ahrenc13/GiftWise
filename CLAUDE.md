@@ -51,12 +51,74 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 ### Affiliate network applications status
 | Network | Status | Brands Covered |
 |---------|--------|---------------|
-| Skimlinks | Pending approval | ~48,500 merchants (blanket access) |
-| CJ Affiliate | Application submitted | Macy's, Nike, AE/Aerie, J.Crew, Columbia, North Face |
+| Skimlinks | Pending approval (submitted 2/9) | ~48,500 merchants (blanket access) |
+| CJ Affiliate | Batch applying to ~70 brands (2/15) | Flowers, jewelry, apparel, home, gourmet, personalization |
 | Impact | Wrong account type, ticket open | Target, Ulta, Kohl's, Gap, Home Depot, Adidas, Dyson |
 | Rakuten | Signed up, need brand apps | Sephora, Nordstrom, Anthropologie, Free People, Coach |
 | Walmart Creator | Application submitted | Walmart |
 | Awin | Active, need to join advertisers | Etsy, UGG, Lululemon, Portland Leather |
+
+## CJ Affiliate Partnership Strategy (Feb 15, 2026)
+
+### Optimized Publisher Profile
+**Description:** Gift recommendation publisher, editorial gift guides, high-intent traffic, AI-powered personalization
+**Promotional Methods:** Content/Niche Site, SEO/SEM, Social Media, Blog/Review Site
+**Tags (25 core):** gift recommendations, gift guides, high intent traffic, purchase-ready audience, gift shopping, Mother's Day gifts, Father's Day gifts, Valentine's Day gifts, holiday gifts, birthday gifts, curated gifts, personalized gifts, women 25-45, millennial shoppers, female audience, gift blog, editorial content, buying guides, AI-powered recommendations, SEO optimized, seasonal content, evergreen content, content marketing, United States, growing audience
+
+### Batch Application List (~70 Brands, Feb 15 2026)
+
+**TIER 1: Gift-Obvious (25 brands)**
+- Flowers/Gourmet: ProFlowers, 1-800-Flowers, FTD, Teleflora, Harry & David, Edible Arrangements, Mrs. Fields, Cheryl's Cookies, Popcornopolis, 1-800-Baskets
+- Jewelry: Kay Jewelers, Zales, Jared, Helzberg Diamonds, Blue Nile, James Allen
+- Books: Barnes & Noble
+- Personalization: Things Remembered, Personalization Mall, Shutterfly, Snapfish
+- Baby/Kids: Carter's, OshKosh B'Gosh
+
+**TIER 2: Family Wishlist Brands (15 brands)**
+- Apparel: Macy's, American Eagle, Aerie, J.Crew, Madewell, Nike, Columbia Sportswear, The North Face, Eddie Bauer, L.L.Bean, Lands' End
+- Beauty: Kiehl's, Dermstore, SkinStore
+- Shoes: DSW
+
+**TIER 3: Lifestyle & Home (20 brands)**
+- Home/Kitchen: Sur La Table, Williams Sonoma, Pottery Barn, West Elm, Crate & Barrel, Wayfair, Overstock
+- Department: JCPenney, Belk, Dillard's, Nordstrom Rack
+- Sports/Outdoors: Dick's Sporting Goods, Moosejaw, Backcountry, Finish Line, Foot Locker, Shoe Carnival
+- Pet: Chewy, BarkBox, Petco
+
+**TIER 4: Specialty (10 brands)**
+- Vistaprint, UncommonGoods, ModCloth, Vineyard Vines, Huckberry, MeUndies, Parachute Home, Brooklinen
+
+### Key CJ T&C Learnings
+
+**ProFlowers/FTD Restrictions (applies to most flower brands):**
+- Must remove expired promotional links immediately or risk commission reversal
+- Only promote deals/codes provided through CJ interface (no scraping other coupon sites)
+- Cannot promote Groupon/AARP/USAA/LivingSocial deals without approval
+- **Strategy:** Focus on evergreen product links, not time-sensitive deals. Link to specific bouquets/products rather than sales.
+
+**General CJ Best Practices:**
+- Search marketing restrictions irrelevant (we're SEO/content, not PPC)
+- Email marketing requires brand approval (future consideration)
+- Most brands reverse commissions on returns/cancellations (standard)
+- Cookie duration varies by brand (typically 7-30 days)
+
+### Expected Approval Timeline
+- Auto-approvals: 24-48 hours (brands with open programs)
+- Manual review: 3-7 days (brands vetting new publishers)
+- Rejections: Common for new sites without traffic stats — reapply in 3-6 months with metrics
+
+### Revenue Impact by Category
+- **Flowers (15% commission):** ProFlowers, 1-800-Flowers, FTD — seasonal spikes (Valentine's, Mother's Day)
+- **Jewelry (5-10% commission):** Kay, Zales, Blue Nile — high AOV, milestone occasions
+- **Gourmet (8-15% commission):** Harry & David, Edible — corporate gifting crossover
+- **Apparel (4-8% commission):** AE, J.Crew, Columbia — high volume, lower margins
+- **Personalization (10-15% commission):** Things Remembered, Shutterfly — high intent, gift-specific
+
+### Next Actions After Approval
+1. **Create retailer-specific gift guides:** "Best Flower Delivery Services 2026," "Personalized Gift Ideas," "Jewelry Gifts for Milestones"
+2. **Add CJ brands to AI curation pool:** Integrate approved merchants into multi-retailer search (when product feeds available)
+3. **Track performance by brand:** Use CJ reporting to identify top converters, feature them more prominently
+4. **Seasonal content planning:** Mother's Day (May 11), Father's Day (Jun 15), Graduation (May-Jun), Christmas (Nov-Dec)
 
 ## Opus Audit Checklist (CRITICAL — read OPUS_AUDIT.md for full details)
 

@@ -1701,6 +1701,9 @@ def gift_guide_detail(slug):
         'travel-obsessed': 'guide_travel.html',
         'dog-parent': 'guide_dog.html',
         'tech-nerd': 'guide_tech.html',
+        'etsy-home-decor': 'guide_etsy_home_decor.html',
+        'etsy-jewelry': 'guide_etsy_jewelry.html',
+        'etsy-under-50': 'guide_etsy_under_50.html',
     }
     template = template_map.get(slug)
     if template:

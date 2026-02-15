@@ -1711,6 +1711,36 @@ def gift_guide_detail(slug):
         return render_template(template)
     return render_template('error.html', error_message="Guide not found."), 404
 
+@app.route('/blog')
+def blog_index():
+    """Blog index — editorial content for publisher positioning"""
+    return render_template('blog.html')
+
+@app.route('/blog/<slug>')
+def blog_post(slug):
+    """Individual blog article"""
+    track_event('guide_hit')  # Count blog posts as content engagement
+    blog_map = {
+        'last-minute-gifts': 'blog_last_minute_gifts.html',
+        'cash-vs-physical-gifts': 'blog_cash_vs_physical_gift.html',
+        'gift-giving-mistakes': 'blog_gift_giving_mistakes.html',
+        'gifts-for-someone-who-has-everything': 'blog_gifts_for_someone_who_has_everything.html',
+    }
+    template = blog_map.get(slug)
+    if template:
+        return render_template(template)
+    return render_template('error.html', error_message="Article not found."), 404
+
+@app.route('/about')
+def about():
+    """About page — ownership, editorial principles, transparency"""
+    return render_template('about.html')
+
+@app.route('/contact')
+def contact():
+    """Contact page — email addresses for support, press, partnerships"""
+    return render_template('contact.html')
+
 # ============================================================================
 # WAITLIST ROUTES (Pre-Launch)
 # ============================================================================

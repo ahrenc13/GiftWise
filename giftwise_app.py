@@ -1704,6 +1704,7 @@ def gift_guide_detail(slug):
         'etsy-home-decor': 'guide_etsy_home_decor.html',
         'etsy-jewelry': 'guide_etsy_jewelry.html',
         'etsy-under-50': 'guide_etsy_under_50.html',
+        'mothers-day': 'guide_mothers_day.html',
     }
     template = template_map.get(slug)
     if template:

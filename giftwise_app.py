@@ -1476,8 +1476,38 @@ def index():
 def demo_mode():
     """
     Skip-to-demo mode for testing UX without connecting social accounts.
-    Generates sample recommendations with pre-canned data.
+    For admin: redirects to real pipeline with @chadahren pre-filled.
+    For public: shows sample recommendations with pre-canned data.
     """
+    # ADMIN TESTING: If admin email, create real test user with @chadahren
+    admin_emails = os.getenv('ADMIN_EMAILS', '').split(',')
+    is_admin_test = request.args.get('admin') == 'true'
+
+    if is_admin_test:
+        # Create real test user with @chadahren pre-configured
+        test_user_id = f"test_{datetime.now().timestamp()}@giftwise.fit"
+        save_user(test_user_id, {
+            'email': test_user_id,
+            'recipient_type': 'myself',
+            'relationship': 'self',
+            'subscription_tier': 'free',
+            'created_at': datetime.now().isoformat(),
+            'platforms': {
+                'instagram': {
+                    'username': 'chadahren',
+                    'status': 'connected',
+                    'method': 'scraping',
+                    'connected_at': datetime.now().isoformat()
+                }
+            }
+        })
+        session['user_id'] = test_user_id
+        session.permanent = True
+        logger.info(f"Admin test user created: {test_user_id} with @chadahren")
+        # Redirect to generate recommendations (will trigger real scraping)
+        return redirect('/generate-recommendations')
+
+    # PUBLIC DEMO: Show fake recommendations
     user = get_session_user()
     if not user:
         # Create a demo user if not logged in

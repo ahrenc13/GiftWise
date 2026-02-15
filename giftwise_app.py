@@ -174,7 +174,7 @@ except ImportError as e:
     OAUTH_INTEGRATIONS_AVAILABLE = False
     pass  # Logger not defined yet
 
-# Import Valentine's Day features
+# Import sharing and referral features
 try:
     from share_generator import generate_share_image, generate_story_image
     from referral_system import (
@@ -182,13 +182,12 @@ try:
         validate_referral_code,
         apply_referral_to_user,
         credit_referrer,
-        get_referral_stats,
-        get_valentines_day_bonus
+        get_referral_stats
     )
     from flask import send_file
-    VALENTINES_FEATURES_AVAILABLE = True
+    SHARING_FEATURES_AVAILABLE = True
 except ImportError:
-    VALENTINES_FEATURES_AVAILABLE = False
+    SHARING_FEATURES_AVAILABLE = False
 
 # Lightweight event tracking for admin dashboard
 try:
@@ -1675,13 +1674,6 @@ def demo_mode():
 
     return redirect('/recommendations')
 
-
-@app.route('/valentine')
-@app.route('/valentines')
-def valentines_landing():
-    """Valentine's Day landing page"""
-    track_event('valentine_hit')
-    return render_template('valentines_landing.html')
 
 @app.route('/privacy')
 def privacy():
@@ -3921,7 +3913,7 @@ def create_share():
 
     # Add UTM params for viral attribution tracking
     position = session.get('position_number', 0)
-    share_url = request.url_root.rstrip('/') + f'/share/{share_id}?utm_source=giftwise&utm_medium=share&utm_campaign=valentine2026&ref={position}'
+    share_url = request.url_root.rstrip('/') + f'/share/{share_id}?utm_source=giftwise&utm_medium=share&utm_campaign=share2026&ref={position}'
 
     return jsonify({'success': True, 'share_url': share_url, 'share_id': share_id, 'unlocked': True})
 
@@ -4493,13 +4485,13 @@ def admin_test_generate():
 
 
 # ========================================
-# VALENTINE'S DAY ROUTES
+# SHARING & REFERRAL ROUTES
 # ========================================
 
 @app.route('/api/generate-share-image', methods=['POST'])
 def api_generate_share_image():
     """Generate shareable social media image"""
-    if not VALENTINES_FEATURES_AVAILABLE:
+    if not SHARING_FEATURES_AVAILABLE:
         return jsonify({'error': 'Feature not available'}), 503
     
     user = get_session_user()
@@ -4535,7 +4527,7 @@ def api_generate_share_image():
 @app.route('/api/referral-stats')
 def api_referral_stats():
     """Get user's referral statistics"""
-    if not VALENTINES_FEATURES_AVAILABLE:
+    if not SHARING_FEATURES_AVAILABLE:
         return jsonify({'error': 'Feature not available'}), 503
     
     user = get_session_user()
@@ -4543,11 +4535,6 @@ def api_referral_stats():
         return jsonify({'error': 'Not logged in'}), 401
     
     stats = get_referral_stats(user)
-    
-    # Add Valentine's Day bonus info
-    vday_bonus = get_valentines_day_bonus()
-    stats['valentines_bonus'] = vday_bonus
-    
     return jsonify(stats)
 
 

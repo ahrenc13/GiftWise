@@ -621,27 +621,6 @@
         </div>
     </div>
     
-    <!-- Valentine's Day urgency banner (auto-hides when not relevant) -->
-    <div id="vday-banner" style="display:none; background: linear-gradient(135deg, #f43f5e, #be123c); color: white; text-align: center; padding: 10px 20px; font-size: 14px; font-weight: 600;">
-        <span id="vday-msg"></span>
-        <a href="/valentine" style="color: white; margin-left: 12px; text-decoration: underline;">Valentine's Gift Guide</a>
-    </div>
-    <script>
-    (function() {
-        var vday = new Date('2026-02-14T00:00:00');
-        var now = new Date();
-        var days = Math.floor((vday - now) / 86400000);
-        if (days >= 0 && days <= 14) {
-            var msg = days === 0 ? "Valentine's Day is TODAY! Order ASAP." :
-                      days === 1 ? "TOMORROW is Valentine's Day! Order now." :
-                      days <= 3 ? days + " days until Valentine's Day — order now for delivery!" :
-                      days + " days until Valentine's Day";
-            document.getElementById('vday-msg').textContent = msg;
-            document.getElementById('vday-banner').style.display = 'block';
-        }
-    })();
-    </script>
-
     <div class="container">
         <h1 class="page-title">Your Gift Recommendations</h1>
         <p class="page-subtitle">

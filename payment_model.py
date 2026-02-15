@@ -86,17 +86,6 @@ PRICING = {
     }
 }
 
-VALENTINES_PROMO = {
-    'monthly': {
-        'promo_price': 3.99,
-        'original_price': 4.99,
-        'discount_percent': 20,
-        'promo_text': "Valentine's Launch Special",
-        'valid_until': '2026-02-28',
-        'promo_code': 'VDAY2026'
-    }
-}
-
 # =============================================================================
 # GIFT OCCASION CALENDAR
 # =============================================================================
@@ -274,14 +263,9 @@ class SubscriptionGuard:
 # HELPER FUNCTIONS
 # =============================================================================
 
-def get_pricing_for_user(user_tier: Optional[str] = None, is_valentine_season: bool = False) -> Dict:
+def get_pricing_for_user(user_tier: Optional[str] = None) -> Dict:
     """Get pricing information for user."""
-    pricing = PRICING.copy()
-    
-    if is_valentine_season and user_tier is None:
-        pricing['monthly']['promo'] = VALENTINES_PROMO['monthly']
-    
-    return pricing
+    return PRICING.copy()
 
 
 def get_recommended_tier(occasions_data: Dict) -> str:

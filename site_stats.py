@@ -3,7 +3,7 @@ SITE STATS - Lightweight event counter for admin dashboard.
 Uses shelve for persistence (same pattern as share_manager.py).
 
 Tracks: signups, recommendation runs, shares created, share views,
-page hits (valentine, guides), errors.
+page hits (guides), errors, product clicks, demo mode usage.
 
 Author: Chad + Claude
 Date: February 2026
@@ -35,7 +35,7 @@ def track_event(event_name):
     Increment a counter for an event on today's date.
 
     event_name: one of 'signup', 'rec_run', 'share_create', 'share_view',
-                'valentine_hit', 'guide_hit', 'error'
+                'guide_hit', 'product_click', 'error', 'demo_mode'
     """
     key = f"{_today()}:{event_name}"
     with _lock:
@@ -90,7 +90,7 @@ def get_dashboard_data():
     }
     """
     events = ['signup', 'rec_run', 'share_create', 'share_view',
-              'valentine_hit', 'guide_hit', 'product_click', 'error', 'demo_mode']
+              'guide_hit', 'product_click', 'error', 'demo_mode']
 
     today_str = _today()
     week_keys = _this_week_keys()

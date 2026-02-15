@@ -174,7 +174,7 @@ except ImportError as e:
     OAUTH_INTEGRATIONS_AVAILABLE = False
     pass  # Logger not defined yet
 
-# Import Valentine's Day features
+# Import sharing and referral features
 try:
     from share_generator import generate_share_image, generate_story_image
     from referral_system import (
@@ -182,13 +182,12 @@ try:
         validate_referral_code,
         apply_referral_to_user,
         credit_referrer,
-        get_referral_stats,
-        get_valentines_day_bonus
+        get_referral_stats
     )
     from flask import send_file
-    VALENTINES_FEATURES_AVAILABLE = True
+    SHARING_FEATURES_AVAILABLE = True
 except ImportError:
-    VALENTINES_FEATURES_AVAILABLE = False
+    SHARING_FEATURES_AVAILABLE = False
 
 # Lightweight event tracking for admin dashboard
 try:
@@ -1476,8 +1475,38 @@ def index():
 def demo_mode():
     """
     Skip-to-demo mode for testing UX without connecting social accounts.
-    Generates sample recommendations with pre-canned data.
+    For admin: redirects to real pipeline with @chadahren pre-filled.
+    For public: shows sample recommendations with pre-canned data.
     """
+    # ADMIN TESTING: If admin email, create real test user with @chadahren
+    admin_emails = os.getenv('ADMIN_EMAILS', '').split(',')
+    is_admin_test = request.args.get('admin') == 'true'
+
+    if is_admin_test:
+        # Create real test user with @chadahren pre-configured
+        test_user_id = f"test_{datetime.now().timestamp()}@giftwise.fit"
+        save_user(test_user_id, {
+            'email': test_user_id,
+            'recipient_type': 'myself',
+            'relationship': 'self',
+            'subscription_tier': 'free',
+            'created_at': datetime.now().isoformat(),
+            'platforms': {
+                'instagram': {
+                    'username': 'chadahren',
+                    'status': 'connected',
+                    'method': 'scraping',
+                    'connected_at': datetime.now().isoformat()
+                }
+            }
+        })
+        session['user_id'] = test_user_id
+        session.permanent = True
+        logger.info(f"Admin test user created: {test_user_id} with @chadahren")
+        # Redirect to generate recommendations (will trigger real scraping)
+        return redirect('/generate-recommendations')
+
+    # PUBLIC DEMO: Show fake recommendations
     user = get_session_user()
     if not user:
         # Create a demo user if not logged in
@@ -1646,13 +1675,6 @@ def demo_mode():
     return redirect('/recommendations')
 
 
-@app.route('/valentine')
-@app.route('/valentines')
-def valentines_landing():
-    """Valentine's Day landing page"""
-    track_event('valentine_hit')
-    return render_template('valentines_landing.html')
-
 @app.route('/privacy')
 def privacy():
     """Privacy policy"""
@@ -1679,11 +1701,45 @@ def gift_guide_detail(slug):
         'travel-obsessed': 'guide_travel.html',
         'dog-parent': 'guide_dog.html',
         'tech-nerd': 'guide_tech.html',
+        'etsy-home-decor': 'guide_etsy_home_decor.html',
+        'etsy-jewelry': 'guide_etsy_jewelry.html',
+        'etsy-under-50': 'guide_etsy_under_50.html',
+        'mothers-day': 'guide_mothers_day.html',
     }
     template = template_map.get(slug)
     if template:
         return render_template(template)
     return render_template('error.html', error_message="Guide not found."), 404
+
+@app.route('/blog')
+def blog_index():
+    """Blog index — editorial content for publisher positioning"""
+    return render_template('blog.html')
+
+@app.route('/blog/<slug>')
+def blog_post(slug):
+    """Individual blog article"""
+    track_event('guide_hit')  # Count blog posts as content engagement
+    blog_map = {
+        'last-minute-gifts': 'blog_last_minute_gifts.html',
+        'cash-vs-physical-gifts': 'blog_cash_vs_physical_gift.html',
+        'gift-giving-mistakes': 'blog_gift_giving_mistakes.html',
+        'gifts-for-someone-who-has-everything': 'blog_gifts_for_someone_who_has_everything.html',
+    }
+    template = blog_map.get(slug)
+    if template:
+        return render_template(template)
+    return render_template('error.html', error_message="Article not found."), 404
+
+@app.route('/about')
+def about():
+    """About page — ownership, editorial principles, transparency"""
+    return render_template('about.html')
+
+@app.route('/contact')
+def contact():
+    """Contact page — email addresses for support, press, partnerships"""
+    return render_template('contact.html')
 
 # ============================================================================
 # WAITLIST ROUTES (Pre-Launch)
@@ -3891,7 +3947,7 @@ def create_share():
 
     # Add UTM params for viral attribution tracking
     position = session.get('position_number', 0)
-    share_url = request.url_root.rstrip('/') + f'/share/{share_id}?utm_source=giftwise&utm_medium=share&utm_campaign=valentine2026&ref={position}'
+    share_url = request.url_root.rstrip('/') + f'/share/{share_id}?utm_source=giftwise&utm_medium=share&utm_campaign=share2026&ref={position}'
 
     return jsonify({'success': True, 'share_url': share_url, 'share_id': share_id, 'unlocked': True})
 
@@ -4463,13 +4519,13 @@ def admin_test_generate():
 
 
 # ========================================
-# VALENTINE'S DAY ROUTES
+# SHARING & REFERRAL ROUTES
 # ========================================
 
 @app.route('/api/generate-share-image', methods=['POST'])
 def api_generate_share_image():
     """Generate shareable social media image"""
-    if not VALENTINES_FEATURES_AVAILABLE:
+    if not SHARING_FEATURES_AVAILABLE:
         return jsonify({'error': 'Feature not available'}), 503
     
     user = get_session_user()
@@ -4505,7 +4561,7 @@ def api_generate_share_image():
 @app.route('/api/referral-stats')
 def api_referral_stats():
     """Get user's referral statistics"""
-    if not VALENTINES_FEATURES_AVAILABLE:
+    if not SHARING_FEATURES_AVAILABLE:
         return jsonify({'error': 'Feature not available'}), 503
     
     user = get_session_user()
@@ -4513,11 +4569,6 @@ def api_referral_stats():
         return jsonify({'error': 'Not logged in'}), 401
     
     stats = get_referral_stats(user)
-    
-    # Add Valentine's Day bonus info
-    vday_bonus = get_valentines_day_bonus()
-    stats['valentines_bonus'] = vday_bonus
-    
     return jsonify(stats)
 
 

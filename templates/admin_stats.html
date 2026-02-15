@@ -64,11 +64,6 @@
             <div class="week">{{ data.week.share_view }} this week</div>
         </div>
         <div class="card">
-            <div class="label">/valentine Hits</div>
-            <div class="today">{{ data.today.valentine_hit }}</div>
-            <div class="week">{{ data.week.valentine_hit }} this week</div>
-        </div>
-        <div class="card">
             <div class="label">Guide Views</div>
             <div class="today">{{ data.today.guide_hit }}</div>
             <div class="week">{{ data.week.guide_hit }} this week</div>
@@ -95,7 +90,6 @@
                 <th>Recs</th>
                 <th>Share</th>
                 <th>Views</th>
-                <th>Vday</th>
                 <th>Guide</th>
                 <th>Clicks</th>
                 <th>Err</th>
@@ -107,7 +101,6 @@
                 <td class="{{ 'zero' if row.rec_run == 0 else '' }}">{{ row.rec_run }}</td>
                 <td class="{{ 'zero' if row.share_create == 0 else '' }}">{{ row.share_create }}</td>
                 <td class="{{ 'zero' if row.share_view == 0 else '' }}">{{ row.share_view }}</td>
-                <td class="{{ 'zero' if row.valentine_hit == 0 else '' }}">{{ row.valentine_hit }}</td>
                 <td class="{{ 'zero' if row.guide_hit == 0 else '' }}">{{ row.guide_hit }}</td>
                 <td class="{{ 'zero' if row.product_click == 0 else '' }}">{{ row.product_click }}</td>
                 <td class="{{ 'warn' if row.error > 0 else 'zero' }}">{{ row.error }}</td>
@@ -122,8 +115,7 @@
         <div class="actions">
             <strong>Share views > 0 but signups flat:</strong> shared page CTA isn't converting<br>
             <strong>Recs running but 0 shares:</strong> share button isn't visible enough<br>
-            <strong>/valentine climbing:</strong> TikTok is working — consider posting again<br>
-            <strong>Errors spiking:</strong> check Render logs, something broke<br>
+            <strong>Errors spiking:</strong> check Railway logs, something broke<br>
             <strong>5+ recs/day consistently:</strong> past hobby traffic — think about paywall<br>
             <strong>Share views > signups by 3x:</strong> people are looking but not converting — improve CTA or landing page<br>
             <strong>Recs running but 0 product clicks:</strong> recommendations aren't compelling enough or CTAs are too weak<br>

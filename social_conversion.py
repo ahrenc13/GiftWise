@@ -87,44 +87,6 @@ class ConversionNudges:
     """Generate urgency and conversion messaging"""
     
     @staticmethod
-    def get_valentines_urgency():
-        """Get Valentine's Day specific urgency message"""
-        
-        valentines = datetime(2026, 2, 14)
-        today = datetime.now()
-        days_until = (valentines - today).days
-        
-        if days_until <= 0:
-            return {
-                'message': "⚠️ Valentine's Day is TODAY! Order ASAP for any chance of delivery.",
-                'urgency_level': 'critical',
-                'show': True
-            }
-        elif days_until <= 3:
-            return {
-                'message': f"⚠️ Only {days_until} days until Valentine's Day! Order now for guaranteed delivery.",
-                'urgency_level': 'high',
-                'show': True
-            }
-        elif days_until <= 7:
-            return {
-                'message': f"🎁 Valentine's Day is in {days_until} days. Order soon to ensure delivery!",
-                'urgency_level': 'medium',
-                'show': True
-            }
-        elif days_until <= 14:
-            return {
-                'message': f"📦 {days_until} days until Valentine's Day. Plenty of time, but don't wait!",
-                'urgency_level': 'low',
-                'show': True
-            }
-        else:
-            return {
-                'message': None,
-                'urgency_level': 'none',
-                'show': False
-            }
-    
     @staticmethod
     def get_social_proof(product_title):
         """

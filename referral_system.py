@@ -107,17 +107,3 @@ def get_referral_stats(user):
         db.close()
 
 
-def get_valentines_day_bonus():
-    """Return Valentine's Day bonus info if we're in the promo window."""
-    vday = datetime(2026, 2, 14)
-    now = datetime.now()
-    days_until = (vday - now).days
-
-    if 0 <= days_until <= 14:
-        return {
-            'active': True,
-            'message': f"Valentine's Day bonus: double referral credits until Feb 14!",
-            'multiplier': 2,
-            'days_left': days_until,
-        }
-    return {'active': False}

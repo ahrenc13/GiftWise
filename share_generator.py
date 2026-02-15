@@ -23,11 +23,6 @@ def generate_share_image(user_name="Friend", rec_count=10, relationship="someone
     Returns:
         BytesIO containing SVG data (served as image/svg+xml)
     """
-    days_until_vday = (datetime(2026, 2, 14) - datetime.now()).days
-    vday_line = ""
-    if 0 <= days_until_vday <= 14:
-        vday_line = f'<text x="300" y="340" text-anchor="middle" font-size="16" fill="#f43f5e" font-weight="600">{days_until_vday} days until Valentine\'s Day</text>'
-
     svg = f'''<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
   <defs>
@@ -42,7 +37,6 @@ def generate_share_image(user_name="Friend", rec_count=10, relationship="someone
   <text x="300" y="195" text-anchor="middle" font-family="sans-serif" font-size="22" fill="rgba(255,255,255,0.95)">for {relationship} with AI</text>
   <rect x="175" y="230" width="250" height="50" rx="12" fill="white"/>
   <text x="300" y="262" text-anchor="middle" font-family="sans-serif" font-size="18" fill="#be123c" font-weight="700">Try it free at giftwise.fit</text>
-  {vday_line}
   <text x="300" y="380" text-anchor="middle" font-family="sans-serif" font-size="12" fill="rgba(255,255,255,0.6)">AI-powered gift recommendations from social media</text>
 </svg>'''
 

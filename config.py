@@ -67,9 +67,9 @@ SKIMLINKS_CLIENT_SECRET = os.environ.get('SKIMLINKS_CLIENT_SECRET', '')
 SKIMLINKS_PUBLISHER_DOMAIN_ID = os.environ.get('SKIMLINKS_PUBLISHER_DOMAIN_ID', '')
 
 # CJ Affiliate
-CJ_ACCOUNT_ID = os.environ.get('CJ_ACCOUNT_ID', '')
 CJ_API_KEY = os.environ.get('CJ_API_KEY', '')
-CJ_WEBSITE_ID = os.environ.get('CJ_WEBSITE_ID', '')  # PID from CJAM
+CJ_COMPANY_ID = os.environ.get('CJ_COMPANY_ID', '')  # Your publisher company ID (CID)
+CJ_PUBLISHER_ID = os.environ.get('CJ_PUBLISHER_ID', '')  # Your website/property ID (PID)
 
 # ShareASale (legacy - migrated to Awin)
 SHAREASALE_TOKEN = os.environ.get('SHAREASALE_TOKEN', '')
@@ -413,8 +413,8 @@ def validate_config():
     if not SKIMLINKS_PUBLISHER_ID:
         logger.warning("Skimlinks credentials missing - awaiting approval")
 
-    if not CJ_API_KEY:
-        logger.warning("CJ credentials missing - awaiting developer portal access")
+    if not CJ_API_KEY or not CJ_COMPANY_ID or not CJ_PUBLISHER_ID:
+        logger.warning("CJ Affiliate credentials incomplete - CJ search disabled")
 
     logger.info("Configuration validation complete")
     return True
@@ -547,7 +547,7 @@ if __name__ == "__main__":
     print(f"  Etsy: {'✓ Set' if ETSY_API_KEY else '✗ Missing'}")
     print(f"  Awin: {'✓ Set' if AWIN_API_TOKEN and AWIN_PUBLISHER_ID else '✗ Missing'}")
     print(f"  Skimlinks: {'✓ Set' if SKIMLINKS_PUBLISHER_ID else '✗ Missing'}")
-    print(f"  CJ: {'✓ Set' if CJ_API_KEY else '✗ Missing'}")
+    print(f"  CJ Affiliate: {'✓ Set' if CJ_API_KEY and CJ_COMPANY_ID and CJ_PUBLISHER_ID else '✗ Missing'}")
     print()
     print("Feature Flags:")
     for feature, enabled in FEATURES.items():

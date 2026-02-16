@@ -624,7 +624,12 @@
     <div class="container">
         <h1 class="page-title">Your Gift Recommendations</h1>
         <p class="page-subtitle">
-            Based on social media insights • {{ total_count }} gifts found
+            Based on social media insights •
+            {% if experience_count > 0 %}
+                {{ product_count }} gift{{ 's' if product_count != 1 else '' }} + {{ experience_count }} experience{{ 's' if experience_count != 1 else '' }}
+            {% else %}
+                {{ total_count }} personalized pick{{ 's' if total_count != 1 else '' }}
+            {% endif %}
             {% if position_number %}
             <span style="display: inline-block; margin-left: 12px; padding: 6px 14px; background: linear-gradient(135deg, #f43f5e, #be123c); color: white; border-radius: 20px; font-size: 13px; font-weight: 700;">
                 You're pick #{{ position_number }}

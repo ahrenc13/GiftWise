@@ -55,6 +55,23 @@ except ImportError as e:
     create_multiple_experiences = None
     get_pricing_for_user = None
 
+# Regional & seasonal intelligence (Phase 1 experience enhancements - Feb 16 2026)
+try:
+    from regional_culture import get_regional_context, get_seasonal_recommendations
+    from seasonal_experiences import get_seasonal_experiences, is_weather_appropriate
+    from local_events import get_local_events_for_month
+    from experience_synthesis import ExperienceSynthesizer
+    REGIONAL_INTELLIGENCE_AVAILABLE = True
+    logger.info("Regional intelligence loaded (regional_culture, seasonal_experiences, local_events)")
+except ImportError as e:
+    logger.warning(f"Regional intelligence not available: {e}")
+    REGIONAL_INTELLIGENCE_AVAILABLE = False
+    get_regional_context = None
+    get_seasonal_experiences = None
+    is_weather_appropriate = None
+    get_local_events_for_month = None
+    ExperienceSynthesizer = None
+
 # Import new recommendation architecture (profile → search → curate)
 try:
     from profile_analyzer import build_recipient_profile
@@ -2809,19 +2826,30 @@ def _focus_experience_query(experience_name, location):
 
 
 # Words too common to be useful for matching materials to products
-_STOPWORDS = {
-    # Articles / prepositions / conjunctions
+# IMPROVED STOPWORDS (Phase 1 fix): Split into noise vs context
+# TRUE NOISE: Articles, prepositions, conjunctions — always strip
+_NOISE_STOPWORDS = {
     'the', 'a', 'an', 'and', 'or', 'for', 'of', 'to', 'in', 'on', 'with',
     'from', 'by', 'at', 'up', 'out', 'into', 'over', 'its', 'is', 'are',
-    # Generic product/gift terms
-    'set', 'kit', 'pack', 'new', 'premium', 'deluxe', 'best', 'great',
-    'gift', 'item', 'product', 'buy', 'size', 'color', 'style', 'edition',
-    # Size/shape adjectives (match anything, distinguish nothing)
-    'small', 'large', 'big', 'mini', 'tiny', 'medium', 'xl', 'extra',
-    # Generic descriptors that cause false positives
-    'box', 'case', 'bag', 'holder', 'portable', 'travel', 'home', 'pro',
-    'classic', 'modern', 'vintage', 'original', 'special', 'super', 'ultra',
+    'new', 'premium', 'deluxe', 'best', 'great', 'gift', 'item', 'product',
+    'buy', 'size', 'color', 'style', 'edition', 'classic', 'modern',
+    'vintage', 'original', 'special', 'super', 'ultra',
 }
+
+# CONTEXT WORDS: Carry meaning for matching (portable speaker ≠ any speaker)
+# These are ONLY stripped for TITLE indexing, NOT for matching
+_CONTEXT_WORDS = {
+    'portable', 'travel', 'home', 'outdoor', 'indoor', 'wireless',
+    'rechargeable', 'waterproof', 'foldable', 'collapsible', 'compact',
+    'bag', 'case', 'holder', 'box', 'kit', 'set', 'pack',
+    'small', 'large', 'big', 'mini', 'tiny', 'medium', 'xl', 'extra',
+}
+
+# Combined for title indexing (search) — still strip context words from product titles
+_STOPWORDS = _NOISE_STOPWORDS | _CONTEXT_WORDS
+
+# For material matching, ONLY strip true noise
+_MATERIAL_STOPWORDS = _NOISE_STOPWORDS
 
 # Materials that describe actions/DIY tasks rather than purchasable products
 _NON_PURCHASABLE_SIGNALS = {
@@ -2882,7 +2910,8 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
         best = None
         best_score = 0
         if item_name and products:
-            item_words = {w for w in re.split(r'\W+', item_name.lower()) if len(w) >= 2 and w not in _STOPWORDS}
+            # Use _MATERIAL_STOPWORDS (only noise) so context words like "portable" are preserved
+            item_words = {w for w in re.split(r'\W+', item_name.lower()) if len(w) >= 2 and w not in _MATERIAL_STOPWORDS}
             # Skip matching for non-purchasable items (playlists, DIY tasks, etc.)
             is_non_purchasable = bool(item_words & _NON_PURCHASABLE_SIGNALS)
             if is_non_purchasable:
@@ -2890,11 +2919,10 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
                 logger.info(f"MATERIALS: '{item_name[:40]}' is non-purchasable, skipping inventory match")
             # Require enough overlap that the match is meaningful:
             # - At least 2 words in common (absolute floor)
-            # - At least 40% of the material's meaningful words must match
-            # This prevents "small portable blanket for dogs" (4 words after stopwords)
-            # from matching a product that only shares 1 generic word.
+            # - At least 35% of the material's meaningful words must match (lowered from 40%)
+            # With improved stopwords (keeping "portable", "travel"), matches are more precise
             n_item_words = len(item_words)
-            min_overlap = max(2, int(n_item_words * 0.4)) if n_item_words > 1 else 1
+            min_overlap = max(2, int(n_item_words * 0.35)) if n_item_words > 1 else 1
 
             # Collect unique candidate products from word index
             seen_links = set()
@@ -2955,14 +2983,14 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
             where = (m.get('where_to_buy') or '').lower()
             if 'etsy' in where:
                 m['product_url'] = f'https://www.etsy.com/search?q={search_query}'
-                m['where_to_buy'] = 'Search Etsy'
+                m['where_to_buy'] = 'Find on Etsy'
             elif 'ebay' in where:
                 m['product_url'] = f'https://www.ebay.com/sch/i.html?_nkw={search_query}'
-                m['where_to_buy'] = 'Search eBay'
+                m['where_to_buy'] = 'Find on eBay'
             else:
                 tag_param = f'&tag={affiliate_tag}' if affiliate_tag else ''
                 m['product_url'] = f'https://www.amazon.com/s?k={search_query}{tag_param}'
-                m['where_to_buy'] = 'Search Amazon'
+                m['where_to_buy'] = 'Find on Amazon'  # Better UX than "Search Amazon"
             m['is_search_link'] = True
             logger.info(f"MATERIALS: No match for '{item_name[:40]}' → search fallback ({m['where_to_buy']})")
         # Apply affiliate tracking to all material links
@@ -3274,6 +3302,31 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
             if not search_geography:
                 search_geography = 'near me'
 
+            # REGIONAL INTELLIGENCE: Add cultural context and seasonal appropriateness
+            regional_context = {}
+            local_events = []
+            if REGIONAL_INTELLIGENCE_AVAILABLE and city_region and state_val:
+                try:
+                    from datetime import datetime
+                    current_month = datetime.now().month
+
+                    # Get regional culture context (gift norms, local experiences, demographic insights)
+                    regional_context = get_regional_context(
+                        city=city_region,
+                        state=state_val,
+                        age=recipient_age,
+                        gender=recipient_gender
+                    )
+                    logger.info(f"Regional context: {city_region}, {state_val} - {regional_context.get('city_vibe', 'N/A')}")
+
+                    # Get local events for this month
+                    local_events = get_local_events_for_month(city_region, current_month)
+                    if local_events:
+                        logger.info(f"Local events found: {len(local_events)} for {city_region} in month {current_month}")
+
+                except Exception as e:
+                    logger.warning(f"Regional intelligence lookup failed: {e}")
+
             for exp in experience_gifts:
                 materials_list = _backfill_materials_links(
                     exp.get('materials_needed', []), products, is_bad_product_url,
@@ -3284,7 +3337,18 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                     materials_items = [f"{m.get('item', 'Item')} ({m.get('estimated_price', '$XX')})" for m in materials_list[:3]]
                     materials_summary = f"Materials needed: {', '.join(materials_items)}"
                 how_special = exp.get('how_to_make_it_special', '')
-                parts = [exp.get('description', ''), exp.get('how_to_execute', ''), materials_summary]
+
+                # Enhance description with regional context
+                base_description = exp.get('description', '')
+                if regional_context and regional_context.get('city_vibe'):
+                    # Add regional flavor to description
+                    regional_note = f"\n\n🌍 Local vibe: {regional_context['city_vibe'].replace('_', ' ').title()}"
+                    if regional_context.get('demographic_notes'):
+                        demo_note = regional_context['demographic_notes'][0]
+                        regional_note += f" — {demo_note}"
+                    base_description += regional_note
+
+                parts = [base_description, exp.get('how_to_execute', ''), materials_summary]
                 full_description = '\n\n'.join(p for p in parts if p).strip()
                 location_info = ""
                 if exp.get('location_specific'):
@@ -3339,6 +3403,11 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                     first_url = (materials_list[0].get('product_url') or '').strip()
                     if first_url and not materials_list[0].get('is_search_link'):
                         primary_link = first_url
+
+                # Determine if this is bookable or DIY (for badge display)
+                is_bookable = bool(experience_provider_links or reservation_link or venue_website)
+                is_diy = bool(materials_list and not is_bookable)
+
                 all_recommendations.append({
                     'name': exp.get('name', 'Experience Gift'),
                     'description': full_description,
@@ -3356,7 +3425,12 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                     'confidence_level': exp.get('confidence_level', 'adventurous'),
                     'materials_needed': materials_list,
                     'location_specific': exp.get('location_specific', False),
-                    'how_to_make_it_special': how_special
+                    'how_to_make_it_special': how_special,
+                    # Regional intelligence fields (Phase 1 enhancements)
+                    'is_bookable': is_bookable,  # Has provider links or reservation
+                    'is_diy': is_diy,  # Has materials but no booking option
+                    'regional_context': regional_context.get('city_vibe', '') if regional_context else '',
+                    'local_events': local_events[:3] if local_events else [],  # Top 3 relevant events
                 })
 
             if not all_recommendations:
@@ -3545,6 +3619,10 @@ def view_recommendations(user=None):
     total_count = len(recommendations)
     locked_count = 0 if unlocked else max(0, total_count - 3)
 
+    # Count products vs experiences separately (for better UX messaging)
+    product_count = sum(1 for r in recommendations if r.get('gift_type') == 'physical')
+    experience_count = sum(1 for r in recommendations if r.get('gift_type') == 'experience')
+
     return render_template('recommendations.html',
                          recommendations=visible_recommendations,
                          data_quality=data_quality,
@@ -3554,6 +3632,8 @@ def view_recommendations(user=None):
                          position_number=position_number,
                          unlocked=unlocked,
                          total_count=total_count,
+                         product_count=product_count,
+                         experience_count=experience_count,
                          locked_count=locked_count)
 
 

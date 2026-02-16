@@ -7,6 +7,10 @@
 
     <title>{% block title %}Giftwise - AI Gift Recommendations{% endblock %}</title>
 
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='images/logo.png') }}">
+
     {% block meta %}
     <meta name="description" content="AI-powered gift recommendations based on social media insights">
     {% endblock %}

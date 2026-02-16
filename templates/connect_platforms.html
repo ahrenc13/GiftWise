@@ -296,7 +296,26 @@
             {{ error_message }}
         </div>
         {% endif %}
-        
+
+        <div class="header">
+            <h1>Connect Your Platforms</h1>
+            <p class="subtitle">The more platforms you connect, the better your recommendations</p>
+        </div>
+
+        <div class="platforms-grid">
+            <!-- Instagram -->
+            <div class="platform-card {% if 'instagram' not in allowed_platforms %}locked{% endif %}">
+                {% if 'instagram' not in allowed_platforms %}
+                <div class="pro-badge">Pro</div>
+                {% endif %}
+
+                <div class="platform-header">
+                    <div class="platform-icon instagram-icon">📷</div>
+                    <div class="platform-info">
+                        <h3>Instagram</h3>
+                        <p>Lifestyle & interests</p>
+                    </div>
+                </div>
 
                 {% if platforms.get('instagram', {}).get('status') == 'connected' %}
                     <div class="platform-status connected">
@@ -435,6 +454,7 @@
                 </div>
             </div>
         </div>
+        </div> <!-- end platforms-grid -->
 
         <div class="continue-section">
             <h2>Ready to Generate Recommendations?</h2>

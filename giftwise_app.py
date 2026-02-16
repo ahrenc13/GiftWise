@@ -57,14 +57,12 @@ except ImportError as e:
 
 # Regional & seasonal intelligence (Phase 1 experience enhancements - Feb 16 2026)
 try:
-    from regional_culture import get_regional_context, get_seasonal_recommendations
+    from regional_culture import get_regional_context
     from seasonal_experiences import get_seasonal_experiences, is_weather_appropriate
     from local_events import get_local_events_for_month
     from experience_synthesis import ExperienceSynthesizer
     REGIONAL_INTELLIGENCE_AVAILABLE = True
-    logger.info("Regional intelligence loaded (regional_culture, seasonal_experiences, local_events)")
 except ImportError as e:
-    logger.warning(f"Regional intelligence not available: {e}")
     REGIONAL_INTELLIGENCE_AVAILABLE = False
     get_regional_context = None
     get_seasonal_experiences = None

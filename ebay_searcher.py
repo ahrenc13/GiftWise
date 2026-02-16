@@ -12,17 +12,10 @@ import time
 
 import requests
 
-logger = logging.getLogger(__name__)
+from search_query_utils import build_search_query
+from api_client import APIClient
 
-try:
-    from rapidapi_amazon_searcher import _clean_interest_for_search, _categorize_interest, _QUERY_SUFFIXES
-except ImportError:
-    # Fallback if import fails — use simple passthrough
-    def _clean_interest_for_search(name):
-        return name
-    def _categorize_interest(name_lower):
-        return 'default'
-    _QUERY_SUFFIXES = {'default': ['gift', 'accessories', 'lover gift']}
+logger = logging.getLogger(__name__)
 
 # Token cache: reuse until ~5 min before expiry
 _ebay_token = None
@@ -40,31 +33,33 @@ def _get_app_token(client_id, client_secret):
     now = time.time()
     if _ebay_token and now < _ebay_token_expires - EBAY_TOKEN_BUFFER:
         return _ebay_token
+
     credentials = f"{client_id}:{client_secret}"
     b64 = base64.b64encode(credentials.encode()).decode()
-    try:
-        r = requests.post(
-            TOKEN_URL,
-            headers={
-                "Content-Type": "application/x-www-form-urlencoded",
-                "Authorization": f"Basic {b64}",
-            },
-            data={
-                "grant_type": "client_credentials",
-                "scope": SCOPE,
-            },
-            timeout=15,
-        )
-        r.raise_for_status()
-        data = r.json()
-        _ebay_token = data.get("access_token")
-        expires_in = int(data.get("expires_in", 7200))
-        _ebay_token_expires = now + expires_in
-        logger.info("eBay app token obtained, expires in %s s", expires_in)
-        return _ebay_token
-    except requests.RequestException as e:
-        logger.warning("eBay token request failed: %s", e)
+
+    # Use APIClient for automatic retry on transient failures
+    client = APIClient(timeout=15, max_retries=2)
+    data = client.post(
+        TOKEN_URL,
+        headers={
+            "Content-Type": "application/x-www-form-urlencoded",
+            "Authorization": f"Basic {b64}",
+        },
+        data={
+            "grant_type": "client_credentials",
+            "scope": SCOPE,
+        },
+    )
+
+    if not data:
+        logger.warning("eBay token request failed - no response")
         return None
+
+    _ebay_token = data.get("access_token")
+    expires_in = int(data.get("expires_in", 7200))
+    _ebay_token_expires = now + expires_in
+    logger.info("eBay app token obtained, expires in %s s", expires_in)
+    return _ebay_token
 
 
 def search_products_ebay(profile, client_id, client_secret, target_count=20):
@@ -86,8 +81,6 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
     if not interests:
         return []
 
-    import random
-
     search_queries = []
     for interest in interests:
         name = interest.get("name", "")
@@ -96,16 +89,17 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
         if interest.get("is_work", False):
             logger.info("Skipping work interest for eBay: %s", name)
             continue
-        cleaned = _clean_interest_for_search(name)
-        category = _categorize_interest(cleaned.lower())
-        suffix = random.choice(_QUERY_SUFFIXES[category])
-        query = f"{cleaned} {suffix}"
+
+        # Build search query using centralized utility
+        intensity = interest.get("intensity", "medium")
+        query = build_search_query(name, intensity=intensity)
+
         search_queries.append({
             "query": query,
             "interest": name,
-            "priority": "high" if interest.get("intensity") == "passionate" else "medium",
+            "priority": "high" if intensity == "passionate" else "medium",
         })
-        logger.debug("eBay query: '%s' → '%s' (category: %s)", name, query, category)
+        logger.debug("eBay query: '%s' → '%s' (intensity: %s)", name, query, intensity)
     search_queries = search_queries[:10]
     if not search_queries:
         return []
@@ -113,6 +107,9 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
     all_products = []
     seen_ids = set()
     per_query = max(3, (target_count // len(search_queries)) + 1)
+
+    # Use APIClient for automatic retry on transient failures
+    client = APIClient(timeout=15, max_retries=2)
 
     for q in search_queries:
         if len(all_products) >= target_count:
@@ -128,20 +125,18 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
             "offset": random.choice([0, 0, 0, 0, 5]),
             "filter": "conditionIds:{1000|1500|1750|2000|2500}",  # New, Open Box, New with defects, Certified Refurb, Seller Refurb
         }
-        try:
-            r = requests.get(
-                BROWSE_SEARCH_URL,
-                headers={
-                    "Authorization": f"Bearer {token}",
-                    "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
-                },
-                params=params,
-                timeout=15,
-            )
-            r.raise_for_status()
-            data = r.json()
-        except requests.RequestException as e:
-            logger.warning("eBay search failed for '%s': %s", query, e)
+
+        data = client.get(
+            BROWSE_SEARCH_URL,
+            headers={
+                "Authorization": f"Bearer {token}",
+                "X-EBAY-C-MARKETPLACE-ID": "EBAY_US",
+            },
+            params=params,
+        )
+
+        if not data:
+            logger.warning("eBay search failed for '%s'", query)
             continue
 
         summaries = data.get("itemSummaries") or []

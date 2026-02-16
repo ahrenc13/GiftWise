@@ -19,6 +19,8 @@ import time
 import zlib
 import requests
 
+from api_client import APIClient
+
 logger = logging.getLogger(__name__)
 
 
@@ -73,14 +75,14 @@ def _get_feed_list(api_key):
         return _awin_feed_list_cache[api_key]
 
     url = f"https://productdata.awin.com/datafeed/list/apikey/{api_key}"
-    try:
-        r = requests.get(url, timeout=30)
-        r.raise_for_status()
-    except requests.RequestException as e:
-        logger.warning("Awin feed list request failed: %s", e)
-        return []
 
-    text = r.text
+    # Use APIClient for automatic retry on transient failures
+    client = APIClient(timeout=30, max_retries=2)
+    text = client.get(url, parse_json=False)
+
+    if not text:
+        logger.warning("Awin feed list request failed")
+        return []
     if not text.strip():
         return []
 

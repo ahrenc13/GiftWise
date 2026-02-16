@@ -19,6 +19,7 @@ import logging
 from urllib.parse import urlparse
 import os
 import hashlib
+from typing import Dict, Optional, List, Any
 
 logger = logging.getLogger('giftwise')
 

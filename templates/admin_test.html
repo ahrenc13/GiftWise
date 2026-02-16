@@ -1,17 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Test Pipeline</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: #111827; color: #f3f4f6; padding: 20px;
-            max-width: 800px; margin: 0 auto;
-        }
-        h1 { font-size: 24px; color: #f9fafb; margin-bottom: 8px; }
+{% extends "base.html" %}
+
+{% block title %}Admin Test Pipeline{% endblock %}
+
+{% block extra_css %}
+h1 { font-size: 24px; color: #f9fafb; margin-bottom: 8px; }
         .subtitle { font-size: 14px; color: #6b7280; margin-bottom: 32px; }
         .section {
             background: #1f2937; border-radius: 12px; padding: 24px; margin-bottom: 20px;
@@ -60,10 +52,10 @@
             color: #10b981; margin-top: 12px;
             overflow-x: auto;
         }
-    </style>
-</head>
-<body>
-    <h1>Admin Test Pipeline</h1>
+{% endblock %}
+
+{% block content %}
+<h1>Admin Test Pipeline</h1>
     <div class="subtitle">Run the REAL scraping + analysis + curation on your Instagram</div>
 
     <div class="section">
@@ -156,5 +148,4 @@
                 .catch(err => alert('Network error: ' + err));
         }
     </script>
-</body>
-</html>
+{% endblock %}

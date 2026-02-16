@@ -55,6 +55,23 @@ except ImportError as e:
     create_multiple_experiences = None
     get_pricing_for_user = None
 
+# Regional & seasonal intelligence (Phase 1 experience enhancements - Feb 16 2026)
+try:
+    from regional_culture import get_regional_context, get_seasonal_recommendations
+    from seasonal_experiences import get_seasonal_experiences, is_weather_appropriate
+    from local_events import get_local_events_for_month
+    from experience_synthesis import ExperienceSynthesizer
+    REGIONAL_INTELLIGENCE_AVAILABLE = True
+    logger.info("Regional intelligence loaded (regional_culture, seasonal_experiences, local_events)")
+except ImportError as e:
+    logger.warning(f"Regional intelligence not available: {e}")
+    REGIONAL_INTELLIGENCE_AVAILABLE = False
+    get_regional_context = None
+    get_seasonal_experiences = None
+    is_weather_appropriate = None
+    get_local_events_for_month = None
+    ExperienceSynthesizer = None
+
 # Import new recommendation architecture (profile → search → curate)
 try:
     from profile_analyzer import build_recipient_profile
@@ -65,6 +82,19 @@ try:
 except ImportError:
     NEW_RECOMMENDATION_FLOW = False
     pass
+
+# URL utilities (consolidated from 4 scattered implementations)
+from url_utils import (
+    normalize_product_url,
+    is_valid_product_url,
+    is_bad_product_url,
+    extract_domain,
+    extract_base_domain,
+    generate_amazon_search_url,
+)
+
+# Apify scraper utilities (eliminates Instagram + TikTok duplication)
+from apify_utils import scrape_instagram_apify, scrape_tiktok_apify
 
 
 def profile_for_search_and_curation(profile):
@@ -891,276 +921,101 @@ def check_pinterest_profile(username):
 
 def scrape_instagram_profile(username, max_posts=50, task_id=None):
     """
-    Scrape Instagram with progress tracking
+    Scrape Instagram with progress tracking (refactored to use apify_utils)
     """
-    if not APIFY_API_TOKEN:
-        logger.warning("No Apify token configured")
+    # Use generic Apify scraper
+    data = scrape_instagram_apify(
+        username=username,
+        max_posts=max_posts,
+        task_id=task_id,
+        progress_callback=set_progress,
+        apify_token=APIFY_API_TOKEN,
+        actor_id=APIFY_INSTAGRAM_ACTOR
+    )
+
+    if not data:
         return None
-    
-    try:
-        if task_id:
-            set_progress(task_id, 'running', 'Starting Instagram scraper...', 5)
-        
-        logger.info(f"Starting Instagram scrape for @{username}")
-        
-        response = requests.post(
-            f'https://api.apify.com/v2/acts/{APIFY_INSTAGRAM_ACTOR}/runs?token={APIFY_API_TOKEN}',
-            json={
-                'username': [username],
-                'resultsLimit': max_posts
-            },
-            timeout=30
-        )
-        
-        if response.status_code != 201:
-            if task_id:
-                set_progress(task_id, 'error', 'Failed to start scraper', 0)
-            logger.error(f"Failed to start Instagram scraper: {response.status_code}")
-            return None
-        
-        run_id = response.json()['data']['id']
-        if task_id:
-            set_progress(task_id, 'running', f'Finding @{username}...', 15)
-        
-        # Poll for completion
-        max_wait = 120
-        elapsed = 0
-        
-        while elapsed < max_wait:
-            wait_time = 2 if elapsed < 30 else 5
-            time.sleep(wait_time)
-            elapsed += wait_time
-            
-            # Update progress
-            if task_id:
-                progress_pct = min(15 + (elapsed / max_wait) * 75, 90)
-                messages = {
-                    10: f'Finding @{username}...',
-                    30: 'Analyzing profile...',
-                    50: 'Downloading posts...',
-                    70: 'Extracting interests...',
-                    85: 'Processing data...'
-                }
-                msg = messages.get(int(progress_pct // 10) * 10, 'Analyzing profile...')
-                set_progress(task_id, 'running', msg, progress_pct)
-            
-            status_response = requests.get(
-                f'https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}',
-                timeout=10
-            )
-            
-            if status_response.status_code != 200:
-                continue
-                
-            status = status_response.json()['data']['status']
-            
-            if status == 'SUCCEEDED':
-                break
-            elif status in ['FAILED', 'ABORTED', 'TIMED-OUT']:
-                if task_id:
-                    set_progress(task_id, 'error', 'Instagram scraping failed', 0)
-                logger.error(f"Instagram scraping failed with status: {status}")
-                return None
-        
-        # Check if we timed out
-        if elapsed >= max_wait:
-            logger.warning(f"Instagram scrape timeout after {max_wait}s")
-            if task_id:
-                set_progress(task_id, 'error', 'Scraping timed out', 0)
-            return None
-        
-        # Get results
-        results_response = requests.get(
-            f'https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?token={APIFY_API_TOKEN}',
-            timeout=30
-        )
-        
-        if results_response.status_code != 200:
-            if task_id:
-                set_progress(task_id, 'error', 'Failed to retrieve data', 0)
-            logger.error(f"Failed to retrieve Instagram data: {results_response.status_code}")
-            return None
-        
-        data = results_response.json()
-        
-        if not data:
-            if task_id:
-                set_progress(task_id, 'error', 'No posts found', 0)
-            logger.warning(f"No posts found for Instagram user @{username}")
-            return None
-        
-        # Parse data
-        first_post = data[0]
-        owner_username = first_post.get('ownerUsername', username)
-        owner_full_name = first_post.get('ownerFullName', '')
-        owner_bio = first_post.get('ownerBio', '') or first_post.get('biography', '') or ''
-        owner_followers = first_post.get('ownerFollowers', 0) or first_post.get('followersCount', 0) or 0
 
-        posts = data[:max_posts]
+    # Parse Instagram-specific data
+    first_post = data[0]
+    owner_username = first_post.get('ownerUsername', username)
+    owner_full_name = first_post.get('ownerFullName', '')
+    owner_bio = first_post.get('ownerBio', '') or first_post.get('biography', '') or ''
+    owner_followers = first_post.get('ownerFollowers', 0) or first_post.get('followersCount', 0) or 0
 
-        result = {
-            'username': owner_username,
-            'full_name': owner_full_name,
-            'bio': owner_bio,
-            'followers': owner_followers,
-            'posts': [
-                {
-                    'caption': post.get('caption', ''),
-                    'likes': post.get('likesCount', 0),
-                    'comments': post.get('commentsCount', 0),
-                    'timestamp': post.get('timestamp', ''),
-                    'type': post.get('type', 'image'),
-                    'url': post.get('url', ''),
-                    'hashtags': post.get('hashtags', [])
-                }
-                for post in posts
-            ],
-            'highlights': [],
-            'total_posts': len(posts),
-            'total_highlights': 0,
-            'scraped_at': datetime.now().isoformat()
-        }
-        
-        if task_id:
-            set_progress(task_id, 'complete', f'✓ Connected! Found {len(posts)} posts', 100)
-        
-        logger.info(f"Successfully scraped {len(posts)} Instagram posts for @{username}")
-        
-        # Track Apify usage (typically 1 compute unit per run)
-        if USAGE_TRACKING_AVAILABLE:
-            try:
-                track_apify_usage(1, 'instagram')
-            except Exception as e:
-                logger.warning(f"Failed to track Apify usage: {e}")
+    posts = data[:max_posts]
 
-        # Track Apify usage
-        if USAGE_TRACKING_AVAILABLE:
+    result = {
+        'username': owner_username,
+        'full_name': owner_full_name,
+        'bio': owner_bio,
+        'followers': owner_followers,
+        'posts': [
+            {
+                'caption': post.get('caption', ''),
+                'likes': post.get('likesCount', 0),
+                'comments': post.get('commentsCount', 0),
+                'timestamp': post.get('timestamp', ''),
+                'type': post.get('type', 'image'),
+                'url': post.get('url', ''),
+                'hashtags': post.get('hashtags', [])
+            }
+            for post in posts
+        ],
+        'highlights': [],
+        'total_posts': len(posts),
+        'total_highlights': 0,
+        'scraped_at': datetime.now().isoformat()
+    }
+
+    if task_id:
+        set_progress(task_id, 'complete', f'✓ Connected! Found {len(posts)} posts', 100)
+
+    logger.info(f"Successfully scraped {len(posts)} Instagram posts for @{username}")
+
+    # Track Apify usage (typically 1 compute unit per run)
+    if USAGE_TRACKING_AVAILABLE:
+        try:
             track_apify_usage(1, 'instagram')
-        
-        return result
-        
-    except Exception as e:
-        logger.error(f"Instagram scraping error: {e}", exc_info=True)
-        if task_id:
-            set_progress(task_id, 'error', f'Error: {str(e)}', 0)
-        return None
+        except Exception as e:
+            logger.warning(f"Failed to track Apify usage: {e}")
+
+    return result
 
 def scrape_tiktok_profile(username, max_videos=50, task_id=None):
     """
-    Scrape TikTok with progress tracking and repost analysis
+    Scrape TikTok with progress tracking and repost analysis (refactored to use apify_utils)
     """
-    if not APIFY_API_TOKEN:
-        logger.warning("No Apify token configured")
+    # Use generic Apify scraper
+    data = scrape_tiktok_apify(
+        username=username,
+        max_videos=max_videos,
+        task_id=task_id,
+        progress_callback=set_progress,
+        apify_token=APIFY_API_TOKEN,
+        actor_id=APIFY_TIKTOK_ACTOR
+    )
+
+    if not data:
         return None
-    
-    try:
-        if task_id:
-            set_progress(task_id, 'running', 'Starting TikTok scraper...', 5)
-        
-        logger.info(f"Starting TikTok scrape for @{username}")
-        
-        response = requests.post(
-            f'https://api.apify.com/v2/acts/{APIFY_TIKTOK_ACTOR}/runs?token={APIFY_API_TOKEN}',
-            json={
-                'profiles': [username],
-                'resultsPerPage': max_videos
-            },
-            timeout=30
-        )
-        
-        if response.status_code != 201:
-            if task_id:
-                set_progress(task_id, 'error', 'Failed to start scraper', 0)
-            logger.error(f"Failed to start TikTok scraper: {response.status_code}")
-            return None
-        
-        run_id = response.json()['data']['id']
-        if task_id:
-            set_progress(task_id, 'running', f'Finding @{username}...', 15)
-        
-        # Poll for completion
-        max_wait = 120
-        elapsed = 0
-        
-        while elapsed < max_wait:
-            wait_time = 2 if elapsed < 30 else 5
-            time.sleep(wait_time)
-            elapsed += wait_time
-            
-            # Update progress
-            if task_id:
-                progress_pct = min(15 + (elapsed / max_wait) * 75, 90)
-                messages = {
-                    10: f'Finding @{username}...',
-                    30: 'Analyzing videos...',
-                    50: 'Detecting reposts...',
-                    70: 'Extracting interests...',
-                    85: 'Processing data...'
-                }
-                msg = messages.get(int(progress_pct // 10) * 10, 'Analyzing videos...')
-                set_progress(task_id, 'running', msg, progress_pct)
-            
-            status_response = requests.get(
-                f'https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}',
-                timeout=10
-            )
-            
-            if status_response.status_code != 200:
-                continue
-                
-            status = status_response.json()['data']['status']
-            
-            if status == 'SUCCEEDED':
-                break
-            elif status in ['FAILED', 'ABORTED', 'TIMED-OUT']:
-                if task_id:
-                    set_progress(task_id, 'error', 'TikTok scraping failed', 0)
-                logger.error(f"TikTok scraping failed with status: {status}")
-                return None
-        
-        # Get results
-        results_response = requests.get(
-            f'https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?token={APIFY_API_TOKEN}',
-            timeout=30
-        )
-        
-        if results_response.status_code != 200:
-            if task_id:
-                set_progress(task_id, 'error', 'Failed to retrieve data', 0)
-            logger.error(f"Failed to retrieve TikTok data: {results_response.status_code}")
-            return None
-        
-        data = results_response.json()
-        
-        if not data:
-            if task_id:
-                set_progress(task_id, 'error', 'No videos found', 0)
-            logger.warning(f"No videos found for TikTok user @{username}")
-            return None
-        
-        # Parse with repost intelligence
-        parsed_data = parse_tiktok_data(data, username)
-        
-        if task_id:
-            total_videos = parsed_data.get('total_videos', 0)
-            set_progress(task_id, 'complete', f'✓ Connected! Found {total_videos} videos', 100)
-        
-        logger.info(f"Successfully scraped {parsed_data.get('total_videos', 0)} TikTok videos for @{username}")
-        
-        # Track Apify usage (typically 1 compute unit per run)
-        if USAGE_TRACKING_AVAILABLE:
-            try:
-                track_apify_usage(1, 'tiktok')
-            except Exception as e:
-                logger.warning(f"Failed to track Apify usage: {e}")
-        
-        return parsed_data
-        
-    except Exception as e:
-        logger.error(f"TikTok scraping error: {e}", exc_info=True)
-        if task_id:
-            set_progress(task_id, 'error', f'Error: {str(e)}', 0)
-        return None
+
+    # Parse with repost intelligence
+    parsed_data = parse_tiktok_data(data, username)
+
+    if task_id:
+        total_videos = parsed_data.get('total_videos', 0)
+        set_progress(task_id, 'complete', f'✓ Connected! Found {total_videos} videos', 100)
+
+    logger.info(f"Successfully scraped {parsed_data.get('total_videos', 0)} TikTok videos for @{username}")
+
+    # Track Apify usage (typically 1 compute unit per run)
+    if USAGE_TRACKING_AVAILABLE:
+        try:
+            track_apify_usage(1, 'tiktok')
+        except Exception as e:
+            logger.warning(f"Failed to track Apify usage: {e}")
+
+    return parsed_data
 
 def scrape_pinterest_profile(username, max_pins=100, task_id=None):
     """
@@ -1745,88 +1600,7 @@ def contact():
 # WAITLIST ROUTES (Pre-Launch)
 # ============================================================================
 
-@app.route('/beta')
-@app.route('/waitlist')
-def waitlist():
-    """Waitlist landing page for pre-launch signups"""
-    return render_template('waitlist.html')
-
-@app.route('/api/waitlist', methods=['POST'])
-def api_waitlist():
-    """Save waitlist signup (handle-based for Gen Z)"""
-    import csv
-    import os
-    from datetime import datetime
-
-    try:
-        data = request.get_json()
-        handle = data.get('handle', '').strip().lower()
-        # Remove @ prefix if included
-        if handle.startswith('@'):
-            handle = handle[1:]
-
-        platform = data.get('platform', '')
-        phone = data.get('phone', '').strip()
-        shopping_for = data.get('shopping_for', '')
-        timestamp = data.get('timestamp', datetime.now().isoformat())
-        referrer = data.get('referrer', '')  # For tracking referral source
-
-        if not handle:
-            return jsonify({'error': 'Handle required'}), 400
-
-        if not platform:
-            return jsonify({'error': 'Platform required'}), 400
-
-        # Create data directory if it doesn't exist
-        os.makedirs('data', exist_ok=True)
-
-        # Append to CSV file
-        waitlist_file = 'data/waitlist.csv'
-        file_exists = os.path.isfile(waitlist_file)
-
-        # Count current signups to return position
-        position = 1
-        if file_exists:
-            with open(waitlist_file, 'r') as f:
-                position = sum(1 for line in f) - 1 + 1  # -1 for header, +1 for this signup
-
-        # Write signup
-        with open(waitlist_file, 'a', newline='') as f:
-            writer = csv.writer(f)
-            if not file_exists:
-                writer.writerow(['handle', 'platform', 'phone', 'shopping_for', 'referrer', 'timestamp', 'position'])
-            writer.writerow([handle, platform, phone, shopping_for, referrer, timestamp, position])
-
-        logger.info(f"Waitlist signup: @{handle} on {platform} (position #{position})")
-
-        return jsonify({
-            'success': True,
-            'position': position,
-            'handle': handle,
-            'message': 'Welcome to the waitlist!'
-        })
-
-    except Exception as e:
-        logger.error(f"Waitlist signup error: {e}")
-        return jsonify({'error': 'Something went wrong'}), 500
-
-@app.route('/api/waitlist/stats')
-def waitlist_stats():
-    """Return current waitlist count for display on signup page"""
-    import csv
-    import os
-
-    waitlist_file = 'data/waitlist.csv'
-    if not os.path.exists(waitlist_file):
-        return jsonify({'count': 0})
-
-    try:
-        with open(waitlist_file, 'r') as f:
-            count = sum(1 for line in f) - 1  # -1 for header
-        return jsonify({'count': max(0, count)})
-    except Exception as e:
-        logger.error(f"Waitlist stats error: {e}")
-        return jsonify({'count': 0})
+# NOTE: Waitlist routes moved to lines 4574+ (consolidated implementation with referral bumps, validation, and dashboard)
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -2933,16 +2707,7 @@ def _apply_affiliate_tag(url):
     return url
 
 
-def _normalize_url_for_matching(u):
-    """Normalize a URL for inventory matching: strip whitespace, trailing slash, tracking params."""
-    if not u or not isinstance(u, str):
-        return ''
-    u = u.strip().rstrip('/')
-    if '?' in u:
-        base, _, qs = u.partition('?')
-        if '/dp/' in base or '/listing/' in base or '/itm/' in base:
-            u = base
-    return u or ''
+# NOTE: normalize_product_url moved to url_utils.py as normalize_product_url()
 
 
 def _validate_experience_url(url, timeout=3):
@@ -3061,19 +2826,30 @@ def _focus_experience_query(experience_name, location):
 
 
 # Words too common to be useful for matching materials to products
-_STOPWORDS = {
-    # Articles / prepositions / conjunctions
+# IMPROVED STOPWORDS (Phase 1 fix): Split into noise vs context
+# TRUE NOISE: Articles, prepositions, conjunctions — always strip
+_NOISE_STOPWORDS = {
     'the', 'a', 'an', 'and', 'or', 'for', 'of', 'to', 'in', 'on', 'with',
     'from', 'by', 'at', 'up', 'out', 'into', 'over', 'its', 'is', 'are',
-    # Generic product/gift terms
-    'set', 'kit', 'pack', 'new', 'premium', 'deluxe', 'best', 'great',
-    'gift', 'item', 'product', 'buy', 'size', 'color', 'style', 'edition',
-    # Size/shape adjectives (match anything, distinguish nothing)
-    'small', 'large', 'big', 'mini', 'tiny', 'medium', 'xl', 'extra',
-    # Generic descriptors that cause false positives
-    'box', 'case', 'bag', 'holder', 'portable', 'travel', 'home', 'pro',
-    'classic', 'modern', 'vintage', 'original', 'special', 'super', 'ultra',
+    'new', 'premium', 'deluxe', 'best', 'great', 'gift', 'item', 'product',
+    'buy', 'size', 'color', 'style', 'edition', 'classic', 'modern',
+    'vintage', 'original', 'special', 'super', 'ultra',
 }
+
+# CONTEXT WORDS: Carry meaning for matching (portable speaker ≠ any speaker)
+# These are ONLY stripped for TITLE indexing, NOT for matching
+_CONTEXT_WORDS = {
+    'portable', 'travel', 'home', 'outdoor', 'indoor', 'wireless',
+    'rechargeable', 'waterproof', 'foldable', 'collapsible', 'compact',
+    'bag', 'case', 'holder', 'box', 'kit', 'set', 'pack',
+    'small', 'large', 'big', 'mini', 'tiny', 'medium', 'xl', 'extra',
+}
+
+# Combined for title indexing (search) — still strip context words from product titles
+_STOPWORDS = _NOISE_STOPWORDS | _CONTEXT_WORDS
+
+# For material matching, ONLY strip true noise
+_MATERIAL_STOPWORDS = _NOISE_STOPWORDS
 
 # Materials that describe actions/DIY tasks rather than purchasable products
 _NON_PURCHASABLE_SIGNALS = {
@@ -3106,7 +2882,7 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
         if not link or is_bad_product_url_fn(link):
             continue
         inventory_urls.add(link)
-        inventory_urls.add(_normalize_url_for_matching(link))
+        inventory_urls.add(normalize_product_url(link))
         title = (p.get('title') or '').lower()
         words = {w for w in re.split(r'\W+', title) if len(w) >= 2 and w not in _STOPWORDS}
         for w in words:
@@ -3121,7 +2897,7 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
         # Only trust URLs that actually exist in our product inventory (normalized)
         # The curator often invents plausible-looking Amazon URLs that lead to wrong products
         if existing_url:
-            norm_url = _normalize_url_for_matching(existing_url)
+            norm_url = normalize_product_url(existing_url)
             if existing_url in inventory_urls or norm_url in inventory_urls:
                 logger.debug(f"MATERIALS: Kept inventory URL for '{item_name[:40]}': {existing_url[:80]}")
                 out.append(m)
@@ -3134,7 +2910,8 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
         best = None
         best_score = 0
         if item_name and products:
-            item_words = {w for w in re.split(r'\W+', item_name.lower()) if len(w) >= 2 and w not in _STOPWORDS}
+            # Use _MATERIAL_STOPWORDS (only noise) so context words like "portable" are preserved
+            item_words = {w for w in re.split(r'\W+', item_name.lower()) if len(w) >= 2 and w not in _MATERIAL_STOPWORDS}
             # Skip matching for non-purchasable items (playlists, DIY tasks, etc.)
             is_non_purchasable = bool(item_words & _NON_PURCHASABLE_SIGNALS)
             if is_non_purchasable:
@@ -3142,11 +2919,10 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
                 logger.info(f"MATERIALS: '{item_name[:40]}' is non-purchasable, skipping inventory match")
             # Require enough overlap that the match is meaningful:
             # - At least 2 words in common (absolute floor)
-            # - At least 40% of the material's meaningful words must match
-            # This prevents "small portable blanket for dogs" (4 words after stopwords)
-            # from matching a product that only shares 1 generic word.
+            # - At least 35% of the material's meaningful words must match (lowered from 40%)
+            # With improved stopwords (keeping "portable", "travel"), matches are more precise
             n_item_words = len(item_words)
-            min_overlap = max(2, int(n_item_words * 0.4)) if n_item_words > 1 else 1
+            min_overlap = max(2, int(n_item_words * 0.35)) if n_item_words > 1 else 1
 
             # Collect unique candidate products from word index
             seen_links = set()
@@ -3207,14 +2983,14 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
             where = (m.get('where_to_buy') or '').lower()
             if 'etsy' in where:
                 m['product_url'] = f'https://www.etsy.com/search?q={search_query}'
-                m['where_to_buy'] = 'Search Etsy'
+                m['where_to_buy'] = 'Find on Etsy'
             elif 'ebay' in where:
                 m['product_url'] = f'https://www.ebay.com/sch/i.html?_nkw={search_query}'
-                m['where_to_buy'] = 'Search eBay'
+                m['where_to_buy'] = 'Find on eBay'
             else:
                 tag_param = f'&tag={affiliate_tag}' if affiliate_tag else ''
                 m['product_url'] = f'https://www.amazon.com/s?k={search_query}{tag_param}'
-                m['where_to_buy'] = 'Search Amazon'
+                m['where_to_buy'] = 'Find on Amazon'  # Better UX than "Search Amazon"
             m['is_search_link'] = True
             logger.info(f"MATERIALS: No match for '{item_name[:40]}' → search fallback ({m['where_to_buy']})")
         # Apply affiliate tracking to all material links
@@ -3260,413 +3036,94 @@ def generating_page():
 def _run_generation_thread(user_id, user, platforms, recipient_type, relationship,
                            approved_profile, enriched_profile, enhanced_search_terms,
                            quality_filters, recipient_age, recipient_gender):
-    """Background thread: runs the full recommendation pipeline, updating progress at each stage."""
+    """
+    Background thread: runs the full recommendation pipeline via RecommendationService.
+
+    This is a thin wrapper that delegates to the RecommendationService for all
+    pipeline logic, maintaining only progress tracking and final storage.
+    """
     try:
         with app.app_context():
             logger.info("=" * 60)
             logger.info("USING NEW RECOMMENDATION ARCHITECTURE (background thread)")
             logger.info("=" * 60)
 
-            # STEP 1: Build or use approved recipient profile
-            _set_gen_progress(user_id, stage='profile_analysis',
-                              stage_label='Building a personality profile from their posts...')
+            # Initialize progress tracker
+            from progress_service import ProgressTracker
+            progress_tracker = ProgressTracker(_generation_progress)
 
-            if approved_profile:
-                profile = approved_profile
-                logger.info("Using user-approved profile from review step")
-            else:
-                logger.info("STEP 1: Building deep recipient profile...")
-                profile = build_recipient_profile(platforms, recipient_type, relationship, claude_client, model=CLAUDE_PROFILE_MODEL)
-
-            if not profile.get('interests'):
-                logger.warning("No interests extracted from profile - data quality issue")
-                _set_gen_progress(user_id, complete=True, success=False,
-                                  error='Unable to extract enough information from social media. Please connect more platforms or ensure profiles are public.')
-                return
-
-            profile_for_backend = profile_for_search_and_curation(profile)
-            if not profile_for_backend.get('interests'):
-                _set_gen_progress(user_id, complete=True, success=False,
-                                  error='No personal interests to base recommendations on. Add hobbies or interests that aren\'t work-related.')
-                return
-
-            # Report discovered interests to the waiting page
-            interest_names = [i.get('name', '') for i in profile.get('interests', []) if i.get('name')]
-            non_work_count = len(profile_for_backend.get('interests', []))
-            logger.info(f"Profile built: {len(interest_names)} interests ({non_work_count} non-work), location: {profile.get('location_context', {}).get('city_region')}")
-            _set_gen_progress(user_id, stage='profile_done',
-                              stage_label='Profile complete! Enriching with gift intelligence...',
-                              interests=interest_names)
-
-            # ENRICH PROFILE WITH INTELLIGENCE LAYER
-            if not enriched_profile:
-                if INTELLIGENCE_LAYER_AVAILABLE and enrich_profile_simple:
-                    logger.info("Enriching profile with intelligence layer...")
-                    enriched_profile = enrich_profile_simple(
-                        interests=[i.get('name', '') for i in profile_for_backend.get('interests', [])],
-                        relationship=relationship or 'close_friend',
-                        age=recipient_age,
-                        gender=recipient_gender
-                    )
-                    enhanced_search_terms = []
-                    for interest_data in enriched_profile.get('enriched_interests', []):
-                        enhanced_search_terms.extend(interest_data.get('search_terms', []))
-                    quality_filters = enriched_profile.get('quality_filters', [])
-                    logger.info(f"Profile enriched: {len(enhanced_search_terms)} enhanced search terms")
-
-            # STEP 2: Search retailers for products
-            product_rec_count = 10
-            inventory_target = product_rec_count * 4
-            logger.info("STEP 2: Pulling product inventory...")
-            _set_gen_progress(user_id, stage='searching_retailers',
-                              stage_label='Searching stores for products they\'d actually love...')
-
-            def _retailer_progress(retailer, count=None, searching=False, done=False, skipped=False):
-                progress = _get_gen_progress(user_id)
-                retailers = dict(progress.get('retailers', {}))
-                if searching:
-                    retailers[retailer] = {'status': 'searching', 'count': 0}
-                elif done:
-                    retailers[retailer] = {'status': 'done', 'count': count or 0}
-                elif skipped:
-                    retailers[retailer] = {'status': 'skipped', 'count': 0}
-                total_products = sum(r.get('count', 0) for r in retailers.values() if r.get('status') == 'done')
-                _set_gen_progress(user_id, retailers=retailers, product_count=total_products)
-
-            products = search_products_multi_retailer(
-                profile_for_backend,
-                etsy_key=os.environ.get('ETSY_API_KEY', ''),
-                awin_data_feed_api_key=os.environ.get('AWIN_DATA_FEED_API_KEY', ''),
-                ebay_client_id=os.environ.get('EBAY_CLIENT_ID', ''),
-                ebay_client_secret=os.environ.get('EBAY_CLIENT_SECRET', ''),
-                shareasale_id=os.environ.get('SHAREASALE_AFFILIATE_ID', ''),
-                shareasale_token=os.environ.get('SHAREASALE_API_TOKEN', ''),
-                shareasale_secret=os.environ.get('SHAREASALE_API_SECRET', ''),
-                skimlinks_publisher_id=os.environ.get('SKIMLINKS_PUBLISHER_ID', ''),
-                skimlinks_client_id=os.environ.get('SKIMLINKS_CLIENT_ID', ''),
-                skimlinks_client_secret=os.environ.get('SKIMLINKS_CLIENT_SECRET', ''),
-                skimlinks_domain_id=os.environ.get('SKIMLINKS_PUBLISHER_DOMAIN_ID', ''),
-                amazon_key=os.environ.get('RAPIDAPI_KEY', ''),
-                target_count=inventory_target,
-                enhanced_search_terms=enhanced_search_terms,
-                progress_callback=_retailer_progress,
+            # Initialize recommendation service
+            from recommendation_service import RecommendationService
+            service = RecommendationService(
+                app_context=app,
+                claude_client=claude_client,
+                models_config={'profile': CLAUDE_PROFILE_MODEL, 'curator': CLAUDE_CURATOR_MODEL},
+                progress_callback=lambda stage, label, **kw: progress_tracker.set_progress(user_id, stage, label, **kw)
             )
 
-            if len(products) == 0:
-                logger.warning("Product search returned no results")
-                _set_gen_progress(user_id, complete=True, success=False,
-                                  error="We're having trouble loading gift ideas right now. Please try again in a few minutes.")
-                return
+            # Run generation pipeline
+            recommendations = service.generate_recommendations(
+                user_id=user_id,
+                user=user,
+                platforms=platforms,
+                recipient_type=recipient_type,
+                relationship=relationship,
+                approved_profile=approved_profile,
+                enriched_profile=enriched_profile,
+                enhanced_search_terms=enhanced_search_terms,
+                quality_filters=quality_filters,
+                recipient_age=recipient_age,
+                recipient_gender=recipient_gender
+            )
 
-            logger.info(f"Inventory: {len(products)} products (will select {product_rec_count})")
-            _set_gen_progress(user_id, product_count=len(products),
-                              stage='filtering',
-                              stage_label=f'Found {len(products)} products! Filtering for quality...')
+            # Build profile for storage (reuse service method)
+            profile = service._build_profile(
+                user_id, platforms, recipient_type, relationship, approved_profile
+            )
 
-            # APPLY QUALITY FILTERS
-            if quality_filters:
-                original_count = len(products)
-                products = [p for p in products if not should_filter_product(p.get('title', '') or p.get('name', ''), quality_filters)]
-                logger.info(f"Intelligence filters removed {original_count - len(products)} inappropriate products ({len(products)} remaining)")
-
-            from smart_filters import apply_smart_filters, filter_workplace_experiences, filter_work_themed_experiences
-            products = apply_smart_filters(products, profile)
-            logger.info(f"After smart filters: {len(products)} products")
-
-            # STEP 3: Curate gifts
-            logger.info("STEP 3: Selecting best gifts from inventory...")
-            _set_gen_progress(user_id, stage='curating',
-                              stage_label='AI is handpicking the perfect gifts...')
-
-            enrichment_context = {
-                'demographics': (enriched_profile or {}).get('demographics', {}),
-                'trending_items': (enriched_profile or {}).get('trending_items', []),
-                'anti_recommendations': (enriched_profile or {}).get('anti_recommendations', []),
-                'relationship_guidance': (enriched_profile or {}).get('relationship_guidance', {}),
-                'price_guidance': (enriched_profile or {}).get('price_guidance', {}),
-                'enriched_interests': (enriched_profile or {}).get('enriched_interests', []),
-            } if enriched_profile else {}
-
-            # REVENUE OPTIMIZATION: Intelligent pre-filtering before curator
-            # Send 30 high-quality products instead of 100 random ones
-            # Saves API tokens, improves output quality, prioritizes high-commission products
-            try:
-                from revenue_optimizer import intelligent_product_filter, track_profile_interests
-
-                logger.info(f"Pre-filtering: {len(products)} products before curator")
-
-                # Track interests for learning
-                track_profile_interests(profile_for_backend)
-
-                # Smart filter: 100 products → 30 high-quality candidates
-                products_for_curator = intelligent_product_filter(
-                    products=products,
-                    profile=profile_for_backend,
-                    relationship=relationship,
-                    target_count=30  # Curator gets 30 products instead of 100
-                )
-
-                logger.info(f"After intelligent pre-filtering: {len(products_for_curator)} high-quality products")
-
-            except ImportError:
-                logger.warning("Revenue optimizer not available, sending all products to curator")
-                products_for_curator = products
-            except Exception as e:
-                logger.error(f"Pre-filtering failed: {e}, sending all products to curator")
-                products_for_curator = products
-
-            curated = curate_gifts(profile_for_backend, products_for_curator, recipient_type, relationship,
-                                   claude_client, rec_count=product_rec_count + 4,
-                                   enhanced_search_terms=enhanced_search_terms,
-                                   enrichment_context=enrichment_context,
-                                   model=CLAUDE_CURATOR_MODEL)
-
-            product_gifts = curated.get('product_gifts', [])
-            experience_gifts = curated.get('experience_gifts', [])
-
-            # REVENUE OPTIMIZATION: Track all recommended products to build intelligence
-            try:
-                from revenue_optimizer import track_curation_outcome
-                for gift in product_gifts:
-                    product_id = gift.get('product_id', '') or gift.get('product_url', '')
-                    retailer = gift.get('source_domain', '') or gift.get('retailer', '')
-                    if product_id and retailer:
-                        track_curation_outcome({'product_id': product_id, 'retailer': retailer}, 'recommended')
-            except Exception as e:
-                logger.error(f"Failed to track recommended products: {e}")
-
-            # Post-curation cleanup
-            _set_gen_progress(user_id, stage='cleanup',
-                              stage_label='Curating experiences and validating links...')
-            try:
-                from post_curation_cleanup import cleanup_curated_gifts
-                product_gifts = cleanup_curated_gifts(product_gifts, products, rec_count=product_rec_count)
-                logger.info(f"After post-curation cleanup: {len(product_gifts)} products")
-            except Exception as e:
-                logger.error(f"Post-curation cleanup failed (using raw curator output): {e}")
-
-            experience_gifts = filter_workplace_experiences(experience_gifts, profile)
-            experience_gifts = filter_work_themed_experiences(experience_gifts, profile)
-            logger.info(f"After workplace/work-themed experience filter: {len(experience_gifts)} experiences")
-
-            if not product_gifts and not experience_gifts:
-                logger.error("Curation returned no gifts")
-                _set_gen_progress(user_id, complete=True, success=False,
-                                  error='Unable to generate recommendations. Please try again.')
-                return
-
-            logger.info(f"Curated {len(product_gifts)} products + {len(experience_gifts)} experiences")
-
-            # Build image map and format recommendations
-            _set_gen_progress(user_id, stage='images',
-                              stage_label='Validating every link and image...')
-
-            def _normalize_url_for_image(u):
-                if not u or not isinstance(u, str):
-                    return ''
-                u = u.strip().rstrip('/')
-                if '?' in u:
-                    base, _, qs = u.partition('?')
-                    if '/dp/' in base or '/listing/' in base or '/itm/' in base:
-                        u = base
-                return u or ''
-
-            product_url_to_image = {}
-            valid_product_urls = set()
-            for p in products:
-                raw_link = (p.get('link') or '').strip()
-                if raw_link:
-                    valid_product_urls.add(raw_link)
-                    valid_product_urls.add(_normalize_url_for_image(raw_link))
-                link = _normalize_url_for_image(raw_link)
-                if link:
-                    img = (p.get('image_url') or p.get('image') or p.get('thumbnail') or '').strip()
-                    product_url_to_image[link] = img
-                if raw_link and raw_link not in product_url_to_image:
-                    product_url_to_image[raw_link] = (p.get('image_url') or p.get('image') or p.get('thumbnail') or '').strip()
-
-            try:
-                from link_validation import is_bad_product_url
-            except ImportError:
-                def is_bad_product_url(url):
-                    return False
-
-            all_recommendations = []
-
-            for gift in product_gifts:
-                product_url = (gift.get('product_url') or '').strip()
-                if product_url not in valid_product_urls and _normalize_url_for_image(product_url) not in valid_product_urls:
-                    continue
-                image_url = product_url_to_image.get(product_url, '') or product_url_to_image.get(_normalize_url_for_image(product_url), '')
-                if is_bad_product_url(product_url):
-                    product_url = ''
-                    image_url = ''
-                if not product_url:
-                    continue
-                all_recommendations.append({
-                    'name': gift.get('name', 'Unknown Product'),
-                    'description': gift.get('description', ''),
-                    'why_perfect': gift.get('why_perfect', ''),
-                    'price_range': gift.get('price', 'Price unknown'),
-                    'where_to_buy': gift.get('where_to_buy', 'Online'),
-                    'product_url': product_url,
-                    'purchase_link': _apply_affiliate_tag(product_url),
-                    'image_url': image_url,
-                    'image': image_url,
-                    'gift_type': 'physical',
-                    'confidence_level': gift.get('confidence_level', 'safe_bet'),
-                    'interest_match': gift.get('interest_match', ''),
-                    'is_direct_link': True,
-                    'link_source': 'serpapi_search'
-                })
-
-            # Experience gifts
-            loc_ctx = profile.get('location_context') or {}
-            city_region = (loc_ctx.get('city_region') or '').strip()
-            state_val = (loc_ctx.get('state') or '').strip()
-            specific_places = loc_ctx.get('specific_places') or []
-            search_geography = city_region or ''
-            if state_val and state_val not in search_geography:
-                search_geography = f"{search_geography} {state_val}".strip()
-            if not search_geography and specific_places:
-                first_place = (specific_places[0] or '').strip()
-                if first_place and len(first_place) > 1:
-                    search_geography = first_place
-            if not search_geography:
-                search_geography = 'near me'
-
-            for exp in experience_gifts:
-                materials_list = _backfill_materials_links(
-                    exp.get('materials_needed', []), products, is_bad_product_url,
-                    affiliate_tag=AMAZON_AFFILIATE_TAG
-                )
-                materials_summary = ""
-                if materials_list:
-                    materials_items = [f"{m.get('item', 'Item')} ({m.get('estimated_price', '$XX')})" for m in materials_list[:3]]
-                    materials_summary = f"Materials needed: {', '.join(materials_items)}"
-                how_special = exp.get('how_to_make_it_special', '')
-                parts = [exp.get('description', ''), exp.get('how_to_execute', ''), materials_summary]
-                full_description = '\n\n'.join(p for p in parts if p).strip()
-                location_info = ""
-                if exp.get('location_specific'):
-                    location_info = f" | {exp.get('location_details', 'Location-based')}"
-                reservation_link = (exp.get('reservation_link') or '').strip()
-                venue_website = (exp.get('venue_website') or '').strip()
-                exp_name = exp.get('name', 'experience')
-                location_details = (exp.get('location_details') or '').strip()
-                search_loc = location_details or search_geography
-
-                if reservation_link:
-                    if _validate_experience_url(reservation_link):
-                        logger.info(f"EXP LINK: Validated reservation_link for '{exp_name[:40]}': {reservation_link[:80]}")
-                    else:
-                        logger.info(f"EXP LINK: Rejected bad reservation_link for '{exp_name[:40]}': {reservation_link[:80]}")
-                        reservation_link = _make_experience_search_link(exp_name, search_loc, 'book')
-                if venue_website:
-                    if _validate_experience_url(venue_website):
-                        logger.info(f"EXP LINK: Validated venue_website for '{exp_name[:40]}': {venue_website[:80]}")
-                    else:
-                        logger.info(f"EXP LINK: Rejected bad venue_website for '{exp_name[:40]}': {venue_website[:80]}")
-                        venue_website = _make_experience_search_link(location_details or exp_name, search_loc, 'venue')
-
-                primary_link = reservation_link or venue_website
-                experience_search_fallback = False
-                # Get curated provider links for this experience type
-                experience_provider_links = []
-                try:
-                    from experience_providers import get_experience_providers
-                    experience_provider_links = get_experience_providers(
-                        exp_name,
-                        location=search_loc,
-                        description=exp.get('description', ''),
-                    )
-                except ImportError:
-                    logger.debug("experience_providers module not available")
-                except Exception as ep_err:
-                    logger.warning(f"Experience provider lookup failed: {ep_err}")
-
-                # Apply affiliate tracking to provider links
-                for ep in experience_provider_links:
-                    ep['url'] = _apply_affiliate_tag(ep['url'])
-
-                if not primary_link and experience_provider_links:
-                    # Use first provider as primary link instead of Google search
-                    primary_link = experience_provider_links[0]['url']
-                    experience_search_fallback = False
-                elif not primary_link and exp.get('name'):
-                    primary_link = _make_experience_search_link(exp_name, search_loc)
-                    experience_search_fallback = True
-                if not primary_link and materials_list:
-                    first_url = (materials_list[0].get('product_url') or '').strip()
-                    if first_url and not materials_list[0].get('is_search_link'):
-                        primary_link = first_url
-                all_recommendations.append({
-                    'name': exp.get('name', 'Experience Gift'),
-                    'description': full_description,
-                    'why_perfect': exp.get('why_perfect', ''),
-                    'price_range': 'Variable',
-                    'where_to_buy': f"Experience{location_info}",
-                    'product_url': primary_link or None,
-                    'purchase_link': _apply_affiliate_tag(primary_link) if primary_link else None,
-                    'reservation_link': _apply_affiliate_tag(reservation_link) if reservation_link else None,
-                    'venue_website': venue_website or None,
-                    'experience_search_fallback': experience_search_fallback,
-                    'experience_providers': experience_provider_links,
-                    'image_url': '',
-                    'gift_type': 'experience',
-                    'confidence_level': exp.get('confidence_level', 'adventurous'),
-                    'materials_needed': materials_list,
-                    'location_specific': exp.get('location_specific', False),
-                    'how_to_make_it_special': how_special
-                })
-
-            if not all_recommendations:
-                logger.error("All recommendations dropped")
-                _set_gen_progress(user_id, complete=True, success=False,
-                                  error="We couldn't find enough valid recommendations this time. Please try again.")
-                return
-
-            logger.info(f"Total recommendations: {len(all_recommendations)}")
-            _set_gen_progress(user_id, stage='images',
-                              stage_label=f'Almost there \u2014 validating images for {len(all_recommendations)} gifts...')
-
-            # Backfill thumbnails
-            if IMAGE_FETCHING_AVAILABLE:
-                try:
-                    all_recommendations = process_recommendation_images(all_recommendations)
-                    with_images = sum(1 for r in all_recommendations if r.get('image_url') and 'placeholder' not in (r.get('image_url') or '').lower())
-                    logger.info(f"Images: {with_images}/{len(all_recommendations)} with thumbnails")
-                except Exception as img_err:
-                    logger.warning(f"Image backfill failed (continuing): {img_err}")
-
-            for rec in all_recommendations:
-                if rec.get('gift_type') != 'physical':
-                    continue
-                img = (rec.get('image_url') or '').strip()
-                if not img or not img.startswith('http'):
-                    name_safe = (rec.get('name') or 'Gift')[:30].replace(' ', '+')
-                    rec['image_url'] = f"https://via.placeholder.com/400x400/667eea/ffffff?text={quote(name_safe)}"
-                    rec['image_source'] = rec.get('image_source') or 'placeholder_fallback'
-                    rec['image_is_fallback'] = True
-
+            # Save recommendations to database
             quality = check_data_quality(platforms)
             save_user(user_id, {
-                'recommendations': all_recommendations,
+                'recommendations': recommendations,
                 'data_quality': quality,
                 'last_generated': datetime.now().isoformat(),
                 'recipient_profile': profile
             })
 
-            logger.info("Generation complete! %d recommendations saved.", len(all_recommendations))
+            logger.info("Generation complete! %d recommendations saved.", len(recommendations))
             track_event('rec_run')
-            _set_gen_progress(user_id, stage='complete',
-                              stage_label='Your gifts are ready!',
-                              complete=True, success=True)
+            progress_tracker.set_progress(
+                user_id,
+                stage='complete',
+                stage_label='Your gifts are ready!',
+                complete=True,
+                success=True
+            )
+
+
+    except ValueError as e:
+        # Expected errors (profile validation, no products, etc.)
+        logger.warning(f"Generation validation error: {e}")
+        from progress_service import ProgressTracker
+        progress_tracker = ProgressTracker(_generation_progress)
+        progress_tracker.set_progress(
+            user_id,
+            complete=True,
+            success=False,
+            error=str(e)
+        )
 
     except Exception as e:
+        # Unexpected errors
         logger.error(f"Error in generation thread: {e}", exc_info=True)
-        _set_gen_progress(user_id, complete=True, success=False,
-                          error='An unexpected error occurred. Please try again.')
+        from progress_service import ProgressTracker
+        progress_tracker = ProgressTracker(_generation_progress)
+        progress_tracker.set_progress(
+            user_id,
+            complete=True,
+            success=False,
+            error='An unexpected error occurred. Please try again.'
+        )
 
 
 @app.route('/api/generate-recommendations', methods=['POST'])
@@ -3806,6 +3263,10 @@ def view_recommendations(user=None):
     total_count = len(recommendations)
     locked_count = 0 if unlocked else max(0, total_count - 3)
 
+    # Count products vs experiences separately (for better UX messaging)
+    product_count = sum(1 for r in recommendations if r.get('gift_type') == 'physical')
+    experience_count = sum(1 for r in recommendations if r.get('gift_type') == 'experience')
+
     return render_template('recommendations.html',
                          recommendations=visible_recommendations,
                          data_quality=data_quality,
@@ -3815,6 +3276,8 @@ def view_recommendations(user=None):
                          position_number=position_number,
                          unlocked=unlocked,
                          total_count=total_count,
+                         product_count=product_count,
+                         experience_count=experience_count,
                          locked_count=locked_count)
 
 

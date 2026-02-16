@@ -1,14 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Last-Minute Gifts That Don't Look Last-Minute (2026 Guide) - Giftwise</title>
-    <meta name="description" content="Forgot someone's birthday? Need a gift today? These last-minute gift ideas look thoughtful, ship fast, and won't embarrass you. Digital, local, and express shipping options.">
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.8; color: #333; }
-        .nav { background: white; border-bottom: 2px solid #f0f0f0; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; max-width: 1200px; margin: 0 auto; }
+{% extends "base.html" %}
+
+{% block title %}Last-Minute Gifts That Don't Look Last-Minute (2026 Guide) - Giftwise{% endblock %}
+
+{% block meta %}
+<meta name="description" content="Forgot someone's birthday? Need a gift today? These last-minute gift ideas look thoughtful, ship fast, and won't embarrass you. Digital, local, and express shipping options.">
+{% endblock %}
+
+{% block extra_css %}
+.nav { background: white; border-bottom: 2px solid #f0f0f0; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; max-width: 1200px; margin: 0 auto; }
         .nav-logo { font-size: 1.4em; font-weight: 700; color: #667eea; text-decoration: none; }
         .nav-links a { margin-left: 25px; color: #555; text-decoration: none; font-weight: 500; }
         .nav-links a:hover { color: #667eea; }
@@ -37,17 +36,10 @@
         .footer p { opacity: 0.8; margin: 8px 0; }
         .footer a { color: white; opacity: 0.8; }
         @media (max-width: 768px) { h1 { font-size: 1.8em; } }
-    </style>
-</head>
-<body>
-    <div class="nav">
-        <a href="/" class="nav-logo">Giftwise</a>
-        <div class="nav-links">
-            <a href="/guides">Gift Guides</a>
-            <a href="/blog">Blog</a>
-            <a href="/signup">Get Started</a>
-        </div>
-    </div>
+{% endblock %}
+
+{% block content %}
+</div>
 
     <div class="article">
         <div class="breadcrumb"><a href="/blog">Blog</a> &rarr; Gift Giving Advice</div>
@@ -200,13 +192,4 @@
 
         <p>Remember: Confidence and presentation turn a last-minute gift into a great gift. Own it, wrap it well, and add a personal touch. No one will know you bought it this morning.</p>
     </div>
-
-    <div class="footer">
-        <div class="container">
-            <p>&copy; 2026 Giftwise. All rights reserved.</p>
-            <p style="margin-top: 10px; font-size: 0.9em;">We may earn commissions from links on this page. <a href="/privacy">Privacy Policy</a> | <a href="/terms">Terms of Service</a></p>
-        </div>
-    </div>
-    <script type="text/javascript" src="https://s.skimresources.com/js/298548X178612"></script>
-</body>
-</html>
+{% endblock %}

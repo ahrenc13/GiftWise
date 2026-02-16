@@ -10,15 +10,16 @@ Track all affiliate network applications, approvals, and integration status.
 |---------|---------|--------|-------------------|----------|
 | **Skimlinks** | Feb 9 | ⏳ Pending | Feb 18-20 (7 biz days) | 🔥 CRITICAL |
 | **CJ Affiliate** | Feb 15 (~70 brands) | ⏳ Pending | Feb 17-22 | 🔥 HIGH |
-| **ShareASale** | Feb 16 | ⏳ Pending | Feb 17-19 (1-3 days) | 🔥 HIGH |
 | **FlexOffers** | Feb 16 | ⏳ Pending | Feb 16-18 (same-day to 48h) | 🔥 HIGH |
+| **Awin** (incl. ShareASale) | - | ✅ Approved, need to join advertisers | - | 🔥 HIGH |
 | **Impact** | - | ❌ Account type issue | TBD (ticket open) | 🟡 MEDIUM |
 | **Rakuten** | - | ✅ Approved, need brand apps | - | 🟡 MEDIUM |
-| **Awin** | - | ✅ Approved, only Portland Leather found | - | 🟢 LOW |
 | **Walmart Creator** | - | ⏳ Pending | TBD | 🟢 LOW |
 | **Etsy Direct** | - | ⏳ Dev credentials pending | TBD | 🟡 MEDIUM |
 | **Amazon Associates** | - | ✅ Active | - | ✅ LIVE |
 | **eBay Partner Network** | - | ✅ Active | - | ✅ LIVE |
+
+**NOTE:** ShareASale migrated to Awin in Oct 2025. All ShareASale merchants (Uncommon Goods, Personalization Mall, etc.) are now accessible through Awin.
 
 ## Approval Checklist
 
@@ -49,19 +50,20 @@ Track all affiliate network applications, approvals, and integration status.
 - Auto-approve (24-48h): ~30-40 brands
 - Manual review (3-7 days): ~30 brands
 
-### ShareASale
-- [x] Application submitted (Feb 16)
-- [ ] Account approved
-- [ ] Applied to priority merchants:
+### Awin (Includes ShareASale Merchants as of Oct 2025)
+- [x] Account created and approved
+- [x] Initial research completed (Feb 16) - only found Portland Leather initially
+- [ ] **NEW PRIORITY:** Search for former ShareASale merchants on Awin:
   - [ ] Uncommon Goods
   - [ ] Personalization Mall
   - [ ] Things Remembered
   - [ ] Oriental Trading
   - [ ] HomeWetBar
-- [ ] Create `shareasale_searcher.py` module
-- [ ] Add to `multi_retailer_searcher.py` pipeline
+  - [ ] Other gift/personalization shops
+- [ ] Join approved advertisers
+- [ ] `awin_searcher.py` already exists - test with new advertisers once joined
 
-**Expected Impact:** HIGH — Unique gift merchants, personalization shops
+**Expected Impact:** HIGH — ShareASale migration means all those unique gift merchants are now on Awin!
 
 ### FlexOffers
 - [x] Application submitted (Feb 16)
@@ -101,14 +103,6 @@ Track all affiliate network applications, approvals, and integration status.
 
 **Expected Impact:** MEDIUM — Premium retail brands
 
-### Awin (Dead End - Only 1 Advertiser Found)
-- [x] Account created
-- [x] Research completed (Feb 16)
-- [x] Only Portland Leather found
-- [ ] Join Portland Leather (low priority)
-- [ ] Deprioritize Awin going forward
-
-**Expected Impact:** LOW — Not worth effort
 
 ## Publisher Profile (Use for All Applications)
 
@@ -197,14 +191,16 @@ generic gift guides. We focus on quality curation over volume.
 ## Next Actions
 
 **This Week (Feb 16-23):**
-- [x] Apply to ShareASale
-- [x] Apply to FlexOffers
+- [x] Apply to FlexOffers (submitted Feb 16)
+- [x] Discovered ShareASale is now Awin (Feb 16)
+- [ ] **PRIORITY:** Search Awin for former ShareASale merchants (Uncommon Goods, Personalization Mall, etc.)
+- [ ] Join Awin advertisers once found
 - [ ] Monitor CJ approvals daily
 - [ ] Check Skimlinks approval (should come by Feb 18-20)
 - [ ] Build FlexOffers searcher module (once approved)
-- [ ] Build ShareASale searcher module (once approved)
 
 **Next Week (Feb 24-Mar 2):**
+- [ ] Test `awin_searcher.py` with newly joined advertisers
 - [ ] Fix Impact account type issue
 - [ ] Apply to Rakuten brands (Sephora, Nordstrom, etc.)
 - [ ] Test full pipeline with 200+ products
@@ -215,7 +211,26 @@ generic gift guides. We focus on quality curation over volume.
 
 - **Skimlinks:** publishers@skimlinks.com
 - **CJ Affiliate:** Check dashboard for status
-- **ShareASale:** support@shareasale.com
+- **Awin:** https://www.awin.com/us/search/advertiser-directory (search for ShareASale merchants here)
 - **FlexOffers:** support@flexoffers.com
 - **Impact:** Support ticket system
 - **Rakuten:** Check dashboard for brand status
+
+## Important Migration Notes
+
+**ShareASale → Awin (Oct 2025):**
+ShareASale merged with Awin. All ShareASale merchants are now accessible through Awin's platform. The Awin account we already have gives access to these merchants - we just need to search for and join them individually.
+
+**What this means:**
+- ✅ No need to apply to ShareASale separately
+- ✅ Awin account already approved
+- 🔍 Need to search Awin's advertiser directory for former ShareASale brands
+- 📝 Join each advertiser individually (like we do with other networks)
+
+**Priority merchants to search for on Awin:**
+- Uncommon Goods (unique gifts)
+- Personalization Mall (custom items)
+- Things Remembered (personalized jewelry)
+- Oriental Trading (party/bulk gifts)
+- HomeWetBar (custom barware)
+- Portland Leather (already found)

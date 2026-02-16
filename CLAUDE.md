@@ -74,15 +74,16 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 |---------|--------|---------------|
 | Skimlinks | Pending approval (submitted 2/9, expected by 2/18-20) | ~48,500 merchants (blanket access) |
 | CJ Affiliate | ~70 brand applications submitted 2/15, awaiting responses | Flowers, jewelry, apparel, home, gourmet, personalization |
-| ShareASale | Application submitted 2/16, awaiting approval (1-3 days) | Uncommon Goods, personalization shops, unique gifts |
 | FlexOffers | Application submitted 2/16, awaiting approval (same-day to 48h) | 12,000+ advertisers, niche brands |
+| Awin | ✅ Account active, need to join ShareASale merchants (migrated Oct 2025) | Uncommon Goods, Personalization Mall, Things Remembered, etc. |
 | Impact | Wrong account type (signed up as brand not publisher), ticket submitted, no response | Target, Ulta, Kohl's, Gap, Home Depot, Adidas, Dyson |
 | Rakuten | Account active, need to apply to individual brands | Sephora, Nordstrom, Anthropologie, Free People, Coach |
 | Walmart Creator | Application submitted | Walmart |
-| Awin | Account active, only Portland Leather found (Feb 16 research) | Portland Leather only |
 | Etsy Direct | Developer credentials pending | Etsy (would bypass Awin if approved) |
 | Amazon Associates | ✅ Active (tag added to Railway Feb 16) | Amazon |
 | eBay Partner Network | ✅ Active | eBay |
+
+**IMPORTANT:** ShareASale migrated to Awin in Oct 2025. All ShareASale merchants are now accessible through Awin.
 
 ## CJ Affiliate Partnership Strategy (Feb 15, 2026)
 
@@ -371,7 +372,7 @@ Key themes: Valentine's removed, Mother's Day added, friction reduction, revenue
 The app's #1 bottleneck is thin inventory (Amazon + eBay only, ~30 products per session). Everything else is blocked on getting more affiliate networks approved:
 
 1. **Skimlinks** (highest impact) — Blanket access to ~48,500 merchants if approved. Submitted Feb 9, expecting response by Feb 18-20.
-2. **ShareASale** (high impact) — Applied Feb 16. Approval typically 1-3 days. Unique gift merchants, personalization shops.
+2. **Awin** (high impact) — Account active. Need to join former ShareASale merchants: Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar.
 3. **FlexOffers** (high impact) — Applied Feb 16. Many auto-approve programs, often same-day approval.
 4. **CJ Affiliate** (~70 brands) — Batch applications submitted Feb 15. Auto-approvals should start coming in 24-48h, manual reviews 3-7 days.
 5. **Impact.com** (fix account type) — Accidentally signed up as brand not publisher. Ticket submitted, waiting for support.
@@ -387,8 +388,8 @@ User's kid has viral post (150k+ likes) but waiting to post follow-up until inve
 
 ## What the User Wants Next (Updated Feb 16)
 
-1. **Monitor affiliate approvals** — ShareASale (1-3 days), FlexOffers (same-day to 48h), CJ (~70 brands, rolling approvals), Skimlinks (by Feb 18-20)
-2. **Build ShareASale searcher** — `shareasale_searcher.py` module once approved
+1. **Join Awin advertisers** — Search for and join former ShareASale merchants (Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar)
+2. **Monitor affiliate approvals** — FlexOffers (same-day to 48h), CJ (~70 brands, rolling approvals), Skimlinks (by Feb 18-20)
 3. **Build FlexOffers searcher** — `flexoffers_searcher.py` module once approved
 4. **Fix Impact account** — Ticket open for account type issue
 5. **Monitor and iterate on quality** — admin dashboard at `/admin/stats?key=ADMIN_DASHBOARD_KEY`

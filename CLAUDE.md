@@ -3,7 +3,7 @@
 ## Environment Notes
 - **Git is installed and working.** Do not prompt the user to install git, git for windows, or any other tooling. The repo is active with full commit history. Just use it.
 - **Python/Flask app.** Run with `python giftwise_app.py` or via deployment. No special build step.
-- **Branch:** Primary dev branch is `claude/debug-awin-links-Tq5On`. Check `git branch` before making changes. **Merges to `main` must happen via GitHub PR** — Railway watches `main` for auto-deploy.
+- **Branch:** Check `git branch` before making changes. **Merges to `main` must happen via GitHub PR** — Railway watches `main` for auto-deploy.
 - **Domain:** giftwise.fit (NOT giftwise.me, NOT giftwise.app, NOT giftwise.com)
 
 ## Deployment (Railway.app)
@@ -18,47 +18,76 @@
 ## What This Is
 AI-powered gift recommendation app. Flask pipeline: scrape social media → Claude analyzes profile → enrich with static data → search retailers → Claude curates gifts → programmatic cleanup → display.
 
-## Current State (Feb 9, 2026)
+**Current State (TL;DR):** App is feature-complete and polished, but inventory is bottlenecked. Only Amazon + eBay active (~30 products/session). Waiting on affiliate network approvals: Skimlinks (submitted 2/9), CJ Affiliate (~70 brands submitted 2/15), Awin (need to join advertisers), Impact (account type issue). Valentine's removed (2/15), Mother's Day ready (guide built). TikTok launch on hold until inventory improves. Demo mode ready for testing. 10 gift guides + 4 blog posts deployed for SEO and network approval. 4754-line Flask app with SQLite product DB, revenue optimizer, and click tracking.
+
+## Current State (Feb 16, 2026)
+
+### Major Changes Since Feb 9
+1. **Valentine's Day completely removed** (Feb 15) — All V-Day routes, templates, messaging, and promo-specific code deleted. Sharing/referral infrastructure preserved as generic features.
+2. **Mother's Day guide added** (Feb 14) — `/guides/mothers-day` ready for May 11 promotion
+3. **Blog architecture launched** (Feb 15) — 4 SEO-optimized blog posts for organic traffic and affiliate approval
+4. **3 Etsy gift guides added** (Feb 14) — etsy-home-decor, etsy-jewelry, etsy-under-50 (total now 10 guides)
+5. **Demo/skip mode** (Feb 13) — `/demo` bypasses social handle requirement. Admin mode (`?admin=true`) pre-fills @chadahren for real testing.
+6. **Revenue optimizer** (Feb 11) — `revenue_optimizer.py` scores products by commission rate + interest match before curator sees them
+7. **Product database** (Feb 11) — SQLite catalog caches products, tracks clicks, enables learning loop
+8. **Waitlist system** (Feb 10) — `/waitlist` for handle-based early access (Gen Z engagement)
+9. **Spotify Wrapped integration** (Feb 10) — Text paste alternative to OAuth for music preferences
+10. **CJ Affiliate strategy** (Feb 15) — Batch applications to ~70 brands, T&C analysis, revenue projections added to docs
 
 ### What's working
-- Full recommendation pipeline: Instagram + TikTok scraping → profile analysis → multi-retailer search → curation → cleanup → display
-- Two Claude API calls per session: `profile_analyzer.py` (call #1), `gift_curator.py` (call #2)
-- Model toggle via env vars: `CLAUDE_PROFILE_MODEL`, `CLAUDE_CURATOR_MODEL` (default Sonnet for both)
-- Smart filters: work exclusion, passive/active filtering, obsolete media filter (respects retro/vinyl interests), low-effort item filter
-- Post-curation cleanup: brand dedup, category dedup (23 patterns), interest spread (max 2), source diversity cap
-- Experience providers: 13 categories mapped to real booking platforms (Ticketmaster, Cozymeal, Viator, etc.)
-- Search query cleaning: `_clean_interest_for_search()` strips filler from interest names, category-specific suffixes
-- Material matching: word-overlap scoring with expanded stopwords and 40% threshold
-- Sharing: `/api/share` creates shareable links, `shared_recommendations.html` with viral CTA
-- Valentine's Day: `/valentine` landing page with countdown, urgency banner on recommendations page
-- Admin dashboard: `/admin/stats?key=ADMIN_DASHBOARD_KEY` — tracks signups, rec runs, shares, errors
-- Referral system: `referral_system.py` generates codes, tracks referrals
-- Share image generator: `share_generator.py` creates SVG cards (no Pillow dependency)
-- 6 editorial gift guides at `/guides/<slug>` for Skimlinks approval
-- Privacy, terms pages, affiliate disclosure in footer
-- Skimlinks JS snippet in all 26+ templates (publisher ID: 298548X178612)
+- **Full recommendation pipeline:** Instagram + TikTok scraping → profile analysis → multi-retailer search → curation → cleanup → display
+- **Two Claude API calls per session:** `profile_analyzer.py` (call #1), `gift_curator.py` (call #2)
+- **Model toggle via env vars:** `CLAUDE_PROFILE_MODEL`, `CLAUDE_CURATOR_MODEL` (default Sonnet for both)
+- **Smart filters:** work exclusion, passive/active filtering, obsolete media filter (respects retro/vinyl interests), low-effort item filter
+- **Post-curation cleanup:** brand dedup, category dedup (23 patterns), interest spread (max 2), source diversity cap
+- **Experience providers:** 13 categories mapped to real booking platforms (Ticketmaster, Cozymeal, Viator, etc.)
+- **Search query cleaning:** `_clean_interest_for_search()` strips filler from interest names, category-specific suffixes
+- **Material matching:** word-overlap scoring with expanded stopwords and 40% threshold
+- **Sharing infrastructure:** `/api/share` creates shareable links, `shared_recommendations.html`, `share_generator.py` SVG cards (generic, no campaign-specific code)
+- **Referral system:** `referral_system.py` generates codes, tracks referrals (generic, no promo-specific bonuses)
+- **Admin dashboard:** `/admin/stats?key=ADMIN_DASHBOARD_KEY` — tracks signups, rec_run, share_create, share_view, guide_hit, error
+- **10 editorial gift guides** at `/guides/<slug>` for affiliate approval (6 general + 3 Etsy-focused + 1 Mother's Day)
+- **Blog architecture:** `/blog` landing + 4 SEO-optimized articles (cash vs physical gifts, gift mistakes, gifts for people who have everything, last-minute gifts)
+- **Demo/skip mode:** `/demo` bypasses social handle requirement. Admin variant (`?admin=true`) pre-fills @chadahren for real pipeline testing.
+- **Waitlist system:** `/waitlist` for handle-based early access (Gen Z engagement)
+- **Spotify Wrapped integration:** `/connect/spotify-wrapped` accepts text paste of Spotify data for music preference analysis
+- **Revenue optimization:** `revenue_optimizer.py` smart pre-filtering scores products before curator sees them (prioritizes high-commission sources)
+- **Product database:** SQLite catalog (`database.py`) caches products, tracks click analytics, enables learning loop
+- **Affiliate click tracking:** `track_affiliate_click()` logs every product click for performance analysis
+- **Privacy, terms, affiliate disclosure** in footer
+- **Skimlinks JS snippet** in all 40 templates (publisher ID: 298548X178612)
 
 ### What's NOT working / pending
-- **Etsy:** 403 on all queries — awaiting developer credentials approval
-- **Awin:** Code works but 0 joined advertisers — returns [] immediately. Need to join at https://www.awin.com/us/search/advertiser-directory (priority: Etsy, UGG, Lululemon, Portland Leather)
-- **Skimlinks:** Code complete, awaiting publisher approval (up to 3 business days from Feb 9)
+- **Etsy:** 403 on all queries — awaiting developer credentials approval (still pending as of Feb 16)
+- **Awin:** Code works but 0 joined advertisers — returns [] immediately. Need to join at https://www.awin.com/us/search/advertiser-directory (priority: Etsy, UGG, Lululemon, Portland Leather). User was trying to research which partners to join but Awin's interface is difficult.
+- **Skimlinks:** Code complete, awaiting publisher approval (submitted Feb 9, still pending as of Feb 16 — can take up to 7 business days)
 - **Inventory is thin:** Only Amazon (RapidAPI) + eBay (Browse API) active. ~30 products per run. This affects recommendation quality significantly.
-- **Impact.com:** User accidentally signed up as brand instead of publisher. Ticket submitted.
-- **CJ Affiliate:** Application submitted
+- **Impact.com:** User accidentally signed up as brand instead of publisher. Ticket submitted, no response yet.
+- **CJ Affiliate:** Batch applications to ~70 brands submitted Feb 15. Awaiting responses (auto-approve in 24-48h or manual review 3-7 days).
 - **Rakuten:** Signed up, need to apply to individual brands
 - **Walmart Creator:** Application submitted
 
-### Affiliate network applications status
+### Affiliate network applications status (Updated Feb 16)
+**See `AFFILIATE_APPLICATIONS_TRACKER.md` for detailed tracking.**
+
 | Network | Status | Brands Covered |
 |---------|--------|---------------|
-| Skimlinks | Pending approval (submitted 2/9) | ~48,500 merchants (blanket access) |
-| CJ Affiliate | Batch applying to ~70 brands (2/15) | Flowers, jewelry, apparel, home, gourmet, personalization |
-| Impact | Wrong account type, ticket open | Target, Ulta, Kohl's, Gap, Home Depot, Adidas, Dyson |
-| Rakuten | Signed up, need brand apps | Sephora, Nordstrom, Anthropologie, Free People, Coach |
+| Skimlinks | Pending approval (submitted 2/9, expected by 2/18-20) | ~48,500 merchants (blanket access) |
+| CJ Affiliate | ~70 brand applications submitted 2/15, awaiting responses | Flowers, jewelry, apparel, home, gourmet, personalization |
+| FlexOffers | Application submitted 2/16, awaiting approval (same-day to 48h) | 12,000+ advertisers, niche brands |
+| Awin | ✅ Account active, need to join ShareASale merchants (migrated Oct 2025) | Uncommon Goods, Personalization Mall, Things Remembered, etc. |
+| Impact | Wrong account type (signed up as brand not publisher), ticket submitted, no response | Target, Ulta, Kohl's, Gap, Home Depot, Adidas, Dyson |
+| Rakuten | Account active, need to apply to individual brands | Sephora, Nordstrom, Anthropologie, Free People, Coach |
 | Walmart Creator | Application submitted | Walmart |
-| Awin | Active, need to join advertisers | Etsy, UGG, Lululemon, Portland Leather |
+| Etsy Direct | Developer credentials pending | Etsy (would bypass Awin if approved) |
+| Amazon Associates | ✅ Active (tag added to Railway Feb 16) | Amazon |
+| eBay Partner Network | ✅ Active | eBay |
+
+**IMPORTANT:** ShareASale migrated to Awin in Oct 2025. All ShareASale merchants are now accessible through Awin.
 
 ## CJ Affiliate Partnership Strategy (Feb 15, 2026)
+
+**UPDATE Feb 15:** Batch applications to all ~70 brands submitted. Awaiting auto-approvals (24-48h) and manual reviews (3-7 days).
 
 ### Optimized Publisher Profile
 **Description:** Gift recommendation publisher, editorial gift guides, high-intent traffic, AI-powered personalization
@@ -114,7 +143,7 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 - **Apparel (4-8% commission):** AE, J.Crew, Columbia — high volume, lower margins
 - **Personalization (10-15% commission):** Things Remembered, Shutterfly — high intent, gift-specific
 
-### Next Actions After Approval
+### Next Actions After Approvals Start Coming In
 1. **Create retailer-specific gift guides:** "Best Flower Delivery Services 2026," "Personalized Gift Ideas," "Jewelry Gifts for Milestones"
 2. **Add CJ brands to AI curation pool:** Integrate approved merchants into multi-retailer search (when product feeds available)
 3. **Track performance by brand:** Use CJ reporting to identify top converters, feature them more prominently
@@ -148,7 +177,7 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 ## Technical Architecture Notes
 
 ### Key Files
-- `giftwise_app.py` — Main app (~3000+ lines), orchestrates the full pipeline
+- `giftwise_app.py` — Main app (4754 lines as of Feb 16), orchestrates the full pipeline
 - `profile_analyzer.py` — Claude call #1: social data → structured profile. Model via `CLAUDE_PROFILE_MODEL` env var.
 - `gift_curator.py` — Claude call #2: profile + inventory → curated recommendations. Model via `CLAUDE_CURATOR_MODEL` env var.
 - `post_curation_cleanup.py` — Programmatic enforcement of diversity rules (brand, category, interest, source). 23 category patterns.
@@ -156,17 +185,21 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 - `multi_retailer_searcher.py` — Orchestrates all retailer searches, merges inventory pool. Order: Etsy → Awin → eBay → ShareASale → Skimlinks → Amazon
 - `rapidapi_amazon_searcher.py` — Amazon search + shared query cleaning functions (`_clean_interest_for_search`, `_categorize_interest`, `_QUERY_SUFFIXES`)
 - `ebay_searcher.py` — eBay search (imports query cleaning from amazon searcher)
-- `etsy_searcher.py`, `awin_searcher.py`, `skimlinks_searcher.py` — Per-retailer search modules
+- `etsy_searcher.py`, `awin_searcher.py`, `skimlinks_searcher.py`, `cj_searcher.py` — Per-retailer search modules
 - `smart_filters.py` — Work exclusion, passive/active filtering, `ObsoleteFormatFilter` (respects retro interests), low-effort item filter
 - `image_fetcher.py` — Thumbnail validation and fallback chain
 - `relationship_rules.py` — Relationship-appropriate gift guidance (soft curator guidance, not hard filter)
 - `experience_providers.py` — Maps 13 experience categories to real booking platforms (Ticketmaster, Cozymeal, Viator, etc.)
+- `revenue_optimizer.py` — Smart pre-filtering: scores products by commission rate, past performance, interest match before sending to curator
+- `database.py` — SQLite product catalog for caching, click tracking, learning loop
+- `oauth_integrations.py` — OAuth flows for Pinterest, Spotify, Etsy, Google/YouTube (supplements scraping)
 - `site_stats.py` — Lightweight event counter for admin dashboard (shelve-backed)
 - `share_manager.py` — Share link generation and storage (shelve-backed, 30-day expiry)
-- `share_generator.py` — SVG share card generator (no Pillow dependency)
-- `referral_system.py` — Referral codes, tracking, Valentine's Day bonus
-- `social_conversion.py` — Urgency messaging, growth loops, share tracking classes (partially wired)
+- `share_generator.py` — SVG share card generator (generic, no campaign-specific code)
+- `referral_system.py` — Referral codes, tracking (generic, no promo-specific bonuses)
+- `social_conversion.py` — Generic urgency messaging, growth loops (campaign-specific code removed)
 - `OPUS_AUDIT.md` — Detailed audit checklist with file/line references for quality review
+- `AFFILIATE_NETWORK_RESEARCH.md` — Brand-to-network mapping for ~70 brands from family wishlist
 
 ### Searcher module pattern
 Each searcher exports a `search_products_<source>()` function returning a list of product dicts with keys: `title`, `link`, `snippet`, `image`, `thumbnail`, `image_url`, `source_domain`, `search_query`, `interest_match`, `priority`, `price`, `product_id`. The multi_retailer_searcher orchestrates them all and merges into an inventory pool.
@@ -176,11 +209,39 @@ Each searcher exports a `search_products_<source>()` function returning a list o
 - `CLAUDE_CURATOR_MODEL` — default `claude-sonnet-4-20250514`. Gift curation (taste/judgment — Opus may improve quality). Set to `claude-opus-4-20250514` to test.
 - Both log which model is used at startup and per-call.
 
-### Admin dashboard
+### Admin dashboard & testing
+**Admin Dashboard:**
 - Route: `/admin/stats?key=ADMIN_DASHBOARD_KEY`
 - Env var: `ADMIN_DASHBOARD_KEY` (set in Railway dashboard → Settings → Variables)
-- Tracks: signups, rec_run, share_create, share_view, valentine_hit, guide_hit, error
+- Tracks: signups, rec_run, share_create, share_view, guide_hit, error
 - Mobile-friendly dark UI, today/week/7-day breakdown, "What to do" trigger rules
+
+**Testing Routes:**
+- `/demo` — Public demo mode, bypasses social handle requirement, shows fake recommendations
+- `/demo?admin=true` — Admin test mode, pre-fills @chadahren and runs real pipeline (requires owner to be logged in or bypasses validation)
+- Admin can bypass share-to-unlock gates and other viral friction for testing
+
+### New Infrastructure (Added Feb 10-16)
+
+**Revenue Optimizer (`revenue_optimizer.py`):**
+- Scores products BEFORE they go to the curator using local intelligence
+- Factors: commission rate (Etsy/Awin earn 2-5x vs Amazon), past click performance, interest match
+- Goal: Send curator 30 high-quality products instead of 100 random ones → better output + lower token cost
+- `score_product_for_profile(product, profile, relationship)` returns 0.0-1.0 score
+
+**Product Database (`database.py`):**
+- SQLite catalog at `/home/user/GiftWise/data/products.db`
+- Caches products from retailers (reduces API calls)
+- Tracks click analytics for learning loop: which products get clicked, which retailers convert
+- `track_affiliate_click(product_id, retailer, user_id)` logs every product click
+- Enables smart pre-filtering based on historical performance
+
+**OAuth Integrations (`oauth_integrations.py`):**
+- Spotify OAuth + Spotify Wrapped text paste for music preferences
+- Pinterest OAuth for visual taste analysis
+- Etsy OAuth for favorites (when approved)
+- Google OAuth for YouTube subscriptions
+- Supplements scraping with first-party data (better quality, no rate limits)
 
 ### Patterns to Follow
 - Images are resolved programmatically from inventory, never from curator LLM output
@@ -190,6 +251,7 @@ Each searcher exports a `search_products_<source>()` function returning a list o
 - Snippets must describe the product, not just the seller. "Carbon steel wok, 14-inch, flat bottom" beats "From ThaiKitchenStore".
 - Curator gets 14 candidates, cleanup trims to 10. This gives cleanup room to enforce diversity without falling short.
 - **Wire everything end-to-end.** If you create a template, add the route. If you create a module, wire the imports. If you add a feature, test the full flow. No orphaned code.
+- **Revenue optimization matters.** Prioritize high-commission sources (Etsy, Awin, eBay) over low-commission (Amazon). Use `revenue_optimizer.py` to score products before sending to curator.
 
 ### Patterns to Avoid
 - Don't route structured data (URLs, image links, prices) through LLM prompts — they corrupt it
@@ -199,6 +261,9 @@ Each searcher exports a `search_products_<source>()` function returning a list o
 - Don't build features that only work for one retailer. Every feature should degrade gracefully when a source is unavailable.
 - **Don't make piecemeal fixes.** Think holistically. Read `OPUS_AUDIT.md` before adding new features.
 - **Don't add code filters for taste problems.** "Boring practical items" should be handled by curator prompt, not by `BoringPracticalFilter`. If the curator is making bad judgment calls, fix the prompt.
+- **Don't build campaign-specific code.** Valentine's Day taught this lesson — had to delete 884 lines of promo-specific code. Build generic infrastructure (sharing, referrals, urgency) that works for any campaign.
+- **Don't assume affiliate networks will approve quickly.** Skimlinks submitted Feb 9, still waiting Feb 16. Plan for 7+ business days.
+- **Don't optimize for Amazon.** Amazon has lowest commission (1-4%). Prioritize Etsy (4%), Awin (5%), eBay (3%) for revenue.
 
 ### Current Status of Retailer Integrations
 - Amazon (RapidAPI): Active, working (~20 products per run)
@@ -208,19 +273,22 @@ Each searcher exports a `search_products_<source>()` function returning a list o
 - Skimlinks (Product Key API v2): Code complete, awaiting publisher approval
 - ShareASale: Migrated to Awin (Oct 2025). Legacy code still present but not active.
 
-### Valentine's Day Infrastructure
-- `/valentine` and `/valentines` routes serve `valentines_landing.html`
-- Countdown timer to Feb 14, 2026, pricing tiers, urgency messaging
-- Valentine's urgency banner on recommendations page (auto-shows within 14 days)
-- `sharing_section.html` is Valentine-themed but NOT included in any active page (standalone component)
-- `social_conversion.py` has `ConversionNudges.get_valentines_urgency()` — partially wired
-- Share flow works: recommendations page → "Share My Picks" button → generates share link → copy/tweet
+### Editorial Content (for Affiliate Network Approval)
 
-### Gift Guide Pages (for Skimlinks approval)
-Six editorial guides deployed at `/guides/<slug>`:
-- `guide_beauty.html` (beauty-lover), `guide_music.html` (music-fan), `guide_home.html` (homebody)
-- `guide_travel.html` (travel-obsessed), `guide_dog.html` (dog-parent), `guide_tech.html` (tech-nerd)
-- No couples/romantic guide yet (opportunity for Valentine's content)
+**Gift Guides (10 total):**
+- `/guides` — landing page listing all guides
+- `/guides/<slug>` — individual guide pages
+- General guides (6): beauty-lover, music-fan, homebody, travel-obsessed, dog-parent, tech-nerd
+- Etsy-focused guides (3): etsy-home-decor, etsy-jewelry, etsy-under-50
+- Seasonal guides (1): mothers-day
+
+**Blog Posts (4 total):**
+- `/blog` — landing page listing all posts
+- `/blog/<slug>` — individual post pages
+- Posts: cash-vs-physical-gift, gift-giving-mistakes, gifts-for-someone-who-has-everything, last-minute-gifts
+- SEO-optimized, evergreen content for organic traffic
+
+All guides and blog posts include Skimlinks snippet and affiliate disclosure.
 
 ## Brand-to-Network Mapping (Family's Wishlist, ~70 Brands)
 
@@ -271,29 +339,63 @@ Every product recommendation is an affiliate link opportunity. Revenue per click
 - More Etsy/Awin/eBay = higher average commission per click
 - Session cost ~$0.10 on Sonnet, ~$0.25-0.50 on Opus. Revenue must exceed cost.
 
-## Recent Commit History (branch: claude/debug-awin-links-Tq5On)
+## Recent Commit History (Last 20, since Feb 9)
 
 ```
-34b5b20 Add Opus audit checklist for UX and curation quality review
-60beca6 Add admin stats dashboard and fix category dedup
-c20ee69 Wire up sharing, Valentine's landing, and viral loop
-a4a4aea Add Claude model toggle for A/B testing Opus vs Sonnet
-d9f9057 Add curated experience provider links instead of generic Google searches
-8b6e3d1 Improve search query quality: clean interest names, category-specific suffixes
-9dfdc78 Fix material matching false positives: expand stopwords, raise threshold
-c2d56bb Refine obsolete media filter: respect retro/vinyl interests
-ecb6978 Add obsolete media and low-effort product filter
-59a1d61 Add Skimlinks JS snippet to all 26 HTML templates
-883a3a6 Add 5 remaining gift guide articles and wire all routes
-e30bab6 Add gift guide pages and routes for Skimlinks approval
-746a8aa Add Skimlinks searcher module and gate Awin behind joined feeds
+e0a41d7 Merge pull request #39 from ahrenc13/claude/review-documentation-zban7
+1add50a Add CJ Affiliate partnership strategy to project documentation
+17f9062 Add blog architecture and publisher pages for affiliate network approval
+ff06454 Add Mother's Day 2026 gift guide
+296b34f Wire up 3 existing Etsy gift guides
+323b149 Remove all Valentine's Day code while preserving sharing infrastructure
+9cf3520 Fix demo route and remove friction from testing flow
+f3d9681 Disable username validation for owner testing
+3efd0ce Add admin test route to run real pipeline with owner's Instagram
+c7fb9c0 Make home page CTA go directly to demo (zero friction)
+e34ecca Add Skip/Demo mode to bypass social handle requirement
+a197578 Add admin bypass for share-to-unlock viral gates
+056208c Add share-to-unlock viral growth mechanics for TikTok campaign
+d68c08a Rewrite beta messaging with warmth and genuine apology
+815bc57 Add honest beta messaging for thin inventory state
+fb13fde Fix experience cards: Add validation for materials/links like products
+ef325ab Revenue optimization: Smart pre-filtering & learning loop
+210631c Phase 1 refactoring: Repository pattern, auth middleware, config management
+ae4ea43 Add monetization infrastructure: affiliate tracking, click analytics, email capture
+f1a0df3 Add complete waitlist system for TikTok viral campaign
 ```
 
-## What the User Wants Next
+Key themes: Valentine's removed, Mother's Day added, friction reduction, revenue optimization, waitlist/viral mechanics, CJ Affiliate strategy.
 
-1. **Monitor and iterate on quality** — admin dashboard is built, user travels this week, needs phone-checkable metrics
-2. **Couples/Valentine's gift guide** — not yet built, would help Valentine's strategy
-3. **TikTok launch strategy** — user's kid has a viral post (150k likes). Plan: kid posts follow-up linking to `/valentine` once inventory quality is good enough (waiting on Skimlinks/retailer approvals). Soft bump, not hardcore launch.
-4. **Paywall timing** — monitor engagement via admin dashboard, flip paywall when sessions consistently generate more API cost than affiliate revenue
-5. **Opus A/B test** — run same profile through Sonnet and Opus curation, compare gift taste, evidence quality, diversity. Toggle via `CLAUDE_CURATOR_MODEL` env var.
-6. **Mother's Day (May 11)** — the real money holiday for a gift app. Valentine's is practice.
+## Current Development Focus
+
+**Immediate Priority: Unlock Inventory**
+The app's #1 bottleneck is thin inventory (Amazon + eBay only, ~30 products per session). Everything else is blocked on getting more affiliate networks approved:
+
+1. **Skimlinks** (highest impact) — Blanket access to ~48,500 merchants if approved. Submitted Feb 9, expecting response by Feb 18-20.
+2. **Awin** (high impact) — Account active. Need to join former ShareASale merchants: Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar.
+3. **FlexOffers** (high impact) — Applied Feb 16. Many auto-approve programs, often same-day approval.
+4. **CJ Affiliate** (~70 brands) — Batch applications submitted Feb 15. Auto-approvals should start coming in 24-48h, manual reviews 3-7 days.
+5. **Impact.com** (fix account type) — Accidentally signed up as brand not publisher. Ticket submitted, waiting for support.
+
+**Secondary: Content & Traffic**
+- 10 gift guides deployed (6 general + 3 Etsy + 1 Mother's Day)
+- 4 blog posts live for SEO
+- Waitlist system ready for viral growth
+- Demo mode eliminates friction for testing/sharing
+
+**Holding Pattern: TikTok Launch**
+User's kid has viral post (150k+ likes) but waiting to post follow-up until inventory improves. Don't want to drive traffic to a thin product catalog.
+
+## What the User Wants Next (Updated Feb 16)
+
+1. **Join Awin advertisers** — Search for and join former ShareASale merchants (Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar)
+2. **Monitor affiliate approvals** — FlexOffers (same-day to 48h), CJ (~70 brands, rolling approvals), Skimlinks (by Feb 18-20)
+3. **Build FlexOffers searcher** — `flexoffers_searcher.py` module once approved
+4. **Fix Impact account** — Ticket open for account type issue
+5. **Monitor and iterate on quality** — admin dashboard at `/admin/stats?key=ADMIN_DASHBOARD_KEY`
+6. **TikTok soft launch** — User's kid has viral post (150k+ likes). Waiting for inventory to improve before posting follow-up.
+7. **Paywall timing** — monitor engagement via admin dashboard, flip paywall when sessions consistently generate more API cost than affiliate revenue
+8. **Opus A/B test** — run same profile through Sonnet and Opus curation with improved inventory (200+ products)
+9. **Mother's Day (May 11)** — Guide built, promote once inventory is better
+
+**See `AFFILIATE_APPLICATIONS_TRACKER.md` for detailed affiliate network status.**

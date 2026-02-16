@@ -66,6 +66,19 @@ except ImportError:
     NEW_RECOMMENDATION_FLOW = False
     pass
 
+# URL utilities (consolidated from 4 scattered implementations)
+from url_utils import (
+    normalize_product_url,
+    is_valid_product_url,
+    is_bad_product_url,
+    extract_domain,
+    extract_base_domain,
+    generate_amazon_search_url,
+)
+
+# Apify scraper utilities (eliminates Instagram + TikTok duplication)
+from apify_utils import scrape_instagram_apify, scrape_tiktok_apify
+
 
 def profile_for_search_and_curation(profile):
     """
@@ -891,276 +904,101 @@ def check_pinterest_profile(username):
 
 def scrape_instagram_profile(username, max_posts=50, task_id=None):
     """
-    Scrape Instagram with progress tracking
+    Scrape Instagram with progress tracking (refactored to use apify_utils)
     """
-    if not APIFY_API_TOKEN:
-        logger.warning("No Apify token configured")
+    # Use generic Apify scraper
+    data = scrape_instagram_apify(
+        username=username,
+        max_posts=max_posts,
+        task_id=task_id,
+        progress_callback=set_progress,
+        apify_token=APIFY_API_TOKEN,
+        actor_id=APIFY_INSTAGRAM_ACTOR
+    )
+
+    if not data:
         return None
-    
-    try:
-        if task_id:
-            set_progress(task_id, 'running', 'Starting Instagram scraper...', 5)
-        
-        logger.info(f"Starting Instagram scrape for @{username}")
-        
-        response = requests.post(
-            f'https://api.apify.com/v2/acts/{APIFY_INSTAGRAM_ACTOR}/runs?token={APIFY_API_TOKEN}',
-            json={
-                'username': [username],
-                'resultsLimit': max_posts
-            },
-            timeout=30
-        )
-        
-        if response.status_code != 201:
-            if task_id:
-                set_progress(task_id, 'error', 'Failed to start scraper', 0)
-            logger.error(f"Failed to start Instagram scraper: {response.status_code}")
-            return None
-        
-        run_id = response.json()['data']['id']
-        if task_id:
-            set_progress(task_id, 'running', f'Finding @{username}...', 15)
-        
-        # Poll for completion
-        max_wait = 120
-        elapsed = 0
-        
-        while elapsed < max_wait:
-            wait_time = 2 if elapsed < 30 else 5
-            time.sleep(wait_time)
-            elapsed += wait_time
-            
-            # Update progress
-            if task_id:
-                progress_pct = min(15 + (elapsed / max_wait) * 75, 90)
-                messages = {
-                    10: f'Finding @{username}...',
-                    30: 'Analyzing profile...',
-                    50: 'Downloading posts...',
-                    70: 'Extracting interests...',
-                    85: 'Processing data...'
-                }
-                msg = messages.get(int(progress_pct // 10) * 10, 'Analyzing profile...')
-                set_progress(task_id, 'running', msg, progress_pct)
-            
-            status_response = requests.get(
-                f'https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}',
-                timeout=10
-            )
-            
-            if status_response.status_code != 200:
-                continue
-                
-            status = status_response.json()['data']['status']
-            
-            if status == 'SUCCEEDED':
-                break
-            elif status in ['FAILED', 'ABORTED', 'TIMED-OUT']:
-                if task_id:
-                    set_progress(task_id, 'error', 'Instagram scraping failed', 0)
-                logger.error(f"Instagram scraping failed with status: {status}")
-                return None
-        
-        # Check if we timed out
-        if elapsed >= max_wait:
-            logger.warning(f"Instagram scrape timeout after {max_wait}s")
-            if task_id:
-                set_progress(task_id, 'error', 'Scraping timed out', 0)
-            return None
-        
-        # Get results
-        results_response = requests.get(
-            f'https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?token={APIFY_API_TOKEN}',
-            timeout=30
-        )
-        
-        if results_response.status_code != 200:
-            if task_id:
-                set_progress(task_id, 'error', 'Failed to retrieve data', 0)
-            logger.error(f"Failed to retrieve Instagram data: {results_response.status_code}")
-            return None
-        
-        data = results_response.json()
-        
-        if not data:
-            if task_id:
-                set_progress(task_id, 'error', 'No posts found', 0)
-            logger.warning(f"No posts found for Instagram user @{username}")
-            return None
-        
-        # Parse data
-        first_post = data[0]
-        owner_username = first_post.get('ownerUsername', username)
-        owner_full_name = first_post.get('ownerFullName', '')
-        owner_bio = first_post.get('ownerBio', '') or first_post.get('biography', '') or ''
-        owner_followers = first_post.get('ownerFollowers', 0) or first_post.get('followersCount', 0) or 0
 
-        posts = data[:max_posts]
+    # Parse Instagram-specific data
+    first_post = data[0]
+    owner_username = first_post.get('ownerUsername', username)
+    owner_full_name = first_post.get('ownerFullName', '')
+    owner_bio = first_post.get('ownerBio', '') or first_post.get('biography', '') or ''
+    owner_followers = first_post.get('ownerFollowers', 0) or first_post.get('followersCount', 0) or 0
 
-        result = {
-            'username': owner_username,
-            'full_name': owner_full_name,
-            'bio': owner_bio,
-            'followers': owner_followers,
-            'posts': [
-                {
-                    'caption': post.get('caption', ''),
-                    'likes': post.get('likesCount', 0),
-                    'comments': post.get('commentsCount', 0),
-                    'timestamp': post.get('timestamp', ''),
-                    'type': post.get('type', 'image'),
-                    'url': post.get('url', ''),
-                    'hashtags': post.get('hashtags', [])
-                }
-                for post in posts
-            ],
-            'highlights': [],
-            'total_posts': len(posts),
-            'total_highlights': 0,
-            'scraped_at': datetime.now().isoformat()
-        }
-        
-        if task_id:
-            set_progress(task_id, 'complete', f'✓ Connected! Found {len(posts)} posts', 100)
-        
-        logger.info(f"Successfully scraped {len(posts)} Instagram posts for @{username}")
-        
-        # Track Apify usage (typically 1 compute unit per run)
-        if USAGE_TRACKING_AVAILABLE:
-            try:
-                track_apify_usage(1, 'instagram')
-            except Exception as e:
-                logger.warning(f"Failed to track Apify usage: {e}")
+    posts = data[:max_posts]
 
-        # Track Apify usage
-        if USAGE_TRACKING_AVAILABLE:
+    result = {
+        'username': owner_username,
+        'full_name': owner_full_name,
+        'bio': owner_bio,
+        'followers': owner_followers,
+        'posts': [
+            {
+                'caption': post.get('caption', ''),
+                'likes': post.get('likesCount', 0),
+                'comments': post.get('commentsCount', 0),
+                'timestamp': post.get('timestamp', ''),
+                'type': post.get('type', 'image'),
+                'url': post.get('url', ''),
+                'hashtags': post.get('hashtags', [])
+            }
+            for post in posts
+        ],
+        'highlights': [],
+        'total_posts': len(posts),
+        'total_highlights': 0,
+        'scraped_at': datetime.now().isoformat()
+    }
+
+    if task_id:
+        set_progress(task_id, 'complete', f'✓ Connected! Found {len(posts)} posts', 100)
+
+    logger.info(f"Successfully scraped {len(posts)} Instagram posts for @{username}")
+
+    # Track Apify usage (typically 1 compute unit per run)
+    if USAGE_TRACKING_AVAILABLE:
+        try:
             track_apify_usage(1, 'instagram')
-        
-        return result
-        
-    except Exception as e:
-        logger.error(f"Instagram scraping error: {e}", exc_info=True)
-        if task_id:
-            set_progress(task_id, 'error', f'Error: {str(e)}', 0)
-        return None
+        except Exception as e:
+            logger.warning(f"Failed to track Apify usage: {e}")
+
+    return result
 
 def scrape_tiktok_profile(username, max_videos=50, task_id=None):
     """
-    Scrape TikTok with progress tracking and repost analysis
+    Scrape TikTok with progress tracking and repost analysis (refactored to use apify_utils)
     """
-    if not APIFY_API_TOKEN:
-        logger.warning("No Apify token configured")
+    # Use generic Apify scraper
+    data = scrape_tiktok_apify(
+        username=username,
+        max_videos=max_videos,
+        task_id=task_id,
+        progress_callback=set_progress,
+        apify_token=APIFY_API_TOKEN,
+        actor_id=APIFY_TIKTOK_ACTOR
+    )
+
+    if not data:
         return None
-    
-    try:
-        if task_id:
-            set_progress(task_id, 'running', 'Starting TikTok scraper...', 5)
-        
-        logger.info(f"Starting TikTok scrape for @{username}")
-        
-        response = requests.post(
-            f'https://api.apify.com/v2/acts/{APIFY_TIKTOK_ACTOR}/runs?token={APIFY_API_TOKEN}',
-            json={
-                'profiles': [username],
-                'resultsPerPage': max_videos
-            },
-            timeout=30
-        )
-        
-        if response.status_code != 201:
-            if task_id:
-                set_progress(task_id, 'error', 'Failed to start scraper', 0)
-            logger.error(f"Failed to start TikTok scraper: {response.status_code}")
-            return None
-        
-        run_id = response.json()['data']['id']
-        if task_id:
-            set_progress(task_id, 'running', f'Finding @{username}...', 15)
-        
-        # Poll for completion
-        max_wait = 120
-        elapsed = 0
-        
-        while elapsed < max_wait:
-            wait_time = 2 if elapsed < 30 else 5
-            time.sleep(wait_time)
-            elapsed += wait_time
-            
-            # Update progress
-            if task_id:
-                progress_pct = min(15 + (elapsed / max_wait) * 75, 90)
-                messages = {
-                    10: f'Finding @{username}...',
-                    30: 'Analyzing videos...',
-                    50: 'Detecting reposts...',
-                    70: 'Extracting interests...',
-                    85: 'Processing data...'
-                }
-                msg = messages.get(int(progress_pct // 10) * 10, 'Analyzing videos...')
-                set_progress(task_id, 'running', msg, progress_pct)
-            
-            status_response = requests.get(
-                f'https://api.apify.com/v2/actor-runs/{run_id}?token={APIFY_API_TOKEN}',
-                timeout=10
-            )
-            
-            if status_response.status_code != 200:
-                continue
-                
-            status = status_response.json()['data']['status']
-            
-            if status == 'SUCCEEDED':
-                break
-            elif status in ['FAILED', 'ABORTED', 'TIMED-OUT']:
-                if task_id:
-                    set_progress(task_id, 'error', 'TikTok scraping failed', 0)
-                logger.error(f"TikTok scraping failed with status: {status}")
-                return None
-        
-        # Get results
-        results_response = requests.get(
-            f'https://api.apify.com/v2/actor-runs/{run_id}/dataset/items?token={APIFY_API_TOKEN}',
-            timeout=30
-        )
-        
-        if results_response.status_code != 200:
-            if task_id:
-                set_progress(task_id, 'error', 'Failed to retrieve data', 0)
-            logger.error(f"Failed to retrieve TikTok data: {results_response.status_code}")
-            return None
-        
-        data = results_response.json()
-        
-        if not data:
-            if task_id:
-                set_progress(task_id, 'error', 'No videos found', 0)
-            logger.warning(f"No videos found for TikTok user @{username}")
-            return None
-        
-        # Parse with repost intelligence
-        parsed_data = parse_tiktok_data(data, username)
-        
-        if task_id:
-            total_videos = parsed_data.get('total_videos', 0)
-            set_progress(task_id, 'complete', f'✓ Connected! Found {total_videos} videos', 100)
-        
-        logger.info(f"Successfully scraped {parsed_data.get('total_videos', 0)} TikTok videos for @{username}")
-        
-        # Track Apify usage (typically 1 compute unit per run)
-        if USAGE_TRACKING_AVAILABLE:
-            try:
-                track_apify_usage(1, 'tiktok')
-            except Exception as e:
-                logger.warning(f"Failed to track Apify usage: {e}")
-        
-        return parsed_data
-        
-    except Exception as e:
-        logger.error(f"TikTok scraping error: {e}", exc_info=True)
-        if task_id:
-            set_progress(task_id, 'error', f'Error: {str(e)}', 0)
-        return None
+
+    # Parse with repost intelligence
+    parsed_data = parse_tiktok_data(data, username)
+
+    if task_id:
+        total_videos = parsed_data.get('total_videos', 0)
+        set_progress(task_id, 'complete', f'✓ Connected! Found {total_videos} videos', 100)
+
+    logger.info(f"Successfully scraped {parsed_data.get('total_videos', 0)} TikTok videos for @{username}")
+
+    # Track Apify usage (typically 1 compute unit per run)
+    if USAGE_TRACKING_AVAILABLE:
+        try:
+            track_apify_usage(1, 'tiktok')
+        except Exception as e:
+            logger.warning(f"Failed to track Apify usage: {e}")
+
+    return parsed_data
 
 def scrape_pinterest_profile(username, max_pins=100, task_id=None):
     """
@@ -1745,88 +1583,7 @@ def contact():
 # WAITLIST ROUTES (Pre-Launch)
 # ============================================================================
 
-@app.route('/beta')
-@app.route('/waitlist')
-def waitlist():
-    """Waitlist landing page for pre-launch signups"""
-    return render_template('waitlist.html')
-
-@app.route('/api/waitlist', methods=['POST'])
-def api_waitlist():
-    """Save waitlist signup (handle-based for Gen Z)"""
-    import csv
-    import os
-    from datetime import datetime
-
-    try:
-        data = request.get_json()
-        handle = data.get('handle', '').strip().lower()
-        # Remove @ prefix if included
-        if handle.startswith('@'):
-            handle = handle[1:]
-
-        platform = data.get('platform', '')
-        phone = data.get('phone', '').strip()
-        shopping_for = data.get('shopping_for', '')
-        timestamp = data.get('timestamp', datetime.now().isoformat())
-        referrer = data.get('referrer', '')  # For tracking referral source
-
-        if not handle:
-            return jsonify({'error': 'Handle required'}), 400
-
-        if not platform:
-            return jsonify({'error': 'Platform required'}), 400
-
-        # Create data directory if it doesn't exist
-        os.makedirs('data', exist_ok=True)
-
-        # Append to CSV file
-        waitlist_file = 'data/waitlist.csv'
-        file_exists = os.path.isfile(waitlist_file)
-
-        # Count current signups to return position
-        position = 1
-        if file_exists:
-            with open(waitlist_file, 'r') as f:
-                position = sum(1 for line in f) - 1 + 1  # -1 for header, +1 for this signup
-
-        # Write signup
-        with open(waitlist_file, 'a', newline='') as f:
-            writer = csv.writer(f)
-            if not file_exists:
-                writer.writerow(['handle', 'platform', 'phone', 'shopping_for', 'referrer', 'timestamp', 'position'])
-            writer.writerow([handle, platform, phone, shopping_for, referrer, timestamp, position])
-
-        logger.info(f"Waitlist signup: @{handle} on {platform} (position #{position})")
-
-        return jsonify({
-            'success': True,
-            'position': position,
-            'handle': handle,
-            'message': 'Welcome to the waitlist!'
-        })
-
-    except Exception as e:
-        logger.error(f"Waitlist signup error: {e}")
-        return jsonify({'error': 'Something went wrong'}), 500
-
-@app.route('/api/waitlist/stats')
-def waitlist_stats():
-    """Return current waitlist count for display on signup page"""
-    import csv
-    import os
-
-    waitlist_file = 'data/waitlist.csv'
-    if not os.path.exists(waitlist_file):
-        return jsonify({'count': 0})
-
-    try:
-        with open(waitlist_file, 'r') as f:
-            count = sum(1 for line in f) - 1  # -1 for header
-        return jsonify({'count': max(0, count)})
-    except Exception as e:
-        logger.error(f"Waitlist stats error: {e}")
-        return jsonify({'count': 0})
+# NOTE: Waitlist routes moved to lines 4574+ (consolidated implementation with referral bumps, validation, and dashboard)
 
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
@@ -2933,16 +2690,7 @@ def _apply_affiliate_tag(url):
     return url
 
 
-def _normalize_url_for_matching(u):
-    """Normalize a URL for inventory matching: strip whitespace, trailing slash, tracking params."""
-    if not u or not isinstance(u, str):
-        return ''
-    u = u.strip().rstrip('/')
-    if '?' in u:
-        base, _, qs = u.partition('?')
-        if '/dp/' in base or '/listing/' in base or '/itm/' in base:
-            u = base
-    return u or ''
+# NOTE: normalize_product_url moved to url_utils.py as normalize_product_url()
 
 
 def _validate_experience_url(url, timeout=3):
@@ -3106,7 +2854,7 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
         if not link or is_bad_product_url_fn(link):
             continue
         inventory_urls.add(link)
-        inventory_urls.add(_normalize_url_for_matching(link))
+        inventory_urls.add(normalize_product_url(link))
         title = (p.get('title') or '').lower()
         words = {w for w in re.split(r'\W+', title) if len(w) >= 2 and w not in _STOPWORDS}
         for w in words:
@@ -3121,7 +2869,7 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
         # Only trust URLs that actually exist in our product inventory (normalized)
         # The curator often invents plausible-looking Amazon URLs that lead to wrong products
         if existing_url:
-            norm_url = _normalize_url_for_matching(existing_url)
+            norm_url = normalize_product_url(existing_url)
             if existing_url in inventory_urls or norm_url in inventory_urls:
                 logger.debug(f"MATERIALS: Kept inventory URL for '{item_name[:40]}': {existing_url[:80]}")
                 out.append(m)
@@ -3461,24 +3209,15 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
             _set_gen_progress(user_id, stage='images',
                               stage_label='Validating every link and image...')
 
-            def _normalize_url_for_image(u):
-                if not u or not isinstance(u, str):
-                    return ''
-                u = u.strip().rstrip('/')
-                if '?' in u:
-                    base, _, qs = u.partition('?')
-                    if '/dp/' in base or '/listing/' in base or '/itm/' in base:
-                        u = base
-                return u or ''
-
+            # NOTE: Using normalize_product_url from url_utils.py (consolidated)
             product_url_to_image = {}
             valid_product_urls = set()
             for p in products:
                 raw_link = (p.get('link') or '').strip()
                 if raw_link:
                     valid_product_urls.add(raw_link)
-                    valid_product_urls.add(_normalize_url_for_image(raw_link))
-                link = _normalize_url_for_image(raw_link)
+                    valid_product_urls.add(normalize_product_url(raw_link))
+                link = normalize_product_url(raw_link)
                 if link:
                     img = (p.get('image_url') or p.get('image') or p.get('thumbnail') or '').strip()
                     product_url_to_image[link] = img
@@ -3495,9 +3234,9 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
 
             for gift in product_gifts:
                 product_url = (gift.get('product_url') or '').strip()
-                if product_url not in valid_product_urls and _normalize_url_for_image(product_url) not in valid_product_urls:
+                if product_url not in valid_product_urls and normalize_product_url(product_url) not in valid_product_urls:
                     continue
-                image_url = product_url_to_image.get(product_url, '') or product_url_to_image.get(_normalize_url_for_image(product_url), '')
+                image_url = product_url_to_image.get(product_url, '') or product_url_to_image.get(normalize_product_url(product_url), '')
                 if is_bad_product_url(product_url):
                     product_url = ''
                     image_url = ''

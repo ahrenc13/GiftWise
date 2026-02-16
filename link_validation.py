@@ -134,85 +134,20 @@ def generate_brand_website_url(product_name):
     return None
 
 
-def is_search_url(url):
-    """True if URL is a search/category results page, not a direct product page. Stricter so we never show search links as product links."""
-    if not url or not isinstance(url, str):
-        return True
-    url_lower = url.lower().strip()
-    try:
-        parsed = urlparse(url_lower)
-        path = (parsed.path or '/').strip('/')
-        netloc = (parsed.netloc or '')
-        query = (parsed.query or '')
-    except Exception:
-        return True
-    # Known search engine domains with search intent
-    if 'google.' in netloc and ('/search' in path or 'tbm=shop' in query or 'tbm=lcl' in query):
-        return True
-    if 'bing.' in netloc and '/search' in path:
-        return True
-    if 'duckduckgo.' in netloc:
-        return True
-    # Amazon: only /dp/ and /gp/product are product pages; /s, /s/, /b/ are search/browse
-    if 'amazon.' in netloc:
-        if '/dp/' in path or '/gp/product' in path or '/gp/aw/d' in path:
-            return False
-        if '/s?' in path or path.startswith('s/') or '/s/' in path or '/b/' in path or 'ref=sr_' in query:
-            return True
-        if 'k=' in query and '/dp/' not in path and '/gp/' not in path:
-            return True
-        return False
-    # Etsy: listing/ is product; search is search
-    if 'etsy.com' in netloc:
-        if path.startswith('listing/'):
-            return False
-        if 'search' in path or path.startswith('search') or '?q=' in query:
-            return True
-        return False
-    # eBay: /itm/ is item; /sch/ is search
-    if 'ebay.' in netloc:
-        if '/itm/' in path:
-            return False
-        if '/sch/' in path or '/b/' in path:
-            return True
-        return False
-    # Generic: path clearly indicates search/category (don't use ?q= here—product URLs often have other params)
-    if '/search' in path or path.startswith('search') or '/results' in path or '/browse' in path:
-        return True
-    return False
+# =============================================================================
+# URL VALIDATION - Re-exported from url_utils.py (DRY)
+# =============================================================================
+# NOTE: These functions moved to url_utils.py to eliminate duplication.
+# Re-exported here for backward compatibility with existing imports.
 
-
-def is_generic_domain_url(url):
-    """True if URL is just a site homepage (e.g. etsy.com, amazon.com) with no product path."""
-    if not url or not url.startswith(('http://', 'https://')):
-        return True
-    try:
-        parsed = urlparse(url)
-        path = (parsed.path or '/').strip('/').lower()
-        # No path or just "www" or empty = generic
-        if not path or path in ('www', ''):
-            return True
-        # Etsy/Amazon listing pages have listing/ or dp/ or gp/product
-        if path.startswith('listing/') or path.startswith('dp/') or 'gp/product' in path:
-            return False
-        return False
-    except Exception:
-        return False
-
-
-def is_bad_product_url(url):
-    """True if URL should not be used as a product link (search page or bare domain). Use placeholder image when True."""
-    if not url or not isinstance(url, str):
-        return True
-    return is_search_url(url) or is_generic_domain_url(url)
-
-
-def generate_amazon_search_url(product_name, affiliate_tag=None):
-    """Generate Amazon search URL (LAST RESORT ONLY)"""
-    url = f"https://www.amazon.com/s?k={quote(product_name)}"
-    if affiliate_tag:
-        url += f"&tag={affiliate_tag}"
-    return url
+from url_utils import (
+    is_search_url,
+    is_generic_domain_url,
+    is_bad_product_url,
+    is_valid_product_url,
+    generate_amazon_search_url,
+    normalize_product_url,
+)
 
 
 def generate_etsy_search_url(product_name):

@@ -290,6 +290,507 @@ Each searcher exports a `search_products_<source>()` function returning a list o
 
 All guides and blog posts include Skimlinks snippet and affiliate disclosure.
 
+## Testing Strategy (Feb 16, 2026 - Post-Refactoring)
+
+**Major architectural improvement:** After Phase 3 refactoring (Feb 16), the codebase is now highly testable with isolated services, comprehensive test suites, and clear testing patterns.
+
+### Testing Philosophy
+
+**Test what matters:**
+1. **Service modules** - Isolated, comprehensive unit tests (built-in test suites)
+2. **Integration points** - End-to-end pipeline tests (profile → search → curate → display)
+3. **User-facing features** - Browser testing for key flows
+4. **Deployment safety** - Pre-deploy checklist ensures no breaking changes
+
+**Don't over-test:**
+- Templates (if they render, they work - use browser testing)
+- Simple utility functions (if they're used in tested code, they're validated)
+- External APIs (mock them - we can't control eBay/Amazon uptime)
+
+---
+
+### Built-In Test Suites (Run These First)
+
+All service modules have comprehensive `if __name__ == "__main__"` test suites. **Run these before committing any changes:**
+
+```bash
+# Core services (78 total tests)
+python3 storage_service.py          # 10 tests - shelve operations, TTL, thread safety
+python3 search_query_utils.py       # 17 tests - query building, categorization
+python3 config_service.py           # 10 tests - env loading, validation
+python3 product_schema.py           # 10 tests - product parsing, validation
+python3 api_client.py               # 8 tests  - retry logic, error handling
+python3 auth_service.py             # 10 tests - token caching, refresh
+python3 base_searcher.py            # 6 tests  - searcher patterns
+python3 image_fetcher.py            # 7 tests  - image extraction (enhanced)
+
+# Intelligence modules
+python3 reddit_scraper.py           # Standalone test with fallback data
+python3 yelp_trending.py            # Standalone test with fallback data
+python3 regional_culture.py         # 4 tests  - region/city context
+python3 seasonal_experiences.py     # 5 tests  - seasonal filtering
+python3 local_events.py             # 3 tests  - event calendar
+
+# Run all at once (if all pass, you're good to commit)
+for module in storage_service.py search_query_utils.py config_service.py product_schema.py api_client.py auth_service.py base_searcher.py image_fetcher.py; do
+    echo "Testing $module..."
+    python3 $module || exit 1
+done
+echo "✅ All service tests passed"
+```
+
+**Expected output:** All tests should pass with "✅" indicators. Any failures indicate breaking changes.
+
+---
+
+### Integration Testing (End-to-End Pipeline)
+
+**Test the full recommendation pipeline** to ensure services work together:
+
+#### Quick Integration Test (Local Development)
+
+```bash
+# 1. Start Flask app locally
+python3 giftwise_app.py
+
+# 2. Visit in browser
+open http://localhost:5000
+
+# 3. Test key flows:
+#    - Homepage loads
+#    - /demo works (bypasses social scraping)
+#    - /demo?admin=true pre-fills @chadahren
+#    - Recommendations render
+#    - Templates inherit from base.html (check nav/footer appear)
+#    - Skimlinks snippet loads (DevTools → Network → search for "298548X178612")
+
+# 4. Check logs for errors
+#    Should see: "Regional intelligence loaded", "Config loaded", etc.
+```
+
+#### Full Pipeline Test (With Real Data)
+
+```bash
+# Test with real Instagram/TikTok scraping
+# Uses @chadahren (owner account) to test full pipeline
+
+# 1. Visit /demo?admin=true
+# 2. Should see profile analysis progress
+# 3. Should see product search (Amazon, eBay, etc.)
+# 4. Should see gift curation (Claude API call)
+# 5. Should see recommendations with regional context
+# 6. Check that experiences include neighborhood data (if applicable)
+```
+
+**What to verify:**
+- ✅ Profile built successfully (interests extracted)
+- ✅ Products found from multiple retailers
+- ✅ Gifts curated with `why_perfect` descriptions
+- ✅ Regional context appears in experiences (e.g., "East Austin vibe")
+- ✅ Material links work (not all "Find on Amazon")
+- ✅ Images load (not all placeholders)
+
+---
+
+### Service Testing Patterns
+
+#### Testing Storage Service
+
+```python
+from storage_service import StorageService
+import tempfile
+
+# Create test database
+with tempfile.NamedTemporaryFile(delete=False) as tmp:
+    test_db = tmp.name
+
+storage = StorageService(test_db)
+
+# Test basic operations
+storage.set('test_key', 'test_value')
+assert storage.get('test_key') == 'test_value'
+
+# Test TTL cleanup
+import time
+storage.set('old', {'created_at': time.time() - 200, 'data': 'old'})
+storage.set('new', {'created_at': time.time(), 'data': 'new'})
+deleted = storage.cleanup_expired(ttl_field='created_at', max_age_seconds=100)
+assert deleted == 1
+assert not storage.exists('old')
+
+# Cleanup
+import os
+os.remove(test_db)
+```
+
+#### Testing Config Service
+
+```python
+from config_service import get_config
+
+# Load config (validates required env vars)
+config = get_config()
+
+# Check availability
+assert config.claude.api_key  # Should be set
+print(f"Using model: {config.claude.curator_model}")
+
+# Check retailer availability
+from config_service import is_retailer_available
+if is_retailer_available('amazon'):
+    print("✓ Amazon searcher enabled")
+if is_retailer_available('ebay'):
+    print("✓ eBay searcher enabled")
+```
+
+#### Testing Product Schema
+
+```python
+from product_schema import Product, build_product_list
+
+# Test Amazon product parsing
+amazon_item = {
+    'product_title': 'Wireless Headphones',
+    'product_url': 'https://amazon.com/...',
+    'product_photo': 'https://m.media-amazon.com/...',
+    'product_price': '$49.99',
+    'asin': 'B08ABC123'
+}
+
+product = Product.from_amazon(amazon_item, query='headphones', interest='music')
+assert product.title == 'Wireless Headphones'
+assert product.source_domain == 'amazon.com'
+assert product.commission_rate == 0.02  # 2% for Amazon
+
+# Convert to curator format
+product_dict = product.to_dict()
+assert 'title' in product_dict
+assert 'link' in product_dict
+```
+
+#### Testing Search Query Utils
+
+```python
+from search_query_utils import build_search_query, clean_interest_for_search
+
+# Test query cleaning
+cleaned = clean_interest_for_search("Taylor Swift fandom and concert merch")
+assert cleaned == "Taylor Swift concert merch"  # "fandom" removed
+
+# Test query building
+query = build_search_query("hiking", intensity='strong')
+assert "hiking" in query.lower()
+assert "equipment" in query.lower() or "gear" in query.lower()  # Suffix added
+
+# Test batch building
+from search_query_utils import build_queries_from_profile
+profile = {
+    'interests': [
+        {'name': 'hiking', 'strength': 'strong'},
+        {'name': 'coffee', 'strength': 'medium'}
+    ]
+}
+queries = build_queries_from_profile(profile, max_queries=5)
+assert len(queries) <= 5
+assert queries[0]['interest'] == 'hiking'
+```
+
+---
+
+### Browser Testing (Manual QA Checklist)
+
+**Run this checklist before deploying to production:**
+
+#### Homepage & Navigation
+- [ ] Homepage loads at giftwise.fit
+- [ ] Navigation appears on all pages (from base.html)
+- [ ] Footer appears on all pages (from base.html)
+- [ ] All nav links work (Guides, Blog, Get Started)
+- [ ] Skimlinks loads (DevTools → Network → "298548X178612")
+
+#### Demo/Test Mode
+- [ ] `/demo` loads and bypasses social handle requirement
+- [ ] `/demo?admin=true` pre-fills @chadahren for testing
+- [ ] Fake recommendations render correctly in demo mode
+- [ ] Real pipeline runs successfully in admin mode
+
+#### Recommendation Flow
+- [ ] Social handle input validates correctly
+- [ ] Profile analysis shows progress updates
+- [ ] Recommendations render with images
+- [ ] "Why it's perfect" descriptions appear
+- [ ] Material links work (experiences with shopping lists)
+- [ ] Experience cards show "📅 Book" or "🛠️ Plan" badges
+- [ ] Regional context appears in experience descriptions
+- [ ] Sharing works (creates shareable link)
+
+#### Gift Guides & Blog
+- [ ] `/guides` landing page lists all 10 guides
+- [ ] Individual guide pages render correctly
+- [ ] `/blog` landing page lists all 4 posts
+- [ ] Blog posts render correctly
+- [ ] All pages have Skimlinks snippet
+
+#### Admin Dashboard
+- [ ] `/admin/stats?key=ADMIN_DASHBOARD_KEY` loads
+- [ ] Stats display correctly (signups, rec_run, shares, etc.)
+- [ ] Today/week/7-day breakdowns work
+
+---
+
+### Pre-Deployment Checklist
+
+**Before pushing to `main` (triggers Railway auto-deploy):**
+
+1. **Run all service tests:**
+   ```bash
+   python3 storage_service.py && \
+   python3 config_service.py && \
+   python3 product_schema.py && \
+   python3 search_query_utils.py && \
+   echo "✅ Core services passing"
+   ```
+
+2. **Syntax check critical files:**
+   ```bash
+   python3 -m py_compile giftwise_app.py recommendation_service.py
+   ```
+
+3. **Test locally:**
+   ```bash
+   python3 giftwise_app.py
+   # Visit http://localhost:5000/demo
+   # Verify homepage, demo mode, at least 1 guide, 1 blog post
+   ```
+
+4. **Check Railway env vars are set:**
+   - `ANTHROPIC_API_KEY` (required)
+   - `AMAZON_AFFILIATE_TAG` (for affiliate revenue)
+   - `EBAY_CLIENT_ID`, `EBAY_CLIENT_SECRET` (for eBay search)
+   - Other retailer credentials as needed
+
+5. **Review commit message:**
+   - Clear description of changes
+   - Link to Claude.ai session if complex refactoring
+
+6. **Push to branch first, test on Railway preview:**
+   ```bash
+   git push origin feature-branch
+   # Railway creates preview deployment
+   # Test on preview URL before merging to main
+   ```
+
+7. **Merge to main only after preview testing:**
+   ```bash
+   # Via GitHub PR (preferred) or direct push
+   git checkout main
+   git merge feature-branch
+   git push origin main
+   # Railway auto-deploys to production
+   ```
+
+---
+
+### Testing After Deployment
+
+**Verify production deployment at giftwise.fit:**
+
+1. **Smoke test (5 min):**
+   - [ ] Homepage loads
+   - [ ] `/demo` works
+   - [ ] 1 gift guide loads
+   - [ ] 1 blog post loads
+   - [ ] No 500 errors in Railway logs
+
+2. **Full test (15 min):**
+   - [ ] Run full demo flow
+   - [ ] Check recommendations render
+   - [ ] Verify Skimlinks loads
+   - [ ] Test sharing link creation
+   - [ ] Check admin dashboard stats
+
+3. **Monitor Railway logs for errors:**
+   ```bash
+   railway logs --tail 100
+   # Look for Python errors, API failures, etc.
+   ```
+
+---
+
+### Common Testing Patterns
+
+#### Mocking External APIs
+
+When testing code that calls external APIs (Amazon, eBay, Yelp), mock the responses:
+
+```python
+from unittest.mock import Mock, patch
+
+# Mock API client
+with patch('api_client.APIClient.get') as mock_get:
+    mock_get.return_value = {'data': [{'product_title': 'Test Product'}]}
+
+    # Test searcher with mocked API
+    from base_searcher import AmazonSearcher
+    searcher = AmazonSearcher(api_key='test_key')
+    products = searcher.search(profile, target_count=5)
+
+    assert len(products) > 0
+    assert products[0].title == 'Test Product'
+```
+
+#### Testing Template Rendering
+
+```python
+# Test that templates inherit from base.html correctly
+from flask import Flask
+app = Flask(__name__)
+
+with app.app_context():
+    from flask import render_template
+
+    # Render a page
+    html = render_template('index.html')
+
+    # Check for base.html elements
+    assert '<nav class="nav">' in html  # From nav.html include
+    assert '<footer class="footer">' in html  # From footer.html include
+    assert '298548X178612' in html  # Skimlinks from base.html
+```
+
+#### Testing Regional Intelligence
+
+```python
+from regional_culture import get_regional_context
+
+# Test NYC neighborhood granularity
+williamsburg = get_regional_context(
+    city='New York',
+    state='NY',
+    neighborhood='Williamsburg',
+    age=28,
+    gender='F'
+)
+
+assert 'neighborhood_data' in williamsburg
+assert williamsburg['neighborhood_data']['vibe'] == 'hipster_central_artisan'
+
+# Test fallback for cities without neighborhood data
+indy = get_regional_context(city='Indianapolis', state='IN', age=28, gender='F')
+assert 'city_vibe' in indy
+assert 'neighborhood_data' not in indy  # Indianapolis treated as single city
+```
+
+---
+
+### Debugging Failed Tests
+
+**If a test fails:**
+
+1. **Read the error message carefully** - it usually tells you exactly what's wrong
+2. **Check recent changes** - did you modify a file that breaks the test?
+3. **Run the test in isolation** - `python3 module_name.py` to see full output
+4. **Check imports** - are all required modules available?
+5. **Verify environment** - are required env vars set?
+6. **Check Railway logs** - production failures often show up in logs first
+
+**Common failure modes:**
+- **Import errors:** Missing module (check if file was renamed/moved)
+- **Env var errors:** `ANTHROPIC_API_KEY not set` (check Railway dashboard)
+- **API errors:** External API down (check status pages, use fallback data)
+- **Template errors:** Jinja2 syntax error (check template inheritance)
+
+---
+
+### Performance Testing
+
+**Monitor these metrics after major changes:**
+
+1. **API call count per session:**
+   - Profile analysis: 1 Claude API call
+   - Gift curation: 1 Claude API call
+   - Retailer searches: 2-5 API calls (Amazon, eBay, etc.)
+   - **Target: < 10 total API calls per session**
+
+2. **Session cost:**
+   - Sonnet profile + curator: ~$0.10/session
+   - Opus curator (if enabled): ~$0.25-0.50/session
+   - **Target: < $0.15/session on Sonnet**
+
+3. **Response time:**
+   - Profile analysis: 10-20 seconds
+   - Product search: 15-30 seconds
+   - Gift curation: 15-25 seconds
+   - **Total: 40-75 seconds end-to-end**
+
+4. **Cache hit rates (when implemented):**
+   - Product database cache: Target 30-40% hit rate
+   - Reddit cache: Target 80%+ hit rate (6-hour TTL)
+   - Yelp cache: Target 90%+ hit rate (30-min TTL)
+
+---
+
+### Continuous Testing (Future)
+
+**Not yet implemented, but recommended for future:**
+
+1. **GitHub Actions CI/CD:**
+   - Run all service tests on every commit
+   - Block PRs if tests fail
+   - Auto-deploy to Railway preview on PR creation
+
+2. **Pytest migration:**
+   - Convert `if __name__ == "__main__"` tests to pytest
+   - Add test coverage reporting
+   - Organize tests in `tests/` directory
+
+3. **Integration test suite:**
+   - Dedicated `tests/integration/` directory
+   - Mock all external APIs
+   - Test full pipeline with fake data
+
+4. **Load testing:**
+   - Simulate 100 concurrent sessions
+   - Identify bottlenecks (database, API rate limits)
+   - Ensure Gunicorn workers scale properly
+
+---
+
+### Testing Best Practices (From Experience)
+
+**Do:**
+- ✅ Run service tests before committing
+- ✅ Test locally before pushing to Railway
+- ✅ Use `/demo?admin=true` to test real pipeline without rate limits
+- ✅ Check Railway logs after deployment
+- ✅ Test on multiple browsers (Chrome, Safari, Firefox)
+- ✅ Verify mobile rendering (responsive design)
+
+**Don't:**
+- ❌ Push directly to `main` without testing
+- ❌ Skip service tests ("it compiles, ship it")
+- ❌ Test only on localhost (production has different env vars)
+- ❌ Ignore Railway logs (errors often show up there first)
+- ❌ Assume templates work without browser testing
+- ❌ Test with production API keys in local dev (use separate keys)
+
+**Remember:**
+- Templates are tested by rendering in browser, not unit tests
+- External APIs should be mocked for reliable testing
+- Service modules are the core of testing strategy (78 tests total)
+- Integration testing validates that services work together
+- Browser testing catches UX issues that unit tests miss
+
+**When in doubt, run this:**
+```bash
+python3 storage_service.py && \
+python3 config_service.py && \
+python3 product_schema.py && \
+python3 giftwise_app.py &
+sleep 2 && curl http://localhost:5000/demo && \
+echo "✅ Basic tests passed"
+```
+
 ## Brand-to-Network Mapping (Family's Wishlist, ~70 Brands)
 
 **Impact:** Target, Ulta, Kohl's, Gap/Old Navy/Banana Republic, Home Depot, Lowe's, Adidas, Shark, Crate & Barrel, Spanx, Petco, PetSmart, Dick's, Dyson, EverEve

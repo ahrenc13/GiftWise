@@ -1,57 +1,52 @@
 """
 CJ AFFILIATE PRODUCT SEARCHER
-Searches CJ Affiliate network for gift products via Product Catalog API
+Searches CJ Affiliate network for gift products via GraphQL Product Feed API
 
-API Documentation: https://developers.cj.com (Developer Portal)
-Welcome Kit Extraction: See /home/user/GiftWise/docs/ for full CJ integration guide
+API Documentation: https://developers.cj.com/graphql/reference/Product%20Feed%20API%20Reference
+GraphQL Endpoint: https://ads.api.cj.com/query
 
 Author: Chad + Claude
 Date: February 2026
-Status: SKELETON - Awaiting Developer Portal API specs
+Status: ACTIVE - Using GraphQL Product Search API
 
-REQUIRED BEFORE ACTIVATION:
-1. Access CJ Developer Portal for exact API endpoints
-2. Get CJ API credentials (API key, account ID)
-3. Create PID (Promotional Property ID) in CJAM
-4. Get approved by at least one advertiser
-5. Review actual API request/response format
-6. Verify rate limits and authentication method
+CREDENTIALS (from env vars):
+- CJ_API_KEY: Personal Access Token from CJ Developer Portal
+- CJ_COMPANY_ID: Your publisher company ID (CID)
+- CJ_PUBLISHER_ID: Your website/property ID (PID) for tracking links
 
-KNOWN REQUIREMENTS (from welcome kit):
-- PID (website ID) is mandatory for all links
-- SID (custom tracking) is optional but recommended
-- Must only search advertisers you're "joined" to
-- Cookie duration varies by advertiser (check Program Terms)
-- Links use format: https://www.anrdoezrs.net/click-{ACCOUNT_ID}-{AID}?url={DESTINATION}&pid={PID}&sid={SID}
+API FEATURES:
+- GraphQL product search across all joined advertisers
+- Returns: title, description, price, image, affiliate tracking link
+- Filters: keywords, partnerStatus (JOINED), price range, availability
+- Rate limit: 500 calls per 5 minutes
+- Max results: 1,000 per query (10,000 with pagination)
 """
 
 import os
 import logging
 import time
 from collections import deque
-from urllib.parse import quote
 import requests
+import json
 
 logger = logging.getLogger(__name__)
 
-# Placeholder credentials - must be set in environment
-CJ_ACCOUNT_ID = os.environ.get('CJ_ACCOUNT_ID', '')
-CJ_API_KEY = os.environ.get('CJ_API_KEY', '')
-CJ_WEBSITE_ID = os.environ.get('CJ_WEBSITE_ID', '')  # Your PID from CJAM
+# CJ GraphQL API endpoint
+CJ_GRAPHQL_ENDPOINT = "https://ads.api.cj.com/query"
 
-# API endpoints - PLACEHOLDER until Developer Portal access
-CJ_API_BASE = os.environ.get('CJ_API_BASE', 'https://api.cj.com')  # Verify actual base URL
-CJ_PRODUCT_SEARCH_ENDPOINT = f"{CJ_API_BASE}/v2/product-search"  # Placeholder path
+# Credentials from environment
+CJ_API_KEY = os.environ.get('CJ_API_KEY', '')
+CJ_COMPANY_ID = os.environ.get('CJ_COMPANY_ID', '')  # Your publisher CID
+CJ_PUBLISHER_ID = os.environ.get('CJ_PUBLISHER_ID', '')  # Your PID for tracking
 
 
 class CJRateLimiter:
     """
-    Rate limiter for CJ API calls
+    Rate limiter for CJ GraphQL API
 
-    DEFAULT ASSUMPTION: 100 requests per hour
-    MUST VERIFY actual limits in Developer Portal documentation
+    Limit: 500 calls per 5 minutes (per API documentation)
     """
-    def __init__(self, max_requests=100, time_window=3600):
+    def __init__(self, max_requests=500, time_window=300):  # 300 seconds = 5 minutes
         self.max_requests = max_requests
         self.time_window = time_window
         self.requests = deque()
@@ -82,160 +77,192 @@ class CJAPIError(Exception):
     pass
 
 
-def _build_auth_headers():
+def _build_auth_headers(api_key):
     """
-    Build authentication headers for CJ API
+    Build authentication headers for CJ GraphQL API
 
-    PLACEHOLDER - actual auth method from Developer Portal
-    Common patterns: Bearer token, API key header, Basic auth
+    Uses Bearer token authentication
     """
-    if not CJ_API_KEY:
-        raise CJAPIError("CJ_API_KEY not set in environment")
+    if not api_key:
+        raise CJAPIError("CJ_API_KEY not provided")
 
-    # PLACEHOLDER - verify actual header format in Developer Portal
     return {
-        "Authorization": f"Bearer {CJ_API_KEY}",  # May be different format
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
         "Accept": "application/json"
     }
 
 
-def _generate_tracking_link(product, pid=None, sid=None):
+def _build_graphql_query(keywords, company_id, publisher_id, limit=50, joined_only=False):
     """
-    Generate CJ affiliate tracking link
-
-    Based on welcome kit link structure:
-    https://www.anrdoezrs.net/click-{ACCOUNT_ID}-{AID}?url={DESTINATION}&pid={PID}&sid={SID}
+    Build GraphQL query for CJ product search
 
     Args:
-        product: Product dict from API response
-        pid: Website/property ID (PID) - uses CJ_WEBSITE_ID if not provided
-        sid: Custom tracking parameter (optional)
+        keywords: List of keywords to search for
+        company_id: Your CJ publisher company ID (CID)
+        publisher_id: Your publisher ID (PID) for tracking links
+        limit: Max number of products to return (default 50, max 1000)
+        joined_only: If True, only search advertisers you've joined (default False)
 
     Returns:
-        Tracking URL string
-
-    NOTES:
-    - Link format may differ - verify in Developer Portal
-    - PID is MANDATORY (welcome kit requirement)
-    - SID is optional but recommended for tracking
+        GraphQL query string
     """
-    if not CJ_ACCOUNT_ID:
-        raise CJAPIError("CJ_ACCOUNT_ID not set in environment")
+    # Convert keywords list to GraphQL array format
+    keywords_str = json.dumps(keywords)
 
-    # Use provided PID or fall back to environment variable
-    website_id = pid or CJ_WEBSITE_ID
-    if not website_id:
-        raise CJAPIError("PID (CJ_WEBSITE_ID) not set - required for tracking")
+    # Build partner status filter if needed
+    partner_filter = ""
+    if joined_only:
+        partner_filter = "partnerStatus: JOINED,"
 
-    # PLACEHOLDER - actual product structure from API response
-    ad_id = product.get('ad-id') or product.get('link_id')
-    destination_url = product.get('buy-url') or product.get('url')
-
-    if not ad_id or not destination_url:
-        logger.warning(f"Missing required fields for link generation: {product}")
-        return None
-
-    # Build tracking link (verify format in Developer Portal)
-    base_url = "https://www.anrdoezrs.net/click"
-    tracking_params = f"{CJ_ACCOUNT_ID}-{ad_id}"
-    encoded_destination = quote(destination_url)
-
-    link = f"{base_url}-{tracking_params}?url={encoded_destination}&pid={website_id}"
-
-    if sid:
-        link += f"&sid={quote(sid)}"
-
-    return link
-
-
-def _parse_product_response(data):
+    query = f"""
+    {{
+      products(
+        companyId: "{company_id}",
+        keywords: {keywords_str},
+        {partner_filter}
+        limit: {limit}
+      ) {{
+        totalCount
+        count
+        resultList {{
+          id
+          title
+          description
+          price {{
+            amount
+            currency
+          }}
+          imageLink
+          link
+          brand
+          advertiserId
+          advertiserName
+          linkCode(pid: "{publisher_id}") {{
+            clickUrl
+          }}
+        }}
+      }}
+    }}
     """
-    Parse CJ API product response into standardized format
+    return query
 
-    PLACEHOLDER - actual response structure from Developer Portal
-    Expected fields based on welcome kit product feed info
+
+def _parse_graphql_response(data, search_term):
+    """
+    Parse CJ GraphQL product response into standardized format
+
+    Args:
+        data: GraphQL response data
+        search_term: The search keyword used (for tagging products)
 
     Returns:
         List of product dicts with standardized keys
     """
     products = []
 
-    # PLACEHOLDER - actual response structure unknown
-    # Adjust based on real API response format
-    items = data.get('products', []) or data.get('items', [])
+    # Navigate to products result list
+    try:
+        products_data = data.get('data', {}).get('products', {})
+        total_count = products_data.get('totalCount', 0)
+        result_list = products_data.get('resultList', [])
 
-    for item in items:
-        try:
-            # Map CJ fields to GiftWise standard format
-            product = {
-                'title': item.get('name') or item.get('product_name', 'Unknown Product'),
-                'link': _generate_tracking_link(item),  # Generate tracking link
-                'snippet': item.get('description', '')[:200],  # Truncate description
-                'image': item.get('image-url') or item.get('image_url', ''),
-                'thumbnail': item.get('image-url') or item.get('image_url', ''),
-                'image_url': item.get('image-url') or item.get('image_url', ''),
-                'source_domain': item.get('advertiser-name', 'CJ Affiliate'),
-                'price': f"${item.get('price', 0):.2f}" if item.get('price') else 'Price varies',
-                'product_id': item.get('catalog-id') or item.get('ad-id'),
-                'search_query': '',  # Will be set by caller
-                'interest_match': '',  # Will be set by caller
-                'priority': 2,  # CJ priority (higher than Amazon, lower than Etsy)
-            }
+        logger.info(f"CJ GraphQL response: {len(result_list)} products (total available: {total_count})")
 
-            # Only add products with valid links
-            if product['link']:
+        for item in result_list:
+            try:
+                # Extract price
+                price_obj = item.get('price', {})
+                price_amount = price_obj.get('amount', '')
+                price_currency = price_obj.get('currency', 'USD')
+
+                if price_amount:
+                    try:
+                        price_float = float(price_amount)
+                        price_str = f"${price_float:.2f}"
+                    except (ValueError, TypeError):
+                        price_str = f"{price_currency} {price_amount}"
+                else:
+                    price_str = "Price varies"
+
+                # Extract affiliate tracking link
+                # linkCode is None for advertisers you haven't joined
+                link_code = item.get('linkCode')
+                if link_code and isinstance(link_code, dict):
+                    tracking_url = link_code.get('clickUrl', '')
+                else:
+                    tracking_url = ''
+
+                # Fall back to direct link if no tracking link
+                if not tracking_url:
+                    tracking_url = item.get('link', '')
+
+                # Skip products without any link
+                if not tracking_url:
+                    logger.warning(f"Skipping product without link: {item.get('title')}")
+                    continue
+
+                # Map to GiftWise standard format
+                product = {
+                    'title': item.get('title', 'Unknown Product'),
+                    'link': tracking_url,  # Affiliate tracking link
+                    'snippet': (item.get('description', '') or '')[:200],  # Truncate description
+                    'image': item.get('imageLink', ''),
+                    'thumbnail': item.get('imageLink', ''),
+                    'image_url': item.get('imageLink', ''),
+                    'source_domain': item.get('advertiserName', 'CJ Affiliate'),
+                    'price': price_str,
+                    'product_id': item.get('id', ''),
+                    'search_query': search_term,
+                    'interest_match': search_term,
+                    'priority': 2,  # CJ priority: higher than Amazon (3), lower than Etsy (1)
+                    'brand': item.get('brand', ''),
+                    'advertiser_id': item.get('advertiserId', ''),
+                }
+
                 products.append(product)
-            else:
-                logger.warning(f"Skipping product without valid link: {item.get('name')}")
 
-        except Exception as e:
-            logger.error(f"Error parsing CJ product: {e}")
-            continue
+            except Exception as e:
+                logger.error(f"Error parsing CJ product: {e}")
+                continue
+
+    except Exception as e:
+        logger.error(f"Error parsing CJ GraphQL response: {e}")
 
     return products
 
 
-def search_products_cj(profile, api_key, account_id=None, website_id=None, target_count=20, enhanced_search_terms=None):
+def search_products_cj(profile, api_key, company_id=None, publisher_id=None, target_count=20, enhanced_search_terms=None, joined_only=False):
     """
-    Search CJ Affiliate for products matching user profile
+    Search CJ Affiliate for products matching user profile using GraphQL API
 
     Args:
         profile: User profile dict with interests, demographics, etc.
-        api_key: CJ API key (from Developer Portal)
-        account_id: CJ account ID (optional, uses env var if not provided)
-        website_id: PID/website ID (optional, uses env var if not provided)
+        api_key: CJ Personal Access Token (from Developer Portal)
+        company_id: Your CJ publisher company ID (CID) - optional, uses env var if not provided
+        publisher_id: Your publisher ID (PID) for tracking links - optional, uses env var if not provided
         target_count: Target number of products to return
         enhanced_search_terms: Pre-computed search terms from enrichment (optional)
+        joined_only: If True, only search advertisers you've joined (default False)
 
     Returns:
         List of product dicts matching GiftWise standard format
 
-    IMPORTANT:
-    - This function is a SKELETON awaiting Developer Portal API specs
-    - DO NOT activate until you have:
-      1. Real API endpoint URL
-      2. Authentication method verified
-      3. Request parameter structure
-      4. Response format documentation
-      5. Rate limits confirmed
-      6. At least one approved advertiser
+    Note: Set joined_only=False to search ALL CJ advertisers (recommended until you join more)
     """
     if not api_key:
         logger.warning("CJ API key not provided - skipping CJ search")
         return []
 
-    # Set credentials from parameters or environment
-    global CJ_API_KEY, CJ_ACCOUNT_ID, CJ_WEBSITE_ID
-    CJ_API_KEY = api_key
-    CJ_ACCOUNT_ID = account_id or os.environ.get('CJ_ACCOUNT_ID', '')
-    CJ_WEBSITE_ID = website_id or os.environ.get('CJ_WEBSITE_ID', '')
+    # Use provided credentials or fall back to environment
+    cid = company_id or CJ_COMPANY_ID
+    pid = publisher_id or CJ_PUBLISHER_ID
 
-    if not CJ_ACCOUNT_ID or not CJ_WEBSITE_ID:
-        logger.warning("CJ account ID or website ID missing - skipping CJ search")
+    if not cid or not pid:
+        logger.warning("CJ company ID or publisher ID missing - skipping CJ search")
         return []
 
-    logger.info(f"Starting CJ product search (target: {target_count})")
+    logger.info(f"Starting CJ GraphQL product search (target: {target_count}, CID: {cid}, PID: {pid})")
 
     # Build search terms from profile
     interests = profile.get('interests', [])
@@ -259,59 +286,51 @@ def search_products_cj(profile, api_key, account_id=None, website_id=None, targe
             # Rate limiting
             rate_limiter.wait_if_needed()
 
-            # PLACEHOLDER - actual search parameters from Developer Portal
-            search_params = {
-                "keywords": term,
-                "advertiser-ids": "joined-only",  # Only search joined advertisers
-                "website-id": CJ_WEBSITE_ID,
-                "records-per-page": min(50, target_count),
-                "page-number": 1,
-                "serviceable-area": "US",  # Could be from profile location
-                "currency": "USD",
-                "in-stock": "true",  # Only in-stock items
-            }
+            # Build GraphQL query
+            query = _build_graphql_query(
+                keywords=[term],
+                company_id=cid,
+                publisher_id=pid,
+                limit=min(50, target_count),
+                joined_only=joined_only
+            )
 
-            # Add optional price filters if profile has price signals
-            price_range = profile.get('price_signals', {}).get('preferred_range')
-            if price_range:
-                search_params['low-price'] = price_range.get('min', 10.00)
-                search_params['high-price'] = price_range.get('max', 200.00)
+            # Make GraphQL request
+            headers = _build_auth_headers(api_key)
 
-            # Make API request
-            headers = _build_auth_headers()
-
-            logger.info(f"CJ search: '{term}' (params: {search_params})")
-            response = requests.get(
-                CJ_PRODUCT_SEARCH_ENDPOINT,
-                params=search_params,
+            logger.info(f"CJ GraphQL search: '{term}'")
+            response = requests.post(
+                CJ_GRAPHQL_ENDPOINT,
+                json={"query": query},
                 headers=headers,
                 timeout=30
             )
 
             # Handle errors
             if response.status_code == 401:
-                raise CJAPIError("Authentication failed - check CJ_API_KEY")
+                logger.error("CJ authentication failed - check CJ_API_KEY")
+                return []
             elif response.status_code == 403:
                 logger.warning("CJ 403 - not joined to any advertisers or access denied")
-                return []  # No advertisers joined = no products
+                return []
             elif response.status_code == 429:
-                logger.warning("CJ rate limit exceeded - waiting...")
+                logger.warning("CJ rate limit exceeded - waiting 60s...")
                 time.sleep(60)
                 continue
-            elif response.status_code == 404:
-                logger.info(f"CJ search '{term}' returned no results")
+            elif response.status_code != 200:
+                logger.error(f"CJ API error {response.status_code}: {response.text}")
                 continue
 
-            response.raise_for_status()
-
-            # Parse response
+            # Parse GraphQL response
             data = response.json()
-            products = _parse_product_response(data)
 
-            # Tag products with search metadata
-            for product in products:
-                product['search_query'] = term
-                product['interest_match'] = term
+            # Check for GraphQL errors
+            if 'errors' in data:
+                logger.error(f"CJ GraphQL errors: {data['errors']}")
+                continue
+
+            # Parse products
+            products = _parse_graphql_response(data, term)
 
             all_products.extend(products)
             logger.info(f"CJ search '{term}': found {len(products)} products")
@@ -323,9 +342,6 @@ def search_products_cj(profile, api_key, account_id=None, website_id=None, targe
         except requests.RequestException as e:
             logger.error(f"CJ API request failed for '{term}': {e}")
             continue
-        except CJAPIError as e:
-            logger.error(f"CJ API error for '{term}': {e}")
-            continue
         except Exception as e:
             logger.error(f"Unexpected error in CJ search for '{term}': {e}")
             continue
@@ -334,32 +350,60 @@ def search_products_cj(profile, api_key, account_id=None, website_id=None, targe
     seen_ids = set()
     unique_products = []
     for p in all_products:
-        pid = p.get('product_id')
-        if pid and pid not in seen_ids:
-            seen_ids.add(pid)
+        pid_val = p.get('product_id')
+        if pid_val and pid_val not in seen_ids:
+            seen_ids.add(pid_val)
             unique_products.append(p)
 
     logger.info(f"CJ search complete: {len(unique_products)} unique products")
     return unique_products[:target_count]
 
 
-# Validation check on import
+# Test/validation
 if __name__ == "__main__":
-    print("CJ Searcher Module - SKELETON")
+    print("CJ Affiliate GraphQL Searcher")
     print("=" * 50)
-    print("STATUS: Awaiting CJ Developer Portal API specs")
-    print()
-    print("Before activation, you must:")
-    print("1. Access https://developers.cj.com")
-    print("2. Get API endpoint URLs and authentication method")
-    print("3. Set environment variables:")
-    print("   - CJ_ACCOUNT_ID")
-    print("   - CJ_API_KEY")
-    print("   - CJ_WEBSITE_ID (your PID from CJAM)")
-    print("4. Get approved by at least one CJ advertiser")
-    print("5. Update placeholder code with real API specs")
+    print("API Endpoint:", CJ_GRAPHQL_ENDPOINT)
     print()
     print("Current credentials:")
-    print(f"  CJ_ACCOUNT_ID: {'✓ Set' if CJ_ACCOUNT_ID else '✗ Missing'}")
     print(f"  CJ_API_KEY: {'✓ Set' if CJ_API_KEY else '✗ Missing'}")
-    print(f"  CJ_WEBSITE_ID: {'✓ Set' if CJ_WEBSITE_ID else '✗ Missing'}")
+    print(f"  CJ_COMPANY_ID: {'✓ Set' if CJ_COMPANY_ID else '✗ Missing'}")
+    print(f"  CJ_PUBLISHER_ID: {'✓ Set' if CJ_PUBLISHER_ID else '✗ Missing'}")
+    print()
+
+    if CJ_API_KEY and CJ_COMPANY_ID and CJ_PUBLISHER_ID:
+        print("✓ All credentials set - ready to test")
+        print()
+        print("Testing with sample search...")
+
+        # Test profile
+        test_profile = {
+            'interests': [
+                {'name': 'wine', 'strength': 'strong'},
+                {'name': 'coffee', 'strength': 'medium'}
+            ]
+        }
+
+        try:
+            products = search_products_cj(
+                profile=test_profile,
+                api_key=CJ_API_KEY,
+                company_id=CJ_COMPANY_ID,
+                publisher_id=CJ_PUBLISHER_ID,
+                target_count=5
+            )
+
+            print(f"\nFound {len(products)} products:")
+            for i, p in enumerate(products[:3], 1):
+                print(f"\n{i}. {p['title']}")
+                print(f"   Price: {p['price']}")
+                print(f"   From: {p['source_domain']}")
+                print(f"   Link: {p['link'][:80]}...")
+
+        except Exception as e:
+            print(f"\nError during test: {e}")
+    else:
+        print("✗ Missing credentials - set environment variables:")
+        print("   export CJ_API_KEY='your_personal_access_token'")
+        print("   export CJ_COMPANY_ID='your_company_id'")
+        print("   export CJ_PUBLISHER_ID='your_publisher_id'")

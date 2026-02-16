@@ -394,8 +394,8 @@ def refresh_cj(interests: List[str], max_products: int = 500) -> int:
     Returns:
         Number of products upserted
     """
-    if not cj_searcher or not config.CJ_API_KEY:
-        logger.warning("CJ searcher not available - awaiting developer portal access")
+    if not cj_searcher or not config.CJ_API_KEY or not config.CJ_COMPANY_ID or not config.CJ_PUBLISHER_ID:
+        logger.warning("CJ searcher not available - missing credentials")
         return 0
 
     logger.info("Starting CJ refresh...")
@@ -416,10 +416,11 @@ def refresh_cj(interests: List[str], max_products: int = 500) -> int:
             results = cj_searcher.search_products_cj(
                 dummy_profile,
                 config.CJ_API_KEY,
-                config.CJ_ACCOUNT_ID,
-                config.CJ_WEBSITE_ID,
+                company_id=config.CJ_COMPANY_ID,
+                publisher_id=config.CJ_PUBLISHER_ID,
                 target_count=20,
-                enhanced_search_terms=[interest]
+                enhanced_search_terms=[interest],
+                joined_only=False  # Search all advertisers (not just joined)
             )
 
             for result in results:

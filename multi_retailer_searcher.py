@@ -38,8 +38,8 @@ def search_products_multi_retailer(
     skimlinks_client_secret=None,
     skimlinks_domain_id=None,
     cj_api_key=None,
-    cj_account_id=None,
-    cj_website_id=None,
+    cj_company_id=None,
+    cj_publisher_id=None,
     target_count=20,
     enhanced_search_terms=None,
     progress_callback=None,
@@ -255,10 +255,11 @@ def search_products_multi_retailer(
             cj_products = search_products_cj(
                 profile,
                 cj_api_key,
-                account_id=cj_account_id,
-                website_id=cj_website_id,
+                company_id=cj_company_id,
+                publisher_id=cj_publisher_id,
                 target_count=per_vendor_target,
                 enhanced_search_terms=enhanced_search_terms,
+                joined_only=False  # Search all CJ advertisers
             )
             all_products.extend(cj_products)
             logger.info(f"Got {len(cj_products)} products from CJ Affiliate")

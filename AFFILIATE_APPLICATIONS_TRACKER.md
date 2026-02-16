@@ -9,7 +9,7 @@ Track all affiliate network applications, approvals, and integration status.
 | Network | Applied | Status | Expected Response | Priority |
 |---------|---------|--------|-------------------|----------|
 | **Skimlinks** | Feb 9 | ⏳ Pending | Feb 18-20 (7 biz days) | 🔥 CRITICAL |
-| **CJ Affiliate** | Feb 15 (~70 brands) | ⏳ Pending | Feb 17-22 | 🔥 HIGH |
+| **CJ Affiliate** | Feb 15 (~70 brands) | ✅ 1 approved, others pending | Feb 17-22 | 🔥 HIGH |
 | **FlexOffers** | Feb 16 | ⏳ Pending | Feb 16-18 (same-day to 48h) | 🔥 HIGH |
 | **Awin** (incl. ShareASale) | - | ✅ Approved, need to join advertisers | - | 🔥 HIGH |
 | **Impact** | - | ❌ Account type issue | TBD (ticket open) | 🟡 MEDIUM |
@@ -49,6 +49,18 @@ Track all affiliate network applications, approvals, and integration status.
 **Expected Approvals:**
 - Auto-approve (24-48h): ~30-40 brands
 - Manual review (3-7 days): ~30 brands
+
+**Approved Brands (Updated Feb 16):**
+
+✅ **MonthlyClubs.com** (Approved Feb 16)
+- Categories: Subscription Clubs (Beer, Wine, Cheese, Chocolate, Flowers, Cigars)
+- Commission: TBD (likely 10-15%)
+- Cookie: 90 days (excellent!)
+- Affiliate Manager: mihaela@amnavigator.com
+- Program ID/AID: Multiple (separate programs per club)
+- Notes: Perfect for gifts, high-intent purchases, great for holidays/birthdays
+- PPC Policy: No direct linking, can't outbid on brand terms
+- Coupon Policy: Only authorized codes from CJ or their website
 
 ### Awin (Includes ShareASale Merchants as of Oct 2025)
 - [x] Account created and approved

@@ -73,7 +73,7 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 | Network | Status | Brands Covered |
 |---------|--------|---------------|
 | Skimlinks | Pending approval (submitted 2/9, expected by 2/18-20) | ~48,500 merchants (blanket access) |
-| CJ Affiliate | ~70 brand applications submitted 2/15, awaiting responses | Flowers, jewelry, apparel, home, gourmet, personalization |
+| CJ Affiliate | ✅ MonthlyClubs.com approved 2/16! Others pending (~69 brands) | Subscription clubs (beer/wine/cheese/chocolate/flowers/cigars), flowers, jewelry, apparel, home, gourmet, personalization |
 | FlexOffers | Application submitted 2/16, awaiting approval (same-day to 48h) | 12,000+ advertisers, niche brands |
 | Awin | ✅ Account active, need to join ShareASale merchants (migrated Oct 2025) | Uncommon Goods, Personalization Mall, Things Remembered, etc. |
 | Impact | Wrong account type (signed up as brand not publisher), ticket submitted, no response | Target, Ulta, Kohl's, Gap, Home Depot, Adidas, Dyson |

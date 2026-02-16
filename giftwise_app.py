@@ -3036,450 +3036,94 @@ def generating_page():
 def _run_generation_thread(user_id, user, platforms, recipient_type, relationship,
                            approved_profile, enriched_profile, enhanced_search_terms,
                            quality_filters, recipient_age, recipient_gender):
-    """Background thread: runs the full recommendation pipeline, updating progress at each stage."""
+    """
+    Background thread: runs the full recommendation pipeline via RecommendationService.
+
+    This is a thin wrapper that delegates to the RecommendationService for all
+    pipeline logic, maintaining only progress tracking and final storage.
+    """
     try:
         with app.app_context():
             logger.info("=" * 60)
             logger.info("USING NEW RECOMMENDATION ARCHITECTURE (background thread)")
             logger.info("=" * 60)
 
-            # STEP 1: Build or use approved recipient profile
-            _set_gen_progress(user_id, stage='profile_analysis',
-                              stage_label='Building a personality profile from their posts...')
+            # Initialize progress tracker
+            from progress_service import ProgressTracker
+            progress_tracker = ProgressTracker(_generation_progress)
 
-            if approved_profile:
-                profile = approved_profile
-                logger.info("Using user-approved profile from review step")
-            else:
-                logger.info("STEP 1: Building deep recipient profile...")
-                profile = build_recipient_profile(platforms, recipient_type, relationship, claude_client, model=CLAUDE_PROFILE_MODEL)
-
-            if not profile.get('interests'):
-                logger.warning("No interests extracted from profile - data quality issue")
-                _set_gen_progress(user_id, complete=True, success=False,
-                                  error='Unable to extract enough information from social media. Please connect more platforms or ensure profiles are public.')
-                return
-
-            profile_for_backend = profile_for_search_and_curation(profile)
-            if not profile_for_backend.get('interests'):
-                _set_gen_progress(user_id, complete=True, success=False,
-                                  error='No personal interests to base recommendations on. Add hobbies or interests that aren\'t work-related.')
-                return
-
-            # Report discovered interests to the waiting page
-            interest_names = [i.get('name', '') for i in profile.get('interests', []) if i.get('name')]
-            non_work_count = len(profile_for_backend.get('interests', []))
-            logger.info(f"Profile built: {len(interest_names)} interests ({non_work_count} non-work), location: {profile.get('location_context', {}).get('city_region')}")
-            _set_gen_progress(user_id, stage='profile_done',
-                              stage_label='Profile complete! Enriching with gift intelligence...',
-                              interests=interest_names)
-
-            # ENRICH PROFILE WITH INTELLIGENCE LAYER
-            if not enriched_profile:
-                if INTELLIGENCE_LAYER_AVAILABLE and enrich_profile_simple:
-                    logger.info("Enriching profile with intelligence layer...")
-                    enriched_profile = enrich_profile_simple(
-                        interests=[i.get('name', '') for i in profile_for_backend.get('interests', [])],
-                        relationship=relationship or 'close_friend',
-                        age=recipient_age,
-                        gender=recipient_gender
-                    )
-                    enhanced_search_terms = []
-                    for interest_data in enriched_profile.get('enriched_interests', []):
-                        enhanced_search_terms.extend(interest_data.get('search_terms', []))
-                    quality_filters = enriched_profile.get('quality_filters', [])
-                    logger.info(f"Profile enriched: {len(enhanced_search_terms)} enhanced search terms")
-
-            # STEP 2: Search retailers for products
-            product_rec_count = 10
-            inventory_target = product_rec_count * 4
-            logger.info("STEP 2: Pulling product inventory...")
-            _set_gen_progress(user_id, stage='searching_retailers',
-                              stage_label='Searching stores for products they\'d actually love...')
-
-            def _retailer_progress(retailer, count=None, searching=False, done=False, skipped=False):
-                progress = _get_gen_progress(user_id)
-                retailers = dict(progress.get('retailers', {}))
-                if searching:
-                    retailers[retailer] = {'status': 'searching', 'count': 0}
-                elif done:
-                    retailers[retailer] = {'status': 'done', 'count': count or 0}
-                elif skipped:
-                    retailers[retailer] = {'status': 'skipped', 'count': 0}
-                total_products = sum(r.get('count', 0) for r in retailers.values() if r.get('status') == 'done')
-                _set_gen_progress(user_id, retailers=retailers, product_count=total_products)
-
-            products = search_products_multi_retailer(
-                profile_for_backend,
-                etsy_key=os.environ.get('ETSY_API_KEY', ''),
-                awin_data_feed_api_key=os.environ.get('AWIN_DATA_FEED_API_KEY', ''),
-                ebay_client_id=os.environ.get('EBAY_CLIENT_ID', ''),
-                ebay_client_secret=os.environ.get('EBAY_CLIENT_SECRET', ''),
-                shareasale_id=os.environ.get('SHAREASALE_AFFILIATE_ID', ''),
-                shareasale_token=os.environ.get('SHAREASALE_API_TOKEN', ''),
-                shareasale_secret=os.environ.get('SHAREASALE_API_SECRET', ''),
-                skimlinks_publisher_id=os.environ.get('SKIMLINKS_PUBLISHER_ID', ''),
-                skimlinks_client_id=os.environ.get('SKIMLINKS_CLIENT_ID', ''),
-                skimlinks_client_secret=os.environ.get('SKIMLINKS_CLIENT_SECRET', ''),
-                skimlinks_domain_id=os.environ.get('SKIMLINKS_PUBLISHER_DOMAIN_ID', ''),
-                amazon_key=os.environ.get('RAPIDAPI_KEY', ''),
-                target_count=inventory_target,
-                enhanced_search_terms=enhanced_search_terms,
-                progress_callback=_retailer_progress,
+            # Initialize recommendation service
+            from recommendation_service import RecommendationService
+            service = RecommendationService(
+                app_context=app,
+                claude_client=claude_client,
+                models_config={'profile': CLAUDE_PROFILE_MODEL, 'curator': CLAUDE_CURATOR_MODEL},
+                progress_callback=lambda stage, label, **kw: progress_tracker.set_progress(user_id, stage, label, **kw)
             )
 
-            if len(products) == 0:
-                logger.warning("Product search returned no results")
-                _set_gen_progress(user_id, complete=True, success=False,
-                                  error="We're having trouble loading gift ideas right now. Please try again in a few minutes.")
-                return
+            # Run generation pipeline
+            recommendations = service.generate_recommendations(
+                user_id=user_id,
+                user=user,
+                platforms=platforms,
+                recipient_type=recipient_type,
+                relationship=relationship,
+                approved_profile=approved_profile,
+                enriched_profile=enriched_profile,
+                enhanced_search_terms=enhanced_search_terms,
+                quality_filters=quality_filters,
+                recipient_age=recipient_age,
+                recipient_gender=recipient_gender
+            )
 
-            logger.info(f"Inventory: {len(products)} products (will select {product_rec_count})")
-            _set_gen_progress(user_id, product_count=len(products),
-                              stage='filtering',
-                              stage_label=f'Found {len(products)} products! Filtering for quality...')
+            # Build profile for storage (reuse service method)
+            profile = service._build_profile(
+                user_id, platforms, recipient_type, relationship, approved_profile
+            )
 
-            # APPLY QUALITY FILTERS
-            if quality_filters:
-                original_count = len(products)
-                products = [p for p in products if not should_filter_product(p.get('title', '') or p.get('name', ''), quality_filters)]
-                logger.info(f"Intelligence filters removed {original_count - len(products)} inappropriate products ({len(products)} remaining)")
-
-            from smart_filters import apply_smart_filters, filter_workplace_experiences, filter_work_themed_experiences
-            products = apply_smart_filters(products, profile)
-            logger.info(f"After smart filters: {len(products)} products")
-
-            # STEP 3: Curate gifts
-            logger.info("STEP 3: Selecting best gifts from inventory...")
-            _set_gen_progress(user_id, stage='curating',
-                              stage_label='AI is handpicking the perfect gifts...')
-
-            enrichment_context = {
-                'demographics': (enriched_profile or {}).get('demographics', {}),
-                'trending_items': (enriched_profile or {}).get('trending_items', []),
-                'anti_recommendations': (enriched_profile or {}).get('anti_recommendations', []),
-                'relationship_guidance': (enriched_profile or {}).get('relationship_guidance', {}),
-                'price_guidance': (enriched_profile or {}).get('price_guidance', {}),
-                'enriched_interests': (enriched_profile or {}).get('enriched_interests', []),
-            } if enriched_profile else {}
-
-            # REVENUE OPTIMIZATION: Intelligent pre-filtering before curator
-            # Send 30 high-quality products instead of 100 random ones
-            # Saves API tokens, improves output quality, prioritizes high-commission products
-            try:
-                from revenue_optimizer import intelligent_product_filter, track_profile_interests
-
-                logger.info(f"Pre-filtering: {len(products)} products before curator")
-
-                # Track interests for learning
-                track_profile_interests(profile_for_backend)
-
-                # Smart filter: 100 products → 30 high-quality candidates
-                products_for_curator = intelligent_product_filter(
-                    products=products,
-                    profile=profile_for_backend,
-                    relationship=relationship,
-                    target_count=30  # Curator gets 30 products instead of 100
-                )
-
-                logger.info(f"After intelligent pre-filtering: {len(products_for_curator)} high-quality products")
-
-            except ImportError:
-                logger.warning("Revenue optimizer not available, sending all products to curator")
-                products_for_curator = products
-            except Exception as e:
-                logger.error(f"Pre-filtering failed: {e}, sending all products to curator")
-                products_for_curator = products
-
-            curated = curate_gifts(profile_for_backend, products_for_curator, recipient_type, relationship,
-                                   claude_client, rec_count=product_rec_count + 4,
-                                   enhanced_search_terms=enhanced_search_terms,
-                                   enrichment_context=enrichment_context,
-                                   model=CLAUDE_CURATOR_MODEL)
-
-            product_gifts = curated.get('product_gifts', [])
-            experience_gifts = curated.get('experience_gifts', [])
-
-            # REVENUE OPTIMIZATION: Track all recommended products to build intelligence
-            try:
-                from revenue_optimizer import track_curation_outcome
-                for gift in product_gifts:
-                    product_id = gift.get('product_id', '') or gift.get('product_url', '')
-                    retailer = gift.get('source_domain', '') or gift.get('retailer', '')
-                    if product_id and retailer:
-                        track_curation_outcome({'product_id': product_id, 'retailer': retailer}, 'recommended')
-            except Exception as e:
-                logger.error(f"Failed to track recommended products: {e}")
-
-            # Post-curation cleanup
-            _set_gen_progress(user_id, stage='cleanup',
-                              stage_label='Curating experiences and validating links...')
-            try:
-                from post_curation_cleanup import cleanup_curated_gifts
-                product_gifts = cleanup_curated_gifts(product_gifts, products, rec_count=product_rec_count)
-                logger.info(f"After post-curation cleanup: {len(product_gifts)} products")
-            except Exception as e:
-                logger.error(f"Post-curation cleanup failed (using raw curator output): {e}")
-
-            experience_gifts = filter_workplace_experiences(experience_gifts, profile)
-            experience_gifts = filter_work_themed_experiences(experience_gifts, profile)
-            logger.info(f"After workplace/work-themed experience filter: {len(experience_gifts)} experiences")
-
-            if not product_gifts and not experience_gifts:
-                logger.error("Curation returned no gifts")
-                _set_gen_progress(user_id, complete=True, success=False,
-                                  error='Unable to generate recommendations. Please try again.')
-                return
-
-            logger.info(f"Curated {len(product_gifts)} products + {len(experience_gifts)} experiences")
-
-            # Build image map and format recommendations
-            _set_gen_progress(user_id, stage='images',
-                              stage_label='Validating every link and image...')
-
-            # NOTE: Using normalize_product_url from url_utils.py (consolidated)
-            product_url_to_image = {}
-            valid_product_urls = set()
-            for p in products:
-                raw_link = (p.get('link') or '').strip()
-                if raw_link:
-                    valid_product_urls.add(raw_link)
-                    valid_product_urls.add(normalize_product_url(raw_link))
-                link = normalize_product_url(raw_link)
-                if link:
-                    img = (p.get('image_url') or p.get('image') or p.get('thumbnail') or '').strip()
-                    product_url_to_image[link] = img
-                if raw_link and raw_link not in product_url_to_image:
-                    product_url_to_image[raw_link] = (p.get('image_url') or p.get('image') or p.get('thumbnail') or '').strip()
-
-            try:
-                from link_validation import is_bad_product_url
-            except ImportError:
-                def is_bad_product_url(url):
-                    return False
-
-            all_recommendations = []
-
-            for gift in product_gifts:
-                product_url = (gift.get('product_url') or '').strip()
-                if product_url not in valid_product_urls and normalize_product_url(product_url) not in valid_product_urls:
-                    continue
-                image_url = product_url_to_image.get(product_url, '') or product_url_to_image.get(normalize_product_url(product_url), '')
-                if is_bad_product_url(product_url):
-                    product_url = ''
-                    image_url = ''
-                if not product_url:
-                    continue
-                all_recommendations.append({
-                    'name': gift.get('name', 'Unknown Product'),
-                    'description': gift.get('description', ''),
-                    'why_perfect': gift.get('why_perfect', ''),
-                    'price_range': gift.get('price', 'Price unknown'),
-                    'where_to_buy': gift.get('where_to_buy', 'Online'),
-                    'product_url': product_url,
-                    'purchase_link': _apply_affiliate_tag(product_url),
-                    'image_url': image_url,
-                    'image': image_url,
-                    'gift_type': 'physical',
-                    'confidence_level': gift.get('confidence_level', 'safe_bet'),
-                    'interest_match': gift.get('interest_match', ''),
-                    'is_direct_link': True,
-                    'link_source': 'serpapi_search'
-                })
-
-            # Experience gifts
-            loc_ctx = profile.get('location_context') or {}
-            city_region = (loc_ctx.get('city_region') or '').strip()
-            state_val = (loc_ctx.get('state') or '').strip()
-            specific_places = loc_ctx.get('specific_places') or []
-            search_geography = city_region or ''
-            if state_val and state_val not in search_geography:
-                search_geography = f"{search_geography} {state_val}".strip()
-            if not search_geography and specific_places:
-                first_place = (specific_places[0] or '').strip()
-                if first_place and len(first_place) > 1:
-                    search_geography = first_place
-            if not search_geography:
-                search_geography = 'near me'
-
-            # REGIONAL INTELLIGENCE: Add cultural context and seasonal appropriateness
-            regional_context = {}
-            local_events = []
-            if REGIONAL_INTELLIGENCE_AVAILABLE and city_region and state_val:
-                try:
-                    from datetime import datetime
-                    current_month = datetime.now().month
-
-                    # Get regional culture context (gift norms, local experiences, demographic insights)
-                    regional_context = get_regional_context(
-                        city=city_region,
-                        state=state_val,
-                        age=recipient_age,
-                        gender=recipient_gender
-                    )
-                    logger.info(f"Regional context: {city_region}, {state_val} - {regional_context.get('city_vibe', 'N/A')}")
-
-                    # Get local events for this month
-                    local_events = get_local_events_for_month(city_region, current_month)
-                    if local_events:
-                        logger.info(f"Local events found: {len(local_events)} for {city_region} in month {current_month}")
-
-                except Exception as e:
-                    logger.warning(f"Regional intelligence lookup failed: {e}")
-
-            for exp in experience_gifts:
-                materials_list = _backfill_materials_links(
-                    exp.get('materials_needed', []), products, is_bad_product_url,
-                    affiliate_tag=AMAZON_AFFILIATE_TAG
-                )
-                materials_summary = ""
-                if materials_list:
-                    materials_items = [f"{m.get('item', 'Item')} ({m.get('estimated_price', '$XX')})" for m in materials_list[:3]]
-                    materials_summary = f"Materials needed: {', '.join(materials_items)}"
-                how_special = exp.get('how_to_make_it_special', '')
-
-                # Enhance description with regional context
-                base_description = exp.get('description', '')
-                if regional_context and regional_context.get('city_vibe'):
-                    # Add regional flavor to description
-                    regional_note = f"\n\n🌍 Local vibe: {regional_context['city_vibe'].replace('_', ' ').title()}"
-                    if regional_context.get('demographic_notes'):
-                        demo_note = regional_context['demographic_notes'][0]
-                        regional_note += f" — {demo_note}"
-                    base_description += regional_note
-
-                parts = [base_description, exp.get('how_to_execute', ''), materials_summary]
-                full_description = '\n\n'.join(p for p in parts if p).strip()
-                location_info = ""
-                if exp.get('location_specific'):
-                    location_info = f" | {exp.get('location_details', 'Location-based')}"
-                reservation_link = (exp.get('reservation_link') or '').strip()
-                venue_website = (exp.get('venue_website') or '').strip()
-                exp_name = exp.get('name', 'experience')
-                location_details = (exp.get('location_details') or '').strip()
-                search_loc = location_details or search_geography
-
-                if reservation_link:
-                    if _validate_experience_url(reservation_link):
-                        logger.info(f"EXP LINK: Validated reservation_link for '{exp_name[:40]}': {reservation_link[:80]}")
-                    else:
-                        logger.info(f"EXP LINK: Rejected bad reservation_link for '{exp_name[:40]}': {reservation_link[:80]}")
-                        reservation_link = _make_experience_search_link(exp_name, search_loc, 'book')
-                if venue_website:
-                    if _validate_experience_url(venue_website):
-                        logger.info(f"EXP LINK: Validated venue_website for '{exp_name[:40]}': {venue_website[:80]}")
-                    else:
-                        logger.info(f"EXP LINK: Rejected bad venue_website for '{exp_name[:40]}': {venue_website[:80]}")
-                        venue_website = _make_experience_search_link(location_details or exp_name, search_loc, 'venue')
-
-                primary_link = reservation_link or venue_website
-                experience_search_fallback = False
-                # Get curated provider links for this experience type
-                experience_provider_links = []
-                try:
-                    from experience_providers import get_experience_providers
-                    experience_provider_links = get_experience_providers(
-                        exp_name,
-                        location=search_loc,
-                        description=exp.get('description', ''),
-                    )
-                except ImportError:
-                    logger.debug("experience_providers module not available")
-                except Exception as ep_err:
-                    logger.warning(f"Experience provider lookup failed: {ep_err}")
-
-                # Apply affiliate tracking to provider links
-                for ep in experience_provider_links:
-                    ep['url'] = _apply_affiliate_tag(ep['url'])
-
-                if not primary_link and experience_provider_links:
-                    # Use first provider as primary link instead of Google search
-                    primary_link = experience_provider_links[0]['url']
-                    experience_search_fallback = False
-                elif not primary_link and exp.get('name'):
-                    primary_link = _make_experience_search_link(exp_name, search_loc)
-                    experience_search_fallback = True
-                if not primary_link and materials_list:
-                    first_url = (materials_list[0].get('product_url') or '').strip()
-                    if first_url and not materials_list[0].get('is_search_link'):
-                        primary_link = first_url
-
-                # Determine if this is bookable or DIY (for badge display)
-                is_bookable = bool(experience_provider_links or reservation_link or venue_website)
-                is_diy = bool(materials_list and not is_bookable)
-
-                all_recommendations.append({
-                    'name': exp.get('name', 'Experience Gift'),
-                    'description': full_description,
-                    'why_perfect': exp.get('why_perfect', ''),
-                    'price_range': 'Variable',
-                    'where_to_buy': f"Experience{location_info}",
-                    'product_url': primary_link or None,
-                    'purchase_link': _apply_affiliate_tag(primary_link) if primary_link else None,
-                    'reservation_link': _apply_affiliate_tag(reservation_link) if reservation_link else None,
-                    'venue_website': venue_website or None,
-                    'experience_search_fallback': experience_search_fallback,
-                    'experience_providers': experience_provider_links,
-                    'image_url': '',
-                    'gift_type': 'experience',
-                    'confidence_level': exp.get('confidence_level', 'adventurous'),
-                    'materials_needed': materials_list,
-                    'location_specific': exp.get('location_specific', False),
-                    'how_to_make_it_special': how_special,
-                    # Regional intelligence fields (Phase 1 enhancements)
-                    'is_bookable': is_bookable,  # Has provider links or reservation
-                    'is_diy': is_diy,  # Has materials but no booking option
-                    'regional_context': regional_context.get('city_vibe', '') if regional_context else '',
-                    'local_events': local_events[:3] if local_events else [],  # Top 3 relevant events
-                })
-
-            if not all_recommendations:
-                logger.error("All recommendations dropped")
-                _set_gen_progress(user_id, complete=True, success=False,
-                                  error="We couldn't find enough valid recommendations this time. Please try again.")
-                return
-
-            logger.info(f"Total recommendations: {len(all_recommendations)}")
-            _set_gen_progress(user_id, stage='images',
-                              stage_label=f'Almost there \u2014 validating images for {len(all_recommendations)} gifts...')
-
-            # Backfill thumbnails
-            if IMAGE_FETCHING_AVAILABLE:
-                try:
-                    all_recommendations = process_recommendation_images(all_recommendations)
-                    with_images = sum(1 for r in all_recommendations if r.get('image_url') and 'placeholder' not in (r.get('image_url') or '').lower())
-                    logger.info(f"Images: {with_images}/{len(all_recommendations)} with thumbnails")
-                except Exception as img_err:
-                    logger.warning(f"Image backfill failed (continuing): {img_err}")
-
-            for rec in all_recommendations:
-                if rec.get('gift_type') != 'physical':
-                    continue
-                img = (rec.get('image_url') or '').strip()
-                if not img or not img.startswith('http'):
-                    name_safe = (rec.get('name') or 'Gift')[:30].replace(' ', '+')
-                    rec['image_url'] = f"https://via.placeholder.com/400x400/667eea/ffffff?text={quote(name_safe)}"
-                    rec['image_source'] = rec.get('image_source') or 'placeholder_fallback'
-                    rec['image_is_fallback'] = True
-
+            # Save recommendations to database
             quality = check_data_quality(platforms)
             save_user(user_id, {
-                'recommendations': all_recommendations,
+                'recommendations': recommendations,
                 'data_quality': quality,
                 'last_generated': datetime.now().isoformat(),
                 'recipient_profile': profile
             })
 
-            logger.info("Generation complete! %d recommendations saved.", len(all_recommendations))
+            logger.info("Generation complete! %d recommendations saved.", len(recommendations))
             track_event('rec_run')
-            _set_gen_progress(user_id, stage='complete',
-                              stage_label='Your gifts are ready!',
-                              complete=True, success=True)
+            progress_tracker.set_progress(
+                user_id,
+                stage='complete',
+                stage_label='Your gifts are ready!',
+                complete=True,
+                success=True
+            )
+
+
+    except ValueError as e:
+        # Expected errors (profile validation, no products, etc.)
+        logger.warning(f"Generation validation error: {e}")
+        from progress_service import ProgressTracker
+        progress_tracker = ProgressTracker(_generation_progress)
+        progress_tracker.set_progress(
+            user_id,
+            complete=True,
+            success=False,
+            error=str(e)
+        )
 
     except Exception as e:
+        # Unexpected errors
         logger.error(f"Error in generation thread: {e}", exc_info=True)
-        _set_gen_progress(user_id, complete=True, success=False,
-                          error='An unexpected error occurred. Please try again.')
+        from progress_service import ProgressTracker
+        progress_tracker = ProgressTracker(_generation_progress)
+        progress_tracker.set_progress(
+            user_id,
+            complete=True,
+            success=False,
+            error='An unexpected error occurred. Please try again.'
+        )
 
 
 @app.route('/api/generate-recommendations', methods=['POST'])

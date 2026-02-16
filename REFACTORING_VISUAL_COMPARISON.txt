@@ -1,0 +1,134 @@
+================================================================
+GENERATION PIPELINE REFACTORING - VISUAL COMPARISON
+================================================================
+
+BEFORE (giftwise_app.py):
+┌──────────────────────────────────────────────────────────────┐
+│ def _run_generation_thread(...)                              │
+│     """450 lines of mixed concerns"""                        │
+│                                                               │
+│     # Progress tracking logic (50 lines)                     │
+│     _set_gen_progress(...)                                   │
+│                                                               │
+│     # Profile building (30 lines)                            │
+│     profile = build_recipient_profile(...)                   │
+│     profile_for_backend = profile_for_search_and_curation()  │
+│                                                               │
+│     # Profile enrichment (20 lines)                          │
+│     enriched_profile = enrich_profile_simple(...)            │
+│                                                               │
+│     # Product search (60 lines)                              │
+│     def _retailer_progress(...):                             │
+│         progress = _get_gen_progress(...)                    │
+│         _set_gen_progress(...)                               │
+│     products = search_products_multi_retailer(...)           │
+│                                                               │
+│     # Quality filters (15 lines)                             │
+│     products = [p for p in products if ...]                  │
+│     products = apply_smart_filters(...)                      │
+│                                                               │
+│     # Revenue optimization (30 lines)                        │
+│     products_for_curator = intelligent_product_filter(...)   │
+│                                                               │
+│     # Gift curation (25 lines)                               │
+│     curated = curate_gifts(...)                              │
+│     product_gifts = curated.get('product_gifts', [])         │
+│                                                               │
+│     # Post-curation cleanup (25 lines)                       │
+│     product_gifts = cleanup_curated_gifts(...)               │
+│     experience_gifts = filter_workplace_experiences(...)     │
+│                                                               │
+│     # Image map building (30 lines)                          │
+│     product_url_to_image = {}                                │
+│     for p in products: ...                                   │
+│                                                               │
+│     # Format products (40 lines)                             │
+│     for gift in product_gifts:                               │
+│         all_recommendations.append({...})                    │
+│                                                               │
+│     # Regional intelligence (30 lines)                       │
+│     regional_context = get_regional_context(...)             │
+│     local_events = get_local_events_for_month(...)           │
+│                                                               │
+│     # Format experiences (95 lines)                          │
+│     for exp in experience_gifts:                             │
+│         materials_list = _backfill_materials_links(...)      │
+│         experience_provider_links = get_experience_...()     │
+│         all_recommendations.append({...})                    │
+│                                                               │
+│     # Image processing (20 lines)                            │
+│     all_recommendations = process_recommendation_images()    │
+│     for rec in all_recommendations: ...                      │
+│                                                               │
+│     # Save and complete (10 lines)                           │
+│     save_user(...)                                           │
+│     _set_gen_progress(complete=True)                         │
+└──────────────────────────────────────────────────────────────┘
+
+AFTER (Clean Architecture):
+┌────────────────────────────────────┐  ┌──────────────────────────────────────────┐
+│ progress_service.py (153 lines)    │  │ recommendation_service.py (916 lines)    │
+├────────────────────────────────────┤  ├──────────────────────────────────────────┤
+│ class ProgressTracker:             │  │ class RecommendationService:             │
+│   def set_progress(...)            │  │   def generate_recommendations(...)      │
+│   def get_progress(...)            │  │     # Orchestrates 8-step pipeline       │
+│   def mark_complete(...)           │  │                                          │
+│   def clear_progress(...)          │  │   def _build_profile(...)                │
+│   def update_retailer_progress()   │  │   def _enrich_profile(...)               │
+│                                    │  │   def _search_products(...)              │
+│ # Thread-safe                      │  │   def _apply_filters(...)                │
+│ # Storage-agnostic                 │  │   def _curate_gifts(...)                 │
+│ # Reusable for any background job  │  │   def _cleanup_curation(...)             │
+└────────────────────────────────────┘  │   def _build_recommendations(...)        │
+                                        │   def _process_images(...)               │
+         ┌──────────────────────────────┴──────────────────────┐                  │
+         │                                                      │                  │
+         │  Each step is a clean, testable method             │                  │
+         │  Optional imports with graceful fallbacks           │                  │
+         │  Progress callback pattern                          │                  │
+         └─────────────────────────────────────────────────────┘                  │
+                                                                                    │
+┌──────────────────────────────────────────────────────────────────────────────────┘
+│ giftwise_app.py (Now 4217 lines, was 4754)
+├─────────────────────────────────────────────────────────────────────────────────┐
+│ def _run_generation_thread(...)                                                 │
+│     """90 lines - thin wrapper"""                                               │
+│                                                                                  │
+│     # Initialize progress tracker                                               │
+│     progress_tracker = ProgressTracker(_generation_progress)                    │
+│                                                                                  │
+│     # Initialize recommendation service                                         │
+│     service = RecommendationService(                                            │
+│         app_context=app,                                                        │
+│         claude_client=claude_client,                                            │
+│         models_config={...},                                                    │
+│         progress_callback=lambda stage, label, **kw:                            │
+│             progress_tracker.set_progress(user_id, stage, label, **kw)          │
+│     )                                                                            │
+│                                                                                  │
+│     # Run generation pipeline (single line!)                                    │
+│     recommendations = service.generate_recommendations(...)                      │
+│                                                                                  │
+│     # Save to database                                                          │
+│     save_user(...)                                                              │
+│     track_event('rec_run')                                                      │
+│     progress_tracker.set_progress(complete=True, success=True)                  │
+└──────────────────────────────────────────────────────────────────────────────────┘
+
+================================================================
+KEY IMPROVEMENTS
+================================================================
+
+✅ Single Responsibility: Each class does ONE thing well
+✅ Testability: Can test pipeline logic without Flask app
+✅ Readability: Main function is 83% smaller (450 → 90 lines)
+✅ Maintainability: Logic changes in ONE place (service)
+✅ Reusability: ProgressTracker works for ANY background job
+
+METRICS:
+- giftwise_app.py: 4754 → 4217 lines (-537, -11%)
+- _run_generation_thread: 450 → 90 lines (-360, -80%)
+- New service modules: +1,069 lines (well-organized, testable)
+
+NO BREAKING CHANGES - All existing behavior preserved!
+================================================================

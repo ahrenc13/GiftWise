@@ -3056,7 +3056,7 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                 app_context=app,
                 claude_client=claude_client,
                 models_config={'profile': CLAUDE_PROFILE_MODEL, 'curator': CLAUDE_CURATOR_MODEL},
-                progress_callback=lambda stage, label, **kw: progress_tracker.set_progress(user_id, stage, label, **kw)
+                progress_callback=lambda stage=None, stage_label=None, label=None, **kw: progress_tracker.set_progress(user_id, stage or 'processing', stage_label or label or 'Processing...', **kw)
             )
 
             # Run generation pipeline

@@ -9,6 +9,7 @@ Returns products in our standard format (title, link, image, price, etc.).
 import base64
 import logging
 import time
+import random
 
 import requests
 

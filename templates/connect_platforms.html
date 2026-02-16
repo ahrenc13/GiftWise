@@ -1,25 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Connect Your Platforms | Giftwise</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+{% extends "base.html" %}
 
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%);
-            min-height: 100vh;
-            padding: 40px 20px;
-        }
+{% block title %}Connect Your Platforms | Giftwise{% endblock %}
 
-        .container {
+{% block extra_css %}
+.container {
             max-width: 900px;
             margin: 0 auto;
         }
@@ -303,39 +287,16 @@
                 grid-template-columns: 1fr;
             }
         }
-    </style>
-</head>
-<body>
-    <div class="container">
+{% endblock %}
+
+{% block content %}
+<div class="container">
         {% if error_message %}
         <div class="error-banner" role="alert">
             {{ error_message }}
         </div>
         {% endif %}
-        <div class="header">
-            {% if recipient_type == 'myself' %}
-            <h1>Connect Your Social Media</h1>
-            <p class="subtitle">The more platforms you connect, the better your recommendations!</p>
-            {% else %}
-            <h1>Connect Their Social Media</h1>
-            <p class="subtitle">The more platforms you connect, the better their recommendations!</p>
-            {% endif %}
-        </div>
-
-        <div class="platforms-grid">
-            <!-- Instagram -->
-            <div class="platform-card {% if 'instagram' not in allowed_platforms %}locked{% endif %}">
-                {% if 'instagram' not in allowed_platforms %}
-                <div class="pro-badge">Pro</div>
-                {% endif %}
-                
-                <div class="platform-header">
-                    <div class="platform-icon instagram-icon">📷</div>
-                    <div class="platform-info">
-                        <h3>Instagram</h3>
-                        <p>Visual interests & style</p>
-                    </div>
-                </div>
+        
 
                 {% if platforms.get('instagram', {}).get('status') == 'connected' %}
                     <div class="platform-status connected">
@@ -578,7 +539,4 @@
             document.getElementById('continueBtn').disabled = false;
         }
     </script>
-    <script type="text/javascript" src="https://s.skimresources.com/js/298548X178612"></script>
-</body>
-</html>
-
+{% endblock %}

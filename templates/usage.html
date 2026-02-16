@@ -1,25 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>API Usage Dashboard - GiftWise</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-            color: #333;
-        }
-        
-        .container {
+{% extends "base.html" %}
+
+{% block title %}API Usage Dashboard - GiftWise{% endblock %}
+
+{% block extra_css %}
+.container {
             max-width: 1200px;
             margin: 0 auto;
         }
@@ -198,48 +182,11 @@
             background: #fee2e2;
             color: #991b1b;
         }
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>📊 API Usage Dashboard</h1>
-            <p>Monitor your daily and monthly API usage and remaining capacity</p>
-        </div>
+{% endblock %}
+
+{% block content %}
+<div class="container">
         
-        {% if error %}
-        <div class="error">
-            <strong>Error:</strong> {{ error }}
-        </div>
-        {% endif %}
-        
-        {% if summary %}
-        <div class="usage-grid">
-            <!-- Anthropic Daily -->
-            <div class="usage-card">
-                <h2>🤖 Anthropic API - Today</h2>
-                
-                <div class="metric">
-                    <div class="metric-label">
-                        <span>Requests</span>
-                        <span class="metric-value">
-                            {{ summary.today.anthropic.requests }} / {{ summary.limits.anthropic.daily_requests }}
-                            {% set pct = summary.percentages.anthropic.daily.requests %}
-                            {% if pct < 50 %}
-                                <span class="status-badge good">Good</span>
-                            {% elif pct < 80 %}
-                                <span class="status-badge warning">Warning</span>
-                            {% else %}
-                                <span class="status-badge danger">Critical</span>
-                            {% endif %}
-                        </span>
-                    </div>
-                    <div class="progress-bar">
-                        <div class="progress-fill {% if summary.percentages.anthropic.daily.requests > 80 %}danger{% elif summary.percentages.anthropic.daily.requests > 50 %}warning{% endif %}" 
-                             style="width: {{ [summary.percentages.anthropic.daily.requests, 100]|min }}%">
-                            {{ summary.percentages.anthropic.daily.requests|round(1) }}%
-                        </div>
-                    </div>
                 </div>
                 
                 <div class="metric">
@@ -393,6 +340,4 @@
         
         <a href="/profile" class="back-link">← Back to Profile</a>
     </div>
-    <script type="text/javascript" src="https://s.skimresources.com/js/298548X178612"></script>
-</body>
-</html>
+{% endblock %}

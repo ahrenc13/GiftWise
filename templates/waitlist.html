@@ -1,23 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Join the Waitlist - Giftwise</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+{% extends "base.html" %}
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
+{% block title %}Join the Waitlist - Giftwise{% endblock %}
 
-        .waitlist-container {
+{% block extra_css %}
+.waitlist-container {
             background: white;
             border-radius: 20px;
             padding: 50px 40px;
@@ -207,10 +193,10 @@
             .waitlist-container { padding: 35px 22px; }
             h1 { font-size: 1.5em; }
         }
-    </style>
-</head>
-<body>
-    <div class="waitlist-container">
+{% endblock %}
+
+{% block content %}
+<div class="waitlist-container">
         <div class="logo">🎁</div>
         <h1>Get Early Access</h1>
         <p class="subtitle">AI that finds perfect gifts by analyzing social media. Drop your handle — we'll let you know when it's your turn.</p>
@@ -331,6 +317,4 @@
             });
         });
     </script>
-    <script type="text/javascript" src="https://s.skimresources.com/js/298548X178612"></script>
-</body>
-</html>
+{% endblock %}

@@ -1,0 +1,16 @@
+<div class="nav">
+    <a href="/" class="nav-logo">
+        <span style="font-size: 24px;">🎁</span>
+        <span>Giftwise</span>
+    </a>
+    <div class="nav-links">
+        <a href="/guides">Gift Guides</a>
+        <a href="/blog">Blog</a>
+        {% if session.user_id %}
+            <a href="/recommendations/{{ session.username }}">My Picks</a>
+            <a href="/logout">Logout</a>
+        {% else %}
+            <a href="/signup">Get Started</a>
+        {% endif %}
+    </div>
+</div>

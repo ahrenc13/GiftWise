@@ -1,28 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile Not Found - Giftwise</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            padding: 20px;
-        }
-        
-        .container {
+{% extends "base.html" %}
+
+{% block title %}Profile Not Found - Giftwise{% endblock %}
+
+{% block extra_css %}
+.container {
             text-align: center;
             max-width: 600px;
         }
@@ -61,10 +42,10 @@
             transform: translateY(-3px);
             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
         }
-    </style>
-</head>
-<body>
-    <div class="container">
+{% endblock %}
+
+{% block content %}
+<div class="container">
         <div class="icon">🔍</div>
         <h1>Profile Not Found</h1>
         <p>
@@ -75,6 +56,4 @@
             Create Your Own Gift Profile →
         </a>
     </div>
-    <script type="text/javascript" src="https://s.skimresources.com/js/298548X178612"></script>
-</body>
-</html>
+{% endblock %}

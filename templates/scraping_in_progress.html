@@ -1,32 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    {% if recipient_type == 'myself' %}
-    <title>Analyzing Your Social Media | Giftwise</title>
-    {% else %}
-    <title>Analyzing Their Social Media | Giftwise</title>
-    {% endif %}
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+{% extends "base.html" %}
 
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: linear-gradient(135deg, #f43f5e 0%, #be123c 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
+{% block title %}Analyzing Your Social Media | Giftwise{% endblock %}
 
-        .container {
+{% block extra_css %}
+.container {
             background: white;
             border-radius: 24px;
             padding: 60px 40px;
@@ -220,10 +197,10 @@
                 font-size: 24px;
             }
         }
-    </style>
-</head>
-<body>
-    <div class="container">
+{% endblock %}
+
+{% block content %}
+<div class="container">
         {% if recipient_type == 'myself' %}
         <h1>Analyzing Your Social Media</h1>
         <p class="subtitle">Hang tight! We're gathering insights from your profiles...</p>
@@ -429,6 +406,4 @@
             }
         }, 8000);
     </script>
-    <script type="text/javascript" src="https://s.skimresources.com/js/298548X178612"></script>
-</body>
-</html>
+{% endblock %}

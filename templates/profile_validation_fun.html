@@ -1,20 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Meet {{ recipient_name }} - Giftwise</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+{% extends "base.html" %}
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
+{% block title %}Meet {{ recipient_name }} - Giftwise{% endblock %}
 
-        .container { max-width: 800px; margin: 0 auto; }
+{% block extra_css %}
+.container { max-width: 800px; margin: 0 auto; }
 
         /* --- Unified card --- */
         .card {
@@ -106,7 +95,7 @@
         .accordion-toggle .emoji { font-size: 22px; }
         .accordion-toggle .chevron { transition: transform 0.3s; font-size: 12px; margin-left: auto; color: #999; }
         .accordion-toggle.open .chevron { transform: rotate(90deg); }
-        .accordion-body { display: none; padding: 16px 0 0 0; }
+        .accordion-
         .accordion-body.open { display: block; }
 
         /* --- Divider --- */
@@ -320,7 +309,7 @@
         .intel-toggle:hover { background: linear-gradient(135deg, #16213e 0%, #0f3460 100%); }
         .intel-toggle .chevron { transition: transform 0.3s; font-size: 12px; margin-left: auto; }
         .intel-toggle.open .chevron { transform: rotate(90deg); }
-        .intel-body { display: none; padding: 16px 0 0 0; }
+        .intel-
         .intel-body.open { display: block; }
 
         .intel-card {
@@ -331,7 +320,7 @@
             border-left: 3px solid #667eea;
         }
         .intel-card-title { font-weight: 600; font-size: 14px; color: #333; margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
-        .intel-card-body { font-size: 13px; color: #555; line-height: 1.5; }
+        .intel-card-
 
         .intel-tag { display: inline-block; background: white; border: 1px solid #ddd; padding: 3px 10px; border-radius: 14px; font-size: 12px; margin: 2px 3px; color: #444; }
         .intel-tag.good { border-color: #10b981; color: #065f46; background: #ecfdf5; }
@@ -421,10 +410,10 @@
             .keyword-input-row { flex-direction: column; }
             .keyword-input-row input { width: 100%; }
         }
-    </style>
-</head>
-<body>
-    <div class="container">
+{% endblock %}
+
+{% block content %}
+<div class="container">
         {% set pronoun_possessive = 'your' if recipient_name == 'You' else 'their' %}
         {% set pronoun_subject = 'you' if recipient_name == 'You' else 'they' %}
         {% set pronoun_object = 'you' if recipient_name == 'You' else 'them' %}
@@ -1186,6 +1175,4 @@
             }
         }
     </script>
-    <script type="text/javascript" src="https://s.skimresources.com/js/298548X178612"></script>
-</body>
-</html>
+{% endblock %}

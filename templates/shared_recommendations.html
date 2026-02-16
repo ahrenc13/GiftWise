@@ -1,23 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shared Gift Recommendations - GiftWise</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #f9fafb;
-            color: #333;
-        }
-        
-        .header {
+{% extends "base.html" %}
+
+{% block title %}Shared Gift Recommendations - GiftWise{% endblock %}
+
+{% block extra_css %}
+.header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
             padding: 30px;
@@ -118,95 +104,10 @@
             font-size: 1.1em;
             margin-top: 20px;
         }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <h1>🎁 Gift Recommendations</h1>
-        <p>Shared with you from GiftWise</p>
-    </div>
-    
-    <div class="container">
-        <div class="recommendations-grid">
-            {% for rec in recommendations %}
-            <div class="recommendation-card">
-                {% if rec.image_url %}
-                <div class="rec-image-container">
-                    <img src="{{ rec.image_url }}" alt="{{ rec.name }}" class="rec-image" loading="lazy">
-                </div>
-                {% endif %}
-                
-                <h2 class="rec-name">{{ rec.name }}</h2>
-                <p class="rec-description">{{ rec.description }}</p>
-                
-                {% if rec.why_perfect %}
-                <div style="background: #f0fdf4; padding: 15px; border-radius: 10px; margin-bottom: 15px; color: #065f46; font-size: 0.95em;">
-                    <strong>Why it's perfect for them:</strong> {{ rec.why_perfect }}
-                </div>
-                {% endif %}
-                {% if rec.gift_type == 'experience' and rec.materials_needed %}
-                <div style="margin-bottom: 15px; padding: 12px; background: #f8fafc; border-radius: 8px;">
-                    <strong>What you'll need (click to get):</strong>
-                    <ul style="margin: 6px 0 0 16px; padding: 0;">
-                    {% for m in rec.materials_needed[:5] %}
-                        <li style="margin: 4px 0;">
-                            {% if m.product_url %}<a href="{{ m.product_url }}" target="_blank" style="color: #be123c;">{{ m.item }}</a>{% if m.is_search_link %}<span style="color: #6b7280; font-size: 0.9em;"> — find online</span>{% endif %}{% else %}{{ m.item }}{% endif %}
-                            {% if m.estimated_price %} ({{ m.estimated_price }}){% endif %}
-                            {% if m.where_to_buy and not m.is_search_link %} — {{ m.where_to_buy }}{% endif %}
-                        </li>
-                    {% endfor %}
-                    </ul>
-                    <a href="/share/{{ share_id }}/experience/{{ loop.index0 }}" class="rec-link" style="display: inline-block; margin-top: 8px;">View full experience →</a>
-                </div>
-                {% elif rec.gift_type == 'experience' %}
-                <div style="margin-bottom: 15px;">
-                    <a href="/share/{{ share_id }}/experience/{{ loop.index0 }}" class="rec-link" style="display: inline-block;">View full experience →</a>
-                </div>
-                {% endif %}
-                <div class="rec-price">{{ rec.price_range }}</div>
-                <div style="color: #6b7280; font-size: 0.9em; margin-bottom: 15px;">
-                    Available at: {{ rec.where_to_buy }}
-                </div>
-                {% if rec.gift_type == 'experience' %}
-                {% if rec.reservation_link %}
-                <a href="{{ rec.reservation_link }}" target="_blank" class="rec-link" style="background: #059669;">
-                    Reserve / Book →
-                </a>
-                {% endif %}
-                {% if rec.venue_website %}
-                <a href="{{ rec.venue_website }}" target="_blank" class="rec-link">
-                    Venue / Website
-                </a>
-                {% endif %}
-                {% if rec.experience_providers and not rec.reservation_link %}
-                {% for provider in rec.experience_providers[:2] %}
-                <a href="{{ provider.url }}" target="_blank" class="rec-link" style="background: #7c3aed;">
-                    {{ provider.name }} →
-                </a>
-                {% endfor %}
-                {% elif rec.purchase_link and (rec.experience_search_fallback or not rec.reservation_link and not rec.venue_website) %}
-                <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" onclick="trackClick('{{ rec.purchase_link }}', 'experience');" style="background: #0ea5e9;">
-                    Find options →
-                </a>
-                {% endif %}
-                {% endif %}
-                {% if rec.gift_type == 'physical' and rec.purchase_link %}
-                <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" onclick="trackClick('{{ rec.purchase_link }}', 'physical');">
-                    Shop Now →
-                </a>
-                {% endif %}
-            </div>
-            {% endfor %}
-        </div>
+{% endblock %}
 
-        <div class="cta-section">
-            <h2 style="font-size: 1.6em; margin-bottom: 8px;">These picks were made by AI in under 2 minutes</h2>
-            <p style="color: #6b7280; font-size: 1.05em;">Giftwise analyzes social media and finds gifts they'll actually love. No more guessing.</p>
-            <a href="/signup" class="cta-button">Get Your Own Picks — Free</a>
-            <p style="color: #9ca3af; font-size: 0.85em; margin-top: 12px;">No credit card required</p>
-        </div>
-    </div>
-    <script>
+{% block content %}
+<script>
     function trackClick(url, source) {
         fetch('/api/track-click', {
             method: 'POST',
@@ -215,6 +116,4 @@
         }).catch(() => {});
     }
     </script>
-    <script type="text/javascript" src="https://s.skimresources.com/js/298548X178612"></script>
-</body>
-</html>
+{% endblock %}

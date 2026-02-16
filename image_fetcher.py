@@ -390,3 +390,376 @@ def clear_image_cache():
     global _image_cache
     _image_cache = {}
     logger.info("Image cache cleared")
+
+
+# =============================================================================
+# PLATFORM-SPECIFIC IMAGE EXTRACTORS (NEW)
+# =============================================================================
+
+def extract_image_url(item_data: Dict, platform: str) -> Optional[str]:
+    """
+    Extract image URL from platform-specific API response.
+
+    This centralizes image extraction logic that was previously duplicated
+    across all searcher modules. Each platform has different response formats
+    and image key names - this function handles all of them.
+
+    Args:
+        item_data: Raw API response item dict
+        platform: Retailer identifier (case-insensitive):
+                 'amazon', 'ebay', 'etsy', 'awin', 'skimlinks', 'cj', 'flexoffers'
+
+    Returns:
+        Image URL string if found, None otherwise
+
+    Example:
+        # In amazon searcher
+        from image_fetcher import extract_image_url
+
+        for item in api_response['data']:
+            image_url = extract_image_url(item, 'amazon')
+            product = Product.from_amazon(item, query, interest)
+            product.image = image_url or ''
+
+    Migration:
+        # Before (duplicated in every searcher):
+        image = item.get('product_photo') or item.get('thumbnail', '')
+
+        # After:
+        from image_fetcher import extract_image_url
+        image = extract_image_url(item, 'amazon') or ''
+    """
+    if not item_data or not isinstance(item_data, dict):
+        return None
+
+    extractors = {
+        'amazon': _extract_amazon_image,
+        'ebay': _extract_ebay_image,
+        'etsy': _extract_etsy_image,
+        'awin': _extract_awin_image,
+        'skimlinks': _extract_skimlinks_image,
+        'cj': _extract_cj_image,
+        'flexoffers': _extract_flexoffers_image,
+    }
+
+    platform_lower = platform.lower()
+    extractor = extractors.get(platform_lower, _extract_generic_image)
+
+    try:
+        return extractor(item_data)
+    except Exception as e:
+        logger.debug(f"Image extraction failed for {platform}: {e}")
+        return _extract_generic_image(item_data)
+
+
+def _extract_amazon_image(item: Dict) -> Optional[str]:
+    """
+    Handle Amazon's various image keys.
+
+    Amazon RapidAPI returns different image keys depending on the endpoint:
+    - product_photo (Product Search API)
+    - thumbnail (some responses)
+    - main_image (product details)
+    - product_image (alternate key)
+    """
+    # Try all known Amazon image keys in priority order
+    for key in ['product_photo', 'main_image', 'product_image', 'thumbnail', 'image']:
+        value = item.get(key)
+        if not value:
+            continue
+
+        # Handle both string URLs and dict objects
+        if isinstance(value, dict):
+            # Some APIs return {"url": "...", "width": 500, ...}
+            url = value.get('url') or value.get('link')
+            if url and isinstance(url, str):
+                return url
+        elif isinstance(value, str):
+            return value
+
+    return None
+
+
+def _extract_ebay_image(item: Dict) -> Optional[str]:
+    """
+    Handle eBay's image structure.
+
+    eBay Browse API returns:
+    - image: {"imageUrl": "https://..."}
+    - additionalImages: [{"imageUrl": "..."}, ...]
+    """
+    # Primary image
+    image = item.get('image', {})
+    if isinstance(image, dict):
+        url = image.get('imageUrl')
+        if url:
+            return url
+
+    # Fallback: additional images
+    additional = item.get('additionalImages', [])
+    if additional and isinstance(additional, list) and len(additional) > 0:
+        first_img = additional[0]
+        if isinstance(first_img, dict):
+            url = first_img.get('imageUrl')
+            if url:
+                return url
+
+    return None
+
+
+def _extract_etsy_image(item: Dict) -> Optional[str]:
+    """
+    Handle Etsy's Images array.
+
+    Etsy API v3 returns:
+    - Images: [{"url_570xN": "...", "url_fullxfull": "..."}, ...]
+    """
+    images = item.get('Images', [])
+
+    if images and isinstance(images, list) and len(images) > 0:
+        first_image = images[0]
+
+        if isinstance(first_image, dict):
+            # Prefer medium size (570xN), fallback to full size
+            url = first_image.get('url_570xN') or first_image.get('url_fullxfull')
+            if url:
+                return url
+
+    # Fallback: main_image key (some Etsy APIs)
+    main_image = item.get('main_image')
+    if main_image:
+        if isinstance(main_image, dict):
+            return main_image.get('url_570xN') or main_image.get('url')
+        elif isinstance(main_image, str):
+            return main_image
+
+    return None
+
+
+def _extract_awin_image(item: Dict) -> Optional[str]:
+    """
+    Handle Awin data feed image fields.
+
+    Awin product feeds have varying field names depending on merchant:
+    - aw_image_url (Awin-hosted)
+    - merchant_image_url (merchant-hosted)
+    - image_url (generic)
+    - product_image
+    """
+    # Try Awin-prefixed keys first (most reliable)
+    for key in ['aw_image_url', 'merchant_image_url', 'image_url', 'product_image', 'imageUrl']:
+        value = item.get(key)
+        if value and isinstance(value, str):
+            return value
+
+    return None
+
+
+def _extract_skimlinks_image(item: Dict) -> Optional[str]:
+    """
+    Handle Skimlinks Product API response.
+
+    Skimlinks Product Key API v2 returns:
+    - image_url (primary)
+    - thumbnail (alternate)
+    - imageUrl (camelCase variant)
+    """
+    for key in ['image_url', 'imageUrl', 'thumbnail', 'image']:
+        value = item.get(key)
+        if value and isinstance(value, str):
+            return value
+
+    return None
+
+
+def _extract_cj_image(item: Dict) -> Optional[str]:
+    """
+    Handle CJ Affiliate API response.
+
+    CJ Affiliate Product Catalog API returns:
+    - imageUrl (primary)
+    - image_url (alternate)
+    - thumbnailUrl
+    """
+    for key in ['imageUrl', 'image_url', 'thumbnailUrl', 'thumbnail', 'image']:
+        value = item.get(key)
+        if value and isinstance(value, str):
+            return value
+
+    return None
+
+
+def _extract_flexoffers_image(item: Dict) -> Optional[str]:
+    """
+    Handle FlexOffers API response.
+
+    FlexOffers Product Feed API returns:
+    - ImageURL (capitalized)
+    - image_url
+    - thumbnail
+    """
+    for key in ['ImageURL', 'image_url', 'imageUrl', 'thumbnail', 'image']:
+        value = item.get(key)
+        if value and isinstance(value, str):
+            return value
+
+    return None
+
+
+def _extract_generic_image(item: Dict) -> Optional[str]:
+    """
+    Fallback for unknown platforms or custom APIs.
+
+    Tries common image key names in order of likelihood.
+    """
+    # Common image key names across various APIs
+    common_keys = [
+        'image_url',
+        'imageUrl',
+        'thumbnail',
+        'thumbnailUrl',
+        'image',
+        'photo',
+        'picture',
+        'img',
+        'product_image',
+        'productImage',
+        'main_image',
+        'mainImage',
+    ]
+
+    for key in common_keys:
+        value = item.get(key)
+
+        if not value:
+            continue
+
+        # Handle string URLs
+        if isinstance(value, str):
+            return value
+
+        # Handle dict with nested URL
+        if isinstance(value, dict):
+            # Try common nested keys
+            for nested_key in ['url', 'link', 'src', 'href']:
+                nested_value = value.get(nested_key)
+                if nested_value and isinstance(nested_value, str):
+                    return nested_value
+
+        # Handle list of images (take first)
+        if isinstance(value, list) and len(value) > 0:
+            first_item = value[0]
+
+            if isinstance(first_item, str):
+                return first_item
+
+            if isinstance(first_item, dict):
+                for nested_key in ['url', 'link', 'src', 'href']:
+                    nested_value = first_item.get(nested_key)
+                    if nested_value and isinstance(nested_value, str):
+                        return nested_value
+
+    return None
+
+
+# =============================================================================
+# TESTING (Platform-Specific Extractors)
+# =============================================================================
+
+if __name__ == "__main__":
+    print("\n" + "=" * 60)
+    print("PLATFORM-SPECIFIC IMAGE EXTRACTOR TESTS")
+    print("=" * 60)
+
+    # Test 1: Amazon
+    print("\n1. Amazon image extraction:")
+    amazon_item = {
+        "product_title": "Test Product",
+        "product_photo": "https://m.media-amazon.com/images/I/71abc.jpg",
+        "thumbnail": "https://m.media-amazon.com/images/I/41abc.jpg"
+    }
+    amazon_url = extract_image_url(amazon_item, 'amazon')
+    print(f"  Input: {amazon_item}")
+    print(f"  Extracted: {amazon_url}")
+    print(f"  ✓ Correct: {amazon_url == amazon_item['product_photo']}")
+
+    # Test 2: eBay
+    print("\n2. eBay image extraction:")
+    ebay_item = {
+        "title": "Test Product",
+        "image": {"imageUrl": "https://i.ebayimg.com/images/g/abc/s-l500.jpg"}
+    }
+    ebay_url = extract_image_url(ebay_item, 'ebay')
+    print(f"  Input: {ebay_item}")
+    print(f"  Extracted: {ebay_url}")
+    print(f"  ✓ Correct: {ebay_url == ebay_item['image']['imageUrl']}")
+
+    # Test 3: Etsy
+    print("\n3. Etsy image extraction:")
+    etsy_item = {
+        "listing_id": 123,
+        "Images": [
+            {"url_570xN": "https://i.etsystatic.com/abc/570x570.jpg"},
+            {"url_570xN": "https://i.etsystatic.com/def/570x570.jpg"}
+        ]
+    }
+    etsy_url = extract_image_url(etsy_item, 'etsy')
+    print(f"  Input: {etsy_item}")
+    print(f"  Extracted: {etsy_url}")
+    print(f"  ✓ Correct: {etsy_url == etsy_item['Images'][0]['url_570xN']}")
+
+    # Test 4: Awin
+    print("\n4. Awin image extraction:")
+    awin_item = {
+        "product_id": "123",
+        "aw_image_url": "https://www.awin1.com/cshow.php?image=abc.jpg",
+        "merchant_image_url": "https://merchant.com/product.jpg"
+    }
+    awin_url = extract_image_url(awin_item, 'awin')
+    print(f"  Input: {awin_item}")
+    print(f"  Extracted: {awin_url}")
+    print(f"  ✓ Correct: {awin_url == awin_item['aw_image_url']}")
+
+    # Test 5: Generic fallback
+    print("\n5. Generic fallback (unknown platform):")
+    generic_item = {
+        "id": "123",
+        "photo": "https://example.com/product.jpg"
+    }
+    generic_url = extract_image_url(generic_item, 'unknown_platform')
+    print(f"  Input: {generic_item}")
+    print(f"  Extracted: {generic_url}")
+    print(f"  ✓ Correct: {generic_url == generic_item['photo']}")
+
+    # Test 6: No image available
+    print("\n6. No image available:")
+    no_image_item = {"id": "123", "title": "Product"}
+    no_image_url = extract_image_url(no_image_item, 'amazon')
+    print(f"  Input: {no_image_item}")
+    print(f"  Extracted: {no_image_url}")
+    print(f"  ✓ Correct: {no_image_url is None}")
+
+    # Test 7: Nested URL structure
+    print("\n7. Nested URL structure:")
+    nested_item = {
+        "image": {
+            "url": "https://example.com/nested.jpg",
+            "width": 500,
+            "height": 500
+        }
+    }
+    nested_url = extract_image_url(nested_item, 'custom_api')
+    print(f"  Input: {nested_item}")
+    print(f"  Extracted: {nested_url}")
+    print(f"  ✓ Correct: {nested_url == nested_item['image']['url']}")
+
+    print("\n" + "=" * 60)
+    print("Platform extractor tests complete!")
+    print("\nMigration Example:")
+    print("  # Before (in each searcher):")
+    print("  image = item.get('product_photo') or item.get('thumbnail', '')")
+    print()
+    print("  # After:")
+    print("  from image_fetcher import extract_image_url")
+    print("  image = extract_image_url(item, 'amazon') or ''")
+    print("\nBenefit: Centralized logic, consistent handling, easier to add new platforms")

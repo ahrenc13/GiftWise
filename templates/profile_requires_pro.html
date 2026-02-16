@@ -1,28 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upgrade to Pro - Giftwise</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            padding: 20px;
-        }
-        
-        .container {
+{% extends "base.html" %}
+
+{% block title %}Upgrade to Pro - Giftwise{% endblock %}
+
+{% block extra_css %}
+.container {
             text-align: center;
             max-width: 600px;
             background: rgba(255,255,255,0.1);
@@ -90,10 +71,10 @@
             font-weight: bold;
             margin: 20px 0;
         }
-    </style>
-</head>
-<body>
-    <div class="container">
+{% endblock %}
+
+{% block content %}
+<div class="container">
         <div class="icon">🔒</div>
         <h1>Shareable Profiles are Pro Only</h1>
         <p>
@@ -119,6 +100,4 @@
             Learn More
         </a>
     </div>
-    <script type="text/javascript" src="https://s.skimresources.com/js/298548X178612"></script>
-</body>
-</html>
+{% endblock %}

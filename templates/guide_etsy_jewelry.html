@@ -1,13 +1,13 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>12 Handmade Jewelry Pieces from Etsy Artisans - GiftWise</title>
-    <meta name="description" content="Discover unique, personalized jewelry from talented Etsy artisans. Each piece is handcrafted and customizable for truly one-of-a-kind gifts.">
-    <link rel="stylesheet" href="/static/styles.css">
-    <style>
-        .guide-container {
+{% extends "base.html" %}
+
+{% block title %}12 Handmade Jewelry Pieces from Etsy Artisans - GiftWise{% endblock %}
+
+{% block meta %}
+<meta name="description" content="Discover unique, personalized jewelry from talented Etsy artisans. Each piece is handcrafted and customizable for truly one-of-a-kind gifts.">
+{% endblock %}
+
+{% block extra_css %}
+.guide-container {
             max-width: 900px;
             margin: 40px auto;
             padding: 0 20px;
@@ -135,10 +135,10 @@
         .back-link:hover {
             text-decoration: underline;
         }
-    </style>
-</head>
-<body>
-    <div class="guide-container">
+{% endblock %}
+
+{% block content %}
+<div class="guide-container">
         <div class="guide-header">
             <h1>12 Handmade Jewelry Pieces from Etsy Artisans</h1>
             <div class="guide-meta">
@@ -311,14 +311,4 @@
 
         <a href="/guides" class="back-link">← Back to All Gift Guides</a>
     </div>
-
-    <footer style="margin-top: 80px; padding: 40px 20px; background: #f9fafb; text-align: center; color: #666; font-size: 14px;">
-        <p><strong>Affiliate Disclosure:</strong> GiftWise participates in affiliate programs. When you purchase through our Etsy links, we may earn a small commission at no extra cost to you. This helps us continue curating quality gift recommendations.</p>
-        <p style="margin-top: 20px;">
-            <a href="/privacy" style="color: #4299e1; margin: 0 15px;">Privacy Policy</a>
-            <a href="/terms" style="color: #4299e1; margin: 0 15px;">Terms of Service</a>
-            <a href="/" style="color: #4299e1; margin: 0 15px;">Home</a>
-        </p>
-    </footer>
-</body>
-</html>
+{% endblock %}

@@ -1,23 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Spot - Giftwise</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+{% extends "base.html" %}
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
+{% block title %}Your Spot - Giftwise{% endblock %}
 
-        .dashboard-container {
+{% block extra_css %}
+.dashboard-container {
             background: white;
             border-radius: 20px;
             padding: 50px 40px;
@@ -178,10 +164,10 @@
             .stat-number { font-size: 1.6em; }
             .referral-link-box { flex-direction: column; }
         }
-    </style>
-</head>
-<body>
-    <div class="dashboard-container">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
         <div class="logo">🎁</div>
         <h1>You're on the list</h1>
         <div class="handle-display">@{{ handle }} on {{ platform }}</div>
@@ -244,6 +230,4 @@
             });
         }
     </script>
-    <script type="text/javascript" src="https://s.skimresources.com/js/298548X178612"></script>
-</body>
-</html>
+{% endblock %}

@@ -31,6 +31,7 @@ import threading
 import signal
 import re
 import logging
+import traceback
 from datetime import datetime, timedelta
 from urllib.parse import quote
 from flask import Flask, render_template, request, redirect, session, jsonify, url_for, Response
@@ -3977,6 +3978,79 @@ def admin_test_generate():
 
     # Trigger the real pipeline
     return jsonify({'success': True, 'redirect': '/generate-recommendations'})
+
+
+@app.route('/admin/test-mix')
+def admin_test_mix():
+    """Test multi-retailer mix - admin only"""
+    key = request.args.get('key', '')
+    if not ADMIN_KEY or key != ADMIN_KEY:
+        return render_template('error.html', error="Not found.", error_code=404), 404
+
+    # Import and run test
+    from test_multi_retailer_mix import test_multi_retailer_mix
+    import io
+
+    # Capture output
+    old_stdout = sys.stdout
+    sys.stdout = buffer = io.StringIO()
+
+    try:
+        test_multi_retailer_mix()
+        output = buffer.getvalue()
+    except Exception as e:
+        output = f"Error: {str(e)}\n\n{traceback.format_exc()}"
+    finally:
+        sys.stdout = old_stdout
+
+    # Return as formatted HTML
+    html = f"""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Multi-Retailer Mix Test</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <style>
+            body {{
+                margin: 0;
+                padding: 20px;
+                background: #0a0a0a;
+                font-family: 'Courier New', monospace;
+            }}
+            pre {{
+                background: #1a1a1a;
+                color: #00ff00;
+                padding: 20px;
+                font-size: 12px;
+                line-height: 1.6;
+                overflow-x: auto;
+                border-radius: 8px;
+                border: 1px solid #333;
+            }}
+            .header {{
+                color: #00ff00;
+                margin-bottom: 20px;
+                font-size: 14px;
+            }}
+            a {{
+                color: #00aaff;
+                text-decoration: none;
+            }}
+            a:hover {{
+                text-decoration: underline;
+            }}
+        </style>
+    </head>
+    <body>
+        <div class="header">
+            <a href="/admin/stats?key={key}">← Back to Admin Dashboard</a>
+        </div>
+        <pre>{output}</pre>
+    </body>
+    </html>
+    """
+
+    return html, 200
 
 
 # ========================================

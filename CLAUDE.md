@@ -68,15 +68,21 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 - **Walmart Creator:** Application submitted
 
 ### Affiliate network applications status (Updated Feb 16)
+**See `AFFILIATE_APPLICATIONS_TRACKER.md` for detailed tracking.**
+
 | Network | Status | Brands Covered |
 |---------|--------|---------------|
-| Skimlinks | Pending approval (submitted 2/9, still waiting) | ~48,500 merchants (blanket access) |
+| Skimlinks | Pending approval (submitted 2/9, expected by 2/18-20) | ~48,500 merchants (blanket access) |
 | CJ Affiliate | ~70 brand applications submitted 2/15, awaiting responses | Flowers, jewelry, apparel, home, gourmet, personalization |
+| ShareASale | Application submitted 2/16, awaiting approval (1-3 days) | Uncommon Goods, personalization shops, unique gifts |
+| FlexOffers | Application submitted 2/16, awaiting approval (same-day to 48h) | 12,000+ advertisers, niche brands |
 | Impact | Wrong account type (signed up as brand not publisher), ticket submitted, no response | Target, Ulta, Kohl's, Gap, Home Depot, Adidas, Dyson |
 | Rakuten | Account active, need to apply to individual brands | Sephora, Nordstrom, Anthropologie, Free People, Coach |
 | Walmart Creator | Application submitted | Walmart |
-| Awin | Account active, 0 advertisers joined yet (user researching which to join) | Etsy, UGG, Lululemon, Portland Leather, H&M |
+| Awin | Account active, only Portland Leather found (Feb 16 research) | Portland Leather only |
 | Etsy Direct | Developer credentials pending | Etsy (would bypass Awin if approved) |
+| Amazon Associates | ✅ Active (tag added to Railway Feb 16) | Amazon |
+| eBay Partner Network | ✅ Active | eBay |
 
 ## CJ Affiliate Partnership Strategy (Feb 15, 2026)
 
@@ -364,10 +370,11 @@ Key themes: Valentine's removed, Mother's Day added, friction reduction, revenue
 **Immediate Priority: Unlock Inventory**
 The app's #1 bottleneck is thin inventory (Amazon + eBay only, ~30 products per session). Everything else is blocked on getting more affiliate networks approved:
 
-1. **Skimlinks** (highest impact) — Blanket access to ~48,500 merchants if approved. Submitted Feb 9, still waiting (up to 7 business days).
-2. **CJ Affiliate** (~70 brands) — Batch applications submitted Feb 15. Auto-approvals should start coming in 24-48h, manual reviews 3-7 days.
-3. **Awin** (need to join advertisers) — Account active but 0 advertisers joined. User was researching which to join but interface is terrible. Priority: Etsy, UGG, Lululemon, Portland Leather, H&M.
-4. **Impact.com** (fix account type) — Accidentally signed up as brand not publisher. Ticket submitted, waiting for support.
+1. **Skimlinks** (highest impact) — Blanket access to ~48,500 merchants if approved. Submitted Feb 9, expecting response by Feb 18-20.
+2. **ShareASale** (high impact) — Applied Feb 16. Approval typically 1-3 days. Unique gift merchants, personalization shops.
+3. **FlexOffers** (high impact) — Applied Feb 16. Many auto-approve programs, often same-day approval.
+4. **CJ Affiliate** (~70 brands) — Batch applications submitted Feb 15. Auto-approvals should start coming in 24-48h, manual reviews 3-7 days.
+5. **Impact.com** (fix account type) — Accidentally signed up as brand not publisher. Ticket submitted, waiting for support.
 
 **Secondary: Content & Traffic**
 - 10 gift guides deployed (6 general + 3 Etsy + 1 Mother's Day)
@@ -380,12 +387,14 @@ User's kid has viral post (150k+ likes) but waiting to post follow-up until inve
 
 ## What the User Wants Next (Updated Feb 16)
 
-1. **Awin advertiser partnerships** — User was trying to research which Awin advertisers to join but interface is terrible. Need to join priority brands: Etsy, UGG, Lululemon, Portland Leather, H&M.
-2. **CJ Affiliate approval tracking** — ~70 brand applications submitted Feb 15. Monitor for approvals (should start coming in 24-48h for auto-approves, 3-7 days for manual review).
-3. **Skimlinks approval** — Submitted Feb 9, still waiting. Check status (can take up to 7 business days).
-4. **Impact.com account fix** — Accidentally signed up as brand not publisher. Ticket submitted, need resolution.
-5. **Monitor and iterate on quality** — admin dashboard is live at `/admin/stats?key=ADMIN_DASHBOARD_KEY`
-6. **TikTok soft launch** — User's kid has viral post (150k+ likes). Waiting for inventory to improve (Skimlinks, CJ, Awin approvals) before posting follow-up. Demo mode ready for low-friction testing.
+1. **Monitor affiliate approvals** — ShareASale (1-3 days), FlexOffers (same-day to 48h), CJ (~70 brands, rolling approvals), Skimlinks (by Feb 18-20)
+2. **Build ShareASale searcher** — `shareasale_searcher.py` module once approved
+3. **Build FlexOffers searcher** — `flexoffers_searcher.py` module once approved
+4. **Fix Impact account** — Ticket open for account type issue
+5. **Monitor and iterate on quality** — admin dashboard at `/admin/stats?key=ADMIN_DASHBOARD_KEY`
+6. **TikTok soft launch** — User's kid has viral post (150k+ likes). Waiting for inventory to improve before posting follow-up.
 7. **Paywall timing** — monitor engagement via admin dashboard, flip paywall when sessions consistently generate more API cost than affiliate revenue
-8. **Opus A/B test** — run same profile through Sonnet and Opus curation, compare gift taste. Toggle via `CLAUDE_CURATOR_MODEL` env var.
-9. **Mother's Day (May 11)** — the real money holiday for a gift app. Guide is built, need to promote it once inventory is better.
+8. **Opus A/B test** — run same profile through Sonnet and Opus curation with improved inventory (200+ products)
+9. **Mother's Day (May 11)** — Guide built, promote once inventory is better
+
+**See `AFFILIATE_APPLICATIONS_TRACKER.md` for detailed affiliate network status.**

@@ -425,34 +425,54 @@
                 {% endif %}
             </div>
 
-            <!-- Spotify Wrapped -->
+            <!-- Spotify -->
             <div class="platform-card">
                 <div class="platform-header">
                     <div class="platform-icon spotify-icon">🎵</div>
                     <div class="platform-info">
-                        <h3>Spotify Wrapped</h3>
+                        <h3>Spotify</h3>
                         <p>Your music taste (optional)</p>
                     </div>
                 </div>
 
-                <div class="platform-status">
-                    Share your Spotify Wrapped link and we'll pull your top artists, tracks, and genres — strong signals for finding gifts that match your vibe.
-                    <br><small style="color: #6b7280; margin-top: 4px; display: block;">In Spotify: Your Library → Your Top Songs 2024 → Share → Copy link</small>
-                </div>
-
-                <div class="input-group">
-                    <label for="spotify_wrapped">Paste your Spotify Wrapped link</label>
-                    <input
-                        type="url"
-                        id="spotify_wrapped"
-                        placeholder="https://open.spotify.com/playlist/..."
-                        style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: inherit; box-sizing: border-box;"
-                    >
-                </div>
-
-                <div class="platform-actions">
-                    <button class="btn btn-primary" onclick="saveSpotifyWrapped()">Connect Spotify</button>
-                </div>
+                {% if platforms.get('spotify', {}).get('status') == 'complete' %}
+                    <div class="platform-status connected">
+                        ✓ Connected via Spotify — top artists &amp; genres loaded
+                    </div>
+                    <div class="platform-actions">
+                        <form method="POST" action="/disconnect/spotify" style="flex: 1;">
+                            <button type="submit" class="btn btn-disconnect">Disconnect</button>
+                        </form>
+                    </div>
+                {% elif platforms.get('spotify_wrapped', {}).get('status') == 'connected' %}
+                    <div class="platform-status connected">
+                        ✓ {{ platforms.get('spotify_wrapped', {}).get('artists', []) | length }} artists saved
+                    </div>
+                    <div class="platform-actions">
+                        <a href="/oauth/spotify" class="btn btn-primary">Upgrade to full Spotify</a>
+                        <form method="POST" action="/disconnect/spotify_wrapped" style="flex: 1;">
+                            <button type="submit" class="btn btn-disconnect">Disconnect</button>
+                        </form>
+                    </div>
+                {% else %}
+                    <div class="platform-status">
+                        Connect Spotify to pull your actual top artists, tracks, and genres — way better signal than a playlist link.
+                    </div>
+                    <div class="platform-actions">
+                        <a href="/oauth/spotify" class="btn btn-primary">Connect with Spotify</a>
+                    </div>
+                    <div style="text-align: center; margin-top: 12px; color: #9ca3af; font-size: 13px;">or</div>
+                    <div class="input-group" style="margin-top: 8px;">
+                        <label for="spotify_artists" style="font-size: 13px; color: #6b7280;">Type your top artists manually</label>
+                        <input
+                            type="text"
+                            id="spotify_artists"
+                            placeholder="Taylor Swift, The Weeknd, Billie Eilish"
+                            style="width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: inherit; box-sizing: border-box;"
+                        >
+                        <button class="btn btn-secondary" onclick="saveSpotifyArtists()" style="margin-top: 8px; width: 100%;">Save Artists</button>
+                    </div>
+                {% endif %}
             </div>
         </div>
         </div> <!-- end platforms-grid -->
@@ -531,28 +551,25 @@
             });
         }
 
-        function saveSpotifyWrapped() {
-            const wrapped = document.getElementById('spotify_wrapped').value.trim();
-            if (!wrapped) {
-                alert('Paste your Spotify Wrapped link first');
+        function saveSpotifyArtists() {
+            const artists = document.getElementById('spotify_artists').value.trim();
+            if (!artists) {
+                alert('Enter at least one artist name');
                 return;
             }
 
             fetch('/connect/spotify-wrapped', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({wrapped_text: wrapped})
+                body: JSON.stringify({wrapped_text: artists})
             })
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    const parts = [`${data.artists_found} artists`];
-                    if (data.tracks_found) parts.push(`${data.tracks_found} tracks`);
-                    if (data.genres_found) parts.push(`${data.genres_found} genres`);
-                    alert(`Connected! Found ${parts.join(', ')} from your Wrapped.`);
-                    document.getElementById('spotify_wrapped').value = '';
+                    alert(`Saved ${data.artists_found} artists. For full music data, use Connect with Spotify.`);
+                    location.reload();
                 } else {
-                    alert(data.error || 'Failed to connect Spotify');
+                    alert(data.error || 'Failed to save artists');
                 }
             });
         }

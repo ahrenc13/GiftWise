@@ -231,11 +231,22 @@ PIN DESCRIPTIONS (Explicit wishlist signals):
 CRITICAL NOTE: Pinterest boards are explicit wishlists - they're pinning exactly what they want.
 """)
 
-    # Spotify Wrapped (artists, tracks, genres)
-    spotify_data = platforms.get('spotify_wrapped', {})
-    spotify_artists = spotify_data.get('artists', [])
-    spotify_tracks = spotify_data.get('tracks', [])
-    spotify_genres = spotify_data.get('genres', [])
+    # Spotify data — prefer OAuth (richer) over manual wrapped text
+    # OAuth saves to platforms['spotify']['data'], manual saves to platforms['spotify_wrapped']
+    spotify_oauth = platforms.get('spotify', {})
+    spotify_wrapped = platforms.get('spotify_wrapped', {})
+
+    if spotify_oauth.get('status') == 'complete' and spotify_oauth.get('data'):
+        # OAuth data: top_artists list, top_genres dict, top_tracks list
+        oauth_data = spotify_oauth['data']
+        spotify_artists = oauth_data.get('top_artists', [])
+        spotify_genres = list(oauth_data.get('top_genres', {}).keys())
+        spotify_tracks = oauth_data.get('top_tracks', [])
+    else:
+        # Manual entry or wrapped text fallback
+        spotify_artists = spotify_wrapped.get('artists', [])
+        spotify_tracks = spotify_wrapped.get('tracks', [])
+        spotify_genres = spotify_wrapped.get('genres', [])
 
     if spotify_artists:
         # Build a rich music section — artists, genres, and sample tracks all carry signal
@@ -257,14 +268,14 @@ SPOTIFY MUSIC PREFERENCES:
 Use this to infer personality, aesthetic, and lifestyle — not just music gifts. A person who listens to indie folk likely has different taste from someone into hyperpop or country. Music genre and artist choices are strong signals for gift categories like fashion, home decor, experiences, and hobbies.
 """)
         logger.info(f"Including Spotify: {len(spotify_artists)} artists, {len(spotify_genres)} genres, {len(spotify_tracks)} tracks")
-    elif spotify_data.get('wrapped_text'):
+    elif spotify_wrapped.get('wrapped_text'):
         # Legacy fallback: old data format without parsed fields — try on-the-fly
         logger.warning("Spotify data in old format (no parsed artists) - attempting on-the-fly parsing")
         try:
             from spotify_parser import parse_spotify_input
             import os
             parse_result = parse_spotify_input(
-                spotify_data['wrapped_text'],
+                spotify_wrapped['wrapped_text'],
                 client_id=os.environ.get('SPOTIFY_CLIENT_ID', ''),
                 client_secret=os.environ.get('SPOTIFY_CLIENT_SECRET', '')
             )

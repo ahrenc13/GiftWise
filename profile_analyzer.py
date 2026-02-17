@@ -72,6 +72,7 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
                 'instagram': platforms.get('instagram', {}).get('data', {}),
                 'tiktok': platforms.get('tiktok', {}).get('data', {}),
                 'pinterest': platforms.get('pinterest', {}).get('data', {}),
+                'spotify': platforms.get('spotify', {}).get('data', {}),
                 'spotify_wrapped': platforms.get('spotify_wrapped', {}).get('wrapped_text', ''),
                 'relationship': relationship,
             }
@@ -255,7 +256,7 @@ CRITICAL NOTE: Pinterest boards are explicit wishlists - they're pinning exactly
     spotify_oauth = platforms.get('spotify', {})
     spotify_wrapped = platforms.get('spotify_wrapped', {})
 
-    if spotify_oauth.get('status') == 'complete' and spotify_oauth.get('data'):
+    if spotify_oauth.get('data'):
         # OAuth data: top_artists list, top_genres dict, top_tracks list
         oauth_data = spotify_oauth['data']
         spotify_artists = oauth_data.get('top_artists', [])
@@ -277,7 +278,12 @@ CRITICAL NOTE: Pinterest boards are explicit wishlists - they're pinning exactly
 
         if spotify_tracks:
             # Sample tracks give a taste/vibe signal beyond just artist names
-            lines.append(f"Sample tracks: {', '.join(spotify_tracks[:15])}")
+            # Tracks may be dicts {'name': ..., 'artist': ...} (OAuth) or plain strings (manual)
+            track_labels = [
+                f"{t['name']} - {t['artist']}" if isinstance(t, dict) else str(t)
+                for t in spotify_tracks[:15]
+            ]
+            lines.append(f"Sample tracks: {', '.join(track_labels)}")
 
         data_summary.append(f"""
 SPOTIFY MUSIC PREFERENCES:

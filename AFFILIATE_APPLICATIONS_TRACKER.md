@@ -118,22 +118,26 @@ Track all affiliate network applications, approvals, and integration status.
 
 ---
 
-## Direct / In-House Programs (Not Through a Network)
+## CJ Affiliate — Additional Approved Brands (Beyond Initial Batch)
 
-### Macorner ✅ Approved Feb 17
-- **Category:** Personalized gifts & home decor (engraved glassware, custom blankets, polo shirts, ornaments)
-- **Commission:** 10% (non-coupon) / 5% (coupon partners) — **use non-coupon links only**
-- **Contact:** Angelina Phillips (anhpl.dztcorp@gmail.com)
-- **Affiliate link format:** Direct HTML links from their dashboard ("Get Html" buttons)
-- **Why it's valuable:** 10% on personalized gifts is excellent. Personalization niche converts well for birthdays, anniversaries, Father's Day.
-- **Integration status:**
-  - [ ] Log into Macorner affiliate dashboard and get product feed / API details
-  - [ ] Check if they have a product feed (CSV, API, or manual HTML links only)
-  - [ ] If API/feed available: build `macorner_searcher.py`
-  - [ ] If HTML links only: add curated product set to gift guides manually
-  - [ ] Add to `CLAUDE.md` brand-to-network mapping
+### Macorner ✅ Approved, through CJ (not direct)
+- **Network:** CJ Affiliate (ADV_CID: 7110677, our PID: 101660899 already embedded in links)
+- **Category:** Personalized/custom gifts — photo pillows, custom mugs, engraved keychains, ornaments
+- **Commission:** 10% (non-coupon) — links are ready to use now
+- **Available links:** Category-level only (no product feed, no individual SKUs)
+  - Personalized Photo Gifts → `https://www.kqzyfj.com/click-101660899-15834514` (EPC: $40.25)
+  - Gifts for Him → `https://www.tkqlhce.com/click-101660899-15834498` (EPC: **$132.28** — highest performer)
+  - Gifts for Her → `https://www.dpbolvw.net/click-101660899-15834503`
+  - Anniversary Gifts → `https://www.anrdoezrs.net/click-101660899-15834491` (EPC: $34.28)
+  - General/Homepage → `https://www.tkqlhce.com/click-101660899-15834488` (EPC: $13.99)
 
-**Action item:** Reply to Angelina or log into Macorner affiliate dashboard to understand how product links work (feed vs manual HTML). If they have a product API or feed, this is worth integrating into the search pipeline.
+**Integration decision: LOW PRIORITY — do NOT add to main recommendation pipeline**
+
+Macorner sells photo pillows, custom mugs, engraved keychains — the "polite smile" tier of personalized gifts. These are what people buy when they have no idea what to get someone. The engine must NOT surface these by default.
+
+The only valid use case: a profile that explicitly signals sentimental/memory-keeping interest (scrapbooking, new parent, someone who lost a loved one, etc.). Even then, the curator prompt should surface it — not a hardcoded rule.
+
+**Potential future use:** a dedicated "Personalized Gifts" editorial guide (not yet built) where the category expectation is set upfront and the $132 EPC on "Gifts for Him" could perform. Not a current priority.
 
 
 ## Publisher Profile (Use for All Applications)

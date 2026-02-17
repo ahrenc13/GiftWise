@@ -168,6 +168,24 @@ def clean_title(title):
 
 
 # ---------------------------------------------------------------------------
+# Title dedup helper
+# ---------------------------------------------------------------------------
+
+def _normalize_title_for_dedup(title):
+    """Normalize a product title for duplicate detection.
+    Strips common noise words so 'Christmas Necktie Holiday Traditions' and
+    'Hallmark Holiday Traditions Christmas Silk Tie' collapse to the same key."""
+    if not title:
+        return ''
+    # Lowercase, strip non-alpha, remove very common filler
+    words = re.sub(r'[^a-z0-9 ]', '', title.lower()).split()
+    noise = {'the', 'a', 'an', 'and', 'or', 'for', 'of', 'with', 'in', 'on',
+             'new', 'set', 'lot', 'pack', 'pcs', 'piece', 'pieces'}
+    key_words = sorted(w for w in words if w not in noise and len(w) > 2)
+    return ' '.join(key_words)
+
+
+# ---------------------------------------------------------------------------
 # Main cleanup function
 # ---------------------------------------------------------------------------
 
@@ -274,6 +292,13 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
 
     logger.info(f"After rules: {len(cleaned)} passed, {len(deferred)} deferred")
 
+    # Build set of normalized titles already in cleaned list (for title-based dedup)
+    used_titles = set()
+    for gift in cleaned:
+        t = _normalize_title_for_dedup(gift.get('name', ''))
+        if t:
+            used_titles.add(t)
+
     # If we're short, try to fill from inventory (products not already selected)
     if len(cleaned) < rec_count:
         needed = rec_count - len(cleaned)
@@ -285,8 +310,17 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
             link = (p.get('link') or '').strip()
             if not link or link in used_urls or link.rstrip('/') in used_urls:
                 continue
+            # Skip products whose titles match something already selected
+            norm_title = _normalize_title_for_dedup(p.get('title', ''))
+            if norm_title and norm_title in used_titles:
+                continue
             brand = extract_brand(p.get('title', ''))
             category = detect_category(p.get('title', ''), p.get('snippet', ''))
+            # Skip if brand or category already used (same rules as main loop)
+            if brand and brand in used_brands:
+                continue
+            if category and category in used_categories:
+                continue
             # Prefer products that bring new brands, categories, and source diversity
             score = 0
             if brand and brand not in used_brands:
@@ -296,6 +330,8 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
             interest = (p.get('interest_match') or '').lower()
             if interest and interest_counts.get(interest, 0) < 2:
                 score += 1
+            else:
+                score -= 1  # Penalize interest already at cap
             p_source = p.get('source_domain', 'unknown').lower()
             if source_counts.get(p_source, 0) == 0:
                 score += 3  # Strongly prefer unrepresented sources
@@ -311,6 +347,7 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
             brand = extract_brand(p.get('title', ''))
             category = detect_category(p.get('title', ''), p.get('snippet', ''))
             interest = (p.get('interest_match') or '').lower()
+            norm_title = _normalize_title_for_dedup(p.get('title', ''))
 
             # Build a gift dict from inventory product
             replacement = {
@@ -327,6 +364,8 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
             }
             cleaned.append(replacement)
             used_urls.add(link)
+            if norm_title:
+                used_titles.add(norm_title)
             if brand:
                 used_brands.add(brand)
             if category:

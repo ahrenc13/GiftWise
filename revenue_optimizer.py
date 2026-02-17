@@ -77,7 +77,7 @@ def score_product_for_profile(product: Dict, profile: Dict, relationship: str) -
 
         if interest_intel:
             # Check do_buy list (strong positive signal)
-            do_buy = interest_intel.get('do_buy', [])
+            do_buy = interest_intel.get('do_buy') or []
             for good_item in do_buy:
                 if good_item.lower() in product_title or good_item.lower() in product_snippet:
                     score += 0.15
@@ -85,7 +85,7 @@ def score_product_for_profile(product: Dict, profile: Dict, relationship: str) -
                     break
 
             # Check dont_buy list (strong negative signal)
-            dont_buy = interest_intel.get('dont_buy', [])
+            dont_buy = interest_intel.get('dont_buy') or []
             for bad_item in dont_buy:
                 if bad_item.lower() in product_title or bad_item.lower() in product_snippet:
                     score -= 0.3  # Heavy penalty
@@ -133,7 +133,7 @@ def score_product_for_profile(product: Dict, profile: Dict, relationship: str) -
 
     # Factor 5: Relationship appropriateness (10% weight)
     if intel:
-        best_relationships = intel.get('best_for_relationship', [])
+        best_relationships = intel.get('best_for_relationship') or []
         if isinstance(best_relationships, list) and relationship in best_relationships:
             score += 0.10
             reasons.append(f"good_for_{relationship}")

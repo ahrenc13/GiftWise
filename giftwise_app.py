@@ -699,9 +699,13 @@ def check_data_quality(platforms):
         platform_counts['pinterest'] = pinterest_pins
         total_posts += pinterest_pins
 
-    # Spotify Wrapped data: no post count, but artist list is a real signal
-    spotify_data = platforms.get('spotify_wrapped', {})
-    spotify_artists = spotify_data.get('artists', [])
+    # Spotify data: check both OAuth (platforms['spotify']) and Wrapped paste (platforms['spotify_wrapped'])
+    spotify_oauth = platforms.get('spotify', {})
+    spotify_wrapped = platforms.get('spotify_wrapped', {})
+    # OAuth stores data under 'data' key; Wrapped paste stores artists directly
+    spotify_oauth_artists = spotify_oauth.get('data', {}).get('top_artists', [])
+    spotify_wrapped_artists = spotify_wrapped.get('artists', [])
+    spotify_artists = spotify_oauth_artists or spotify_wrapped_artists
     if spotify_artists:
         has_spotify = True
         platform_counts['spotify'] = len(spotify_artists)
@@ -3582,9 +3586,11 @@ def check_scraping_status():
                 has_platform_data = bool(data.get('data') or data.get('wrapped_text', ''))
                 if has_platform_data:
                     completed_count += 1
+                    platform_statuses[platform]['status'] = 'complete'  # so JS progress bar fills
                     logger.info(f"Platform {platform} already has data (method: {method})")
                 else:
                     errored_count += 1
+                    platform_statuses[platform]['status'] = 'error'
                     logger.warning(f"Platform {platform} oauth/manual but missing data")
             else:
                 # Regular scraper-based platform, wait for scraper thread

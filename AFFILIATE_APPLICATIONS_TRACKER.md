@@ -9,7 +9,7 @@ Track all affiliate network applications, approvals, and integration status.
 | Network | Applied | Status | Expected Response | Priority |
 |---------|---------|--------|-------------------|----------|
 | **Skimlinks** | Feb 9 | ⏳ Pending | Feb 18-20 (7 biz days) | 🔥 CRITICAL |
-| **CJ Affiliate** | Feb 15 (~70 brands) | ✅ 1 approved, others pending | Feb 17-22 | 🔥 HIGH |
+| **CJ Affiliate** | Feb 15 (~70 brands) | ✅ 3 approved (MonthlyClubs, illy, Macorner), others pending | Feb 17-22 | 🔥 HIGH |
 | **FlexOffers** | Feb 16 | ⏳ Pending | Feb 16-18 (same-day to 48h) | 🔥 HIGH |
 | **Awin** (incl. ShareASale) | - | ✅ Approved, need to join advertisers | - | 🔥 HIGH |
 | **Impact** | - | ❌ Account type issue | TBD (ticket open) | 🟡 MEDIUM |
@@ -51,7 +51,37 @@ Track all affiliate network applications, approvals, and integration status.
 - Auto-approve (24-48h): ~30-40 brands
 - Manual review (3-7 days): ~30 brands
 
-**Approved Brands (Updated Feb 16):**
+**Approved Brands (Updated Feb 17):**
+
+✅ **illy caffè North America** (Approved Feb 17)
+- **Network:** CJ Affiliate (joined Oct 17, 2007 — long-established program)
+- **Category:** Gourmet — premium Italian coffee, espresso machines, accessories, membership program
+- **Commission:** 6% flat
+- **Cookie:** 45 days
+- **Average order value:** ~$125 → ~$7.50 avg commission per conversion
+- **Contact:** Lauren McManus (lauren.mcmanus@illy.com) / eking@hawkemedia.com
+- **Serviceable area:** US + Canada (English + French)
+- **Top product categories:**
+  - High-end espresso machines: Francis Francis, Mitaca, Diamo, Cuisinart (high AOV)
+  - Brewers: Capresso, Bodum
+  - Espresso membership program (machine included in intro kit) — potential recurring revenue
+  - Coffee beans, pods, accessories
+- **PPC Policy:** Cannot bid on "illy" or "FrancisFrancis" branded keywords (not relevant — we're SEO/content)
+- **Integration status:**
+  - [ ] Receive and review full program terms (terms coming)
+  - [ ] Get illy's ADV_CID from CJ dashboard (needed for cj_searcher.py)
+  - [ ] Check if illy has a product feed in CJ (likely yes for machines + accessories)
+  - [ ] Add to `cj_searcher.py` if product feed available
+  - [ ] Map to interest triggers: coffee, espresso, Italian culture, coffee shops, barista
+- **Why it's valuable:** "Espresso obsessive" is a detectable, high-confidence interest. People who post about their morning cortado or their espresso machine are easy to identify from social media. High-AOV machines mean meaningful commissions even at 6%. The membership program could be a standout rec for someone who's already a dedicated coffee drinker.
+- **Full terms (confirmed Feb 17):**
+  - New customer purchase: **6%** (US + CA/EN + CA/FR)
+  - Existing customer purchase: **4%** (all regions) — GiftWise sends new traffic, so 6% is the working rate
+  - Cookie: 45 days, unlimited occurrences
+  - **Prohibited content on site:** discount, discounts, % off, % savings, save {xx}% — do NOT use this language anywhere illy is mentioned
+  - **Coupons:** Only codes explicitly provided through the CJ affiliate program (no sourcing codes elsewhere)
+  - **SEM:** Not relevant (we're content/SEO). Protected brand terms include illy, illy caffe, francis francis, iperEspresso, issimo, monoarabica.
+- **Integration priority:** HIGH. Coffee is a real, detectable interest with strong gift signal. Worth checking for product feed in CJ dashboard.
 
 ✅ **MonthlyClubs.com** (Approved Feb 16)
 - Categories: Subscription Clubs (Beer, Wine, Cheese, Chocolate, Flowers, Cigars)

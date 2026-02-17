@@ -82,6 +82,7 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 | Etsy Direct | Developer credentials pending | Etsy (would bypass Awin if approved) |
 | Amazon Associates | ✅ Active (tag added to Railway Feb 16) | Amazon |
 | eBay Partner Network | ✅ Active | eBay |
+| illy caffè (via CJ) | ✅ Approved Feb 17 — awaiting product feed check | Premium Italian coffee, espresso machines, membership program (6% new / 4% existing, 45-day cookie, ~$125 AOV). Trigger: coffee/espresso interests. Do NOT use discount language — terms prohibit it. |
 | Macorner (via CJ) | ✅ Approved Feb 17 — category links only, no product feed. Do NOT add to recommendation pipeline. Only valid if profile explicitly signals sentimental/memory-keeping interest. | Photo pillows, custom mugs, engraved keychains — "polite smile" gift tier |
 
 **IMPORTANT:** ShareASale migrated to Awin in Oct 2025. All ShareASale merchants are now accessible through Awin.

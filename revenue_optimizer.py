@@ -65,7 +65,7 @@ def score_product_for_profile(product: Dict, profile: Dict, relationship: str) -
             reasons.append(f"ctr={ctr:.1%}")
 
     # Factor 2: Interest matching using intelligence (30% weight)
-    interests = profile.get('interests', [])
+    interests = profile.get('interests') or []
     product_title = product.get('title', '').lower()
     product_snippet = product.get('snippet', '').lower()
 
@@ -228,7 +228,7 @@ def track_profile_interests(profile: Dict):
     try:
         import database
 
-        for interest in profile.get('interests', []):
+        for interest in profile.get('interests') or []:
             interest_name = interest.get('name', '')
             if interest_name:
                 database.increment_interest_seen(interest_name)

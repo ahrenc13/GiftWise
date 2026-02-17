@@ -18,6 +18,7 @@ Track all affiliate network applications, approvals, and integration status.
 | **Etsy Direct** | - | ⏳ Dev credentials pending | TBD | 🟡 MEDIUM |
 | **Amazon Associates** | - | ✅ Active | - | ✅ LIVE |
 | **eBay Partner Network** | - | ✅ Active | - | ✅ LIVE |
+| **Macorner (Direct)** | Feb 17 | ✅ Approved | - | 🟡 MEDIUM |
 
 **NOTE:** ShareASale migrated to Awin in Oct 2025. All ShareASale merchants (Uncommon Goods, Personalization Mall, etc.) are now accessible through Awin.
 
@@ -114,6 +115,29 @@ Track all affiliate network applications, approvals, and integration status.
 - [ ] Track approval status per brand
 
 **Expected Impact:** MEDIUM — Premium retail brands
+
+---
+
+## CJ Affiliate — Additional Approved Brands (Beyond Initial Batch)
+
+### Macorner ✅ Approved, through CJ (not direct)
+- **Network:** CJ Affiliate (ADV_CID: 7110677, our PID: 101660899 already embedded in links)
+- **Category:** Personalized/custom gifts — photo pillows, custom mugs, engraved keychains, ornaments
+- **Commission:** 10% (non-coupon) — links are ready to use now
+- **Available links:** Category-level only (no product feed, no individual SKUs)
+  - Personalized Photo Gifts → `https://www.kqzyfj.com/click-101660899-15834514` (EPC: $40.25)
+  - Gifts for Him → `https://www.tkqlhce.com/click-101660899-15834498` (EPC: **$132.28** — highest performer)
+  - Gifts for Her → `https://www.dpbolvw.net/click-101660899-15834503`
+  - Anniversary Gifts → `https://www.anrdoezrs.net/click-101660899-15834491` (EPC: $34.28)
+  - General/Homepage → `https://www.tkqlhce.com/click-101660899-15834488` (EPC: $13.99)
+
+**Integration decision: LOW PRIORITY — do NOT add to main recommendation pipeline**
+
+Macorner sells photo pillows, custom mugs, engraved keychains — the "polite smile" tier of personalized gifts. These are what people buy when they have no idea what to get someone. The engine must NOT surface these by default.
+
+The only valid use case: a profile that explicitly signals sentimental/memory-keeping interest (scrapbooking, new parent, someone who lost a loved one, etc.). Even then, the curator prompt should surface it — not a hardcoded rule.
+
+**Potential future use:** a dedicated "Personalized Gifts" editorial guide (not yet built) where the category expectation is set upfront and the $132 EPC on "Gifts for Him" could perform. Not a current priority.
 
 
 ## Publisher Profile (Use for All Applications)

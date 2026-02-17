@@ -301,9 +301,9 @@ Return ONLY the JSON object, no markdown, no backticks"""
 
         message = claude_client.messages.create(
             model=model,
-            max_tokens=12000,
+            max_tokens=5000,
             messages=[{"role": "user", "content": prompt}],
-            timeout=120.0
+            timeout=300.0
         )
 
         # Check if response was truncated (would lose experience gifts at end of JSON)
@@ -404,6 +404,6 @@ def format_products(products):
         price = p.get('price', 'Price unknown')
         domain = p.get('source_domain', 'unknown')
         interest = p.get('interest_match', 'general')
-        formatted.append(f"{idx}. {title}\n   Price: {price} | Domain: {domain} | Interest match: {interest}\n   Description: {snippet[:150]}\n   URL: {link}")
+        formatted.append(f"{idx}. {title}\n   Price: {price} | Domain: {domain} | Interest match: {interest}\n   Description: {snippet[:100]}\n   URL: {link}")
     
     return '\n\n'.join(formatted[:50])  # Limit to 50 products in prompt

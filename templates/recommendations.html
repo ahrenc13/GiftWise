@@ -671,12 +671,29 @@ input[type="range"] {
                 <div class="rec-compact-view">
                     <div class="rec-image-container">
                         {% if rec.image_url %}
-                        <img src="{{ rec.image_url }}" 
-                             alt="{{ rec.name }}" 
+                        <img src="{{ rec.image_url }}"
+                             alt="{{ rec.name }}"
                              class="rec-image"
                              loading="lazy"
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                         <div class="rec-image-placeholder" style="display: none;">🎁</div>
+                        {% elif rec.gift_type == 'experience' %}
+                        <div class="rec-image-placeholder" style="background: linear-gradient(135deg, #7c3aed, #a855f7); font-size: 2.8em;">
+                            {% if rec.experience_category == 'cooking_class' %}👨‍🍳
+                            {% elif rec.experience_category == 'art_class' %}🎨
+                            {% elif rec.experience_category == 'concerts' %}🎵
+                            {% elif rec.experience_category == 'sports_events' %}🏟️
+                            {% elif rec.experience_category == 'travel' %}✈️
+                            {% elif rec.experience_category == 'spa_wellness' %}🧖
+                            {% elif rec.experience_category == 'outdoor_adventure' %}🏔️
+                            {% elif rec.experience_category == 'wine_beer' %}🍷
+                            {% elif rec.experience_category == 'fitness_class' %}💪
+                            {% elif rec.experience_category == 'museum_culture' %}🏛️
+                            {% elif rec.experience_category == 'dining' %}🍽️
+                            {% elif rec.experience_category == 'pet_experience' %}🐕
+                            {% else %}✨
+                            {% endif %}
+                        </div>
                         {% else %}
                         <div class="rec-image-placeholder">🎁</div>
                         {% endif %}

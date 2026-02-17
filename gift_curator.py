@@ -218,16 +218,16 @@ Return JSON:
   ],
   "experience_gifts": [
     {{
-      "name": "specific experience",
-      "description": "what/why",
-      "why_perfect": "DETAILED explanation citing SPECIFIC profile evidence from 2+ interests/behaviors",
+      "name": "SHORT, specific experience name (e.g. 'Couples Thai Cooking Class' not 'Cooking Experience')",
+      "description": "1-2 sentence pitch: what this experience IS and what makes it special. Write it like you're selling someone on the idea.",
+      "why_perfect": "2-3 sentences citing SPECIFIC profile evidence from 2+ interests/behaviors. Tell a mini-story connecting {pronoun_possessive} interests to this experience.",
+      "experience_category": "one of: cooking_class|art_class|concerts|sports_events|travel|spa_wellness|outdoor_adventure|wine_beer|fitness_class|museum_culture|dining|pet_experience|other",
+      "estimated_price": "$XX-$YY (realistic total including materials)",
       "location_specific": true/false,
-      "location_details": "venue/city or N/A",
-      "materials_needed": [{{"item": "", "where_to_buy": "", "product_url": "", "estimated_price": ""}}],
-      "how_to_execute": "detailed steps",
-      "how_to_make_it_special": "personal touch",
-      "reservation_link": "URL or empty",
-      "venue_website": "URL or empty",
+      "location_details": "city/neighborhood or N/A",
+      "materials_needed": [{{"item": "specific purchasable product name", "estimated_price": "$XX"}}],
+      "how_to_execute": "Step-by-step plan in 3-5 short sentences. Be specific enough that the gift-giver can ACT on this immediately.",
+      "how_to_make_it_special": "One specific personal touch that connects to {pronoun_possessive} profile",
       "confidence_level": "safe_bet|adventurous",
       "gift_type": "experience"
     }}
@@ -248,23 +248,25 @@ PRODUCT GIFTS:
 - SKIP used/pre-owned items, generic "mix & match" bundles, and bulk packs of cheap items. Every gift should feel intentional, not like a clearance bin find
 
 EXPERIENCE GIFTS:
-- Experience gifts MUST be hyper-specific, cite 2+ profile data points in why_perfect with SPECIFIC evidence
-- Experience gifts MUST be personal/leisure ONLY - never work-themed, never professional development
-- Experience links (reservation_link, venue_website) are LOGISTICS-CRITICAL:
-  * MUST be real, bookable venue websites in recipient's city/region ONLY (use "Lives in" and "Specific places")
-  * DO NOT INVENT URLs. DO NOT use search pages, generic event finder sites, or placeholder URLs
-  * Examples of INVALID links: "https://search.com/venue", "https://eventfinder.com/events", "https://example.com/book", any URL with "search", "find", "discover", "events" in domain
-  * If you cannot find a REAL venue website in their area (e.g., "https://bluedoorjazzclub.com", "https://indianapolismuseum.org"), leave reservation_link AND venue_website EMPTY
-  * Empty is better than fake - we will supply a geography-calibrated search link
-  * For national experiences (not tied to a venue), leave both empty and explain in how_to_execute
-- materials_needed: Items the gift-giver needs to BUY IN ADVANCE to prepare or execute this experience. Think: what do they need to purchase before the day arrives?
-  * GOOD examples: "Portable Bluetooth speaker" for a picnic, "Dog life jacket" for a lake day, "Watercolor paint set" for an art class
-  * BAD examples: "Concert merchandise" (bought AT the event, not in advance), "Commemorative poster" (a souvenir, not a material), "Tickets" (that's the reservation_link, not a material), "Water bottles" (everyone already owns one)
-  * Each item should be a specific, purchasable product — not a task ("make a playlist"), an abstract concept ("good vibes"), or something bought at the venue
-  * Never suggest basic items the recipient obviously already owns (water bottles, phone chargers, sunglasses, backpacks). Think: what SPECIFIC, SURPRISING thing would elevate this experience?
-  * When an item matches a product in AVAILABLE PRODUCTS, copy that product's URL exactly into product_url. Never use search URLs. Empty product_url is OK when no match; we will add a find-it link.
-  * If the experience doesn't require advance purchases (e.g., a restaurant dinner), use an empty list []
-- If no location context, DO NOT suggest location-specific experiences
+- Each experience must be a COHERENT PACKAGE: an activity + the materials to pull it off + a clear plan.
+  Think of it as a gift box: "Here's what we're doing, here's what you need to buy, here's how to book it."
+- NARRATIVE QUALITY: why_perfect must tell a mini-story connecting 2+ profile data points.
+  BAD: "Matches their passion for cooking and travel."
+  GOOD: "Based on {pronoun_possessive} 12 Thai food posts and that Bangkok trip bucket list, this hands-on class lets {pronoun_subject} recreate those pad thai cravings at home — plus {pronoun_subject}'ve been following 3 cooking accounts lately."
+- description should SELL the experience in 1-2 punchy sentences. Not a dry summary.
+  BAD: "A cooking class focused on Thai cuisine."
+  GOOD: "Learn to make authentic pad thai and green curry from scratch — then eat everything you made with a glass of wine."
+- experience_category: Pick the BEST match from the list. This helps us find booking platforms automatically.
+- estimated_price: Be realistic. Include the class/tickets/booking fee AND materials.
+- DO NOT include reservation_link or venue_website — we handle booking links automatically based on location and category. You focus on the WHAT and WHY, we handle the WHERE.
+- materials_needed: Items the gift-giver buys IN ADVANCE to prepare or elevate the experience.
+  * GOOD: "Watercolor paint set" for an art class, "Portable Bluetooth speaker" for a picnic, "Dog life jacket" for a lake day
+  * BAD: "Water bottles" (everyone has these), "Tickets" (that's the booking, not a material), "Concert merch" (bought at the event), "Good vibes" (not a product)
+  * Only include item name + estimated_price. We match products and add links automatically.
+  * If the experience needs no advance purchases (e.g., restaurant dinner), use an empty list []
+- how_to_execute: Write 3-5 SHORT sentences the gift-giver can act on. Be specific: "Search Cozymeal for Thai cooking classes in their city" not "Find a local cooking class."
+- MUST be personal/leisure ONLY — never work-themed, never professional development
+- If no location context in profile, DO NOT suggest location-specific experiences
 
 GIFT TASTE — REJECT BORING PRACTICAL ITEMS:
 A gift should make someone say "you GET me," not "thanks, I needed that." REJECT these categories entirely:

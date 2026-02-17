@@ -436,21 +436,22 @@
                 </div>
 
                 <div class="platform-status">
-                    Spotify doesn't allow apps to access listening history directly, but we can learn a lot from your Wrapped! Just paste your top artists or the whole thing.
+                    Share your Spotify Wrapped link and we'll pull your top artists, tracks, and genres — strong signals for finding gifts that match your vibe.
+                    <br><small style="color: #6b7280; margin-top: 4px; display: block;">In Spotify: Your Library → Your Top Songs 2024 → Share → Copy link</small>
                 </div>
 
                 <div class="input-group">
-                    <label for="spotify_wrapped">Paste your Spotify Wrapped or top artists (optional)</label>
-                    <textarea
+                    <label for="spotify_wrapped">Paste your Spotify Wrapped link</label>
+                    <input
+                        type="url"
                         id="spotify_wrapped"
-                        placeholder="e.g., 'My top artists: Taylor Swift, Olivia Rodrigo, Sabrina Carpenter' or paste your whole Wrapped summary"
-                        rows="4"
-                        style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: inherit; resize: vertical;"
-                    ></textarea>
+                        placeholder="https://open.spotify.com/playlist/..."
+                        style="width: 100%; padding: 12px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: inherit; box-sizing: border-box;"
+                    >
                 </div>
 
                 <div class="platform-actions">
-                    <button class="btn btn-primary" onclick="saveSpotifyWrapped()">Save Music Preferences</button>
+                    <button class="btn btn-primary" onclick="saveSpotifyWrapped()">Connect Spotify</button>
                 </div>
             </div>
         </div>
@@ -533,7 +534,7 @@
         function saveSpotifyWrapped() {
             const wrapped = document.getElementById('spotify_wrapped').value.trim();
             if (!wrapped) {
-                alert('Please paste your Spotify Wrapped or top artists');
+                alert('Paste your Spotify Wrapped link first');
                 return;
             }
 
@@ -545,10 +546,13 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert('Music preferences saved!');
+                    const parts = [`${data.artists_found} artists`];
+                    if (data.tracks_found) parts.push(`${data.tracks_found} tracks`);
+                    if (data.genres_found) parts.push(`${data.genres_found} genres`);
+                    alert(`Connected! Found ${parts.join(', ')} from your Wrapped.`);
                     document.getElementById('spotify_wrapped').value = '';
                 } else {
-                    alert(data.error || 'Failed to save music preferences');
+                    alert(data.error || 'Failed to connect Spotify');
                 }
             });
         }

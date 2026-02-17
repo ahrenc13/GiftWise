@@ -1907,7 +1907,7 @@ def connect_tiktok():
 
 @app.route('/connect/spotify-wrapped', methods=['POST'])
 def connect_spotify_wrapped():
-    """Save Spotify Wrapped text for music preference analysis"""
+    """Save Spotify Wrapped text for music preference analysis (with validation)"""
     user = get_session_user()
     if not user:
         return jsonify({'success': False, 'error': 'Not logged in'}), 401
@@ -1919,20 +1919,47 @@ def connect_spotify_wrapped():
     if not wrapped_text:
         return jsonify({'success': False, 'error': 'Please paste your Spotify Wrapped or top artists'}), 400
 
+    # Validate and parse Spotify input (guard rails!)
+    from spotify_parser import parse_spotify_input
+
+    parse_result = parse_spotify_input(
+        wrapped_text,
+        client_id=SPOTIFY_CLIENT_ID,
+        client_secret=SPOTIFY_CLIENT_SECRET
+    )
+
+    if not parse_result['success']:
+        # Failed to parse - return helpful error
+        logger.warning(f"Spotify input validation failed: {parse_result['error']}")
+        return jsonify({
+            'success': False,
+            'error': parse_result['error']
+        }), 400
+
+    # Successfully parsed - save cleaned artist names
+    artists = parse_result['artists']
+    logger.info(f"Parsed {len(artists)} artists from Spotify input (method: {parse_result['method']})")
+
     user_id = session['user_id']
 
-    # Save the Spotify Wrapped text to platforms
+    # Save the Spotify Wrapped data to platforms
     platforms = user.get('platforms', {})
     platforms['spotify_wrapped'] = {
-        'wrapped_text': wrapped_text,
+        'wrapped_text': wrapped_text,  # Keep original for reference
+        'artists': artists,  # Parsed artist names
+        'parse_method': parse_result['method'],  # 'urls', 'text', or 'mixed'
         'status': 'connected',
         'method': 'manual_text',
         'connected_at': datetime.now().isoformat()
     }
     save_user(user_id, {'platforms': platforms})
-    logger.info(f"User {user_id} saved Spotify Wrapped text ({len(wrapped_text)} chars)")
+    logger.info(f"User {user_id} saved Spotify data: {len(artists)} artists")
 
-    return jsonify({'success': True})
+    return jsonify({
+        'success': True,
+        'artists_found': len(artists),
+        'preview': artists[:3]  # Show first 3 for confirmation
+    })
 
 @app.route('/connect/etsy', methods=['POST'])
 def connect_etsy():
@@ -2973,25 +3000,14 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
 
             logger.info(f"MATERIALS: Matched '{item_name[:40]}' → '{best.get('title', '')[:50]}' (score={best_score})")
         else:
-            # Fallback: search link — use the retailer most likely to have the item
-            # Clean the item name for search: strip qualifiers like "for group", "for the trip"
-            # that make sense in a description but pollute search results
-            clean_name = re.sub(r'\b(for\s+(the\s+)?(group|trip|class|event|party|everyone|them|her|him|you))\b', '', item_name, flags=re.IGNORECASE).strip()
-            clean_name = re.sub(r'\s{2,}', ' ', clean_name).strip(' ,')
-            search_query = quote(clean_name or item_name or 'gift')
-            where = (m.get('where_to_buy') or '').lower()
-            if 'etsy' in where:
-                m['product_url'] = f'https://www.etsy.com/search?q={search_query}'
-                m['where_to_buy'] = 'Find on Etsy'
-            elif 'ebay' in where:
-                m['product_url'] = f'https://www.ebay.com/sch/i.html?_nkw={search_query}'
-                m['where_to_buy'] = 'Find on eBay'
-            else:
-                tag_param = f'&tag={affiliate_tag}' if affiliate_tag else ''
-                m['product_url'] = f'https://www.amazon.com/s?k={search_query}{tag_param}'
-                m['where_to_buy'] = 'Find on Amazon'  # Better UX than "Search Amazon"
-            m['is_search_link'] = True
-            logger.info(f"MATERIALS: No match for '{item_name[:40]}' → search fallback ({m['where_to_buy']})")
+            # No match in inventory - decide whether to show search fallback or skip entirely
+            # Search fallbacks add little value ("Find on Amazon" = user could search themselves)
+            # Better to either: (1) skip the material, or (2) do a targeted mini-search for real product
+
+            # For now: Skip unmatched materials entirely (cleaner UX than useless search links)
+            # TODO: Add optional mini-search feature for unmatched materials (adds latency)
+            logger.info(f"MATERIALS: No match for '{item_name[:40]}' → skipping (would have been search fallback)")
+            continue  # Don't add this material to output
         # Apply affiliate tracking to all material links
         if m.get('product_url'):
             m['product_url'] = _apply_affiliate_tag(m['product_url'])
@@ -3282,10 +3298,14 @@ def view_recommendations(user=None):
 
 @app.route('/recommendations/experience/<int:index>')
 @require_login() if REFACTORED_MODULES_AVAILABLE else lambda f: f
-def view_experience_detail(index, user=None):
+def view_experience_detail(user, index):
     """
     Dedicated page for a single experience gift: full description, links, shopping list.
     REFACTORED: Uses @require_login middleware
+
+    Args:
+        user: User object (injected by @require_login decorator)
+        index: Experience index from URL path
     """
     # Fallback for when refactored modules aren't available
     if not REFACTORED_MODULES_AVAILABLE:
@@ -3526,8 +3546,22 @@ def check_scraping_status():
 
         # Ready/connected but scraper thread hasn't updated status yet
         elif status in ('ready', 'connected'):
-            scraping_in_progress = True
-            logger.info(f"Platform {platform} status is '{status}' — waiting for scraper thread")
+            # Check if this is manual data (no scraper thread)
+            method = data.get('method', '')
+            if method == 'manual_text':
+                # Manual data (like Spotify Wrapped paste) is already complete
+                has_manual_data = bool(data.get('wrapped_text', ''))
+                if has_manual_data:
+                    completed_count += 1
+                    logger.info(f"Platform {platform} manually connected with data (method: {method})")
+                else:
+                    # Manual platform but no data yet (shouldn't happen)
+                    errored_count += 1
+                    logger.warning(f"Platform {platform} manual but missing data")
+            else:
+                # Regular scraper-based platform, wait for scraper thread
+                scraping_in_progress = True
+                logger.info(f"Platform {platform} status is '{status}' — waiting for scraper thread")
 
     resolved_count = completed_count + errored_count
     logger.info(f"Scraping status check: {completed_count}/{total_platforms} complete, {errored_count} errored, in_progress={scraping_in_progress}")

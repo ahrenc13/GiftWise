@@ -1063,7 +1063,47 @@ GIFT_INTELLIGENCE = {
         'activity_type': 'active',
         'gift_occasions': ['birthday', 'housewarming', 'christmas']
     },
-    
+
+    'gourmet_food': {
+        'do_buy': [
+            'Artisan food gift baskets',
+            'Specialty citrus boxes (Florida oranges, grapefruit)',
+            'Gourmet chocolate collections',
+            'Charcuterie and cheese boards',
+            'Farm-to-table subscription boxes',
+            'Specialty olive oil and vinegar sets',
+            'Artisan preserves and jams',
+            'Gourmet coffee and tea samplers',
+            'Truffle products and specialty ingredients',
+            'Local/regional food specialties'
+        ],
+        'dont_buy': [
+            'Generic corporate gift baskets',
+            'Cheap candy assortments',
+            'Mass-market snack boxes',
+            'Random fruit without knowing preferences',
+            'Prepackaged grocery store gift sets'
+        ],
+        'trending_2026': [
+            'Charcuterie board kits',
+            'Small-batch hot sauce collections',
+            'Artisan honey varieties',
+            'Gourmet popcorn flavors',
+            'Specialty salt collections',
+            'Farm-to-table ingredient boxes',
+            'Craft chocolate bars',
+            'Regional citrus gift boxes'
+        ],
+        'search_terms': ['gourmet gift basket', 'artisan food', 'specialty ingredients', 'citrus gift box', 'fruit basket', 'gourmet chocolate', 'charcuterie board', 'specialty foods'],
+        'price_points': {
+            'budget': (30, 60),
+            'standard': (60, 120),
+            'premium': (120, 300)
+        },
+        'activity_type': 'passive',
+        'gift_occasions': ['birthday', 'thank_you', 'sympathy', 'corporate', 'christmas', 'mothers_day', 'fathers_day', 'hostess_gift']
+    },
+
     # ADDITIONAL INTERESTS (Rounding out to 100+)
     'board_games': {
         'do_buy': [

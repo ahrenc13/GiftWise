@@ -321,4 +321,31 @@ def search_products_multi_retailer(
     logger.info(f"Product source breakdown: {dict(source_counts)}")
     logger.info(f"Total products in pool: {len(all_products)}")
 
+    # Write live API results back to DB in background (so future sessions skip API calls)
+    try:
+        import database
+        from models import Product
+        import threading
+
+        products_snapshot = list(all_products)
+
+        def _write_to_db():
+            written = 0
+            for p in products_snapshot:
+                try:
+                    if not p.get('link'):
+                        continue
+                    retailer = p.get('source_domain', 'unknown')
+                    product = Product.from_searcher_dict(p, retailer=retailer)
+                    database.upsert_product(product.to_db_format())
+                    written += 1
+                except Exception:
+                    pass
+            if written:
+                logger.info(f"DB write-back: cached {written} live products for future sessions")
+
+        threading.Thread(target=_write_to_db, daemon=True).start()
+    except Exception as e:
+        logger.debug(f"DB write-back skipped: {e}")
+
     return all_products

@@ -3854,7 +3854,7 @@ def spotify_oauth_callback():
             'access_token': token_data['access_token'],
             'refresh_token': token_data.get('refresh_token'),
             'data': spotify_data,
-            'status': 'complete',
+            'status': 'connected',
             'method': 'oauth',
             'connected_at': datetime.now().isoformat()
         }

@@ -3000,25 +3000,14 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
 
             logger.info(f"MATERIALS: Matched '{item_name[:40]}' → '{best.get('title', '')[:50]}' (score={best_score})")
         else:
-            # Fallback: search link — use the retailer most likely to have the item
-            # Clean the item name for search: strip qualifiers like "for group", "for the trip"
-            # that make sense in a description but pollute search results
-            clean_name = re.sub(r'\b(for\s+(the\s+)?(group|trip|class|event|party|everyone|them|her|him|you))\b', '', item_name, flags=re.IGNORECASE).strip()
-            clean_name = re.sub(r'\s{2,}', ' ', clean_name).strip(' ,')
-            search_query = quote(clean_name or item_name or 'gift')
-            where = (m.get('where_to_buy') or '').lower()
-            if 'etsy' in where:
-                m['product_url'] = f'https://www.etsy.com/search?q={search_query}'
-                m['where_to_buy'] = 'Find on Etsy'
-            elif 'ebay' in where:
-                m['product_url'] = f'https://www.ebay.com/sch/i.html?_nkw={search_query}'
-                m['where_to_buy'] = 'Find on eBay'
-            else:
-                tag_param = f'&tag={affiliate_tag}' if affiliate_tag else ''
-                m['product_url'] = f'https://www.amazon.com/s?k={search_query}{tag_param}'
-                m['where_to_buy'] = 'Find on Amazon'  # Better UX than "Search Amazon"
-            m['is_search_link'] = True
-            logger.info(f"MATERIALS: No match for '{item_name[:40]}' → search fallback ({m['where_to_buy']})")
+            # No match in inventory - decide whether to show search fallback or skip entirely
+            # Search fallbacks add little value ("Find on Amazon" = user could search themselves)
+            # Better to either: (1) skip the material, or (2) do a targeted mini-search for real product
+
+            # For now: Skip unmatched materials entirely (cleaner UX than useless search links)
+            # TODO: Add optional mini-search feature for unmatched materials (adds latency)
+            logger.info(f"MATERIALS: No match for '{item_name[:40]}' → skipping (would have been search fallback)")
+            continue  # Don't add this material to output
         # Apply affiliate tracking to all material links
         if m.get('product_url'):
             m['product_url'] = _apply_affiliate_tag(m['product_url'])
@@ -3309,10 +3298,14 @@ def view_recommendations(user=None):
 
 @app.route('/recommendations/experience/<int:index>')
 @require_login() if REFACTORED_MODULES_AVAILABLE else lambda f: f
-def view_experience_detail(index, user=None):
+def view_experience_detail(user, index):
     """
     Dedicated page for a single experience gift: full description, links, shopping list.
     REFACTORED: Uses @require_login middleware
+
+    Args:
+        user: User object (injected by @require_login decorator)
+        index: Experience index from URL path
     """
     # Fallback for when refactored modules aren't available
     if not REFACTORED_MODULES_AVAILABLE:

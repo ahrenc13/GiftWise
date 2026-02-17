@@ -3577,16 +3577,15 @@ def check_scraping_status():
         elif status in ('ready', 'connected'):
             # Check if this is manual data (no scraper thread)
             method = data.get('method', '')
-            if method == 'manual_text':
-                # Manual data (like Spotify Wrapped paste) is already complete
-                has_manual_data = bool(data.get('wrapped_text', ''))
-                if has_manual_data:
+            if method in ('manual_text', 'oauth'):
+                # Data already fetched (Spotify Wrapped paste or OAuth) — no scraper thread
+                has_platform_data = bool(data.get('data') or data.get('wrapped_text', ''))
+                if has_platform_data:
                     completed_count += 1
-                    logger.info(f"Platform {platform} manually connected with data (method: {method})")
+                    logger.info(f"Platform {platform} already has data (method: {method})")
                 else:
-                    # Manual platform but no data yet (shouldn't happen)
                     errored_count += 1
-                    logger.warning(f"Platform {platform} manual but missing data")
+                    logger.warning(f"Platform {platform} oauth/manual but missing data")
             else:
                 # Regular scraper-based platform, wait for scraper thread
                 scraping_in_progress = True

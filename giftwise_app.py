@@ -356,7 +356,7 @@ APIFY_TIKTOK_ACTOR = '0FXVyOXXEmdGcV88a'
 # Spotify OAuth Configuration
 SPOTIFY_CLIENT_ID = os.environ.get('SPOTIFY_CLIENT_ID', '')
 SPOTIFY_CLIENT_SECRET = os.environ.get('SPOTIFY_CLIENT_SECRET', '')
-SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI', 'http://localhost:5000/oauth/spotify/callback')
+SPOTIFY_REDIRECT_URI = os.environ.get('SPOTIFY_REDIRECT_URI', 'https://giftwise.fit/oauth/spotify/callback')
 
 # Etsy OAuth Configuration
 ETSY_CLIENT_ID = os.environ.get('ETSY_CLIENT_ID', '')

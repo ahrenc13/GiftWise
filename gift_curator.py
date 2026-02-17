@@ -266,6 +266,16 @@ EXPERIENCE GIFTS:
   * If the experience doesn't require advance purchases (e.g., a restaurant dinner), use an empty list []
 - If no location context, DO NOT suggest location-specific experiences
 
+GIFT TASTE — REJECT BORING PRACTICAL ITEMS:
+A gift should make someone say "you GET me," not "thanks, I needed that." REJECT these categories entirely:
+- Power adapters, converters, chargers, extension cords, cable organizers
+- First aid kits, medicine organizers, pill cases
+- Luggage tags, packing cubes, toiletry bags (unless luxury/designer)
+- Phone stands, generic tech accessories, screen protectors
+- Bulk packs, multi-packs, "essentials kits," variety packs
+- Plain storage containers, drawer organizers, label makers
+If an item is something people buy for themselves at a drugstore or airport, it is NOT a gift. Gifts are personal, thoughtful, and a little surprising.
+
 DIVERSITY & EVIDENCE:
 - BRAND DIVERSITY (CRITICAL): NEVER select 2 products from the same brand or manufacturer. If you see "Yankee Candle" twice, pick ONE and replace the other with something different. Same for any brand—one product per brand, no exceptions.
 - CATEGORY DIVERSITY: NEVER select 2 products that are essentially the same type of item (e.g., two candles, two mugs, two t-shirts, two posters). Each product should feel like a genuinely different type of gift.

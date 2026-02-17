@@ -107,7 +107,53 @@
 {% endblock %}
 
 {% block content %}
-<script>
+    <div class="container">
+        <h1 style="font-size: 2.2em; text-align: center; margin-bottom: 8px; color: #1f2937;">Someone picked these gifts just for you</h1>
+        <p style="text-align: center; color: #6b7280; margin-bottom: 40px; font-size: 1.1em;">
+            These were chosen by AI after analyzing their social media — each one matches something specific about them.
+        </p>
+
+        <div class="recommendations-grid">
+            {% for rec in recommendations %}
+            <div class="recommendation-card">
+                <div class="rec-image-container">
+                    {% if rec.image_url %}
+                    <img src="{{ rec.image_url }}" alt="{{ rec.name }}" class="rec-image" loading="lazy"
+                         onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                    <div style="width:100%;height:100%;display:none;align-items:center;justify-content:center;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-size:3em;">🎁</div>
+                    {% else %}
+                    <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:linear-gradient(135deg,#667eea,#764ba2);color:white;font-size:3em;">🎁</div>
+                    {% endif %}
+                </div>
+                <h2 class="rec-name">{{ rec.name }}</h2>
+                {% if rec.why_perfect %}
+                <div style="background:#f0fdf4;padding:12px;border-radius:8px;border-left:3px solid #10b981;margin-bottom:12px;color:#065f46;font-size:0.9em;line-height:1.5;">
+                    {{ rec.why_perfect }}
+                </div>
+                {% endif %}
+                {% if rec.description %}
+                <p class="rec-description">{{ rec.description }}</p>
+                {% endif %}
+                <div class="rec-price">{{ rec.price_range or rec.price or '' }}</div>
+                {% if rec.gift_type == 'physical' and rec.purchase_link %}
+                <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" onclick="trackClick('{{ rec.purchase_link }}', 'physical');">
+                    Shop Now →
+                </a>
+                {% elif rec.gift_type == 'experience' %}
+                <span style="display:inline-block;padding:6px 14px;background:#fce7f3;color:#9f1239;border-radius:20px;font-size:0.85em;font-weight:600;">Experience</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="cta-section">
+            <h2 style="font-size: 1.8em; margin-bottom: 12px; color: #1f2937;">Want personalized picks like these?</h2>
+            <p style="color: #6b7280; margin-bottom: 20px;">GiftWise analyzes social media to find gifts that actually match someone's personality.</p>
+            <a href="/" class="cta-button">Get Your Own Picks — Free</a>
+        </div>
+    </div>
+
+    <script>
     function trackClick(url, source) {
         fetch('/api/track-click', {
             method: 'POST',

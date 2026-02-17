@@ -44,8 +44,8 @@ CJ_GRAPHQL_ENDPOINT = "https://ads.api.cj.com/query"
 #       valid Dec 2026) are approved to promote. No other discount language.
 # ---------------------------------------------------------------------------
 
+# Evergreen link (ID 15734720) — deep-link enabled, use for specific product pages
 _PEETS_EVERGREEN_BASE = "https://www.kqzyfj.com/click-101660899-15734720"
-_PEETS_GIFT_BUNDLE_LINK = "https://www.kqzyfj.com/click-101660899-15596392"
 
 # Interests that trigger Peet's products
 PEETS_TRIGGER_INTERESTS = {
@@ -62,18 +62,20 @@ def _peets_deep_link(path):
     return f"{_PEETS_EVERGREEN_BASE}?url={urllib.parse.quote(destination, safe='')}"
 
 
-# Static curated product list — curator will select at most 1-2 of these
+# Static curated product list — direct CJ click URLs from CSV (Feb 17 2026)
+# Images are real CJ banner images (300x250 or similar), not tracking pixels
 _PEETS_ALL_PRODUCTS = [
     {
+        # CJ link ID 15734720 (Evergreen, deep-link to product page)
         'title': "Peet's Major Dickason's Blend Coffee",
         'link': _peets_deep_link('/products/major-dickasons-blend'),
         'snippet': (
             "Peet's most iconic dark roast — bold, rich, and complex with layered "
             "flavors. A cult favorite since 1969. Use code WEBFRIEND5 for 5% off."
         ),
-        'image': '',
-        'thumbnail': '',
-        'image_url': '',
+        'image': 'https://www.tqlkg.com/image-101660899-13437467',
+        'thumbnail': 'https://www.tqlkg.com/image-101660899-13437467',
+        'image_url': 'https://www.tqlkg.com/image-101660899-13437467',
         'source_domain': 'peets.com',
         'price': '$19.99',
         'product_id': 'peets-major-dickasons',
@@ -84,15 +86,17 @@ _PEETS_ALL_PRODUCTS = [
         'advertiser_id': 'peets-cj',
     },
     {
-        'title': "Peet's Single Origin Coffee Subscription",
-        'link': _peets_deep_link('/pages/coffee-subscriptions'),
+        # CJ link ID 13718353 — "Single Origin Series Subscription"
+        'title': "Peet's Single Origin Series Coffee Subscription",
+        'link': 'https://www.dpbolvw.net/click-101660899-13718353',
         'snippet': (
-            "Monthly delivery of Peet's single origin coffees — a rotating selection "
-            "of the world's finest beans. Use code NEWSUB30 for 30% off the first shipment."
+            "The quintessential expression of a coffee region in your cup — "
+            "Peet's rotating single origin coffees from the world's finest farms. "
+            "Use code NEWSUB30 for 30% off the first shipment."
         ),
-        'image': '',
-        'thumbnail': '',
-        'image_url': '',
+        'image': 'https://www.lduhtrp.net/image-101660899-13625035',
+        'thumbnail': 'https://www.lduhtrp.net/image-101660899-13625035',
+        'image_url': 'https://www.lduhtrp.net/image-101660899-13625035',
         'source_domain': 'peets.com',
         'price': 'From $19.95/shipment',
         'product_id': 'peets-single-origin-sub',
@@ -103,15 +107,17 @@ _PEETS_ALL_PRODUCTS = [
         'advertiser_id': 'peets-cj',
     },
     {
+        # CJ link ID 13648651 — "Discover Mighty Leaf's most popular teas"
         'title': "Mighty Leaf Whole Leaf Tea Collection by Peet's",
-        'link': _peets_deep_link('/collections/tea'),
+        'link': 'https://www.kqzyfj.com/click-101660899-13648651',
         'snippet': (
-            "Whole-leaf tea pouches from Mighty Leaf, Peet's premium tea line — "
-            "rare single-origin varieties and classic blends. Use code WEBFRIEND5 for 5% off."
+            "Distinctive black, green, and herbal teas carefully crafted by Mighty Leaf, "
+            "Peet's premium tea line. Whole-leaf pouches, rare single-origin varieties. "
+            "Use code WEBFRIEND5 for 5% off."
         ),
-        'image': '',
-        'thumbnail': '',
-        'image_url': '',
+        'image': 'https://www.ftjcfx.com/image-101660899-13588852',
+        'thumbnail': 'https://www.ftjcfx.com/image-101660899-13588852',
+        'image_url': 'https://www.ftjcfx.com/image-101660899-13588852',
         'source_domain': 'peets.com',
         'price': 'From $12.00',
         'product_id': 'peets-mighty-leaf-tea',
@@ -122,15 +128,17 @@ _PEETS_ALL_PRODUCTS = [
         'advertiser_id': 'peets-cj',
     },
     {
-        'title': "Peet's Coffee Gift Set",
-        'link': _PEETS_GIFT_BUNDLE_LINK,
+        # CJ link ID 15596392 — "Save with Bundles! Save up to 20% off"
+        'title': "Peet's Coffee Gift Bundles — Save up to 20% off",
+        'link': 'https://www.dpbolvw.net/click-101660899-15596392',
         'snippet': (
-            "Curated gift bundles from Peet's Coffee — premium coffees, teas, and "
-            "accessories for the coffee lover in your life. Use code WEBFRIEND5 for 5% off."
+            "Peet's curated selection of best-selling coffee and tea bundles — "
+            "save up to 20% off. Premium coffees, teas, and accessories. "
+            "Use code WEBFRIEND5 for an extra 5% off."
         ),
-        'image': '',
-        'thumbnail': '',
-        'image_url': '',
+        'image': 'https://www.tqlkg.com/image-101660899-15784148',
+        'thumbnail': 'https://www.tqlkg.com/image-101660899-15784148',
+        'image_url': 'https://www.tqlkg.com/image-101660899-15784148',
         'source_domain': 'peets.com',
         'price': 'From $35.00',
         'product_id': 'peets-gift-set',
@@ -141,15 +149,17 @@ _PEETS_ALL_PRODUCTS = [
         'advertiser_id': 'peets-cj',
     },
     {
+        # CJ link ID 13747502 — "Peet's Frequent Brewer Subscription + free shipping"
         'title': "Peet's Frequent Brewer Coffee Subscription",
-        'link': _peets_deep_link('/pages/coffee-subscriptions'),
+        'link': 'https://www.jdoqocy.com/click-101660899-13747502',
         'snippet': (
-            "Subscribe and save on Peet's premium coffees — choose your roast, grind, "
-            "and delivery frequency. First shipment 30% off with code NEWSUB30."
+            "Never run out of your favorite Peet's coffee — subscribe and get free "
+            "shipping every time. Choose your roast, grind, and delivery frequency. "
+            "First shipment 30% off with code NEWSUB30."
         ),
-        'image': '',
-        'thumbnail': '',
-        'image_url': '',
+        'image': 'https://www.lduhtrp.net/image-101660899-13625035',
+        'thumbnail': 'https://www.lduhtrp.net/image-101660899-13625035',
+        'image_url': 'https://www.lduhtrp.net/image-101660899-13625035',
         'source_domain': 'peets.com',
         'price': 'From $19.95/month',
         'product_id': 'peets-frequent-brewer',

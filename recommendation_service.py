@@ -623,23 +623,35 @@ class RecommendationService:
             if exp.get('location_specific'):
                 location_info = f" | {exp.get('location_details', 'Location-based')}"
 
-            # Validate and build links
             exp_name = exp.get('name', 'experience')
             location_details = (exp.get('location_details') or '').strip()
             search_loc = location_details or search_geography
 
-            reservation_link = self._validate_or_replace_experience_link(
-                exp.get('reservation_link', ''), exp_name, search_loc, 'reservation'
-            )
-            venue_website = self._validate_or_replace_experience_link(
-                exp.get('venue_website', ''), location_details or exp_name, search_loc, 'venue'
-            )
+            # Handle both old format (reservation_link/venue_website from curator)
+            # and new format (no URLs from curator, we generate everything)
+            reservation_link = ''
+            venue_website = ''
+            old_res = (exp.get('reservation_link') or '').strip()
+            old_venue = (exp.get('venue_website') or '').strip()
+            if old_res:
+                reservation_link = self._validate_or_replace_experience_link(
+                    old_res, exp_name, search_loc, 'reservation'
+                )
+            if old_venue:
+                venue_website = self._validate_or_replace_experience_link(
+                    old_venue, location_details or exp_name, search_loc, 'venue'
+                )
 
             primary_link = reservation_link or venue_website
             experience_search_fallback = False
 
-            # Get curated provider links
-            experience_provider_links = self._get_provider_links(exp_name, search_loc, exp.get('description', ''))
+            # Use experience_category for better provider matching (new format)
+            # Fall back to name/description classification (old format)
+            exp_category = (exp.get('experience_category') or '').strip()
+            exp_desc = exp.get('description', '')
+            experience_provider_links = self._get_provider_links(
+                exp_name, search_loc, f"{exp_category} {exp_desc}"
+            )
 
             # Determine primary link
             if not primary_link and experience_provider_links:
@@ -657,11 +669,14 @@ class RecommendationService:
             is_bookable = bool(experience_provider_links or reservation_link or venue_website)
             is_diy = bool(materials_list and not is_bookable)
 
+            # Use estimated_price from curator if available, otherwise "Variable"
+            price_range = (exp.get('estimated_price') or '').strip() or 'Variable'
+
             recommendations.append({
                 'name': exp.get('name', 'Experience Gift'),
                 'description': full_description,
                 'why_perfect': exp.get('why_perfect', ''),
-                'price_range': 'Variable',
+                'price_range': price_range,
                 'where_to_buy': f"Experience{location_info}",
                 'product_url': primary_link or None,
                 'purchase_link': self._apply_affiliate_tag(primary_link) if primary_link else None,
@@ -671,6 +686,7 @@ class RecommendationService:
                 'experience_providers': experience_provider_links,
                 'image_url': '',
                 'gift_type': 'experience',
+                'experience_category': exp_category,
                 'confidence_level': exp.get('confidence_level', 'adventurous'),
                 'materials_needed': materials_list,
                 'location_specific': exp.get('location_specific', False),
@@ -719,27 +735,25 @@ class RecommendationService:
 
     def _build_experience_description(self, exp: Dict, materials_list: List[Dict],
                                      regional_context: Dict) -> str:
-        """Build experience description with materials and regional context."""
-        materials_summary = ""
-        if materials_list:
-            materials_items = [
-                f"{m.get('item', 'Item')} ({m.get('estimated_price', '$XX')})"
-                for m in materials_list[:3]
-            ]
-            materials_summary = f"Materials needed: {', '.join(materials_items)}"
+        """Build structured experience description."""
+        parts = []
 
-        base_description = exp.get('description', '')
+        # Lead with the curator's description (the pitch)
+        base_desc = (exp.get('description') or '').strip()
+        if base_desc:
+            parts.append(base_desc)
 
-        # Add regional flavor
+        # Add regional flavor inline (not as a separate block)
         if regional_context and regional_context.get('city_vibe'):
-            regional_note = f"\n\n🌍 Local vibe: {regional_context['city_vibe'].replace('_', ' ').title()}"
-            if regional_context.get('demographic_notes'):
-                demo_note = regional_context['demographic_notes'][0]
-                regional_note += f" — {demo_note}"
-            base_description += regional_note
+            vibe = regional_context['city_vibe'].replace('_', ' ').title()
+            parts.append(f"Local vibe: {vibe}")
 
-        parts = [base_description, exp.get('how_to_execute', ''), materials_summary]
-        return '\n\n'.join(p for p in parts if p).strip()
+        # How to execute — the actionable plan
+        how_to = (exp.get('how_to_execute') or '').strip()
+        if how_to:
+            parts.append(f"The plan: {how_to}")
+
+        return '\n\n'.join(parts).strip()
 
     def _validate_or_replace_experience_link(self, url: str, name: str,
                                             location: str, link_type: str) -> str:

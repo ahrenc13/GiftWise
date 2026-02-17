@@ -381,6 +381,51 @@ input[type="range"] {
     display: none;
 }
 
+.rec-why-preview {
+    padding: 0 15px 12px;
+    color: #065f46;
+    font-size: 0.85em;
+    line-height: 1.5;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    background: transparent;
+}
+
+.rec-compact-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 15px 12px;
+}
+
+.rec-compact-price {
+    font-size: 1.1em;
+    font-weight: 700;
+    color: #10b981;
+}
+
+.rec-compact-source {
+    font-size: 0.75em;
+    font-weight: 600;
+    color: #6b7280;
+    background: #f3f4f6;
+    padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: capitalize;
+}
+
+.recommendation-card.expanded .rec-why-preview,
+.recommendation-card.focused .rec-why-preview {
+    display: none;
+}
+
+.recommendation-card.expanded .rec-compact-meta,
+.recommendation-card.focused .rec-compact-meta {
+    display: none;
+}
+
 .recommendation-card.expanded .rec-why,
 .recommendation-card.focused .rec-why {
     display: block;
@@ -565,23 +610,12 @@ input[type="range"] {
             {% endif %}
         </p>
 
-        <!-- Honest Note About Where We're At -->
-        <div style="background: linear-gradient(135deg, #fef3c7, #fde68a); border: 2px solid #f59e0b; border-radius: 16px; padding: 24px; margin-bottom: 30px;">
-            <div style="display: flex; align-items: start; gap: 16px;">
-                <div style="font-size: 32px; flex-shrink: 0;">💛</div>
-                <div>
-                    <h3 style="font-size: 18px; font-weight: 700; color: #92400e; margin-bottom: 8px;">We need to be real with you</h3>
-                    <p style="color: #78350f; line-height: 1.6; margin-bottom: 12px;">
-                        Right now, we're only pulling from <strong>Amazon and eBay</strong>. We have applications pending with Etsy, Skimlinks (48,500 retailers!), Awin (Lululemon, UGG, boutique brands), and a dozen other networks we know you'd love. The AI works great — we're just waiting on commercial approvals, and that takes time.
-                    </p>
-                    <p style="color: #78350f; line-height: 1.6; margin-bottom: 12px;">
-                        <strong>What that means for your picks:</strong> Some will be spot-on. Some might feel generic. We're sorry the selection isn't where we want it to be yet. We're building something with real value here, but the commercial realities require patience.
-                    </p>
-                    <p style="color: #78350f; line-height: 1.6; font-weight: 600;">
-                        We love you all and want you to have the best options. If you like the idea, stick with us. Big things coming.
-                    </p>
-                </div>
-            </div>
+        <!-- Beta Note -->
+        <div style="background: #f0f9ff; border: 1px solid #bae6fd; border-radius: 12px; padding: 14px 20px; margin-bottom: 30px; display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 20px; flex-shrink: 0;">🚀</span>
+            <p style="color: #0369a1; font-size: 0.9em; line-height: 1.5; margin: 0;">
+                <strong>Early access</strong> — We're adding new retailers every week. More boutique and niche picks coming soon.
+            </p>
         </div>
         
         <!-- Filters Section -->
@@ -637,20 +671,46 @@ input[type="range"] {
                 <div class="rec-compact-view">
                     <div class="rec-image-container">
                         {% if rec.image_url %}
-                        <img src="{{ rec.image_url }}" 
-                             alt="{{ rec.name }}" 
+                        <img src="{{ rec.image_url }}"
+                             alt="{{ rec.name }}"
                              class="rec-image"
                              loading="lazy"
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                         <div class="rec-image-placeholder" style="display: none;">🎁</div>
+                        {% elif rec.gift_type == 'experience' %}
+                        <div class="rec-image-placeholder" style="background: linear-gradient(135deg, #7c3aed, #a855f7); font-size: 2.8em;">
+                            {% if rec.experience_category == 'cooking_class' %}👨‍🍳
+                            {% elif rec.experience_category == 'art_class' %}🎨
+                            {% elif rec.experience_category == 'concerts' %}🎵
+                            {% elif rec.experience_category == 'sports_events' %}🏟️
+                            {% elif rec.experience_category == 'travel' %}✈️
+                            {% elif rec.experience_category == 'spa_wellness' %}🧖
+                            {% elif rec.experience_category == 'outdoor_adventure' %}🏔️
+                            {% elif rec.experience_category == 'wine_beer' %}🍷
+                            {% elif rec.experience_category == 'fitness_class' %}💪
+                            {% elif rec.experience_category == 'museum_culture' %}🏛️
+                            {% elif rec.experience_category == 'dining' %}🍽️
+                            {% elif rec.experience_category == 'pet_experience' %}🐕
+                            {% else %}✨
+                            {% endif %}
+                        </div>
                         {% else %}
                         <div class="rec-image-placeholder">🎁</div>
                         {% endif %}
                         <div class="expand-indicator">Click to expand</div>
                     </div>
                     <h2 class="rec-name">{{ rec.name }}</h2>
+                    {% if rec.why_perfect %}
+                    <div class="rec-why-preview">{{ rec.why_perfect }}</div>
+                    {% endif %}
+                    <div class="rec-compact-meta">
+                        <span class="rec-compact-price">{{ rec.price_range }}</span>
+                        {% if rec.where_to_buy %}
+                        <span class="rec-compact-source">{{ rec.where_to_buy }}</span>
+                        {% endif %}
+                    </div>
                 </div>
-                
+
                 <!-- Expanded View -->
                 <div class="rec-expanded-view">
                     <div class="rec-header">
@@ -856,182 +916,6 @@ input[type="range"] {
         </div>
         </div>
         
-        <script>
-        // Track outbound product clicks (fire-and-forget, non-blocking)
-        function trackClick(url, source) {
-            fetch('/api/track-click', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({url: url, source: source || 'physical'})
-            }).catch(() => {});
-        }
-
-        // Copy link to clipboard
-        function copyLink(url, button) {
-            navigator.clipboard.writeText(url).then(() => {
-                const originalText = button.textContent;
-                button.textContent = '✓ Copied!';
-                button.style.background = '#10b981';
-                setTimeout(() => {
-                    button.textContent = originalText;
-                    button.style.background = '#6b7280';
-                }, 2000);
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-                alert('Failed to copy link. Please copy manually: ' + url);
-            });
-        }
-        
-        // Copy all links
-        function copyAllLinks() {
-            const links = Array.from(document.querySelectorAll('.rec-link[href]'))
-                .map(link => link.href)
-                .filter(href => href && !href.includes('javascript:'));
-            
-            if (links.length === 0) {
-                alert('No links available to copy');
-                return;
-            }
-            
-            const linksText = links.join('\n');
-            navigator.clipboard.writeText(linksText).then(() => {
-                alert(`Copied ${links.length} links to clipboard!`);
-            }).catch(err => {
-                console.error('Failed to copy:', err);
-                alert('Failed to copy links');
-            });
-        }
-        
-        // Share to unlock (for locked users)
-        function shareToUnlock() {
-            fetch('/api/share', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'}
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('share-url').value = data.share_url;
-                    document.getElementById('unlock-result').style.display = 'block';
-                    navigator.clipboard.writeText(data.share_url).catch(() => {});
-
-                    // Show success message and reload page after 2 seconds to show unlocked picks
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 2000);
-                } else {
-                    alert(data.error || 'Could not create share link');
-                }
-            })
-            .catch(() => alert('Could not create share link. Try again?'));
-        }
-
-        // Share recommendations (for already unlocked users)
-        function shareRecommendations() {
-            fetch('/api/share', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'}
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('share-url').value = data.share_url;
-                    document.getElementById('share-result').style.display = 'block';
-                    navigator.clipboard.writeText(data.share_url).catch(() => {});
-                } else {
-                    alert(data.error || 'Could not create share link');
-                }
-            })
-            .catch(() => alert('Could not create share link. Try again?'));
-        }
-
-        function copyShareUrl() {
-            const url = document.getElementById('share-url').value;
-            navigator.clipboard.writeText(url).then(() => {
-                const btn = event.target;
-                btn.textContent = 'Copied!';
-                setTimeout(() => { btn.textContent = 'Copy'; }, 2000);
-            });
-        }
-
-        function shareToTwitter() {
-            // Create share link first, then open Twitter with it
-            fetch('/api/share', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'}
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.success) {
-                    document.getElementById('share-url').value = data.share_url;
-                    document.getElementById('share-result').style.display = 'block';
-                    const text = "Just found the perfect gifts with AI! Check out what Giftwise picked:";
-                    const twitterUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text) + '&url=' + encodeURIComponent(data.share_url);
-                    window.open(twitterUrl, '_blank', 'width=550,height=420');
-                }
-            })
-            .catch(() => alert('Could not create share link'));
-        }
-
-        // Toggle favorite (save/unsave)
-        function toggleFavorite(index, button) {
-            fetch('/api/toggle-favorite', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ index: index })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    button.classList.toggle('favorited');
-                    if (data.favorited) {
-                        button.style.transform = 'scale(1.2)';
-                        setTimeout(() => button.style.transform = 'scale(1)', 200);
-                    }
-                }
-            })
-            .catch(err => console.error('Error toggling favorite:', err));
-        }
-        
-        // --- Orbit card expansion ---
-        const backdrop = document.getElementById('card-backdrop');
-        const grid = document.getElementById('recommendations-grid');
-        let focusedCard = null;
-
-        function openCard(card) {
-            if (focusedCard === card) { closeCard(); return; }
-            if (focusedCard) closeCard(true);
-
-            // Remember scroll position for the card
-            card._scrollY = window.scrollY;
-            focusedCard = card;
-            card.classList.add('focused');
-            grid.classList.add('has-focus');
-            backdrop.classList.add('visible');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeCard(skipBodyReset) {
-            if (!focusedCard) return;
-            focusedCard.classList.remove('focused');
-            focusedCard = null;
-            grid.classList.remove('has-focus');
-            backdrop.classList.remove('visible');
-            if (!skipBodyReset) document.body.style.overflow = '';
-        }
-
-        function toggleCard(card) {
-            openCard(card);
-        }
-
-        // Close on backdrop click
-        backdrop.addEventListener('click', function() { closeCard(); });
-
-        // Close on Escape key
-        document.addEventListener('keydown', function(e) {
-            if (e.key === 'Escape' && focusedCard) closeCard();
-        });
-    </script>
 {% endblock %}
 
 {% block extra_js %}

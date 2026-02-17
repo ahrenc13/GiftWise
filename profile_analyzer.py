@@ -113,14 +113,20 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
         n_posts = min(INSTAGRAM_POSTS_FOR_ANALYSIS, len(sorted_posts))
         priority_posts = (high_engagement[:n_posts] if high_engagement else sorted_posts[:n_posts])
 
-        # Extract captions, hashtags, locations
+        # Extract captions, hashtags, locations, tagged users
         captions = [p.get('caption', '')[:200] for p in priority_posts if p.get('caption')]
         hashtags_all = []
         locations = []
+        tagged_accounts = Counter()
         for p in priority_posts:
             hashtags_all.extend(p.get('hashtags', []))
-            if p.get('location'):
-                locations.append(p.get('location'))
+            loc = p.get('location', '')
+            if loc:
+                locations.append(loc)
+            for tagged in p.get('tagged_users', []):
+                tag_name = tagged if isinstance(tagged, str) else tagged.get('username', '') or tagged.get('full_name', '')
+                if tag_name:
+                    tagged_accounts[tag_name] += 1
 
         top_hashtags = [tag for tag, count in Counter(hashtags_all).most_common(INSTAGRAM_TOP_HASHTAGS)]
 
@@ -134,6 +140,16 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
         if followers and followers > 0:
             follower_section = f"\n- Followers: {followers:,}"
 
+        # Tagged accounts section - brands, venues, people they engage with
+        tagged_section = ""
+        if tagged_accounts:
+            top_tagged = tagged_accounts.most_common(20)
+            tagged_section = f"\nTAGGED ACCOUNTS (brands, venues, friends tagged in photos - strong affinity signal): {', '.join(f'@{t} ({c}x)' for t, c in top_tagged)}"
+
+        # Engagement relative to their own average (more meaningful than absolute)
+        avg_engagement = sum(p.get('likes', 0) + p.get('comments', 0) * 2 for p in priority_posts) / len(priority_posts) if priority_posts else 1
+        standout_posts = [p for p in priority_posts if (p.get('likes', 0) + p.get('comments', 0) * 2) > avg_engagement * 2]
+
         data_summary.append(f"""
 INSTAGRAM PROFILE (@{username} - {len(posts)} posts analyzed):{bio_section}
 
@@ -142,7 +158,10 @@ HIGH ENGAGEMENT POSTS ({len(high_engagement)} posts with 50+ engagement):
 
 TOP HASHTAGS: {', '.join(top_hashtags)}
 
-LOCATIONS MENTIONED: {', '.join(set(locations[:15]))}
+GEOTAGGED LOCATIONS (structured - these are real venue/place tags, not guesses): {', '.join(set(locations[:15])) if locations else 'none'}
+{tagged_section}
+STANDOUT POSTS ({len(standout_posts)} posts with 2x+ their average engagement - these topics resonate MOST):
+{chr(10).join(['- ' + (p.get('caption', '')[:150]) for p in standout_posts[:8]]) if standout_posts else '(none)'}
 
 POST PATTERNS:
 - Average likes: {sum(p.get('likes', 0) for p in priority_posts) / len(priority_posts) if priority_posts else 0:.0f}
@@ -343,6 +362,24 @@ NOTE: Spotify data was manually provided by the user. Music taste is a strong pe
                     ", ".join(current[:10])
                 )
 
+            # Want signals — explicit purchase intent ("I need this", "someone buy me", etc.)
+            want_signals = combined.get('want_signals', [])
+            if want_signals:
+                want_lines = [f"- \"{ws['text'][:100]}\" (from {ws.get('source', 'unknown')})" for ws in want_signals[:8]]
+                enhanced_sections.append(
+                    "EXPLICIT WANT SIGNALS (they literally said they want these — highest priority for gifts):\n" +
+                    "\n".join(want_lines)
+                )
+
+            # Cross-platform confirmed interests
+            cross_confirmed = combined.get('cross_platform_confirmed', [])
+            if cross_confirmed:
+                confirmed_lines = [f"{cc['interest']} ({cc['platforms']} platforms)" for cc in cross_confirmed[:8]]
+                enhanced_sections.append(
+                    "CROSS-PLATFORM CONFIRMED (these interests appear on multiple platforms — core identity, not passing fads): " +
+                    ", ".join(confirmed_lines)
+                )
+
             if enhanced_sections:
                 data_summary.append(f"""
 CROSS-PLATFORM INTELLIGENCE (extracted patterns across all platforms):
@@ -350,6 +387,7 @@ CROSS-PLATFORM INTELLIGENCE (extracted patterns across all platforms):
 {chr(10).join(enhanced_sections)}
 
 Use these signals to inform style preferences, brand affinities, and interest intensity.
+PRIORITY: Want signals > cross-platform confirmed > high engagement > aspirational > everything else.
 """)
         except Exception as e:
             logger.warning(f"Enhanced data extraction failed (continuing without): {e}")

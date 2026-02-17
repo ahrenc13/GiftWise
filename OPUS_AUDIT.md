@@ -6,128 +6,189 @@
 
 ---
 
-## STRATEGIC ROADMAP — Inventory vs. Data Sources (Updated Feb 17, 2026)
+## STRATEGIC ROADMAP — Revised Feb 17, 2026 (Opus Review)
 
-**The Core Question:** Should we prioritize adding retailers (more inventory) or adding data sources (richer profiles)?
+**The Core Question:** Should we wait for more inventory or launch now?
 
-**Answer: INVENTORY FIRST. Data sources are optimization, not foundation.**
+**Answer: LAUNCH NOW. Iterate with real data. Waiting is the biggest risk.**
 
-### The Blocking Issue (Feb 17)
+### Why the Previous Roadmap Was Wrong
 
-After the `random` import bug fix, we're back to functional multi-retailer search:
-- ✅ Amazon: ~10-15 products/session
-- ✅ eBay: ~8-12 products/session
-- ✅ CJ Affiliate: ~6-10 products/session (MonthlyClubs.com approved, ~69 pending)
-- ⏳ Awin Access (Skimlinks): Pending approval (submitted Feb 9, expected Feb 18-20)
-- ⏳ FlexOffers: Pending approval (submitted Feb 16, same-day to 48h typical)
+The Feb 17 Sonnet roadmap said "wait for 50+ products before launch (March 1)." This was wrong for three reasons:
+
+1. **You can't accelerate affiliate approvals by coding.** Skimlinks, CJ, and FlexOffers approve on their timeline. Whether you have users or not doesn't change when they approve. Waiting = wasted time.
+2. **30 products is enough for 10 curated picks.** The curator selects the best 10 from available inventory. More bad products don't improve selection quality — better products do. Quality > quantity.
+3. **The TikTok viral window is closing.** The 150k-like post creates a 2-4 week follow-up window before the algorithm stops surfacing it. Every day of delay burns organic reach that can't be recovered.
+
+### The Real Blocking Issue: Unit Economics
+
+**Pure affiliate math at current scale doesn't work.** This is the uncomfortable truth:
+
+| Scenario | Sessions/day | Revenue/day | API Cost/day | Net/day |
+|----------|-------------|-------------|-------------|---------|
+| Optimistic (25% CTR, 5% conversion, 5% commission) | 100 | $3.13 | $10.00 | -$6.87 |
+| Realistic (15% CTR, 3% conversion, 3.5% commission) | 100 | $0.79 | $10.00 | -$9.21 |
+| Break-even (pure affiliate) | ~1,200 | $10.00 | $120.00 | $0.00 |
+| $1,000/month profit | ~4,000 | $163 | $400.00 | $33/day |
+
+**At $0.10/session API cost, you need ~1,200 sessions/day just to break even on pure affiliate.** This means either: (a) you need a subscription/paywall component, or (b) you need to dramatically reduce per-session cost (caching, pre-computed recommendations), or (c) you need 4,000+ daily sessions before affiliate alone is profitable.
+
+**Action item:** Validate the actual per-session cost (Claude API + Apify scraping + retailer API calls). If it's truly $1.00/session (not $0.10), the math is 10x worse and subscription pricing is mandatory from day one.
+
+### Retailer Inventory Status (Feb 17)
+
+- ✅ Amazon: ~10-15 products/session (2% commission)
+- ✅ eBay: ~8-12 products/session (3% commission)
+- ✅ CJ Affiliate: ~6-10 products/session (MonthlyClubs.com approved, 8-15% commission)
+- ⏳ Skimlinks: Pending approval (submitted Feb 9, expected Feb 18-20) — **biggest unlock: 48,500 merchants**
+- ⏳ FlexOffers: Pending approval (submitted Feb 16)
 - ❌ Etsy: 403 (awaiting developer credentials)
-- ❌ Awin feeds: Need to join ShareASale merchants (Uncommon Goods, Personalization Mall, etc.)
+- ❌ Awin feeds: Need to join merchants manually
 
-**Current state: 25-35 products/session. Target: 50+ for launch.**
+### CJ Brand Priority for REVENUE (Not Product Count)
 
-**This is good enough to launch soft beta (March 1), but NOT good enough for paid ads or viral TikTok push.**
+Prioritized by (commission % x typical gift AOV x gift-relevance):
 
-### Priority Tiers (What to Build When)
+**Priority A — Chase these approvals actively:**
+1. Blue Nile / James Allen (5-10% on $300-2000 jewelry = $15-200/sale)
+2. 1-800-Flowers / ProFlowers / FTD (15% on $60-100 = $9-15/sale)
+3. Harry & David / Edible Arrangements (8-15% on $50-80 = $4-12/sale)
+4. Kay / Zales / Jared / Helzberg (5-8% on $150-500 = $8-40/sale)
+5. Shutterfly / Snapfish (10-15% on $40-60 = $4-9/sale)
 
-#### **TIER 1 — BLOCKING LAUNCH (Feb 17 - Mar 1)**
-**Goal:** Get to 50+ products/session with category diversity
+**Priority B — Good but lower impact:**
+6. Things Remembered / Personalization Mall (10-15% on $30-60)
+7. Williams Sonoma / Sur La Table (5-8% on $80-150)
+8. Macy's (4-8% on $75+)
 
-1. ✅ **Fix Amazon/eBay bugs** (DONE Feb 17 - missing `random` import)
-2. ⏳ **Monitor affiliate approvals:**
-   - CJ Affiliate (~69 brands, auto-approve 24-48h, manual review 3-7 days)
-   - FlexOffers (same-day to 48h)
-   - Awin Access/Skimlinks (expected Feb 18-20, up to 7 business days)
-3. 🔧 **Join Awin advertisers manually** (this week):
-   - Uncommon Goods, Personalization Mall, Things Remembered
-   - Oriental Trading, HomeWetBar, Portland Leather
-4. 🔧 **Build FlexOffers searcher** (once approved - 4 hours work)
-5. 🔧 **Fix Etsy credentials** (if approved - already coded, just needs API key)
-
-**Success metric:** 50+ products/session from 3+ retailers with <20% duplicates
-
-**Timeline:** 2 weeks (by Mar 1)
-
-**Do NOT start building data sources until this is done.** Inventory is the product. Data sources are optimization.
+**Deprioritize:** Dick's Sporting Goods, Foot Locker, Shoe Carnival (low gift-relevance), Vistaprint (not gifts), JCPenney/Belk/Dillard's (low commission + low AOV for gifts). These add product count but not revenue.
 
 ---
 
-#### **TIER 2 — OPTIMIZATION (Mar 1 - Mar 15)**
-**Goal:** Improve profile quality for soft launch feedback
+### Priority Tiers (Revised — Launch-First)
 
-**These are allowed ONLY after hitting 50+ products/session:**
+#### **TIER 1 — LAUNCH THIS WEEK (Feb 17-23)**
+**Goal:** Get real users, real data, real feedback. Stop building in the dark.
 
-1. **Gmail OAuth → Purchase History Parsing** (1-2 days)
-   - Parse Amazon order confirmations from Gmail
-   - Extract newsletter subscriptions (REI, Sephora, etc.)
-   - Build interest profile from email patterns
-   - **Friction: LOW** (one-click OAuth, mobile-friendly)
-   - **Value: HIGH** (actual purchase history > social media posts)
-   - **File to modify:** `oauth_integrations.py` (Gmail flow already stubbed)
+1. ✅ **Fix Amazon/eBay bugs** (DONE Feb 17)
+2. 🔧 **Show `why_perfect` on compact cards** (OPUS_AUDIT item #1)
+   - This is the #1 conversion differentiator. It's currently hidden behind a click.
+   - Even a 1-line truncated version on the card: "Matches: Taylor Swift + concert style"
+   - Directly affects whether people click affiliate links → directly affects revenue.
+3. 🔧 **Add boring-item rejection guidance to curator prompt** (OPUS_AUDIT item #2)
+   - Travel adapters and medicine kits are not gifts. Tell the curator what to reject.
+4. 🚀 **Launch soft beta** — post TikTok follow-up, share with friends/family
+   - 30 products is enough. The curator's job is selection, not volume.
+   - Don't wait for 50+. Waiting teaches you nothing.
+5. ⏳ **Monitor affiliate approvals** (CJ, FlexOffers, Skimlinks) — check daily
+6. 🔧 **Join Awin advertisers manually** — Uncommon Goods, Personalization Mall, etc.
 
-2. **Pinterest OAuth** (already coded, just needs activation)
-   - Visual taste analysis from saved pins
-   - **Friction: LOW** (already built, just wire it up)
-   - **Value: MEDIUM** (good for style/home/DIY interests)
-
-3. **YouTube OAuth** (already coded, just needs activation)
-   - Subscriptions, liked videos, watch history
-   - **Friction: LOW** (already built)
-   - **Value: MEDIUM** (good for entertainment/hobby interests)
-
-**Success metric:** Users who connect Gmail get 2x more specific interests (e.g., "REI hiking gear enthusiast" vs. "outdoorsy")
-
-**Timeline:** 1 week (complete by Mar 15)
-
-**Explicitly OFF THE TABLE:**
-- ❌ **Spotify OAuth** - Violates Feb 2026 ToS (commercial use not permitted, requires 250k MAU for extended access)
-- ❌ **CSV uploads** - Too much friction, not mobile-friendly
-- ❌ **Wearable listening device** - 6-9 month hardware cycle, regulatory risk, premature for this stage
-- ❌ **Phone microphone listening** - Legal liability (two-party consent laws), battery drain, bandwidth spikes
+**Success metric:** 50+ real users in first week. Track: sessions, CTR, drop-off points.
 
 ---
 
-#### **TIER 3 — SCALE (Mar 15 - May 2026)**
-**Goal:** Build passive data collection for ongoing improvement
+#### **TIER 2 — LEARN & MONETIZE (Feb 24 - Mar 9)**
+**Goal:** Understand conversion funnel, validate revenue model
 
-1. **Browser Extension (Chrome/Firefox)** (1-2 weeks)
-   - Passive scraping: Amazon orders, YouTube history, Reddit browsing
-   - **Friction: LOWEST** (install once, works forever)
-   - **Value: HIGHEST** (richest passive data source)
-   - **Precedent:** Honey ($4B exit), Rakuten cashback extension
-   - **Timeline:** 1-2 weeks dev + 1 week Chrome Web Store approval
+1. **Instrument everything:** Where do users drop off? How many click products? Which retailers get clicks? Do they buy?
+2. **Integrate newly approved retailers** (CJ brands, FlexOffers if approved)
+3. **Build FlexOffers searcher** (once approved — straightforward, follows existing pattern)
+4. **Test subscription model:** Add "premium picks" paywall ($4.99/recommendation set)
+   - At 7 paid sessions/day = $1,048/month profit with minimal API cost
+   - This is the fastest path to $1,000/month — not more affiliate volume
+5. **Scale SEO content:** Write 2-3 gift guides/week targeting long-tail keywords
+   - "Best gifts for hikers under $50," "personalized gifts for dog lovers," etc.
+   - Zero per-session API cost — pure affiliate margin
+   - Compounds over time (SEO is the only sustainable free traffic channel)
+6. **Evaluate share-to-unlock gate:** Consider making sharing incentive-based ("share to unlock 3 bonus picks") rather than gate-based. Forced sharing gates typically reduce total engagement.
 
-2. **Email Parsing Expansion** (after Gmail OAuth proves valuable)
-   - Eventbrite confirmations → event preferences
-   - Ticketmaster receipts → concert taste
-   - Brand receipts (Etsy, Target) → shopping patterns
-
-3. **Calendar Integration** (Google Calendar OAuth)
-   - Detect upcoming birthdays, anniversaries
-   - Send reminder emails: "Your mom's birthday is in 2 weeks"
-   - **Use case:** Retention (bring users back for repeat sessions)
-
-**Success metric:** Browser extension users have 50% higher purchase conversion (richer data = better recs)
-
-**Timeline:** Complete by May 1 (before Mother's Day traffic spike)
+**Success metric:** Conversion rate data on 200+ sessions. At least one validated revenue stream.
 
 ---
 
-### The Coherence Test
+#### **TIER 3 — OPTIMIZE (Mar 10 - Apr 15)**
+**Goal:** Fix bottlenecks revealed by real user data
+
+**Only pursue these AFTER you have data showing what the actual bottleneck is:**
+
+1. **If profiles are too generic** → Gmail OAuth, Pinterest OAuth (add data sources)
+2. **If users don't return** → Calendar integration (birthday/anniversary reminders)
+3. **If products are low quality** → More retailer integrations, better revenue optimizer tuning
+4. **If traffic is the problem** → More TikTok content, SEO scaling, consider paid ads
+5. **If conversion is high but volume is low** → Scale what's working (more of the same)
+
+**Do NOT build any of these pre-emptively.** You don't know which is the bottleneck until you have real users.
+
+---
+
+#### **TIER 4 — SCALE (Apr 15 - May 2026)**
+**Goal:** Build sustainable growth engine before Mother's Day (May 11)
+
+1. **Browser extension** — Only if you have 1,000+ monthly users (otherwise, adoption will be near zero)
+2. **Corporate/B2B gifting** — Different market, only pursue if consumer model is validated
+3. **Opus A/B test** — Only worthwhile at scale where you can measure conversion lift
+4. **Retention features** — Wishlists, price drop alerts, repeat recommendations
+
+---
+
+### Explicitly OFF THE TABLE
+- ❌ **Spotify OAuth** — Violates Feb 2026 ToS
+- ❌ **CSV uploads** — Too much friction, not mobile-friendly
+- ❌ **Wearable listening device** — 6-9 month hardware cycle, premature
+- ❌ **Phone microphone listening** — Legal liability, two-party consent laws
+- ❌ **Gmail OAuth (before launch)** — Premature optimization. Launch first.
+- ❌ **Browser extension (before 1,000 users)** — Adoption requires existing user base
+
+---
+
+### The Revised Coherence Test
 
 **Before adding ANY new feature, ask:**
 
-1. **Is inventory at 50+ products/session?** → If no, stop. Fix inventory first.
-2. **Does this improve conversion rate?** → If no, defer.
-3. **Can this be built in <3 days?** → If no, is it worth delaying launch?
-4. **Is there a frictionless mobile path?** → If no, reconsider (60% of traffic is mobile).
+1. **Have you launched?** → If no, stop building features and launch.
+2. **Do you have 200+ sessions of conversion data?** → If no, you're guessing. Get data first.
+3. **Is this the actual bottleneck?** → Not "could this help?" but "is this THE thing blocking growth right now?"
+4. **Does this make money or save money?** → If neither, defer.
+5. **Is there a frictionless mobile path?** → If no, reconsider (60% of traffic is mobile).
 
-**The Rule:** Inventory is the foundation. Data sources are the optimization layer. Build foundation first, optimize second.
+**The Rule:** Launch first. Measure second. Optimize third. Never optimize what you haven't measured. Never measure what you haven't shipped.
 
-**Current Blocking Issue (Feb 17):** We're at ~30 products/session after fixing Amazon/eBay bugs. **DO NOT BUILD DATA SOURCES UNTIL WE HIT 50+.**
+---
 
-**Next Action (This Week):** Join Awin advertisers, monitor CJ/FlexOffers approvals, build FlexOffers searcher when approved.
+### Risk Register
 
-**Next Action (After 50+ Products):** Gmail OAuth → purchase history parsing (1-2 days, high value, low friction).
+| Risk | Severity | Mitigation |
+|------|----------|------------|
+| **Unit economics (API cost > revenue)** | HIGH | Test subscription pricing by week 3. Track actual per-session cost. |
+| **Apify/scraping breaks** | HIGH | Build a "manual input" fallback (user types interests). Don't depend 100% on scraping. |
+| **Privacy backlash** | MEDIUM | Prepare a clear privacy narrative before any viral moment. "Your friend asked us to help find you a gift" framing. |
+| **TikTok window closes** | MEDIUM | Launch this week, not March 1. Post follow-up content immediately. |
+| **Affiliate approvals slow** | LOW | Can't control. Monitor daily. 30 products is enough to launch. |
+| **No retention (single-session product)** | MEDIUM | Calendar integration in Tier 3. But validate product-market fit before optimizing retention. |
+| **SEO incumbents (Wirecutter etc.)** | LOW (short term) | Differentiate on personalization. Wirecutter gives generic lists; you give profile-specific picks. |
+
+---
+
+### Fastest Path to $1,000/Month Revenue
+
+**Option A: Freemium subscription (recommended — fastest)**
+- 1 free recommendation set → $4.99 for additional sets
+- Need ~200 free users/day converting at 3.5% = 7 paid users/day
+- Revenue: 7 x $4.99 = $34.93/day = $1,048/month
+- API cost: ~$0.70/day (paid sessions only run pipeline)
+- Plus any affiliate revenue as bonus
+
+**Option B: SEO content affiliate (slow but compounding)**
+- Scale to 100+ gift guide pages targeting long-tail keywords
+- 50,000 monthly pageviews x 3% CTR x 2% purchase x $3.50 commission = $105/month
+- Zero per-session API cost — pure margin
+- Compounds over 6-12 months
+
+**Option C: Hybrid (recommended long-term)**
+- Subscription for immediate revenue + cover API costs
+- SEO content for long-term organic traffic at zero marginal cost
+- Affiliate revenue grows as retailer network expands
+- Target: $500/month subscription + $500/month affiliate by month 3-4
 
 ---
 

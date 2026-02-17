@@ -100,9 +100,15 @@ def extract_all_instagram_signals(ig_data):
         'high_engagement_content': [],
         'low_engagement_content': [],
         'recent_interests': [],
-        'declining_interests': []
+        'declining_interests': [],
+        'want_signals': [],          # Explicit purchase-intent language
+        'music_taste': Counter(),    # Music signals from TikTok sounds used
     }
-    
+
+    # Compute average engagement for relative comparison (not absolute thresholds)
+    all_engagements = [(p.get('likes', 0) + p.get('comments', 0) * 2) for p in posts]
+    avg_engagement = sum(all_engagements) / len(all_engagements) if all_engagements else 1
+
     # Analyze each post deeply
     for post in posts:
         caption = post.get('caption', '').lower()
@@ -111,37 +117,71 @@ def extract_all_instagram_signals(ig_data):
         timestamp = post.get('timestamp', '')
         hashtags = post.get('hashtags', [])
         post_type = post.get('type', 'image')
-        
+
         # Hashtags
         for tag in hashtags:
             signals['hashtags'][tag.lower()] += 1
-        
+
         # Extract mentions (@username)
         mentions = re.findall(r'@(\w+)', caption)
         signals['mentions'].update(mentions)
-        
-        # Extract locations (common patterns)
-        location_patterns = ['in', 'at', 'visiting', 'exploring']
-        for pattern in location_patterns:
-            if pattern in caption:
-                # Try to extract location
-                words = caption.split()
-                idx = words.index(pattern) if pattern in words else -1
-                if idx >= 0 and idx < len(words) - 1:
-                    potential_location = words[idx + 1]
-                    if len(potential_location) > 2:
-                        signals['locations'][potential_location] += 1
-        
-        # Engagement analysis
+
+        # Structured location from geotag (much more reliable than caption parsing)
+        location = post.get('location', '')
+        if location:
+            signals['locations'][location] += 1
+
+        # Tagged users from post metadata (brand/venue tags in photos)
+        for tagged in post.get('tagged_users', []):
+            tag_name = tagged if isinstance(tagged, str) else tagged.get('username', '') or tagged.get('full_name', '')
+            if tag_name:
+                signals['mentions'][tag_name] += 1
+
+        # Fallback: extract locations from caption only if no geotag
+        if not location:
+            location_patterns = ['in', 'at', 'visiting', 'exploring']
+            for pattern in location_patterns:
+                if pattern in caption:
+                    words = caption.split()
+                    idx = words.index(pattern) if pattern in words else -1
+                    if idx >= 0 and idx < len(words) - 1:
+                        potential_location = words[idx + 1]
+                        if len(potential_location) > 2:
+                            signals['locations'][potential_location] += 1
+
+        # "Want language" extraction — explicit purchase-intent signals
+        want_patterns = [
+            r'i need (?:this|that|one)',
+            r'someone (?:get|buy) me',
+            r'on my (?:wish ?list|bucket ?list)',
+            r'dream (\w+ ?){1,3}',
+            r'i want (?:this|that|one)',
+            r'(?:birthday|christmas) (?:wish|goal|list)',
+            r'take my money',
+            r'shut up and take',
+            r'adding (?:this|that) to (?:my|the) (?:list|cart)',
+        ]
+        for pattern in want_patterns:
+            if re.search(pattern, caption):
+                # Extract surrounding context (the thing they want)
+                signals['want_signals'].append({
+                    'text': caption[:200],
+                    'hashtags': hashtags,
+                    'trigger': pattern.split('(')[0].strip('\\')
+                })
+                break  # One match per post is enough
+
+        # Engagement analysis — relative to THEIR average, not absolute
         total_engagement = likes + (comments * 2)
-        if total_engagement > 100:
+        if total_engagement > avg_engagement * 1.5:
             signals['high_engagement_content'].append({
                 'caption': caption[:200],
                 'hashtags': hashtags,
                 'engagement': total_engagement,
+                'ratio_vs_avg': round(total_engagement / avg_engagement, 1) if avg_engagement > 0 else 0,
                 'type': post_type
             })
-        elif total_engagement < 10:
+        elif total_engagement < avg_engagement * 0.3:
             signals['low_engagement_content'].append({
                 'caption': caption[:200],
                 'hashtags': hashtags
@@ -228,10 +268,13 @@ def extract_all_instagram_signals(ig_data):
     signals['product_mentions'] = dict(signals['product_mentions'].most_common(20))
     signals['activity_types'] = dict(signals['activity_types'].most_common(20))
     signals['aesthetic_keywords'] = dict(signals['aesthetic_keywords'].most_common(15))
-    
+
     # Recent interests (last 30 days)
     signals['recent_interests'] = list(set(signals['recent_interests']))[:20]
-    
+
+    # Want signals (cap at 10, sorted by most recent)
+    signals['want_signals'] = signals['want_signals'][:10]
+
     return signals
 
 def extract_all_tiktok_signals(tt_data):
@@ -254,7 +297,8 @@ def extract_all_tiktok_signals(tt_data):
         'creator_styles': [],
         'trending_topics': [],
         'aspirational_content': [],
-        'current_interests': []
+        'current_interests': [],
+        'want_signals': [],          # Explicit purchase-intent language
     }
 
     # Analyze videos
@@ -288,6 +332,24 @@ def extract_all_tiktok_signals(tt_data):
                 else:
                     signals['brand_mentions'][m_lower] += 1
 
+        # "Want language" extraction — explicit purchase-intent signals
+        want_patterns = [
+            r'i need (?:this|that|one)',
+            r'someone (?:get|buy) me',
+            r'on my (?:wish ?list|bucket ?list)',
+            r'i want (?:this|that|one)',
+            r'take my money',
+            r'adding (?:this|that) to',
+        ]
+        for pattern in want_patterns:
+            if re.search(pattern, description):
+                signals['want_signals'].append({
+                    'text': description[:200],
+                    'hashtags': hashtags,
+                    'source': 'tiktok_video'
+                })
+                break
+
         # Music trends
         if music:
             signals['music_trends'][music.lower()] += 1
@@ -298,12 +360,28 @@ def extract_all_tiktok_signals(tt_data):
             signals['trending_topics'].extend(hashtags)
             signals['current_interests'].append(description[:100])
     
-    # Analyze reposts (aspirational content)
+    # Analyze reposts (aspirational content — what they WANT)
     for repost in reposts:
         description = repost.get('description', '').lower()
         hashtags = repost.get('hashtags', [])
         signals['aspirational_content'].extend(hashtags)
         signals['aspirational_content'].append(description[:100])
+
+        # Want language in reposts is VERY strong (they reposted AND it has want language)
+        want_patterns = [r'i need', r'someone.*buy', r'wish ?list', r'bucket ?list', r'i want', r'take my money']
+        for pattern in want_patterns:
+            if re.search(pattern, description):
+                signals['want_signals'].append({
+                    'text': description[:200],
+                    'hashtags': hashtags,
+                    'source': 'tiktok_repost'  # Repost + want language = very strong
+                })
+                break
+
+        # Brand mentions in reposts
+        for brand in _KNOWN_BRANDS:
+            if brand in description:
+                signals['brand_mentions'][brand] += 1
     
     # Favorite creators analysis
     favorite_creators = tt_data.get('favorite_creators', [])
@@ -321,6 +399,7 @@ def extract_all_tiktok_signals(tt_data):
     signals['trending_topics'] = list(set(signals['trending_topics']))[:20]
     signals['aspirational_content'] = list(set(signals['aspirational_content']))[:30]
     signals['current_interests'] = list(set(signals['current_interests']))[:20]
+    signals['want_signals'] = signals['want_signals'][:10]
 
     return signals
 
@@ -427,50 +506,77 @@ def combine_all_signals(platform_data):
         'aspirational_interests': [],
         'current_interests': [],
         'high_engagement_topics': [],
-        'price_preferences': {}
+        'price_preferences': {},
+        'want_signals': [],           # Explicit "I want this" signals across platforms
+        'cross_platform_confirmed': [],  # Interests appearing on 2+ platforms
     }
-    
+
     # Combine hashtags
     if all_signals['instagram'].get('hashtags'):
         combined['all_hashtags'].update(all_signals['instagram']['hashtags'])
     if all_signals['tiktok'].get('hashtags'):
         combined['all_hashtags'].update(all_signals['tiktok']['hashtags'])
-    
+
     # Combine brands (from all platforms)
     if all_signals['instagram'].get('brand_mentions'):
         combined['all_brands'].update(all_signals['instagram']['brand_mentions'])
     if all_signals['tiktok'].get('brand_mentions'):
         combined['all_brands'].update(all_signals['tiktok']['brand_mentions'])
-    
+
     # Combine activities
     if all_signals['instagram'].get('activity_types'):
         combined['all_activities'].update(all_signals['instagram']['activity_types'])
-    
+
     # Combine aesthetics
     if all_signals['instagram'].get('aesthetic_keywords'):
         combined['all_aesthetics'].update(all_signals['instagram']['aesthetic_keywords'])
-    
+
     # Aspirational interests
     if all_signals['tiktok'].get('aspirational_content'):
         combined['aspirational_interests'].extend(all_signals['tiktok']['aspirational_content'])
     if all_signals['pinterest'].get('specific_wants'):
         combined['aspirational_interests'].extend(all_signals['pinterest']['specific_wants'])
-    
+
     # Current interests
     if all_signals['tiktok'].get('current_interests'):
         combined['current_interests'].extend(all_signals['tiktok']['current_interests'])
     if all_signals['instagram'].get('recent_interests'):
         combined['current_interests'].extend(all_signals['instagram']['recent_interests'])
-    
+
     # High engagement topics
     if all_signals['instagram'].get('high_engagement_content'):
         for content in all_signals['instagram']['high_engagement_content']:
             combined['high_engagement_topics'].extend(content.get('hashtags', []))
-    
+
     # Price preferences
     if all_signals['pinterest'].get('price_preferences'):
         combined['price_preferences'] = all_signals['pinterest']['price_preferences']
-    
+
+    # Aggregate want signals from all platforms
+    for platform_key in ['instagram', 'tiktok']:
+        want_sigs = all_signals[platform_key].get('want_signals', [])
+        combined['want_signals'].extend(want_sigs)
+    if all_signals['pinterest'].get('specific_wants'):
+        for want in all_signals['pinterest']['specific_wants']:
+            combined['want_signals'].append({'text': want, 'source': 'pinterest_pin'})
+
+    # Cross-platform confirmation: activities/interests that appear on 2+ platforms
+    ig_activities = set(all_signals['instagram'].get('activity_types', {}).keys()) if all_signals['instagram'] else set()
+    tt_hashtags = set(all_signals['tiktok'].get('hashtags', {}).keys()) if all_signals['tiktok'] else set()
+    pt_keywords = set(all_signals['pinterest'].get('pin_keywords', {}).keys()) if all_signals['pinterest'] else set()
+
+    # Check which activity keywords appear across platforms
+    all_platform_sets = [s for s in [ig_activities, tt_hashtags, pt_keywords] if s]
+    if len(all_platform_sets) >= 2:
+        for activity in ig_activities:
+            platforms_with = sum(1 for s in [ig_activities, tt_hashtags, pt_keywords] if activity in s)
+            if platforms_with >= 2:
+                combined['cross_platform_confirmed'].append({
+                    'interest': activity,
+                    'platforms': platforms_with,
+                    'note': f'Confirmed on {platforms_with} platforms — core identity trait'
+                })
+
     # Convert to dicts
     combined['all_hashtags'] = dict(combined['all_hashtags'].most_common(30))
     combined['all_brands'] = dict(combined['all_brands'].most_common(15))
@@ -479,7 +585,8 @@ def combine_all_signals(platform_data):
     combined['aspirational_interests'] = list(set(combined['aspirational_interests']))[:30]
     combined['current_interests'] = list(set(combined['current_interests']))[:20]
     combined['high_engagement_topics'] = list(set(combined['high_engagement_topics']))[:20]
-    
+    combined['want_signals'] = combined['want_signals'][:15]
+
     all_signals['combined'] = combined
-    
+
     return all_signals

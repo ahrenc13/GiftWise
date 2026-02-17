@@ -170,6 +170,54 @@ def init_database():
 
         logger.info("Database schema initialized (with product/interest intelligence)")
 
+    # Seed interest intelligence from enrichment_data.py if table is empty
+    _seed_interest_intelligence_if_empty()
+
+
+def _seed_interest_intelligence_if_empty():
+    """
+    One-time seed of interest_intelligence from enrichment_data.py.
+    Safe to call every startup — only inserts if table is empty.
+    Handles Railway ephemeral storage (DB resets on each deploy).
+    """
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM interest_intelligence")
+            count = cursor.fetchone()[0]
+
+        if count > 0:
+            logger.debug(f"interest_intelligence already seeded ({count} rows) — skipping")
+            return
+
+        # Table is empty — seed from static enrichment data
+        from enrichment_data import GIFT_INTELLIGENCE
+        import json
+
+        seeded = 0
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            for interest_name, data in GIFT_INTELLIGENCE.items():
+                trending_level = 'trending' if data.get('trending_2026') else 'evergreen'
+                cursor.execute("""
+                    INSERT OR IGNORE INTO interest_intelligence
+                        (interest_name, do_buy, dont_buy, trending_level)
+                    VALUES (?, ?, ?, ?)
+                """, (
+                    interest_name,
+                    json.dumps(data.get('do_buy', [])),
+                    json.dumps(data.get('dont_buy', [])),
+                    trending_level,
+                ))
+                seeded += 1
+
+        logger.info(f"Seeded {seeded} interests into interest_intelligence from enrichment_data.py")
+
+    except ImportError:
+        logger.warning("enrichment_data.py not available — interest_intelligence not seeded")
+    except Exception as e:
+        logger.error(f"Failed to seed interest_intelligence: {e}")
+
 
 # =============================================================================
 # PRODUCT CRUD OPERATIONS

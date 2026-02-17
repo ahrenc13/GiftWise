@@ -82,6 +82,7 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 | Etsy Direct | Developer credentials pending | Etsy (would bypass Awin if approved) |
 | Amazon Associates | ✅ Active (tag added to Railway Feb 16) | Amazon |
 | eBay Partner Network | ✅ Active | eBay |
+| Macorner (Direct) | ✅ Approved Feb 17 — awaiting product feed details | Personalized gifts, custom home decor (10% non-coupon commission) |
 
 **IMPORTANT:** ShareASale migrated to Awin in Oct 2025. All ShareASale merchants are now accessible through Awin.
 

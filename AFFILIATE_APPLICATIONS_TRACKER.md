@@ -18,6 +18,7 @@ Track all affiliate network applications, approvals, and integration status.
 | **Etsy Direct** | - | ⏳ Dev credentials pending | TBD | 🟡 MEDIUM |
 | **Amazon Associates** | - | ✅ Active | - | ✅ LIVE |
 | **eBay Partner Network** | - | ✅ Active | - | ✅ LIVE |
+| **Macorner (Direct)** | Feb 17 | ✅ Approved | - | 🟡 MEDIUM |
 
 **NOTE:** ShareASale migrated to Awin in Oct 2025. All ShareASale merchants (Uncommon Goods, Personalization Mall, etc.) are now accessible through Awin.
 
@@ -114,6 +115,25 @@ Track all affiliate network applications, approvals, and integration status.
 - [ ] Track approval status per brand
 
 **Expected Impact:** MEDIUM — Premium retail brands
+
+---
+
+## Direct / In-House Programs (Not Through a Network)
+
+### Macorner ✅ Approved Feb 17
+- **Category:** Personalized gifts & home decor (engraved glassware, custom blankets, polo shirts, ornaments)
+- **Commission:** 10% (non-coupon) / 5% (coupon partners) — **use non-coupon links only**
+- **Contact:** Angelina Phillips (anhpl.dztcorp@gmail.com)
+- **Affiliate link format:** Direct HTML links from their dashboard ("Get Html" buttons)
+- **Why it's valuable:** 10% on personalized gifts is excellent. Personalization niche converts well for birthdays, anniversaries, Father's Day.
+- **Integration status:**
+  - [ ] Log into Macorner affiliate dashboard and get product feed / API details
+  - [ ] Check if they have a product feed (CSV, API, or manual HTML links only)
+  - [ ] If API/feed available: build `macorner_searcher.py`
+  - [ ] If HTML links only: add curated product set to gift guides manually
+  - [ ] Add to `CLAUDE.md` brand-to-network mapping
+
+**Action item:** Reply to Angelina or log into Macorner affiliate dashboard to understand how product links work (feed vs manual HTML). If they have a product API or feed, this is worth integrating into the search pipeline.
 
 
 ## Publisher Profile (Use for All Applications)

@@ -3526,8 +3526,22 @@ def check_scraping_status():
 
         # Ready/connected but scraper thread hasn't updated status yet
         elif status in ('ready', 'connected'):
-            scraping_in_progress = True
-            logger.info(f"Platform {platform} status is '{status}' — waiting for scraper thread")
+            # Check if this is manual data (no scraper thread)
+            method = data.get('method', '')
+            if method == 'manual_text':
+                # Manual data (like Spotify Wrapped paste) is already complete
+                has_manual_data = bool(data.get('wrapped_text', ''))
+                if has_manual_data:
+                    completed_count += 1
+                    logger.info(f"Platform {platform} manually connected with data (method: {method})")
+                else:
+                    # Manual platform but no data yet (shouldn't happen)
+                    errored_count += 1
+                    logger.warning(f"Platform {platform} manual but missing data")
+            else:
+                # Regular scraper-based platform, wait for scraper thread
+                scraping_in_progress = True
+                logger.info(f"Platform {platform} status is '{status}' — waiting for scraper thread")
 
     resolved_count = completed_count + errored_count
     logger.info(f"Scraping status check: {completed_count}/{total_platforms} complete, {errored_count} errored, in_progress={scraping_in_progress}")

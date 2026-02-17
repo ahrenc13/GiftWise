@@ -5,8 +5,12 @@ Handles any Spotify input: URLs, artist names, mixed text, or garbage
 Gracefully extracts artist/track names from:
 - Plain text: "Taylor Swift, The Weeknd, Billie Eilish"
 - Spotify URLs: https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02
+- Spotify playlist URLs (incl. Wrapped): https://open.spotify.com/playlist/37i9dQZEVXd1...
 - Wrapped narrative: "Your top artist was Taylor Swift with 500 minutes"
 - Mixed: URLs + names + narrative
+
+Playlist URLs (including Spotify Wrapped shared links) are fetched via the public
+Spotify API using client credentials — no user login required. Just paste the link.
 
 If input is unparseable → returns None with helpful error message
 
@@ -25,6 +29,63 @@ logger = logging.getLogger(__name__)
 SPOTIFY_ARTIST_URL_PATTERN = r'https?://open\.spotify\.com/artist/([a-zA-Z0-9]+)'
 SPOTIFY_TRACK_URL_PATTERN = r'https?://open\.spotify\.com/track/([a-zA-Z0-9]+)'
 SPOTIFY_ALBUM_URL_PATTERN = r'https?://open\.spotify\.com/album/([a-zA-Z0-9]+)'
+SPOTIFY_PLAYLIST_URL_PATTERN = r'https?://open\.spotify\.com/playlist/([a-zA-Z0-9]+)'
+
+
+def fetch_playlist_artists(playlist_id: str, access_token: str) -> List[str]:
+    """
+    Fetch artist names from a Spotify playlist (works for Wrapped share links too).
+
+    Uses the public playlists endpoint — client credentials only, no user auth needed.
+
+    Args:
+        playlist_id: Spotify playlist ID
+        access_token: Client credentials token
+
+    Returns:
+        List of unique artist names from the playlist tracks
+    """
+    try:
+        url = f"https://api.spotify.com/v1/playlists/{playlist_id}/tracks"
+        headers = {'Authorization': f'Bearer {access_token}'}
+        params = {
+            'fields': 'items(track(artists(name),name)),next',
+            'limit': 50,
+            'market': 'US'
+        }
+
+        artists_seen = set()
+        artist_list = []
+        pages_fetched = 0
+        max_pages = 4  # Up to 200 tracks — enough for Wrapped
+
+        while url and pages_fetched < max_pages:
+            response = requests.get(url, headers=headers, params=params if pages_fetched == 0 else None, timeout=8)
+
+            if response.status_code != 200:
+                logger.warning(f"Spotify playlist fetch failed: {response.status_code}")
+                break
+
+            data = response.json()
+            items = data.get('items', [])
+
+            for item in items:
+                track = item.get('track') or {}
+                for artist in track.get('artists', []):
+                    name = artist.get('name', '').strip()
+                    if name and name.lower() not in artists_seen:
+                        artists_seen.add(name.lower())
+                        artist_list.append(name)
+
+            url = data.get('next')  # Follow pagination
+            pages_fetched += 1
+
+        logger.info(f"Fetched {len(artist_list)} unique artists from playlist {playlist_id}")
+        return artist_list
+
+    except Exception as e:
+        logger.error(f"Error fetching playlist artists: {e}")
+        return []
 
 
 def extract_spotify_urls(text: str) -> Dict[str, List[str]]:
@@ -32,12 +93,13 @@ def extract_spotify_urls(text: str) -> Dict[str, List[str]]:
     Extract Spotify URLs from text
 
     Returns:
-        Dict with 'artists', 'tracks', 'albums' keys (lists of IDs)
+        Dict with 'artists', 'tracks', 'albums', 'playlists' keys (lists of IDs)
     """
     return {
         'artists': re.findall(SPOTIFY_ARTIST_URL_PATTERN, text),
         'tracks': re.findall(SPOTIFY_TRACK_URL_PATTERN, text),
-        'albums': re.findall(SPOTIFY_ALBUM_URL_PATTERN, text)
+        'albums': re.findall(SPOTIFY_ALBUM_URL_PATTERN, text),
+        'playlists': re.findall(SPOTIFY_PLAYLIST_URL_PATTERN, text)
     }
 
 
@@ -207,36 +269,42 @@ def parse_spotify_input(text: str, client_id: str = '', client_secret: str = '')
 
     text = text.strip()
 
-    # Extract Spotify URLs
+    # Extract Spotify URLs (artist, track, album, playlist)
     spotify_urls = extract_spotify_urls(text)
-    total_urls = len(spotify_urls['artists']) + len(spotify_urls['tracks']) + len(spotify_urls['albums'])
+    total_urls = (len(spotify_urls['artists']) + len(spotify_urls['tracks'])
+                  + len(spotify_urls['albums']) + len(spotify_urls['playlists']))
 
     artists_from_urls = []
     artists_from_text = []
 
     # If URLs found, try to fetch metadata
     if total_urls > 0:
-        logger.info(f"Found {total_urls} Spotify URLs in input")
+        logger.info(f"Found {total_urls} Spotify URLs in input (playlists: {len(spotify_urls['playlists'])})")
 
         # Need API credentials to fetch metadata
         if client_id and client_secret:
             access_token = get_spotify_api_token(client_id, client_secret)
 
             if access_token:
-                # Fetch artist names from URLs
-                for artist_id in spotify_urls['artists'][:20]:  # Limit to 20 to avoid rate limits
+                # Playlist URLs (covers Wrapped share links) — fetch all tracks' artists
+                for playlist_id in spotify_urls['playlists'][:3]:  # Limit to 3 playlists
+                    playlist_artists = fetch_playlist_artists(playlist_id, access_token)
+                    artists_from_urls.extend(playlist_artists)
+
+                # Fetch individual artist names from URLs
+                for artist_id in spotify_urls['artists'][:20]:
                     name = fetch_spotify_metadata('artist', artist_id, access_token)
                     if name:
                         artists_from_urls.append(name)
 
                 # Fetch track artists from URLs
-                for track_id in spotify_urls['tracks'][:10]:  # Limit to 10
+                for track_id in spotify_urls['tracks'][:10]:
                     track_info = fetch_spotify_metadata('track', track_id, access_token)
                     if track_info:
                         artists_from_urls.append(track_info)
 
                 # Fetch album artists from URLs
-                for album_id in spotify_urls['albums'][:10]:  # Limit to 10
+                for album_id in spotify_urls['albums'][:10]:
                     album_info = fetch_spotify_metadata('album', album_id, access_token)
                     if album_info:
                         artists_from_urls.append(album_info)
@@ -341,14 +409,24 @@ if __name__ == "__main__":
     assert len(result3['artists']) == 3
     print("   ✓ Passed")
 
-    # Test 4: URLs without credentials (should fail gracefully)
-    print("\n4. URLs without API credentials:")
-    text4 = "https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02"
+    # Test 4: Playlist URL (Wrapped format) without credentials
+    print("\n4. Wrapped playlist URL without API credentials:")
+    text4 = "https://open.spotify.com/playlist/37i9dQZEVXd1rPThvu9xCF?si=67849e43df5b4619"
     result4 = parse_spotify_input(text4)
     print(f"   Input: {text4}")
     print(f"   Result: {result4}")
     assert result4['success'] == False
     assert 'API credentials' in result4['error']
+    print("   ✓ Passed (graceful failure - needs API credentials)")
+
+    # Test 4b: Artist URL without credentials
+    print("\n4b. Artist URL without API credentials:")
+    text4b = "https://open.spotify.com/artist/06HL4z0CvFAxyc27GXpf02"
+    result4b = parse_spotify_input(text4b)
+    print(f"   Input: {text4b}")
+    print(f"   Result: {result4b}")
+    assert result4b['success'] == False
+    assert 'API credentials' in result4b['error']
     print("   ✓ Passed (graceful failure)")
 
     # Test 5: Empty input

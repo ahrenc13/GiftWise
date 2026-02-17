@@ -672,29 +672,40 @@ def sanitize_username(username):
 
 def check_data_quality(platforms):
     """
-    Assess data quality based on post counts
+    Assess data quality based on post counts and connected data sources.
     Returns: dict with quality level, message, recommended rec count
+
+    Spotify data counts as a signal even without post counts — artist list
+    is a strong personality signal that can drive recommendations on its own.
     """
     total_posts = 0
     platform_counts = {}
-    
+    has_spotify = False
+
     if 'instagram' in platforms:
         ig_data = platforms['instagram'].get('data', {})
         ig_posts = ig_data.get('total_posts', 0)
         platform_counts['instagram'] = ig_posts
         total_posts += ig_posts
-    
+
     if 'tiktok' in platforms:
         tt_data = platforms['tiktok'].get('data', {})
         tt_videos = tt_data.get('total_videos', 0)
         platform_counts['tiktok'] = tt_videos
         total_posts += tt_videos
-    
+
     if 'pinterest' in platforms:
         pinterest_pins = platforms['pinterest'].get('total_pins', 0)
         platform_counts['pinterest'] = pinterest_pins
         total_posts += pinterest_pins
-    
+
+    # Spotify Wrapped data: no post count, but artist list is a real signal
+    spotify_data = platforms.get('spotify_wrapped', {})
+    spotify_artists = spotify_data.get('artists', [])
+    if spotify_artists:
+        has_spotify = True
+        platform_counts['spotify'] = len(spotify_artists)
+
     # Quality thresholds
     if total_posts >= 30:
         return {
@@ -721,6 +732,16 @@ def check_data_quality(platforms):
             'recommendation_count': 5,
             'confidence': 'low',
             'warning': 'Limited data - consider connecting more platforms for better results',
+            'total_posts': total_posts,
+            'platform_counts': platform_counts
+        }
+    elif has_spotify:
+        # Spotify-only: no social posts, but artist list is enough to work with
+        return {
+            'quality': 'spotify_only',
+            'message': f'Using your Spotify music taste ({len(spotify_artists)} artists) to find gifts.',
+            'recommendation_count': 7,
+            'confidence': 'medium',
             'total_posts': total_posts,
             'platform_counts': platform_counts
         }

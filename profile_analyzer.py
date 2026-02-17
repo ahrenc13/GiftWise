@@ -231,24 +231,34 @@ PIN DESCRIPTIONS (Explicit wishlist signals):
 CRITICAL NOTE: Pinterest boards are explicit wishlists - they're pinning exactly what they want.
 """)
 
-    # Spotify Wrapped text
-    # Spotify Wrapped (parsed artist names)
+    # Spotify Wrapped (artists, tracks, genres)
     spotify_data = platforms.get('spotify_wrapped', {})
-    spotify_artists = spotify_data.get('artists', [])  # Parsed artist names (guard rails applied)
+    spotify_artists = spotify_data.get('artists', [])
+    spotify_tracks = spotify_data.get('tracks', [])
+    spotify_genres = spotify_data.get('genres', [])
 
     if spotify_artists:
-        # Use parsed artist names (clean, validated)
-        artists_list = ', '.join(spotify_artists[:15])  # Limit to top 15
+        # Build a rich music section — artists, genres, and sample tracks all carry signal
+        lines = []
+        lines.append(f"Top artists: {', '.join(spotify_artists[:20])}")
+
+        if spotify_genres:
+            lines.append(f"Genres: {', '.join(spotify_genres[:20])}")
+
+        if spotify_tracks:
+            # Sample tracks give a taste/vibe signal beyond just artist names
+            lines.append(f"Sample tracks: {', '.join(spotify_tracks[:15])}")
+
         data_summary.append(f"""
 SPOTIFY MUSIC PREFERENCES:
 
-Top artists: {artists_list}
+{chr(10).join(lines)}
 
-NOTE: Spotify data was manually provided by the user. Music taste is a strong personality signal for gift recommendations.
+Use this to infer personality, aesthetic, and lifestyle — not just music gifts. A person who listens to indie folk likely has different taste from someone into hyperpop or country. Music genre and artist choices are strong signals for gift categories like fashion, home decor, experiences, and hobbies.
 """)
-        logger.info(f"Including {len(spotify_artists)} Spotify artists in profile analysis")
+        logger.info(f"Including Spotify: {len(spotify_artists)} artists, {len(spotify_genres)} genres, {len(spotify_tracks)} tracks")
     elif spotify_data.get('wrapped_text'):
-        # Fallback: Old data format (no parsed artists) - try to parse on-the-fly
+        # Legacy fallback: old data format without parsed fields — try on-the-fly
         logger.warning("Spotify data in old format (no parsed artists) - attempting on-the-fly parsing")
         try:
             from spotify_parser import parse_spotify_input
@@ -259,23 +269,24 @@ NOTE: Spotify data was manually provided by the user. Music taste is a strong pe
                 client_secret=os.environ.get('SPOTIFY_CLIENT_SECRET', '')
             )
             if parse_result['success'] and parse_result['artists']:
-                artists_list = ', '.join(parse_result['artists'][:15])
+                lines = [f"Top artists: {', '.join(parse_result['artists'][:20])}"]
+                if parse_result.get('genres'):
+                    lines.append(f"Genres: {', '.join(parse_result['genres'][:20])}")
+                if parse_result.get('tracks'):
+                    lines.append(f"Sample tracks: {', '.join(parse_result['tracks'][:15])}")
                 data_summary.append(f"""
 SPOTIFY MUSIC PREFERENCES:
 
-Top artists: {artists_list}
+{chr(10).join(lines)}
 
-NOTE: Spotify data was manually provided by the user. Music taste is a strong personality signal for gift recommendations.
+Use this to infer personality, aesthetic, and lifestyle — not just music gifts.
 """)
                 logger.info(f"On-the-fly parsing succeeded: {len(parse_result['artists'])} artists")
             else:
-                # Parsing failed - skip Spotify data gracefully
                 logger.warning(f"On-the-fly Spotify parsing failed: {parse_result.get('error', 'unknown error')}")
         except Exception as e:
-            # Graceful failure - skip Spotify data
             logger.error(f"Failed to parse legacy Spotify data: {e}")
     else:
-        # No Spotify data provided
         logger.debug("No Spotify data in platforms")
 
     # Enhanced signal extraction (brands, aesthetics, activities, engagement patterns)

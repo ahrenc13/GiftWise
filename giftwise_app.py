@@ -1957,9 +1957,11 @@ def connect_spotify_wrapped():
             'error': parse_result['error']
         }), 400
 
-    # Successfully parsed - save cleaned artist names
+    # Successfully parsed - save artists, tracks, and genres
     artists = parse_result['artists']
-    logger.info(f"Parsed {len(artists)} artists from Spotify input (method: {parse_result['method']})")
+    tracks = parse_result.get('tracks', [])
+    genres = parse_result.get('genres', [])
+    logger.info(f"Parsed {len(artists)} artists, {len(tracks)} tracks, {len(genres)} genres from Spotify input (method: {parse_result['method']})")
 
     user_id = session['user_id']
 
@@ -1967,18 +1969,22 @@ def connect_spotify_wrapped():
     platforms = user.get('platforms', {})
     platforms['spotify_wrapped'] = {
         'wrapped_text': wrapped_text,  # Keep original for reference
-        'artists': artists,  # Parsed artist names
-        'parse_method': parse_result['method'],  # 'urls', 'text', or 'mixed'
+        'artists': artists,
+        'tracks': tracks,
+        'genres': genres,
+        'parse_method': parse_result['method'],  # 'playlist_url', 'urls', 'text', or 'mixed'
         'status': 'connected',
         'method': 'manual_text',
         'connected_at': datetime.now().isoformat()
     }
     save_user(user_id, {'platforms': platforms})
-    logger.info(f"User {user_id} saved Spotify data: {len(artists)} artists")
+    logger.info(f"User {user_id} saved Spotify data: {len(artists)} artists, {len(tracks)} tracks, {len(genres)} genres")
 
     return jsonify({
         'success': True,
         'artists_found': len(artists),
+        'tracks_found': len(tracks),
+        'genres_found': len(genres),
         'preview': artists[:3]  # Show first 3 for confirmation
     })
 

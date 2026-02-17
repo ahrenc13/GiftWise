@@ -62,7 +62,10 @@ _INTEREST_FILLER = re.compile(
     r'\b(?:and care|ownership|and maintenance|fandom|and lifestyle|'
     r'personalized|and (?:pop |rock |country )?culture|'
     r'connections and|celebrations and milestone events|'
-    r'family celebrations)\b',
+    r'family celebrations|music curation|'
+    r'and holiday traditions|and alternative aesthetics|'
+    r'and \w+ aesthetics|aesthetic[s]?|'
+    r'and contemporary |and classic |and modern )\b',
     re.IGNORECASE,
 )
 

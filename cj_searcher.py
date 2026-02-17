@@ -270,11 +270,17 @@ def search_products_cj(profile, api_key, company_id=None, publisher_id=None, tar
         logger.warning("No interests in profile - CJ search aborted")
         return []
 
-    # Use enhanced search terms if available, otherwise use interest names
+    # Use enhanced search terms if available, otherwise clean interest names
     if enhanced_search_terms:
         search_terms = enhanced_search_terms[:5]  # Limit to top 5
     else:
-        search_terms = [interest.get('name', '') for interest in interests[:5]]
+        try:
+            from search_query_utils import clean_interest_for_search
+            search_terms = [clean_interest_for_search(interest.get('name', ''))
+                           for interest in interests[:5]
+                           if interest.get('name') and not interest.get('is_work', False)]
+        except ImportError:
+            search_terms = [interest.get('name', '') for interest in interests[:5]]
 
     all_products = []
 

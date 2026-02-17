@@ -11,6 +11,7 @@ Key Etsy endpoints:
 import requests
 import logging
 from collections import defaultdict
+from search_query_utils import build_queries_from_profile, build_search_query
 
 logger = logging.getLogger(__name__)
 
@@ -38,32 +39,15 @@ def search_products_etsy(profile, etsy_api_key, target_count=20):
     if not interests:
         return []
 
-    # Build search queries (SKIP WORK INTERESTS)
-    search_queries = []
-    for interest in interests:
-        name = interest.get("name", "")
-        if not name:
-            continue
-        if interest.get("is_work", False):
-            logger.info(f"Skipping work interest: {name}")
-            continue
-
-        # Gift-oriented queries
-        name_lower = name.lower()
-        if any(term in name_lower for term in ["musician", "singer", "band", "artist"]):
-            query = f"{name} fan gift"
-        elif any(term in name_lower for term in ["sports", "team", "basketball"]):
-            query = f"{name} fan merchandise"
-        else:
-            query = f"{name} personalized gift"
-
-        search_queries.append({
-            "query": query,
-            "interest": name,
-            "priority": "high" if interest.get("intensity") == "passionate" else "medium",
-        })
-
-    search_queries = search_queries[:10]  # Max 10 searches
+    # Build search queries using centralized query utils (SKIP WORK INTERESTS)
+    search_queries = build_queries_from_profile(profile, target_count=10, skip_work=True)
+    # Etsy benefits from shorter queries — enforce max_length
+    for q in search_queries:
+        q['query'] = build_search_query(
+            q['interest'],
+            intensity=q.get('intensity', 'medium'),
+            max_length=60,
+        )
     logger.info(f"Running {len(search_queries)} Etsy searches")
 
     all_products = []

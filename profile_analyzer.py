@@ -249,6 +249,9 @@ CRITICAL NOTE: Pinterest boards are explicit wishlists - they're pinning exactly
         spotify_tracks = spotify_wrapped.get('tracks', [])
         spotify_genres = spotify_wrapped.get('genres', [])
 
+    # Detect if Spotify is the only data source (no social media posts)
+    spotify_is_only_source = bool(spotify_artists) and not instagram_data and not tiktok_data and not pinterest_data
+
     if spotify_artists:
         # Build a rich music section — artists, genres, and sample tracks all carry signal
         lines = []
@@ -266,12 +269,31 @@ CRITICAL NOTE: Pinterest boards are explicit wishlists - they're pinning exactly
             ]
             lines.append(f"Sample tracks: {', '.join(track_labels)}")
 
+        # When Spotify is the ONLY signal, give the analyzer much more specific guidance
+        if spotify_is_only_source:
+            spotify_guidance = """
+THIS IS THE ONLY DATA SOURCE. You must mine it deeply — every artist, genre, and track is a signal.
+
+CRITICAL RULES FOR SPOTIFY-ONLY PROFILES:
+1. **Extract SPECIFIC artist names as interests** — "The Misfits" or "Billie Eilish" are interests, not "horror punk music". Use the artist name as the interest name so search queries find merch, vinyl, and fan gear for THAT artist.
+2. **Infer lifestyle/aesthetic from genre clusters** — e.g., rockabilly + psychobilly → vintage/retro aesthetic, leather jackets, pomade; indie folk + Americana → cabin vibes, outdoors, flannel, craft beer; Broadway + jazz → cultural experiences, art deco, cocktail culture.
+3. **Map eras and sensibilities** — if most artists are from the 50s-60s, that's a vintage/retro sensibility. If they mix 80s new wave with modern synth, that's a retro-futurist aesthetic. These map to home decor, fashion, and experience gifts.
+4. **Identify specific giftable categories from the music** — vinyl records (if genres suggest collector), concert tickets (for active touring artists), band merch, music books, instruments/accessories, music-themed home decor, fashion that matches the aesthetic.
+5. **Do NOT produce generic genre labels like "Christmas music and holiday traditions" as interest names.** Instead: name the top 2-3 artists as separate interests, plus 3-4 lifestyle/aesthetic interests inferred from the genre mix, plus 2-3 specific gift category interests (e.g., "vinyl record collecting", "live jazz experiences", "retro fashion").
+6. **Each interest should be SEARCHABLE as a product query** — "Tiger Army" finds merch; "rockabilly fashion" finds clothes; "vinyl records jazz" finds records. "Rockabilly and psychobilly music" finds nothing useful.
+7. **Diverse interest types** — aim for a mix: 2-3 specific artists, 2-3 aesthetic/lifestyle interests, 2-3 experience interests, 1-2 hobby interests inferred from the music taste.
+"""
+        else:
+            spotify_guidance = """
+Use this to infer personality, aesthetic, and lifestyle — not just music gifts. A person who listens to indie folk likely has different taste from someone into hyperpop or country. Music genre and artist choices are strong signals for gift categories like fashion, home decor, experiences, and hobbies.
+"""
+
         data_summary.append(f"""
 SPOTIFY MUSIC PREFERENCES:
 
 {chr(10).join(lines)}
 
-Use this to infer personality, aesthetic, and lifestyle — not just music gifts. A person who listens to indie folk likely has different taste from someone into hyperpop or country. Music genre and artist choices are strong signals for gift categories like fashion, home decor, experiences, and hobbies.
+{spotify_guidance}
 """)
         logger.info(f"Including Spotify: {len(spotify_artists)} artists, {len(spotify_genres)} genres, {len(spotify_tracks)} tracks")
     elif spotify_wrapped.get('wrapped_text'):
@@ -492,7 +514,14 @@ CRITICAL REQUIREMENTS:
 - Location: if city_region is unknown, do NOT invent a city; leave null. Only include places with concrete evidence.
 - Price signals are for matching gifts to their lifestyle, not judging affordability
 - Distinguish aspirational (wants) from current (has) clearly. Populate gaps with 2-5 concrete desires and evidence.
-
+- Interest names must be SHORT and SEARCHABLE as product queries. Bad: "Christmas music and holiday traditions". Good: "Michael Bublé" or "holiday vinyl records". Each name should return useful results when typed into Amazon or Etsy search.
+{'''
+SPOTIFY-ONLY CRITICAL: Since music is the ONLY data source, you MUST:
+- Use 2-3 specific ARTIST NAMES as interest names (e.g., "Misfits" not "horror punk music")
+- Infer 3-4 concrete lifestyle/aesthetic interests from the genre mix (e.g., "vintage fashion", "vinyl collecting", "cocktail culture")
+- Include 2-3 experience interests (e.g., "live jazz shows", "Broadway tickets", "music festivals")
+- NEVER use a genre description as an interest name — always translate to something searchable/giftable
+''' if spotify_is_only_source else ''}
 Return ONLY the JSON object, no markdown, no backticks, no explanation."""
     
     try:

@@ -52,9 +52,9 @@ class WorkExclusionFilter:
         product_title = (product.get('title') or '').lower()
         product_snippet = (product.get('snippet') or '').lower()
         
-        # Defensive: Handle missing location_context
+        # Defensive: Handle missing location_context or None city_region
         location_context = profile.get('location_context') or {}
-        city = location_context.get('city_region', '').lower()
+        city = (location_context.get('city_region') or '').lower()
         
         # Get all interests to check for work flags
         interests = profile.get('interests', [])

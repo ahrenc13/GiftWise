@@ -26,6 +26,7 @@ COMMISSION_RATES = {
     'ebay': 0.03,        # 1-4%, use 3%
     'awin': 0.05,        # Varies, use 5% average
     'skimlinks': 0.04,   # Varies, ~4% average after Skimlinks cut
+    'peets.com': 0.10,   # 10% — highest rate in stack (45-day cookie, no gift cards)
 }
 
 

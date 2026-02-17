@@ -6,6 +6,131 @@
 
 ---
 
+## STRATEGIC ROADMAP — Inventory vs. Data Sources (Updated Feb 17, 2026)
+
+**The Core Question:** Should we prioritize adding retailers (more inventory) or adding data sources (richer profiles)?
+
+**Answer: INVENTORY FIRST. Data sources are optimization, not foundation.**
+
+### The Blocking Issue (Feb 17)
+
+After the `random` import bug fix, we're back to functional multi-retailer search:
+- ✅ Amazon: ~10-15 products/session
+- ✅ eBay: ~8-12 products/session
+- ✅ CJ Affiliate: ~6-10 products/session (MonthlyClubs.com approved, ~69 pending)
+- ⏳ Awin Access (Skimlinks): Pending approval (submitted Feb 9, expected Feb 18-20)
+- ⏳ FlexOffers: Pending approval (submitted Feb 16, same-day to 48h typical)
+- ❌ Etsy: 403 (awaiting developer credentials)
+- ❌ Awin feeds: Need to join ShareASale merchants (Uncommon Goods, Personalization Mall, etc.)
+
+**Current state: 25-35 products/session. Target: 50+ for launch.**
+
+**This is good enough to launch soft beta (March 1), but NOT good enough for paid ads or viral TikTok push.**
+
+### Priority Tiers (What to Build When)
+
+#### **TIER 1 — BLOCKING LAUNCH (Feb 17 - Mar 1)**
+**Goal:** Get to 50+ products/session with category diversity
+
+1. ✅ **Fix Amazon/eBay bugs** (DONE Feb 17 - missing `random` import)
+2. ⏳ **Monitor affiliate approvals:**
+   - CJ Affiliate (~69 brands, auto-approve 24-48h, manual review 3-7 days)
+   - FlexOffers (same-day to 48h)
+   - Awin Access/Skimlinks (expected Feb 18-20, up to 7 business days)
+3. 🔧 **Join Awin advertisers manually** (this week):
+   - Uncommon Goods, Personalization Mall, Things Remembered
+   - Oriental Trading, HomeWetBar, Portland Leather
+4. 🔧 **Build FlexOffers searcher** (once approved - 4 hours work)
+5. 🔧 **Fix Etsy credentials** (if approved - already coded, just needs API key)
+
+**Success metric:** 50+ products/session from 3+ retailers with <20% duplicates
+
+**Timeline:** 2 weeks (by Mar 1)
+
+**Do NOT start building data sources until this is done.** Inventory is the product. Data sources are optimization.
+
+---
+
+#### **TIER 2 — OPTIMIZATION (Mar 1 - Mar 15)**
+**Goal:** Improve profile quality for soft launch feedback
+
+**These are allowed ONLY after hitting 50+ products/session:**
+
+1. **Gmail OAuth → Purchase History Parsing** (1-2 days)
+   - Parse Amazon order confirmations from Gmail
+   - Extract newsletter subscriptions (REI, Sephora, etc.)
+   - Build interest profile from email patterns
+   - **Friction: LOW** (one-click OAuth, mobile-friendly)
+   - **Value: HIGH** (actual purchase history > social media posts)
+   - **File to modify:** `oauth_integrations.py` (Gmail flow already stubbed)
+
+2. **Pinterest OAuth** (already coded, just needs activation)
+   - Visual taste analysis from saved pins
+   - **Friction: LOW** (already built, just wire it up)
+   - **Value: MEDIUM** (good for style/home/DIY interests)
+
+3. **YouTube OAuth** (already coded, just needs activation)
+   - Subscriptions, liked videos, watch history
+   - **Friction: LOW** (already built)
+   - **Value: MEDIUM** (good for entertainment/hobby interests)
+
+**Success metric:** Users who connect Gmail get 2x more specific interests (e.g., "REI hiking gear enthusiast" vs. "outdoorsy")
+
+**Timeline:** 1 week (complete by Mar 15)
+
+**Explicitly OFF THE TABLE:**
+- ❌ **Spotify OAuth** - Violates Feb 2026 ToS (commercial use not permitted, requires 250k MAU for extended access)
+- ❌ **CSV uploads** - Too much friction, not mobile-friendly
+- ❌ **Wearable listening device** - 6-9 month hardware cycle, regulatory risk, premature for this stage
+- ❌ **Phone microphone listening** - Legal liability (two-party consent laws), battery drain, bandwidth spikes
+
+---
+
+#### **TIER 3 — SCALE (Mar 15 - May 2026)**
+**Goal:** Build passive data collection for ongoing improvement
+
+1. **Browser Extension (Chrome/Firefox)** (1-2 weeks)
+   - Passive scraping: Amazon orders, YouTube history, Reddit browsing
+   - **Friction: LOWEST** (install once, works forever)
+   - **Value: HIGHEST** (richest passive data source)
+   - **Precedent:** Honey ($4B exit), Rakuten cashback extension
+   - **Timeline:** 1-2 weeks dev + 1 week Chrome Web Store approval
+
+2. **Email Parsing Expansion** (after Gmail OAuth proves valuable)
+   - Eventbrite confirmations → event preferences
+   - Ticketmaster receipts → concert taste
+   - Brand receipts (Etsy, Target) → shopping patterns
+
+3. **Calendar Integration** (Google Calendar OAuth)
+   - Detect upcoming birthdays, anniversaries
+   - Send reminder emails: "Your mom's birthday is in 2 weeks"
+   - **Use case:** Retention (bring users back for repeat sessions)
+
+**Success metric:** Browser extension users have 50% higher purchase conversion (richer data = better recs)
+
+**Timeline:** Complete by May 1 (before Mother's Day traffic spike)
+
+---
+
+### The Coherence Test
+
+**Before adding ANY new feature, ask:**
+
+1. **Is inventory at 50+ products/session?** → If no, stop. Fix inventory first.
+2. **Does this improve conversion rate?** → If no, defer.
+3. **Can this be built in <3 days?** → If no, is it worth delaying launch?
+4. **Is there a frictionless mobile path?** → If no, reconsider (60% of traffic is mobile).
+
+**The Rule:** Inventory is the foundation. Data sources are the optimization layer. Build foundation first, optimize second.
+
+**Current Blocking Issue (Feb 17):** We're at ~30 products/session after fixing Amazon/eBay bugs. **DO NOT BUILD DATA SOURCES UNTIL WE HIT 50+.**
+
+**Next Action (This Week):** Join Awin advertisers, monitor CJ/FlexOffers approvals, build FlexOffers searcher when approved.
+
+**Next Action (After 50+ Products):** Gmail OAuth → purchase history parsing (1-2 days, high value, low friction).
+
+---
+
 ## CRITICAL — Revenue & Retention Impact
 
 ### 1. "Why it's perfect" is hidden on the default card view

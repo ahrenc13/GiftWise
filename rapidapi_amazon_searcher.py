@@ -10,6 +10,7 @@ Returns products in our standard format (title, link, image, price, source_domai
 """
 
 import logging
+import random
 import requests
 
 from search_query_utils import build_search_query

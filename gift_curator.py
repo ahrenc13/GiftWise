@@ -192,7 +192,11 @@ RECIPIENT CONTEXT: This is for {"the user themselves (gifts for you)" if recipie
 {products_summary}
 
 SELECT {rec_count} BEST PRODUCTS from above. Requirements:
+
+SELECTION PRINCIPLE: The best gift fills an aspiration gap — something they WANT but don't yet HAVE. A gift matching a current interest risks duplicating what they own. A gift matching an aspiration makes them say "how did you KNOW?" At least 60% of your picks should target gaps/aspirational interests, not current ones.
+
 - PRIORITIZE products matching GIFT SWEET SPOTS (gaps/aspirational interests) - these are the best opportunities
+- If the profile includes EXPLICIT WANT SIGNALS (phrases like "I need this", "someone buy me"), treat those as your highest-priority targets
 - Match interests with SPECIFIC profile evidence (cite posts, behaviors, venues)
 - Max 2 products per interest (spread across 5+ interests)
 - Use exact URLs from product list

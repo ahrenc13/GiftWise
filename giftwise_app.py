@@ -957,7 +957,9 @@ def scrape_instagram_profile(username, max_posts=50, task_id=None):
                 'timestamp': post.get('timestamp', ''),
                 'type': post.get('type', 'image'),
                 'url': post.get('url', ''),
-                'hashtags': post.get('hashtags', [])
+                'hashtags': post.get('hashtags', []),
+                'location': post.get('locationName', '') or post.get('location', '') or '',
+                'tagged_users': post.get('taggedUsers', []) or []
             }
             for post in posts
         ],

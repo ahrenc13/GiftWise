@@ -232,15 +232,51 @@ CRITICAL NOTE: Pinterest boards are explicit wishlists - they're pinning exactly
 """)
 
     # Spotify Wrapped text
-    spotify_wrapped = platforms.get('spotify_wrapped', {}).get('wrapped_text', '')
-    if spotify_wrapped:
+    # Spotify Wrapped (parsed artist names)
+    spotify_data = platforms.get('spotify_wrapped', {})
+    spotify_artists = spotify_data.get('artists', [])  # Parsed artist names (guard rails applied)
+
+    if spotify_artists:
+        # Use parsed artist names (clean, validated)
+        artists_list = ', '.join(spotify_artists[:15])  # Limit to top 15
         data_summary.append(f"""
 SPOTIFY MUSIC PREFERENCES:
 
-{spotify_wrapped[:1000]}
+Top artists: {artists_list}
 
-NOTE: Spotify doesn't allow direct API access, so the user manually shared their Wrapped or top artists. Music taste is a strong personality signal.
+NOTE: Spotify data was manually provided by the user. Music taste is a strong personality signal for gift recommendations.
 """)
+        logger.info(f"Including {len(spotify_artists)} Spotify artists in profile analysis")
+    elif spotify_data.get('wrapped_text'):
+        # Fallback: Old data format (no parsed artists) - try to parse on-the-fly
+        logger.warning("Spotify data in old format (no parsed artists) - attempting on-the-fly parsing")
+        try:
+            from spotify_parser import parse_spotify_input
+            import os
+            parse_result = parse_spotify_input(
+                spotify_data['wrapped_text'],
+                client_id=os.environ.get('SPOTIFY_CLIENT_ID', ''),
+                client_secret=os.environ.get('SPOTIFY_CLIENT_SECRET', '')
+            )
+            if parse_result['success'] and parse_result['artists']:
+                artists_list = ', '.join(parse_result['artists'][:15])
+                data_summary.append(f"""
+SPOTIFY MUSIC PREFERENCES:
+
+Top artists: {artists_list}
+
+NOTE: Spotify data was manually provided by the user. Music taste is a strong personality signal for gift recommendations.
+""")
+                logger.info(f"On-the-fly parsing succeeded: {len(parse_result['artists'])} artists")
+            else:
+                # Parsing failed - skip Spotify data gracefully
+                logger.warning(f"On-the-fly Spotify parsing failed: {parse_result.get('error', 'unknown error')}")
+        except Exception as e:
+            # Graceful failure - skip Spotify data
+            logger.error(f"Failed to parse legacy Spotify data: {e}")
+    else:
+        # No Spotify data provided
+        logger.debug("No Spotify data in platforms")
 
     # Enhanced signal extraction (brands, aesthetics, activities, engagement patterns)
     if ENHANCED_EXTRACTION_AVAILABLE:

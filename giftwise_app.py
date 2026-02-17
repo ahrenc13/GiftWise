@@ -1907,7 +1907,7 @@ def connect_tiktok():
 
 @app.route('/connect/spotify-wrapped', methods=['POST'])
 def connect_spotify_wrapped():
-    """Save Spotify Wrapped text for music preference analysis"""
+    """Save Spotify Wrapped text for music preference analysis (with validation)"""
     user = get_session_user()
     if not user:
         return jsonify({'success': False, 'error': 'Not logged in'}), 401
@@ -1919,20 +1919,47 @@ def connect_spotify_wrapped():
     if not wrapped_text:
         return jsonify({'success': False, 'error': 'Please paste your Spotify Wrapped or top artists'}), 400
 
+    # Validate and parse Spotify input (guard rails!)
+    from spotify_parser import parse_spotify_input
+
+    parse_result = parse_spotify_input(
+        wrapped_text,
+        client_id=SPOTIFY_CLIENT_ID,
+        client_secret=SPOTIFY_CLIENT_SECRET
+    )
+
+    if not parse_result['success']:
+        # Failed to parse - return helpful error
+        logger.warning(f"Spotify input validation failed: {parse_result['error']}")
+        return jsonify({
+            'success': False,
+            'error': parse_result['error']
+        }), 400
+
+    # Successfully parsed - save cleaned artist names
+    artists = parse_result['artists']
+    logger.info(f"Parsed {len(artists)} artists from Spotify input (method: {parse_result['method']})")
+
     user_id = session['user_id']
 
-    # Save the Spotify Wrapped text to platforms
+    # Save the Spotify Wrapped data to platforms
     platforms = user.get('platforms', {})
     platforms['spotify_wrapped'] = {
-        'wrapped_text': wrapped_text,
+        'wrapped_text': wrapped_text,  # Keep original for reference
+        'artists': artists,  # Parsed artist names
+        'parse_method': parse_result['method'],  # 'urls', 'text', or 'mixed'
         'status': 'connected',
         'method': 'manual_text',
         'connected_at': datetime.now().isoformat()
     }
     save_user(user_id, {'platforms': platforms})
-    logger.info(f"User {user_id} saved Spotify Wrapped text ({len(wrapped_text)} chars)")
+    logger.info(f"User {user_id} saved Spotify data: {len(artists)} artists")
 
-    return jsonify({'success': True})
+    return jsonify({
+        'success': True,
+        'artists_found': len(artists),
+        'preview': artists[:3]  # Show first 3 for confirmation
+    })
 
 @app.route('/connect/etsy', methods=['POST'])
 def connect_etsy():

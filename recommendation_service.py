@@ -625,7 +625,8 @@ class RecommendationService:
 
             exp_name = exp.get('name', 'experience')
             location_details = (exp.get('location_details') or '').strip()
-            search_loc = location_details or search_geography
+            # Prefer user's actual city for link generation over curator's guessed location_details
+            search_loc = search_geography if (search_geography and search_geography != 'near me') else (location_details or search_geography)
 
             # Handle both old format (reservation_link/venue_website from curator)
             # and new format (no URLs from curator, we generate everything)

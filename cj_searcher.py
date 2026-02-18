@@ -25,6 +25,7 @@ API FEATURES:
 import os
 import logging
 import time
+import urllib.parse
 from collections import deque
 import requests
 import json
@@ -33,6 +34,182 @@ logger = logging.getLogger(__name__)
 
 # CJ GraphQL API endpoint
 CJ_GRAPHQL_ENDPOINT = "https://ads.api.cj.com/query"
+
+# ---------------------------------------------------------------------------
+# PEET'S COFFEE — Static curated products (approved CJ partner, Feb 17 2026)
+# No product feed via CJ; deep links built off the Evergreen link (ID 15734720)
+# Evergreen link: https://www.kqzyfj.com/click-101660899-15734720
+# Gift bundle link (ID 15596392): https://www.kqzyfj.com/click-101660899-15596392
+# T&C: NEWSUB30 (30% off first sub, valid Dec 2029) and WEBFRIEND5 (5% sitewide,
+#       valid Dec 2026) are approved to promote. No other discount language.
+# ---------------------------------------------------------------------------
+
+# Evergreen link (ID 15734720) — deep-link enabled, use for specific product pages
+_PEETS_EVERGREEN_BASE = "https://www.kqzyfj.com/click-101660899-15734720"
+
+# Interests that trigger Peet's products
+PEETS_TRIGGER_INTERESTS = {
+    'coffee', 'espresso', 'tea', 'green tea', 'herbal tea', 'chai',
+    'gourmet food', 'gourmet', 'specialty coffee', 'foodie',
+    'cooking', 'indie folk', 'craft beer', 'baking', 'brunch',
+    'morning routine', 'cafe culture', 'artisan', 'craft culture',
+}
+
+
+def _peets_deep_link(path):
+    """Build a CJ deep link to a specific peets.com page."""
+    destination = f"https://www.peets.com{path}"
+    return f"{_PEETS_EVERGREEN_BASE}?url={urllib.parse.quote(destination, safe='')}"
+
+
+# Static curated product list — direct CJ click URLs from CSV (Feb 17 2026)
+# Images are real CJ banner images (300x250 or similar), not tracking pixels
+_PEETS_ALL_PRODUCTS = [
+    {
+        # CJ link ID 15734720 (Evergreen, deep-link to product page)
+        'title': "Peet's Major Dickason's Blend Coffee",
+        'link': _peets_deep_link('/products/major-dickasons-blend'),
+        'snippet': (
+            "Peet's most iconic dark roast — bold, rich, and complex with layered "
+            "flavors. A cult favorite since 1969. Use code WEBFRIEND5 for 5% off."
+        ),
+        'image': 'https://www.tqlkg.com/image-101660899-13437467',
+        'thumbnail': 'https://www.tqlkg.com/image-101660899-13437467',
+        'image_url': 'https://www.tqlkg.com/image-101660899-13437467',
+        'source_domain': 'peets.com',
+        'price': '$19.99',
+        'product_id': 'peets-major-dickasons',
+        'search_query': 'coffee',
+        'interest_match': 'coffee',
+        'priority': 2,
+        'brand': "Peet's Coffee",
+        'advertiser_id': 'peets-cj',
+    },
+    {
+        # CJ link ID 13718353 — "Single Origin Series Subscription"
+        'title': "Peet's Single Origin Series Coffee Subscription",
+        'link': 'https://www.dpbolvw.net/click-101660899-13718353',
+        'snippet': (
+            "The quintessential expression of a coffee region in your cup — "
+            "Peet's rotating single origin coffees from the world's finest farms. "
+            "Use code NEWSUB30 for 30% off the first shipment."
+        ),
+        'image': 'https://www.lduhtrp.net/image-101660899-13625035',
+        'thumbnail': 'https://www.lduhtrp.net/image-101660899-13625035',
+        'image_url': 'https://www.lduhtrp.net/image-101660899-13625035',
+        'source_domain': 'peets.com',
+        'price': 'From $19.95/shipment',
+        'product_id': 'peets-single-origin-sub',
+        'search_query': 'coffee subscription',
+        'interest_match': 'coffee',
+        'priority': 2,
+        'brand': "Peet's Coffee",
+        'advertiser_id': 'peets-cj',
+    },
+    {
+        # CJ link ID 13648651 — "Discover Mighty Leaf's most popular teas"
+        'title': "Mighty Leaf Whole Leaf Tea Collection by Peet's",
+        'link': 'https://www.kqzyfj.com/click-101660899-13648651',
+        'snippet': (
+            "Distinctive black, green, and herbal teas carefully crafted by Mighty Leaf, "
+            "Peet's premium tea line. Whole-leaf pouches, rare single-origin varieties. "
+            "Use code WEBFRIEND5 for 5% off."
+        ),
+        'image': 'https://www.ftjcfx.com/image-101660899-13588852',
+        'thumbnail': 'https://www.ftjcfx.com/image-101660899-13588852',
+        'image_url': 'https://www.ftjcfx.com/image-101660899-13588852',
+        'source_domain': 'peets.com',
+        'price': 'From $12.00',
+        'product_id': 'peets-mighty-leaf-tea',
+        'search_query': 'tea gift',
+        'interest_match': 'tea',
+        'priority': 2,
+        'brand': "Peet's Coffee",
+        'advertiser_id': 'peets-cj',
+    },
+    {
+        # CJ link ID 15596392 — "Save with Bundles! Save up to 20% off"
+        'title': "Peet's Coffee Gift Bundles — Save up to 20% off",
+        'link': 'https://www.dpbolvw.net/click-101660899-15596392',
+        'snippet': (
+            "Peet's curated selection of best-selling coffee and tea bundles — "
+            "save up to 20% off. Premium coffees, teas, and accessories. "
+            "Use code WEBFRIEND5 for an extra 5% off."
+        ),
+        'image': 'https://www.tqlkg.com/image-101660899-15784148',
+        'thumbnail': 'https://www.tqlkg.com/image-101660899-15784148',
+        'image_url': 'https://www.tqlkg.com/image-101660899-15784148',
+        'source_domain': 'peets.com',
+        'price': 'From $35.00',
+        'product_id': 'peets-gift-set',
+        'search_query': 'coffee gift set',
+        'interest_match': 'coffee',
+        'priority': 2,
+        'brand': "Peet's Coffee",
+        'advertiser_id': 'peets-cj',
+    },
+    {
+        # CJ link ID 13747502 — "Peet's Frequent Brewer Subscription + free shipping"
+        'title': "Peet's Frequent Brewer Coffee Subscription",
+        'link': 'https://www.jdoqocy.com/click-101660899-13747502',
+        'snippet': (
+            "Never run out of your favorite Peet's coffee — subscribe and get free "
+            "shipping every time. Choose your roast, grind, and delivery frequency. "
+            "First shipment 30% off with code NEWSUB30."
+        ),
+        'image': 'https://www.lduhtrp.net/image-101660899-13625035',
+        'thumbnail': 'https://www.lduhtrp.net/image-101660899-13625035',
+        'image_url': 'https://www.lduhtrp.net/image-101660899-13625035',
+        'source_domain': 'peets.com',
+        'price': 'From $19.95/month',
+        'product_id': 'peets-frequent-brewer',
+        'search_query': 'coffee subscription',
+        'interest_match': 'coffee',
+        'priority': 2,
+        'brand': "Peet's Coffee",
+        'advertiser_id': 'peets-cj',
+    },
+]
+
+
+def get_peets_products_for_profile(profile):
+    """
+    Return curated Peet's Coffee products when the profile has matching interests.
+
+    Peet's has no product feed via CJ — this static list uses CJ deep links
+    off the Evergreen link (ID 15734720).
+
+    Triggers: coffee, espresso, tea, gourmet, and lifestyle/aesthetic signals
+    (indie folk, craft culture, brunch, etc.).
+
+    T&C: Do NOT use discount language beyond NEWSUB30 and WEBFRIEND5.
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    # Check direct and partial matches against trigger set
+    matched = interest_names & PEETS_TRIGGER_INTERESTS
+    if not matched:
+        for name in interest_names:
+            for trigger in PEETS_TRIGGER_INTERESTS:
+                if trigger in name or name in trigger:
+                    matched.add(name)
+                    break
+
+    if not matched:
+        logger.debug(f"Peet's: no trigger interests found (profile interests: {interest_names})")
+        return []
+
+    logger.info(f"Peet's Coffee triggered by profile interests: {matched}")
+
+    tea_only_interests = {'tea', 'green tea', 'herbal tea', 'chai'}
+    is_tea_only = bool(tea_only_interests & interest_names) and 'coffee' not in interest_names and 'espresso' not in interest_names
+
+    if is_tea_only:
+        # Tea-only profile: return tea product + gift set only
+        return [p for p in _PEETS_ALL_PRODUCTS if p['interest_match'] == 'tea' or p['product_id'] == 'peets-gift-set']
+
+    return list(_PEETS_ALL_PRODUCTS)
 
 # Credentials from environment
 CJ_API_KEY = os.environ.get('CJ_API_KEY', '')
@@ -351,6 +528,12 @@ def search_products_cj(profile, api_key, company_id=None, publisher_id=None, tar
         except Exception as e:
             logger.error(f"Unexpected error in CJ search for '{term}': {e}")
             continue
+
+    # Inject Peet's static curated products (no product feed via CJ)
+    peets_products = get_peets_products_for_profile(profile)
+    if peets_products:
+        all_products.extend(peets_products)
+        logger.info(f"Added {len(peets_products)} Peet's Coffee static products")
 
     # Deduplicate by product ID
     seen_ids = set()

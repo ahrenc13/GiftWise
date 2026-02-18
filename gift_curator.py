@@ -137,6 +137,9 @@ These are refined search terms from deep profile analysis - products matching th
         if parts:
             enrichment_section = "\n\n" + "\n\n".join(parts) + "\n"
     
+    # Extract recipient city for location-aware instructions
+    recipient_city = (profile.get('location_context') or {}).get('city_region') or 'Unknown'
+
     # Format profile for prompt (gaps moved to top, rest supporting)
     profile_summary = f"""
 RECIPIENT PROFILE:
@@ -250,6 +253,7 @@ PRODUCT GIFTS:
 - why_perfect MUST cite SPECIFIC evidence from the profile (post counts, venue names, specific behaviors) not generic statements
 - PRIORITIZE products matching gaps/aspirational interests over current interests
 - SKIP used/pre-owned items, generic "mix & match" bundles, and bulk packs of cheap items. Every gift should feel intentional, not like a clearance bin find
+- TICKET PRODUCTS: If a product is event tickets, concert tickets, or sports tickets for a specific city, ONLY select it if that city matches the recipient's city ("{recipient_city}"). Tickets for Boston, Buffalo, or any other city are worthless to someone in {recipient_city}. Skip wrong-city tickets entirely — use an experience gift for the artist/event instead.
 
 EXPERIENCE GIFTS:
 - Each experience must be a COHERENT PACKAGE: an activity + the materials to pull it off + a clear plan.
@@ -271,6 +275,7 @@ EXPERIENCE GIFTS:
 - how_to_execute: Write 3-5 SHORT sentences the gift-giver can act on. Be specific: "Search Cozymeal for Thai cooking classes in their city" not "Find a local cooking class."
 - MUST be personal/leisure ONLY — never work-themed, never professional development
 - If no location context in profile, DO NOT suggest location-specific experiences
+- CONCERT/SHOW NAMES: NEVER include a distant city name in an experience. Write "Leslie Odom Jr. Concert Night" not "Leslie Odom Jr. at Boston Garden". We automatically generate ticket search links for the recipient's city ({recipient_city}).
 
 GIFT TASTE — REJECT BORING PRACTICAL ITEMS:
 A gift should make someone say "you GET me," not "thanks, I needed that." REJECT these categories entirely:

@@ -20,6 +20,50 @@ from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
+# Words that look like proper nouns in product titles but are NOT person surnames.
+# Used to filter false positives when detecting artist/person name brands.
+_TITLE_CASE_NON_NAMES = {
+    # Temporal / seasonal
+    'christmas', 'holiday', 'halloween', 'thanksgiving', 'birthday', 'wedding',
+    'valentine', 'mothers', 'fathers', 'anniversary', 'seasonal', 'spring',
+    'summer', 'autumn', 'winter', 'fall',
+    # Descriptors
+    'vintage', 'retro', 'classic', 'special', 'limited', 'official', 'licensed',
+    'handmade', 'custom', 'personalized', 'engraved', 'premium', 'deluxe',
+    'unique', 'original', 'authentic', 'genuine', 'exclusive', 'rare',
+    # Media / entertainment genre words
+    'movie', 'music', 'band', 'film', 'show', 'concert', 'tour', 'album',
+    'musical', 'theater', 'broadway', 'musicals', 'horror', 'comedy', 'drama',
+    'rock', 'punk', 'jazz', 'blues', 'folk', 'country', 'metal', 'pop', 'soul',
+    'swing', 'disco', 'funk', 'reggae', 'gospel', 'gothic', 'grunge', 'emo',
+    'rockabilly', 'classical', 'opera',
+    # Product/category words
+    'poster', 'print', 'framed', 'unframed', 'canvas', 'wall', 'art', 'decor',
+    'style', 'design', 'pattern', 'graphic',
+    'shirt', 'tshirt', 'hoodie', 'jacket', 'pants', 'shorts', 'dress', 'skirt',
+    'tote', 'bag', 'purse', 'backpack', 'wallet',
+    'earring', 'necklace', 'bracelet', 'ring', 'charm', 'pendant',
+    'mug', 'cup', 'tumbler', 'glass', 'bottle', 'flask',
+    'book', 'guide', 'journal', 'planner', 'notebook',
+    'vinyl', 'record', 'tape', 'digital',
+    'set', 'pack', 'bundle', 'collection', 'kit',
+    'ornament', 'decoration', 'ball',
+    'pillow', 'blanket', 'throw', 'quilt',
+    # Common adjectives / prepositions that can appear Title-cased mid-title
+    'dark', 'light', 'black', 'white', 'red', 'blue', 'pink', 'green', 'gold',
+    'silver', 'brown', 'purple', 'orange', 'yellow', 'grey', 'gray',
+    'before', 'after', 'during', 'with', 'from', 'into', 'onto', 'upon',
+    'little', 'big', 'small', 'mini', 'large', 'giant', 'super', 'mega', 'ultra',
+    'new', 'old', 'young', 'cute', 'funny', 'cool', 'best', 'great', 'awesome',
+    'night', 'day', 'morning', 'evening', 'love', 'heart', 'soul', 'dream',
+    # Halloween / costume descriptors
+    'clown', 'witch', 'vampire', 'zombie', 'ghost', 'skeleton', 'monster',
+    # Material
+    'cotton', 'wool', 'silk', 'leather', 'velvet', 'linen', 'wooden', 'ceramic',
+    # Ticket/event words
+    'concert', 'tickets', 'show', 'tour', 'festival',
+}
+
 
 # ---------------------------------------------------------------------------
 # Brand extraction
@@ -58,6 +102,27 @@ def extract_brand(title):
     matches = [b for b in KNOWN_BRANDS if b in title_lower]
     if matches:
         return max(matches, key=len)
+
+    # Look for person/artist name patterns: two ADJACENT Title-case words
+    # that don't look like product descriptors.
+    # e.g. "Nightmare Before Christmas Danny Elfman Poster" → "danny elfman"
+    #       "Danny Elfman Movie & TV Music Book"            → "danny elfman"
+    #       "Leslie Odom Jr. Concert Tickets - Boston"      → "leslie odom"
+    #
+    # Strategy: extract all Title-case words in order, then check consecutive pairs.
+    # Use _is_non_name() to handle plurals (records→record, earrings→earring).
+    def _is_non_name(word):
+        w = word.lower()
+        return w in _TITLE_CASE_NON_NAMES or w.rstrip('s') in _TITLE_CASE_NON_NAMES
+
+    title_words = re.findall(r'\b([A-Z][a-z]{1,15})\b', title)
+    for i in range(len(title_words) - 1):
+        first, second = title_words[i], title_words[i + 1]
+        # Verify the pair actually appears adjacent in the original title
+        if not re.search(r'\b' + re.escape(first) + r'\s+' + re.escape(second) + r'\b', title):
+            continue
+        if not _is_non_name(first) and not _is_non_name(second):
+            return f"{first.lower()} {second.lower()}"
 
     # Heuristic: first capitalized word(s) before a space + lowercase word
     # e.g. "DeWalt 20V MAX..." → "dewalt", "Breville BES870XL..." → "breville"

@@ -293,6 +293,8 @@ GIFT_INTELLIGENCE = {
     'coffee': {
         'do_buy': [
             'Specialty coffee beans subscription',
+            "Peet's Coffee subscription (Major Dickason's or Single Origin Series)",
+            "Peet's Coffee gift sets and bundles",
             'Quality grinders (Baratza, Fellow)',
             'Pour over equipment',
             'Espresso accessories',

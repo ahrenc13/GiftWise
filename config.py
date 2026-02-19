@@ -187,6 +187,15 @@ TARGET_THUMBNAIL_SUCCESS = 0.85  # 85% real images
 TARGET_SESSION_COST = 0.15  # Max $0.15 per recommendation session
 
 # ============================================================================
+# ============================================================================
+# WEB PUSH NOTIFICATIONS (OneSignal)
+# Get your App ID at onesignal.com → New App → Web Push
+# Set ONESIGNAL_APP_ID in Railway Variables to activate push notifications.
+# ============================================================================
+ONESIGNAL_APP_ID = os.environ.get('ONESIGNAL_APP_ID', '')
+ONESIGNAL_SAFARI_ID = os.environ.get('ONESIGNAL_SAFARI_ID', '')  # From OneSignal → Safari config
+
+# ============================================================================
 # FEATURE FLAGS - Toggle features on/off easily
 # ============================================================================
 
@@ -196,6 +205,7 @@ FEATURES = {
     'friend_network': os.environ.get('FEATURE_FRIENDS', 'False') == 'True',
     'gift_emergency': os.environ.get('FEATURE_GIFT_EMERGENCY', 'True') == 'True',
     'monthly_regeneration': os.environ.get('FEATURE_MONTHLY_REGEN', 'True') == 'True',
+    'web_push': bool(os.environ.get('ONESIGNAL_APP_ID', '')),  # Auto-enabled when App ID is set
 
     # Infrastructure features
     'profile_caching': os.environ.get('FEATURE_PROFILE_CACHE', 'True') == 'True',

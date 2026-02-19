@@ -297,10 +297,15 @@ CRITICAL RULES FOR SPOTIFY-ONLY PROFILES:
 1. **Extract SPECIFIC artist names as interests** — "The Misfits" or "Billie Eilish" are interests, not "horror punk music". Use the artist name so search queries find merch, vinyl, and fan gear for THAT artist.
 2. **Stay grounded in what the music data actually shows.** Do NOT make multi-hop lifestyle inferences. "They listen to jazz" does NOT mean they drink craft cocktails or go to speakeasies — those are stereotypes, not evidence. Only infer what the data directly supports.
 3. **Music-adjacent interests only** — the safe inferences from music data are: vinyl/record collecting (if genres suggest collector taste), band merch (for any artist), music books/biographies (for artists with strong cultural footprint), instruments/accessories (if multiple genre clusters suggest active musicianship), and concert tickets (only for artists who actively tour).
-4. **Identify specific giftable PRODUCTS from the music** — vinyl records (genre-appropriate), band/artist merch, music books, instruments/accessories. These are what music data actually supports.
-5. **Do NOT produce generic genre labels as interest names.** "Christmas music and holiday traditions" → bad. "Bing Crosby vinyl" or "vintage holiday record" → good. Always translate to something searchable.
-6. **Each interest should be SEARCHABLE as a product query** — "Tiger Army" finds merch; "vintage jazz vinyl" finds records; "Broadway cast recording" finds albums. "Jazz culture" finds nothing useful.
-7. **Aim for 8-10 interests total: 3-4 specific artists + 3-4 music-adjacent product interests + 1-2 genre/aesthetic interests with direct product evidence.** Skip "experience" interests entirely unless there's a specific touring artist where concert tickets make clear sense.
+4. **Identify specific giftable PRODUCTS from the music** — band/artist merch, music books, instruments/accessories. These are what music data actually supports.
+5. **Do NOT produce generic genre labels as interest names.** "Christmas music and holiday traditions" → bad. "Bing Crosby" (artist name) → good. Always translate to something searchable.
+6. **VINYL IS A COLLECTOR IDENTITY SIGNAL, NOT A GENRE MODIFIER.** Treat it as a separate standalone interest:
+   - RIGHT: "The Misfits" as one interest + "vinyl record collecting" as a separate interest
+   - WRONG: "Horror punk vinyl" (too niche — searches return nothing useful)
+   - WRONG: "Bing Crosby vinyl" (compound name — just use "Bing Crosby", the artist interest naturally surfaces their records)
+   - If someone's listening history suggests a collector (indie/classic/varied catalog, genres known for vinyl culture), add "vinyl record collecting" as its own interest. It finds turntables, storage, cleaning kits, record sleeves — the whole collector lifestyle.
+7. **Each interest should be SEARCHABLE as a product query** — "Tiger Army" finds merch; "vinyl record collecting" finds collector gear; "Broadway cast recording" finds albums. "Jazz culture" finds nothing useful. "Horror punk vinyl" finds nothing useful either.
+8. **Aim for 8-10 interests total: 3-4 specific artists + 3-4 music-adjacent product interests + 1-2 genre/aesthetic interests with direct product evidence.** Skip "experience" interests entirely unless there's a specific touring artist where concert tickets make clear sense.
 """
         else:
             spotify_guidance = """
@@ -552,13 +557,14 @@ CRITICAL REQUIREMENTS:
 - Location: if city_region is unknown, do NOT invent a city; leave null. Only include places with concrete evidence.
 - Price signals are for matching gifts to their lifestyle, not judging affordability
 - Distinguish aspirational (wants) from current (has) clearly. Populate gaps with 2-5 concrete desires and evidence.
-- Interest names must be SHORT and SEARCHABLE as product queries. Bad: "Christmas music and holiday traditions". Good: "Michael Bublé" or "holiday vinyl records". Each name should return useful results when typed into Amazon or Etsy search.
+- Interest names must be SHORT and SEARCHABLE as product queries. Bad: "Christmas music and holiday traditions". Good: "Michael Bublé" or "vinyl record collecting". Each name should return useful results when typed into Amazon or Etsy search.
 {'''
 SPOTIFY-ONLY CRITICAL: Since music is the ONLY data source, you MUST:
 - Use 3-4 specific ARTIST NAMES as interests (e.g., "Misfits" not "horror punk music")
-- Translate genres to PRODUCT interests only — what would you search on Amazon/Etsy? (e.g., "vintage vinyl records", "Broadway cast recording", "jazz piano album")
+- Translate genres to PRODUCT interests only — what would you search on Amazon/Etsy? (e.g., "vinyl record collecting", "Broadway cast recording", "jazz piano album")
 - Do NOT infer lifestyle stereotypes from genres (no "cocktail culture" from jazz, no "craft beer" from Americana — these are ungrounded)
 - NEVER use a genre description or lifestyle inference as an interest name — only use what directly yields giftable search results
+- CRITICAL: Never combine genre + format (no "horror punk vinyl", no "jazz vinyl"). Artist names alone find vinyl naturally. "vinyl record collecting" is a standalone interest for the collector lifestyle (turntables, storage, cleaning gear).
 ''' if spotify_is_only_source else ''}
 Return ONLY the JSON object, no markdown, no backticks, no explanation."""
     

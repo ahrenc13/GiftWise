@@ -3306,6 +3306,12 @@ def view_recommendations(user=None):
         session.modified = True
         unlocked = True
 
+    # LAUNCH MODE: Everyone sees all recommendations for free.
+    # Re-enable the gate once inventory is strong (200+ products, consistent quality)
+    # and organic traffic justifies the viral loop friction.
+    # Gate infrastructure is intact — just flip this line when ready.
+    unlocked = True
+
     # Limit to 3 recommendations if not unlocked (share-to-unlock viral loop)
     visible_recommendations = recommendations if unlocked else recommendations[:3]
     total_count = len(recommendations)

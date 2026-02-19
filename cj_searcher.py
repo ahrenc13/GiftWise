@@ -176,9 +176,15 @@ _PEETS_ALL_PRODUCTS = [
 # ILLY CAFFÈ — Static curated products (approved CJ partner, Feb 17 2026)
 # TODO: Replace PLACEHOLDER link IDs with real IDs from CJ dashboard:
 #   CJ Dashboard → Advertisers → illy caffè → Links → Get Links
-# T&C: Do NOT use discount language — illy ToS prohibits it
-# Commission: 6% new customers / 4% existing, 45-day cookie, ~$125 AOV
-# Trigger: coffee/espresso interests
+#
+# Commission: 6% new customers / 4% existing, 45-day cookie
+# T&C (strictly enforced — illy audits publisher content):
+#   PROHIBITED words on site: discount, discounts, % off, % savings,
+#     save {x}%, cheap, cheapest, sale, bargain, rock bottom, clearance,
+#     closeout, lowest
+#   NO promo codes unless explicitly provided through CJ interface
+#   NO SEM bidding on illy brand terms (not our concern — we're content)
+#   Snippets must be factual/editorial, not promotional/deal-oriented
 # ---------------------------------------------------------------------------
 
 _ILLY_COMPANY_ID = '101660899'  # Same publisher company ID

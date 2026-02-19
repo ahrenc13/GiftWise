@@ -577,11 +577,17 @@ class RecommendationService:
             if not product_url:
                 continue
 
+            # Normalize junk price values the curator sometimes outputs
+            _JUNK_PRICES = {'not specified', 'unknown', 'price unknown', 'n/a', 'none',
+                            'from product', '', 'varies', 'variable', 'see website'}
+            raw_price = (gift.get('price') or '').strip()
+            price_display = raw_price if raw_price.lower() not in _JUNK_PRICES else ''
+
             recommendations.append({
                 'name': gift.get('name', 'Unknown Product'),
                 'description': gift.get('description', ''),
                 'why_perfect': gift.get('why_perfect', ''),
-                'price_range': gift.get('price', 'Price unknown'),
+                'price_range': price_display,
                 'where_to_buy': gift.get('where_to_buy', 'Online'),
                 'product_url': product_url,
                 'purchase_link': self._apply_affiliate_tag(product_url),

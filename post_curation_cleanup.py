@@ -142,6 +142,51 @@ def extract_brand(title):
 
 
 # ---------------------------------------------------------------------------
+# Replacement relevance check
+# ---------------------------------------------------------------------------
+
+_QUERY_STOPWORDS = {'a', 'an', 'the', 'and', 'or', 'for', 'of', 'in', 'on', 'at', 'to', 'with', 'fan', 'gift', 'music'}
+
+def _is_query_relevant_to_product(product):
+    """
+    Check that an inventory product is genuinely relevant to the search query it came from.
+    Catches cases like artist-name searches (e.g. "JD McPherson") returning generic
+    surname-only products (e.g. "McPherson T-Shirt", "Clan McPherson Tote Bag").
+
+    Returns True if the product is relevant (keep), False if it's a surname-only match (skip).
+    """
+    title = (product.get('title') or '').lower()
+    query = (product.get('search_query') or '').lower().strip()
+
+    if not query or not title:
+        return True  # Can't judge — keep it
+
+    # Hard block: generic surname/clan/heritage products are always low-relevance
+    # These are mass-produced eBay/Amazon products for any possible last name
+    bad_phrases = ('surname', 'clan gift', 'family name gift', 'family crest', 'heritage gift',
+                   'coat of arms', 'scottish clan', 'irish clan', 'welsh clan')
+    if any(phrase in title for phrase in bad_phrases):
+        logger.info(f"CLEANUP: Skipping replacement (generic surname product): {title[:60]}")
+        return False
+
+    # For person-name queries (2 tokens, first is short initial OR normal first name),
+    # require the title to contain the first token (first name / initial).
+    # Example: query="jd mcpherson" → title must contain "jd" OR "j.d." to pass.
+    # This blocks "mcpherson t-shirt" (matches only on last name).
+    query_words = [w for w in query.split() if w not in _QUERY_STOPWORDS and len(w) > 1]
+    if len(query_words) == 2:
+        first, last = query_words
+        # Check if this looks like a person name (last word is a significant proper noun)
+        # by seeing if only the last name appears in the title
+        if last in title and first not in title:
+            # Last name found but first name/initial missing — likely a surname-only match
+            logger.info(f"CLEANUP: Skipping replacement (surname-only match, query='{query}'): {title[:60]}")
+            return False
+
+    return True
+
+
+# ---------------------------------------------------------------------------
 # Category detection
 # ---------------------------------------------------------------------------
 
@@ -170,6 +215,8 @@ CATEGORY_PATTERNS = {
     'kit': r'\b(?:essentials kit|starter kit|travel kit|care kit)\b',
     'glass': r'\b(?:glass|glasses|pint glass|wine glass|glassware)\b',
     'hook': r'\b(?:hook[s]?|hanger[s]?|door hook)\b',
+    # Kitchen/cooking items — catches duplicate novelty cooking sets (e.g. two horror utensil sets)
+    'kitchen': r'\b(?:kitchen utensil|cooking set|utensil set|chef set|wooden spoon set|spatula set|apron set|cookware set|grilling set)\b',
 }
 
 
@@ -385,6 +432,10 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
             if brand and brand in used_brands:
                 continue
             if category and category in used_categories:
+                continue
+            # Skip low-relevance replacements — products that only matched on surname/last name
+            # when the search query was a full artist/person name (e.g. "JD McPherson" → "McPherson T-Shirt")
+            if not _is_query_relevant_to_product(p):
                 continue
             # Prefer products that bring new brands, categories, and source diversity
             score = 0

@@ -714,7 +714,7 @@ input[type="range"] {
                     <div class="rec-why-preview">{{ rec.why_perfect }}</div>
                     {% endif %}
                     <div class="rec-compact-meta">
-                        <span class="rec-compact-price">{{ rec.price_range }}</span>
+                        {% if rec.price_range %}<span class="rec-compact-price">{{ rec.price_range }}</span>{% endif %}
                         {% if rec.where_to_buy %}
                         <span class="rec-compact-source">{{ rec.where_to_buy }}</span>
                         {% endif %}
@@ -797,7 +797,7 @@ input[type="range"] {
                     </div>
                     {% endif %}
                     <div class="rec-footer">
-                        <div class="rec-price">{{ rec.price_range }}</div>
+                        {% if rec.price_range %}<div class="rec-price">{{ rec.price_range }}</div>{% endif %}
                         <div class="rec-where">Available at: {{ rec.where_to_buy }}</div>
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
                             {% if rec.gift_type == 'experience' %}

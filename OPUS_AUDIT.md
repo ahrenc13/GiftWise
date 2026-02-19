@@ -132,7 +132,8 @@ Prioritized by (commission % x typical gift AOV x gift-relevance):
 ---
 
 ### Explicitly OFF THE TABLE
-- ❌ **Spotify OAuth** — Violates Feb 2026 ToS
+- ❌ **Spotify Wrapped scraping / text-paste** — Too fragile, parsing Spotify screenshots/exports is unreliable and ToS-grey. The OAuth flow is the correct path.
+- ✅ **Spotify OAuth** — This is ACTIVE and working. The "Violates ToS" note was incorrect. Spotify's Developer ToS explicitly allows OAuth for user-consented data access in apps. This is the primary Spotify integration.
 - ❌ **CSV uploads** — Too much friction, not mobile-friendly
 - ❌ **Wearable listening device** — 6-9 month hardware cycle, premature
 - ❌ **Phone microphone listening** — Legal liability, two-party consent laws
@@ -254,6 +255,15 @@ A good gift makes someone say "you GET me." A travel adapter makes them say "tha
 **Problem:** `CATEGORY_PATTERNS` now has 23 patterns (after adding adapter/kit/glass/hook). But any product that doesn't match a pattern gets empty string and bypasses dedup entirely. Two "cruise door decorations" could slip through if "decoration" isn't in the pattern list.
 **Fix:** Add a catch-all similarity check for uncategorized items — if two uncategorized products share 3+ title words, flag as potential duplicate.
 
+### 9a. Experience thumbnails for non-concert categories still show emoji
+**File:** `recommendation_service.py` (`_format_experience_recommendations()`), `templates/recommendations.html`
+**Problem:** The thumbnail waterfall now handles concerts (Spotify artist photo) and DIY (first material thumbnail). But bookable experiences without a music angle — cooking class, spa, wine tasting, dining, outdoor adventure — still show an emoji placeholder. Emoji feels low-effort compared to a real photo.
+**Fix options (in order of preference):**
+1. **Unsplash API** (free tier: 50 req/hr, 5,000/month) — `GET https://api.unsplash.com/photos/random?query=cooking+class&client_id=...` returns a high-quality, licensed photo by keyword. One call per unique experience category per session. Cache the URL in the experience object.
+2. **Curated static set** — Pick one beautiful Unsplash photo per category, download it, host in `/static/images/experiences/`, reference by category key. Zero latency, zero API, one-time effort. 13 categories = 13 photos.
+3. **Keep emoji but style it better** — Larger, more artistic presentation in a gradient card. Lowest effort, lowest improvement.
+**Recommendation:** Curated static set (option 2) is the right call pre-launch. No API dependency, no latency, and a thoughtfully picked photo per category beats a generic API random image anyway.
+
 ### 9. Experience URL validation checks status but not content
 **File:** `giftwise_app.py` (~line 2519-2551)
 **Problem:** Curator hallucinates plausible venue URLs. Validation does a HEAD request and accepts any 200. But a 200 from a redirected homepage isn't the same as a confirmed venue page.
@@ -264,6 +274,15 @@ A good gift makes someone say "you GET me." A travel adapter makes them say "tha
 **Problem:** If curator picks a Taylor Swift poster and a Taylor Swift notebook, brand dedup sees "taylor swift" twice and defers one. But poster and notebook are genuinely different categories — both could be good picks for a Swiftie.
 **Current behavior:** Category dedup runs separately, so if categories differ, brand still catches it first. Brand rule wins.
 **Recommendation:** Consider relaxing brand dedup when categories are different. A Taylor Swift poster and a Taylor Swift enamel pin are legitimately different gifts. This requires a one-line change: check `if brand in used_brands AND category in used_categories`.
+
+### 9b. Spotify-only: no validation that Claude followed the interest extraction rules
+**File:** `profile_analyzer.py` (post-Claude response, ~line 592)
+**Problem:** The prompt gives Claude specific rules for Spotify-only profiles ("Extract specific artist names, not genre labels. 'Tiger Army' not 'horror punk culture'"). But there's no post-hoc check that Claude followed them. If Claude returns "jazz culture" instead of "Bill Evans vinyl," the search pipeline fails silently — the interest fires, Amazon/eBay find nothing useful, and those search slots are wasted.
+**Fix:** After profile is returned, run a lightweight validation pass on Spotify-only profiles:
+- Flag any interest with fewer than 2 words that matches a known generic genre label (jazz, pop, rock, classical, country, hip hop, folk, blues, indie, metal, punk)
+- Log a warning: `SPOTIFY_ONLY: generic interest '{interest}' may produce poor search results`
+- Optionally: append a note to the interest (`'jazz culture' → 'jazz vinyl records'`) using a small mapping dict
+**Scope:** This is a quality guard, not a hard filter. The goal is visibility into when the profile analyzer drifts from the rules, not to block anything.
 
 ---
 
@@ -283,6 +302,35 @@ A good gift makes someone say "you GET me." A travel adapter makes them say "tha
 **File:** `templates/recommendations.html` (~line 624)
 **Problem:** Subtitle says "{{ recommendations|length }} gifts found" but this includes experiences. "13 gifts found" when there are 10 products + 3 experiences is confusing.
 **Fix:** "10 gift ideas + 3 experiences" or just "13 personalized picks."
+
+---
+
+## PARTNER PRODUCT WIRING — Active CJ Partners Not Yet Wired
+
+### illy caffè (CJ, approved Feb 17)
+**Status:** Approved but zero product code. Currently depends on CJ GraphQL returning illy products when "espresso/coffee" is in the top 5 interests — fragile and not guaranteed.
+**What to do:**
+1. Log in to CJ dashboard → Advertisers → illy caffè → Links → Get Links
+2. Find "evergreen" link IDs for: flagship espresso set, iperEspresso capsule gift set, espresso machine
+3. Add static products to `cj_searcher.py` exactly like Peet's (`_ILLY_ALL_PRODUCTS`, `get_illy_products_for_profile()`, trigger at line ~536)
+4. Trigger interests: `coffee`, `espresso`, `italian culture`, `gourmet`, `foodie`, `cafe culture`, `cooking`
+5. T&C: Do NOT use discount language — illy ToS prohibits it
+**Commission:** 6% new customers / 4% existing. AOV ~$125. Better than Amazon (2%) and Peet's (10% but lower AOV). An espresso machine rec could earn $7-30/sale.
+**Why this matters over Amazon:** Amazon returns generic "espresso gift set" results. illy returns the category-defining brand that an espresso person actually wants. And we earn 3x the commission.
+
+### MonthlyClubs.com (CJ, approved Feb 16)
+**Status:** Approved. Gift subscriptions (beer/wine/cheese/chocolate/flowers). These are high-AOV, occasion-appropriate, and recurring revenue (subscriber buys monthly).
+**What to do:**
+1. CJ dashboard → Advertisers → MonthlyClubs → Links → Get evergreen links for top clubs
+2. Add static products for: Beer of the Month Club, Wine of the Month Club, Cheese of the Month Club, Chocolate of the Month Club
+3. Trigger interests: `beer`, `wine`, `craft beer`, `cheese`, `chocolate`, `foodie`, `gourmet`, `cooking`, `baking`, `entertaining`
+4. Estimated commission: 8-15% per CLAUDE.md
+
+### CJ GraphQL `joined_only=False` — earning zero on non-joined advertisers
+**File:** `multi_retailer_searcher.py` line 262, `cj_searcher.py` line 412
+**Problem:** `joined_only=False` means the GraphQL search returns products from ALL CJ advertisers — including ones we haven't joined and earn 0% commission on. We're potentially recommending products that generate no revenue.
+**Fix:** Change to `joined_only=True` once we've joined enough advertisers to have meaningful coverage (after MonthlyClubs, illy, and any additional approvals). This ensures every CJ product in results has a commission attached.
+**Timing:** Switch after FlexOffers approval comes in (same-day to 48h) to fill any gaps.
 
 ---
 

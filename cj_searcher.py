@@ -172,6 +172,235 @@ _PEETS_ALL_PRODUCTS = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# ILLY CAFFÈ — Static curated products (approved CJ partner, Feb 17 2026)
+# TODO: Replace PLACEHOLDER link IDs with real IDs from CJ dashboard:
+#   CJ Dashboard → Advertisers → illy caffè → Links → Get Links
+# T&C: Do NOT use discount language — illy ToS prohibits it
+# Commission: 6% new customers / 4% existing, 45-day cookie, ~$125 AOV
+# Trigger: coffee/espresso interests
+# ---------------------------------------------------------------------------
+
+_ILLY_COMPANY_ID = '101660899'  # Same publisher company ID
+
+# NOTE: Replace these PLACEHOLDER link IDs with real illy CJ link IDs
+_ILLY_ALL_PRODUCTS = [
+    {
+        'title': "illy Classico Espresso Gift Set",
+        'link': f'https://www.dpbolvw.net/click-{_ILLY_COMPANY_ID}-PLACEHOLDER_LINK_ID_1',
+        'snippet': (
+            "illy's iconic medium-roast ground espresso — the taste of Italian café culture at home. "
+            "A perfect gift for the espresso lover in your life. Single-origin Arabica beans."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'illy.com',
+        'price': '$16.99',
+        'product_id': 'illy-classico-ground',
+        'search_query': 'espresso coffee gift',
+        'interest_match': 'espresso',
+        'priority': 2,
+        'brand': 'illy',
+        'advertiser_id': 'illy-cj',
+        '_needs_real_link': True,  # Flag — remove once link ID is filled in
+    },
+    {
+        'title': "illy iperEspresso Capsule Gift Set",
+        'link': f'https://www.dpbolvw.net/click-{_ILLY_COMPANY_ID}-PLACEHOLDER_LINK_ID_2',
+        'snippet': (
+            "illy's patented iperEspresso capsules — barista-quality espresso in every cup, "
+            "no skill required. Compatible with illy X1, Y1, Y3 machines. Elegant gift packaging."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'illy.com',
+        'price': '$29.99',
+        'product_id': 'illy-iperEspresso-capsules',
+        'search_query': 'espresso capsules gift',
+        'interest_match': 'espresso',
+        'priority': 2,
+        'brand': 'illy',
+        'advertiser_id': 'illy-cj',
+        '_needs_real_link': True,
+    },
+    {
+        'title': "illy X1 iperEspresso Machine",
+        'link': f'https://www.dpbolvw.net/click-{_ILLY_COMPANY_ID}-PLACEHOLDER_LINK_ID_3',
+        'snippet': (
+            "illy's iconic espresso machine — authentic Italian espresso at the press of a button. "
+            "Sleek design, one-touch operation. Includes 21-count iperEspresso capsule starter kit."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'illy.com',
+        'price': '$179.00',
+        'product_id': 'illy-x1-machine',
+        'search_query': 'espresso machine gift',
+        'interest_match': 'espresso',
+        'priority': 2,
+        'brand': 'illy',
+        'advertiser_id': 'illy-cj',
+        '_needs_real_link': True,
+    },
+]
+
+_ILLY_TRIGGER_INTERESTS = {
+    'coffee', 'espresso', 'italian culture', 'gourmet', 'foodie',
+    'cafe culture', 'cooking', 'specialty coffee', 'morning routine',
+    'gourmet food', 'coffee culture',
+}
+
+
+def get_illy_products_for_profile(profile):
+    """
+    Return curated illy caffè products when the profile has matching interests.
+
+    illy has no product feed via CJ — static list using CJ tracking links.
+    TODO: Fill in real CJ link IDs from dashboard before enabling.
+
+    T&C: Do NOT use discount language — illy ToS prohibits it.
+    Commission: 6% new / 4% existing, 45-day cookie.
+    """
+    # Check if any link IDs are still placeholders — don't serve broken links
+    if any(p.get('_needs_real_link') for p in _ILLY_ALL_PRODUCTS):
+        logger.debug("illy products skipped — link IDs not yet filled in (see TODO in cj_searcher.py)")
+        return []
+
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    matched = interest_names & _ILLY_TRIGGER_INTERESTS
+    if not matched:
+        for name in interest_names:
+            for trigger in _ILLY_TRIGGER_INTERESTS:
+                if trigger in name or name in trigger:
+                    matched.add(name)
+                    break
+
+    if not matched:
+        return []
+
+    logger.info(f"illy caffè triggered by profile interests: {matched}")
+    return list(_ILLY_ALL_PRODUCTS)
+
+
+# ---------------------------------------------------------------------------
+# MONTHYCLUBS.COM — Static curated products (approved CJ partner, Feb 16 2026)
+# TODO: Replace PLACEHOLDER link IDs with real IDs from CJ dashboard:
+#   CJ Dashboard → Advertisers → MonthlyClubs.com → Links → Get Links
+# Commission: 8-15% per CLAUDE.md, high AOV gift subscriptions
+# Trigger: beer/wine/cheese/chocolate/foodie/gourmet interests
+# ---------------------------------------------------------------------------
+
+_MONTHLYCLUBS_ALL_PRODUCTS = [
+    {
+        'title': "Beer of the Month Club — Craft Beer Subscription",
+        'link': f'https://www.dpbolvw.net/click-{_ILLY_COMPANY_ID}-PLACEHOLDER_MC_LINK_1',
+        'snippet': (
+            "Monthly delivery of 12 handcrafted beers from small-batch breweries across the country. "
+            "Includes tasting notes and brewery stories. Perfect for the craft beer enthusiast."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'monthlyclub.com',
+        'price': 'From $42.95/month',
+        'product_id': 'mc-beer-club',
+        'search_query': 'craft beer subscription gift',
+        'interest_match': 'craft beer',
+        'priority': 2,
+        'brand': 'MonthlyClubs',
+        'advertiser_id': 'monthyclubs-cj',
+        '_needs_real_link': True,
+    },
+    {
+        'title': "Wine of the Month Club — Wine Subscription",
+        'link': f'https://www.dpbolvw.net/click-{_ILLY_COMPANY_ID}-PLACEHOLDER_MC_LINK_2',
+        'snippet': (
+            "Two expertly selected wines delivered monthly — mix of reds, whites, and international varietals. "
+            "Includes vintage notes and food pairing suggestions. A gift that keeps giving."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'monthlyclub.com',
+        'price': 'From $42.95/month',
+        'product_id': 'mc-wine-club',
+        'search_query': 'wine subscription gift',
+        'interest_match': 'wine',
+        'priority': 2,
+        'brand': 'MonthlyClubs',
+        'advertiser_id': 'monthlyclubs-cj',
+        '_needs_real_link': True,
+    },
+    {
+        'title': "Cheese of the Month Club",
+        'link': f'https://www.dpbolvw.net/click-{_ILLY_COMPANY_ID}-PLACEHOLDER_MC_LINK_3',
+        'snippet': (
+            "4 artisan cheeses selected from small creameries monthly — domestic and international varieties. "
+            "Each shipment includes a cheese guide and pairing recommendations."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'monthlyclub.com',
+        'price': 'From $42.95/month',
+        'product_id': 'mc-cheese-club',
+        'search_query': 'cheese subscription gift',
+        'interest_match': 'cheese',
+        'priority': 2,
+        'brand': 'MonthlyClubs',
+        'advertiser_id': 'monthlyclubs-cj',
+        '_needs_real_link': True,
+    },
+]
+
+_MONTHLYCLUBS_TRIGGER_INTERESTS = {
+    'beer', 'craft beer', 'wine', 'cheese', 'chocolate', 'foodie',
+    'gourmet', 'gourmet food', 'entertaining', 'cooking', 'drinking',
+    'wine tasting', 'brewery', 'charcuterie', 'brunch',
+}
+
+
+def get_monthlyclubs_products_for_profile(profile):
+    """
+    Return MonthlyClubs subscription products when the profile has matching interests.
+
+    TODO: Fill in real CJ link IDs from dashboard before enabling.
+    Commission: 8-15%.
+    """
+    if any(p.get('_needs_real_link') for p in _MONTHLYCLUBS_ALL_PRODUCTS):
+        logger.debug("MonthlyClubs products skipped — link IDs not yet filled in (see TODO in cj_searcher.py)")
+        return []
+
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    matched = interest_names & _MONTHLYCLUBS_TRIGGER_INTERESTS
+    if not matched:
+        for name in interest_names:
+            for trigger in _MONTHLYCLUBS_TRIGGER_INTERESTS:
+                if trigger in name or name in trigger:
+                    matched.add(name)
+                    break
+
+    if not matched:
+        return []
+
+    logger.info(f"MonthlyClubs triggered by profile interests: {matched}")
+
+    # Select products relevant to matched interests
+    relevant = []
+    for p in _MONTHLYCLUBS_ALL_PRODUCTS:
+        if p['interest_match'] in interest_names or any(t in interest_names for t in _MONTHLYCLUBS_TRIGGER_INTERESTS):
+            relevant.append(p)
+
+    return relevant[:2]  # Cap at 2 — subscription products take up significant card space
+
+
 def get_peets_products_for_profile(profile):
     """
     Return curated Peet's Coffee products when the profile has matching interests.
@@ -529,11 +758,21 @@ def search_products_cj(profile, api_key, company_id=None, publisher_id=None, tar
             logger.error(f"Unexpected error in CJ search for '{term}': {e}")
             continue
 
-    # Inject Peet's static curated products (no product feed via CJ)
+    # Inject static curated products for partners with no CJ product feed
     peets_products = get_peets_products_for_profile(profile)
     if peets_products:
         all_products.extend(peets_products)
         logger.info(f"Added {len(peets_products)} Peet's Coffee static products")
+
+    illy_products = get_illy_products_for_profile(profile)
+    if illy_products:
+        all_products.extend(illy_products)
+        logger.info(f"Added {len(illy_products)} illy caffè static products")
+
+    mc_products = get_monthlyclubs_products_for_profile(profile)
+    if mc_products:
+        all_products.extend(mc_products)
+        logger.info(f"Added {len(mc_products)} MonthlyClubs static products")
 
     # Deduplicate by product ID
     seen_ids = set()

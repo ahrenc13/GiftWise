@@ -172,7 +172,18 @@ def get_experience_providers(experience_name, location='', description=''):
         return []
 
     providers = _PROVIDERS[category]
-    query = quote(experience_name[:80])
+
+    # For concerts/sports: strip venue noise words to surface the artist/team name in the search.
+    # "Chappell Roan Concert Night" → "Chappell Roan" finds the right tickets.
+    raw_query = experience_name[:80]
+    if category in ('concerts', 'sports_events'):
+        raw_query = re.sub(
+            r'\b(concert|show|tour|live|night|tickets?|event|game|match)\b',
+            '', raw_query, flags=re.IGNORECASE
+        ).strip()
+        raw_query = re.sub(r'\s+', ' ', raw_query).strip() or experience_name[:80]
+
+    query = quote(raw_query)
     loc_slug = _slugify_location(location)
     loc_encoded = quote(location[:60]) if location else ''
 

@@ -327,11 +327,11 @@ SPOTIFY MUSIC PREFERENCES:
                 client_secret=os.environ.get('SPOTIFY_CLIENT_SECRET', '')
             )
             if parse_result['success'] and parse_result['artists']:
-                lines = [f"Top artists: {', '.join(parse_result['artists'][:20])}"]
+                lines = [f"Top artists: {', '.join(parse_result['artists'][:50])}"]
                 if parse_result.get('genres'):
                     lines.append(f"Genres: {', '.join(parse_result['genres'][:20])}")
                 if parse_result.get('tracks'):
-                    lines.append(f"Sample tracks: {', '.join(parse_result['tracks'][:15])}")
+                    lines.append(f"Sample tracks: {', '.join(parse_result['tracks'][:30])}")
                 data_summary.append(f"""
 SPOTIFY MUSIC PREFERENCES:
 

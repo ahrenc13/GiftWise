@@ -270,9 +270,14 @@ def fetch_spotify_data(access_token):
         # Extract data
         artists = []
         genres = []
+        artist_images = {}  # {artist_name: image_url} for experience thumbnails
         for artist in top_artists.get('items', []):
             artists.append(artist['name'])
             genres.extend(artist.get('genres', []))
+            # Spotify returns images sorted largest→smallest; grab highest quality
+            images = artist.get('images', [])
+            if images:
+                artist_images[artist['name']] = images[0]['url']
         
         from collections import Counter
         genre_counts = Counter(genres)
@@ -295,6 +300,7 @@ def fetch_spotify_data(access_token):
             'top_genres': dict(genre_counts.most_common(20)),
             'top_tracks': tracks[:50],
             'playlists': playlist_names,
+            'artist_images': artist_images,  # Used for experience card thumbnails
             'collected_at': time.time()
         }
     

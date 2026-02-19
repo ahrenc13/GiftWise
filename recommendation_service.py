@@ -226,9 +226,18 @@ class RecommendationService:
     def _build_profile(self, user_id: str, platforms: List[Dict], recipient_type: str,
                       relationship: str, approved_profile: Optional[Dict]) -> Dict:
         """Build or use approved recipient profile."""
+        # Tailor progress message: Spotify-only has no posts to read
+        spotify_data = platforms.get('spotify', {}).get('data', {}) if isinstance(platforms, dict) else {}
+        has_social_posts = any(
+            platforms.get(p, {}).get('data', {})
+            for p in ('instagram', 'tiktok', 'pinterest')
+        ) if isinstance(platforms, dict) else True
+        is_spotify_only = bool(spotify_data) and not has_social_posts
+
         self.progress_callback(
             stage='profile_analysis',
-            stage_label='Building a personality profile from their posts...'
+            stage_label='Analyzing their music taste and listening history...' if is_spotify_only
+                        else 'Building a personality profile from their posts...'
         )
 
         if approved_profile:
@@ -243,6 +252,14 @@ class RecommendationService:
 
         if not profile.get('interests'):
             raise ValueError('Unable to extract enough information from social media. Please connect more platforms or ensure profiles are public.')
+
+        # Inject Spotify artist images for experience thumbnails.
+        # These are raw API data (not Claude output) so we add them after profile is returned,
+        # whether it came from cache or from a fresh Claude call.
+        artist_images = spotify_data.get('artist_images', {})
+        if artist_images:
+            profile['spotify_artist_images'] = artist_images
+            logger.info(f"Injected {len(artist_images)} Spotify artist images into profile")
 
         return profile
 
@@ -673,6 +690,30 @@ class RecommendationService:
             # Use estimated_price from curator if available, otherwise "Variable"
             price_range = (exp.get('estimated_price') or '').strip() or 'Variable'
 
+            # Thumbnail waterfall for experiences:
+            # 1. Spotify artist photo — for concert/music experiences where we know the artist
+            # 2. First matched material thumbnail — for DIY experiences (shows the centrepiece item)
+            # 3. Empty string — template renders category emoji as fallback
+            exp_image_url = ''
+            artist_images = profile.get('spotify_artist_images', {})
+            if exp_category == 'concerts' and artist_images:
+                exp_name_lower = exp_name.lower()
+                for artist_name, img_url in artist_images.items():
+                    if artist_name.lower() in exp_name_lower:
+                        exp_image_url = img_url
+                        logger.info(f"Experience thumbnail: matched artist '{artist_name}' for '{exp_name}'")
+                        break
+                # If no direct name match, use the top artist as a generic music thumbnail
+                if not exp_image_url:
+                    exp_image_url = next(iter(artist_images.values()), '')
+            if not exp_image_url and is_diy and materials_list:
+                for m in materials_list:
+                    thumb = m.get('thumbnail')
+                    if thumb:
+                        exp_image_url = thumb
+                        logger.debug(f"Experience thumbnail: using material thumbnail for '{exp_name}'")
+                        break
+
             recommendations.append({
                 'name': exp.get('name', 'Experience Gift'),
                 'description': full_description,
@@ -685,7 +726,7 @@ class RecommendationService:
                 'venue_website': venue_website or None,
                 'experience_search_fallback': experience_search_fallback,
                 'experience_providers': experience_provider_links,
-                'image_url': '',
+                'image_url': exp_image_url,
                 'gift_type': 'experience',
                 'experience_category': exp_category,
                 'confidence_level': exp.get('confidence_level', 'adventurous'),

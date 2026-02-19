@@ -678,7 +678,17 @@ input[type="range"] {
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                         <div class="rec-image-placeholder" style="display: none;">🎁</div>
                         {% elif rec.gift_type == 'experience' %}
+                        {% if rec.image_url %}
+                        <img src="{{ rec.image_url }}"
+                             alt="{{ rec.name }}"
+                             class="rec-image"
+                             loading="lazy"
+                             style="object-position: center top;"
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div class="rec-image-placeholder" style="display: none; background: linear-gradient(135deg, #7c3aed, #a855f7); font-size: 2.8em;">
+                        {% else %}
                         <div class="rec-image-placeholder" style="background: linear-gradient(135deg, #7c3aed, #a855f7); font-size: 2.8em;">
+                        {% endif %}
                             {% if rec.experience_category == 'cooking_class' %}👨‍🍳
                             {% elif rec.experience_category == 'art_class' %}🎨
                             {% elif rec.experience_category == 'concerts' %}🎵

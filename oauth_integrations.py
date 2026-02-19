@@ -291,9 +291,9 @@ def fetch_spotify_data(access_token):
         return {
             'platform': 'spotify',
             'method': 'oauth',
-            'top_artists': artists[:20],
-            'top_genres': dict(genre_counts.most_common(15)),
-            'top_tracks': tracks[:20],
+            'top_artists': artists[:50],
+            'top_genres': dict(genre_counts.most_common(20)),
+            'top_tracks': tracks[:50],
             'playlists': playlist_names,
             'collected_at': time.time()
         }

@@ -274,17 +274,17 @@ CRITICAL NOTE: Pinterest boards are explicit wishlists - they're pinning exactly
     if spotify_artists:
         # Build a rich music section — artists, genres, and sample tracks all carry signal
         lines = []
-        lines.append(f"Top artists: {', '.join(spotify_artists[:20])}")
+        lines.append(f"Top artists: {', '.join(spotify_artists)}")
 
         if spotify_genres:
-            lines.append(f"Genres: {', '.join(spotify_genres[:20])}")
+            lines.append(f"Genres: {', '.join(spotify_genres)}")
 
         if spotify_tracks:
             # Sample tracks give a taste/vibe signal beyond just artist names
             # Tracks may be dicts {'name': ..., 'artist': ...} (OAuth) or plain strings (manual)
             track_labels = [
                 f"{t['name']} - {t['artist']}" if isinstance(t, dict) else str(t)
-                for t in spotify_tracks[:15]
+                for t in spotify_tracks[:30]
             ]
             lines.append(f"Sample tracks: {', '.join(track_labels)}")
 

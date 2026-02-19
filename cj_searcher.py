@@ -668,9 +668,22 @@ def search_products_cj(profile, api_key, company_id=None, publisher_id=None, tar
 
     Note: Set joined_only=False to search ALL CJ advertisers (recommended until you join more)
     """
+    # Always inject static partners — they don't need CJ API credentials.
+    # Collecting them here so they're returned even if CJ GraphQL is unavailable.
+    static_products = []
+    for getter, label in [
+        (get_peets_products_for_profile, "Peet's Coffee"),
+        (get_illy_products_for_profile, "illy caffè"),
+        (get_monthlyclubs_products_for_profile, "MonthlyClubs"),
+    ]:
+        products = getter(profile)
+        if products:
+            static_products.extend(products)
+            logger.info(f"Static partner: {len(products)} {label} products matched profile")
+
     if not api_key:
-        logger.warning("CJ API key not provided - skipping CJ search")
-        return []
+        logger.info(f"CJ API key not set — returning {len(static_products)} static partner products only")
+        return static_products
 
     # Use provided credentials or fall back to environment
     cid = company_id or CJ_COMPANY_ID
@@ -770,21 +783,8 @@ def search_products_cj(profile, api_key, company_id=None, publisher_id=None, tar
             logger.error(f"Unexpected error in CJ search for '{term}': {e}")
             continue
 
-    # Inject static curated products for partners with no CJ product feed
-    peets_products = get_peets_products_for_profile(profile)
-    if peets_products:
-        all_products.extend(peets_products)
-        logger.info(f"Added {len(peets_products)} Peet's Coffee static products")
-
-    illy_products = get_illy_products_for_profile(profile)
-    if illy_products:
-        all_products.extend(illy_products)
-        logger.info(f"Added {len(illy_products)} illy caffè static products")
-
-    mc_products = get_monthlyclubs_products_for_profile(profile)
-    if mc_products:
-        all_products.extend(mc_products)
-        logger.info(f"Added {len(mc_products)} MonthlyClubs static products")
+    # Merge static partner products with GraphQL results and deduplicate
+    all_products.extend(static_products)
 
     # Deduplicate by product ID
     seen_ids = set()

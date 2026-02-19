@@ -174,8 +174,10 @@ _PEETS_ALL_PRODUCTS = [
 
 # ---------------------------------------------------------------------------
 # ILLY CAFFÈ — Static curated products (approved CJ partner, Feb 17 2026)
-# TODO: Replace PLACEHOLDER link IDs with real IDs from CJ dashboard:
-#   CJ Dashboard → Advertisers → illy caffè → Links → Get Links
+# Evergreen link ID 15734901 — deep-link enabled, $48.81 EPC
+#   Base: https://www.dpbolvw.net/click-101660899-15734901
+#   Deep-link: append ?url=encoded_destination to route to specific illy pages
+# ADV_CID: 2184930
 #
 # Commission: 6% new customers / 4% existing, 45-day cookie
 # T&C (strictly enforced — illy audits publisher content):
@@ -189,14 +191,24 @@ _PEETS_ALL_PRODUCTS = [
 
 _ILLY_COMPANY_ID = '101660899'  # Same publisher company ID
 
-# NOTE: Replace these PLACEHOLDER link IDs with real illy CJ link IDs
+# Evergreen link (ID 15734901) — deep-link enabled, use for specific product pages
+_ILLY_EVERGREEN_BASE = "https://www.dpbolvw.net/click-101660899-15734901"
+
+
+def _illy_deep_link(path):
+    """Build a CJ deep link to a specific illy.com page."""
+    destination = f"https://www.illy.com{path}"
+    return f"{_ILLY_EVERGREEN_BASE}?url={urllib.parse.quote(destination, safe='')}"
+
+
 _ILLY_ALL_PRODUCTS = [
     {
-        'title': "illy Classico Espresso Gift Set",
-        'link': f'https://www.dpbolvw.net/click-{_ILLY_COMPANY_ID}-PLACEHOLDER_LINK_ID_1',
+        # Evergreen deep link → illy ground coffee category
+        'title': "illy Classico Medium Roast Ground Coffee",
+        'link': _illy_deep_link('/en-us/coffee/ground-coffee'),
         'snippet': (
-            "illy's iconic medium-roast ground espresso — the taste of Italian café culture at home. "
-            "A perfect gift for the espresso lover in your life. Single-origin Arabica beans."
+            "illy's signature medium-roast ground espresso — the taste of Italian café culture at home. "
+            "Single-origin Arabica beans, perfectly balanced with notes of caramel and jasmine."
         ),
         'image': '',
         'thumbnail': '',
@@ -209,34 +221,34 @@ _ILLY_ALL_PRODUCTS = [
         'priority': 2,
         'brand': 'illy',
         'advertiser_id': 'illy-cj',
-        '_needs_real_link': True,  # Flag — remove once link ID is filled in
     },
     {
-        'title': "illy iperEspresso Capsule Gift Set",
-        'link': f'https://www.dpbolvw.net/click-{_ILLY_COMPANY_ID}-PLACEHOLDER_LINK_ID_2',
+        # Evergreen deep link → illy iperEspresso capsules category
+        'title': "illy iperEspresso Capsules",
+        'link': _illy_deep_link('/en-us/coffee/iperespresso-capsules'),
         'snippet': (
             "illy's patented iperEspresso capsules — barista-quality espresso in every cup, "
-            "no skill required. Compatible with illy X1, Y1, Y3 machines. Elegant gift packaging."
+            "no skill required. Compatible with illy X1, Y1, Y3 machines. Eight roast varieties."
         ),
         'image': '',
         'thumbnail': '',
         'image_url': '',
         'source_domain': 'illy.com',
-        'price': '$29.99',
+        'price': '$12.99',
         'product_id': 'illy-iperEspresso-capsules',
         'search_query': 'espresso capsules gift',
         'interest_match': 'espresso',
         'priority': 2,
         'brand': 'illy',
         'advertiser_id': 'illy-cj',
-        '_needs_real_link': True,
     },
     {
-        'title': "illy X1 iperEspresso Machine",
-        'link': f'https://www.dpbolvw.net/click-{_ILLY_COMPANY_ID}-PLACEHOLDER_LINK_ID_3',
+        # Evergreen deep link → illy espresso machines category
+        'title': "illy iperEspresso Machine",
+        'link': _illy_deep_link('/en-us/coffee-machines'),
         'snippet': (
             "illy's iconic espresso machine — authentic Italian espresso at the press of a button. "
-            "Sleek design, one-touch operation. Includes 21-count iperEspresso capsule starter kit."
+            "Sleek design, one-touch operation. Includes a starter kit of iperEspresso capsules."
         ),
         'image': '',
         'thumbnail': '',
@@ -249,7 +261,6 @@ _ILLY_ALL_PRODUCTS = [
         'priority': 2,
         'brand': 'illy',
         'advertiser_id': 'illy-cj',
-        '_needs_real_link': True,
     },
 ]
 
@@ -264,17 +275,12 @@ def get_illy_products_for_profile(profile):
     """
     Return curated illy caffè products when the profile has matching interests.
 
-    illy has no product feed via CJ — static list using CJ tracking links.
-    TODO: Fill in real CJ link IDs from dashboard before enabling.
+    illy has no product feed via CJ — static list using CJ deep links off
+    Evergreen link ID 15734901. ADV_CID: 2184930.
 
     T&C: Do NOT use discount language — illy ToS prohibits it.
     Commission: 6% new / 4% existing, 45-day cookie.
     """
-    # Check if any link IDs are still placeholders — don't serve broken links
-    if any(p.get('_needs_real_link') for p in _ILLY_ALL_PRODUCTS):
-        logger.debug("illy products skipped — link IDs not yet filled in (see TODO in cj_searcher.py)")
-        return []
-
     interests = profile.get('interests', [])
     interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
 

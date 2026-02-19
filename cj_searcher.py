@@ -603,21 +603,21 @@ def _parse_graphql_response(data, search_term):
                 else:
                     price_str = "Price varies"
 
-                # Extract affiliate tracking link
-                # linkCode is None for advertisers you haven't joined
+                # Extract affiliate tracking link.
+                # linkCode is None for advertisers you haven't joined —
+                # those are non-joined global retailers (Martinus.cz, Hood.de,
+                # OnBuy.com, etc.) we can't earn commission from. Skip them.
                 link_code = item.get('linkCode')
-                if link_code and isinstance(link_code, dict):
-                    tracking_url = link_code.get('clickUrl', '')
-                else:
-                    tracking_url = ''
+                if not link_code or not isinstance(link_code, dict):
+                    logger.debug(
+                        f"Skipping non-joined advertiser: {item.get('advertiserName')} "
+                        f"— {(item.get('title') or '')[:50]}"
+                    )
+                    continue
 
-                # Fall back to direct link if no tracking link
+                tracking_url = link_code.get('clickUrl', '')
                 if not tracking_url:
-                    tracking_url = item.get('link', '')
-
-                # Skip products without any link
-                if not tracking_url:
-                    logger.warning(f"Skipping product without link: {item.get('title')}")
+                    logger.debug(f"Skipping product with empty click URL: {(item.get('title') or '')[:50]}")
                     continue
 
                 # Map to GiftWise standard format

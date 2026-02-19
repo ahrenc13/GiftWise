@@ -306,7 +306,7 @@ Return ONLY the JSON object, no markdown, no backticks"""
 
         message = claude_client.messages.create(
             model=model,
-            max_tokens=5000,
+            max_tokens=8192,
             messages=[{"role": "user", "content": prompt}],
             timeout=300.0
         )

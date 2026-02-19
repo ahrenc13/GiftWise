@@ -215,7 +215,6 @@ Return JSON:
       "name": "SHORT human-friendly name (e.g. 'Taylor Swift Eras Tour Poster' NOT 'Taylor Swift The Eras Tour Official Merch Concert Poster Wall Art Home Decor 24x36 Unframed')",
       "description": "what it is",
       "why_perfect": "DETAILED explanation citing SPECIFIC profile evidence (e.g., 'Based on {pronoun_possessive} 47 Taylor Swift TikToks and visits to Eras Tour watch parties, this captures {pronoun_possessive} Swiftie obsession' not just 'perfect for someone who loves Taylor Swift')",
-      "price": "from product",
       "where_to_buy": "domain",
       "product_url": "exact URL from list",
       "confidence_level": "safe_bet|adventurous",

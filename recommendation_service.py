@@ -519,7 +519,7 @@ class RecommendationService:
 
         # Add physical products
         all_recommendations.extend(self._format_product_recommendations(
-            product_gifts, valid_product_urls, product_url_to_image
+            product_gifts, valid_product_urls, product_url_to_image, products
         ))
 
         # Add experience gifts
@@ -556,8 +556,19 @@ class RecommendationService:
 
     def _format_product_recommendations(self, product_gifts: List[Dict],
                                        valid_product_urls: set,
-                                       product_url_to_image: Dict[str, str]) -> List[Dict]:
+                                       product_url_to_image: Dict[str, str],
+                                       inventory: List[Dict] = None) -> List[Dict]:
         """Format physical product recommendations."""
+        # Build URL→price lookup from inventory pool — source of truth for price.
+        # The curator doesn't output price (removed from schema to avoid "from product" literal).
+        url_to_price: Dict[str, str] = {}
+        for p in (inventory or []):
+            raw = (p.get('link') or '').strip()
+            price_val = (p.get('price') or '').strip()
+            if raw and price_val:
+                url_to_price[raw] = price_val
+                url_to_price[self.normalize_product_url(raw)] = price_val
+
         recommendations = []
 
         for gift in product_gifts:
@@ -577,11 +588,8 @@ class RecommendationService:
             if not product_url:
                 continue
 
-            # Normalize junk price values the curator sometimes outputs
-            _JUNK_PRICES = {'not specified', 'unknown', 'price unknown', 'n/a', 'none',
-                            'from product', '', 'varies', 'variable', 'see website'}
-            raw_price = (gift.get('price') or '').strip()
-            price_display = raw_price if raw_price.lower() not in _JUNK_PRICES else ''
+            # Look up price from inventory pool (reliable) rather than curator output (unreliable)
+            price_display = url_to_price.get(product_url) or url_to_price.get(self.normalize_product_url(product_url), '')
 
             recommendations.append({
                 'name': gift.get('name', 'Unknown Product'),

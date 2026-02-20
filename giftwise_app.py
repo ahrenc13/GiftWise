@@ -95,6 +95,9 @@ from url_utils import (
 # Apify scraper utilities (eliminates Instagram + TikTok duplication)
 from apify_utils import scrape_instagram_apify, scrape_tiktok_apify
 
+# Rate limiting (1 full pipeline run per IP per 24 hours)
+from database import check_and_record_pipeline_run
+
 
 def profile_for_search_and_curation(profile):
     """
@@ -2404,7 +2407,19 @@ def generate_recommendations_route():
     user_id = session.get('user_id')
     if not user_id:
         return redirect('/signup')
-    
+
+    # RATE LIMITING: 1 full pipeline run per IP per 24 hours
+    # Admin emails (set via ADMIN_EMAILS env var) bypass the limit for testing
+    user_email = user.get('email', '').strip().lower()
+    admin_emails = [e.strip().lower() for e in os.getenv('ADMIN_EMAILS', '').split(',') if e.strip()]
+    is_admin = user_email in admin_emails
+    if not is_admin:
+        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+        allowed, reset_time = check_and_record_pipeline_run(client_ip)
+        if not allowed:
+            reset_str = reset_time.strftime('%-I:%M %p') if reset_time else 'tomorrow'
+            return render_template('rate_limited.html', reset_time=reset_str), 429
+
     platforms = user.get('platforms', {})
     
     # Check for timed out scraping (status='scraping' for >3 minutes)

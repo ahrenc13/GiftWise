@@ -168,6 +168,14 @@ def init_database():
 
         cursor.execute("CREATE INDEX IF NOT EXISTS idx_interest_times_seen ON interest_intelligence(times_seen)")
 
+        # Rate limits table (per-IP, 1 full pipeline run per 24 hours)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS rate_limits (
+                ip TEXT PRIMARY KEY,
+                last_run TIMESTAMP NOT NULL
+            )
+        """)
+
         logger.info("Database schema initialized (with product/interest intelligence)")
 
     # Seed interest intelligence from enrichment_data.py if table is empty
@@ -621,6 +629,45 @@ def increment_interest_seen(interest_name: str):
                 times_seen = times_seen + 1,
                 last_updated = ?
         """, (interest_name.lower(), datetime.now().isoformat(), datetime.now().isoformat()))
+
+
+# =============================================================================
+# RATE LIMITING
+# =============================================================================
+
+def check_and_record_pipeline_run(ip: str) -> tuple:
+    """
+    Check if an IP is allowed to run the full pipeline (1 run per 24 hours).
+    Records the run atomically if allowed.
+
+    Returns:
+        (allowed: bool, reset_time: datetime | None)
+        - (True, None) if allowed (first run or >24h since last run)
+        - (False, reset_time) if rate limited
+    """
+    now = datetime.now()
+    window = timedelta(hours=24)
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        # Check existing record
+        cursor.execute("SELECT last_run FROM rate_limits WHERE ip = ?", (ip,))
+        row = cursor.fetchone()
+
+        if row:
+            last_run = datetime.fromisoformat(row['last_run'])
+            elapsed = now - last_run
+            if elapsed < window:
+                reset_time = last_run + window
+                return False, reset_time
+
+        # Allowed — record this run (INSERT OR REPLACE is atomic)
+        cursor.execute(
+            "INSERT OR REPLACE INTO rate_limits (ip, last_run) VALUES (?, ?)",
+            (ip, now.isoformat())
+        )
+        return True, None
 
 
 # =============================================================================

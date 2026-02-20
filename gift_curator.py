@@ -215,7 +215,6 @@ Return JSON:
       "name": "SHORT human-friendly name (e.g. 'Taylor Swift Eras Tour Poster' NOT 'Taylor Swift The Eras Tour Official Merch Concert Poster Wall Art Home Decor 24x36 Unframed')",
       "description": "what it is",
       "why_perfect": "DETAILED explanation citing SPECIFIC profile evidence (e.g., 'Based on {pronoun_possessive} 47 Taylor Swift TikToks and visits to Eras Tour watch parties, this captures {pronoun_possessive} Swiftie obsession' not just 'perfect for someone who loves Taylor Swift')",
-      "price": "from product",
       "where_to_buy": "domain",
       "product_url": "exact URL from list",
       "confidence_level": "safe_bet|adventurous",
@@ -270,6 +269,7 @@ EXPERIENCE GIFTS:
 - materials_needed: Items the gift-giver buys IN ADVANCE to prepare or elevate the experience.
   * GOOD: "Watercolor paint set" for an art class, "Portable Bluetooth speaker" for a picnic, "Dog life jacket" for a lake day
   * BAD: "Water bottles" (everyone has these), "Tickets" (that's the booking, not a material), "Concert merch" (bought at the event), "Good vibes" (not a product)
+  * NEVER suggest vinyl records, CDs, DVDs, or Blu-rays as materials — assume the recipient streams music and movies on Spotify/Apple Music/Netflix. The only exception: if the profile explicitly lists vinyl collecting, record collecting, or physical media as a stated passion.
   * Only include item name + estimated_price. We match products and add links automatically.
   * If the experience needs no advance purchases (e.g., restaurant dinner), use an empty list []
 - how_to_execute: Write 3-5 SHORT sentences the gift-giver can act on. Be specific: "Search Cozymeal for Thai cooking classes in their city" not "Find a local cooking class."

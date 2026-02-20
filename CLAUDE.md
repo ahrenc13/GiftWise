@@ -15,6 +15,129 @@
 - **Logs:** Railway dashboard → Deployments → View Logs (or `railway logs` via CLI)
 - **Database:** Uses shelve (ephemeral filesystem) — consider migrating to Railway Postgres for persistence across deploys
 
+## How to Test Changes Before Going Live (Beginner Guide)
+
+The golden rule: **main branch = production = real users see it.** Every other branch is safe to experiment on.
+
+### The Safe Workflow (Do This Every Time)
+
+```
+1. Claude makes changes on a feature branch (e.g. claude/fix-something)
+2. Push to that branch — only affects GitHub, NOT production
+3. Test it:
+   - Option A (best): Run locally on your machine → python giftwise_app.py → open http://localhost:5000
+   - Option B (easy): In Railway dashboard → your project → click "New Deployment" → deploy from branch
+     This creates a separate live URL (like abc-branch.up.railway.app) — real internet, not production
+   - Option C (risky, only for tiny safe changes): Merge directly to main
+4. If it looks good → create a GitHub Pull Request from the feature branch → merge to main
+5. Railway sees main changed → auto-deploys to giftwise.fit
+```
+
+### What Can Break vs. What's Safe
+
+**Safe to merge without local testing:**
+- Text/copy changes in templates
+- Adding a new guide or blog post page
+- Adjusting a prompt in gift_curator.py or profile_analyzer.py
+- Adding a new static affiliate product (Peet's, illy, etc.)
+- Changing log messages
+
+**Always test locally or in Railway preview first:**
+- Any change to giftwise_app.py routes
+- Any change to search/curation pipeline
+- New imports or new Python files
+- Changes to database.py or storage_service.py
+- Anything involving API keys or environment variables
+
+### How to Run Locally (One-Time Setup)
+
+```bash
+# In the GiftWise folder:
+python giftwise_app.py
+
+# Then open browser to:
+http://localhost:5000/demo          # Test without real social data
+http://localhost:5000/demo?admin=true   # Test with real pipeline (@chadahren)
+```
+
+Your local machine uses a .env file (or exported shell variables) for API keys. Railway uses its own Variables dashboard. They're separate — changing one doesn't affect the other.
+
+### How to Test in Railway Without Touching Production
+
+1. Go to railway.app → your GiftWise project
+2. Click your service → "Deployments" tab
+3. Click "Deploy" → choose "Deploy from branch" → pick your feature branch
+4. Railway gives you a temporary URL for that deploy
+5. Test it at that URL
+6. If good: merge your branch to main on GitHub → production updates automatically
+
+### The Nuclear Option (If Something Breaks on Production)
+
+In Railway → Deployments → find the last working deployment → click "Redeploy". This rolls back to the previous version in about 60 seconds. No code changes needed.
+
+---
+
+## Paywall Decision Framework
+
+**Current status (Feb 2026): Paywall is NOT enforced. All users get full free access.**
+
+### The Economics
+
+- Claude API cost per session: ~$0.10 (Sonnet, both profile + curator calls)
+- Affiliate revenue per session: ~$0.00–$0.05 (most visitors don't buy; commissions only on purchases)
+- Railway hosting: ~$5–20/month (fixed, doesn't scale with sessions)
+
+**Implication:** You are currently subsidizing every user's session. That's intentional — you need traffic before you can monetize.
+
+### Paywall Trigger Thresholds
+
+These are the specific signals to watch in the Railway logs and admin dashboard (`/admin/stats?key=ADMIN_DASHBOARD_KEY`):
+
+| Threshold | Meaning | Action |
+|-----------|---------|--------|
+| **< 5 sessions/day avg** | Growth phase — API cost ~$15/mo, negligible | Keep fully free. Do not restrict anything. |
+| **5–15 sessions/day** | Early traction | Add 1 run/day rate limiting per IP. Still free. Watch whether affiliate clicks are growing. |
+| **15–30 sessions/day sustained** | Real traffic | Calculate: (sessions × $0.10) vs affiliate revenue in Railway affiliate click logs. If cost >> revenue for 2+ weeks, add account requirement. |
+| **30+ sessions/day AND affiliate revenue not catching up** | Paywall decision point | Soft paywall: require free account creation (just email) to run the full pipeline. No charge yet. |
+| **Paying users exist** | Only then | Hard paywall with Stripe. A paywall with zero paying customers is just a conversion-killer. |
+
+### How to Check Your Session Count
+
+```
+Railway dashboard → your project → Metrics tab
+→ Look at "Requests" over the past 7 days
+→ Divide by 7 = avg sessions/day
+
+OR:
+Admin dashboard: /admin/stats?key=YOUR_KEY
+→ "rec_run" events = sessions that ran the full pipeline
+```
+
+### Before You Ever Flip a Paywall
+
+1. **Inventory must be good first.** Paywalling thin results (Amazon + eBay only, ~30 products) is a conversion disaster. Wait until Skimlinks/Awin/CJ are live.
+2. **TikTok moment:** If the kid posts and traffic spikes, do NOT paywall during that window. Let people run it free, collect emails, build the waitlist. Monetize the warm audience later.
+3. **First paywall should be soft:** Require account creation (free, just email), not payment. This gives you email addresses, lets you track users, and creates a "you're in" feeling without friction.
+4. **Rate limiting before paywalling:** 1 run per IP per day stops abuse while keeping the product free. Implement this before any payment requirement.
+
+### What the Subscription Tiers Are (Not Yet Enforced)
+
+The code has tier infrastructure built (see `giftwise_app.py` lines ~634+). Planned tiers:
+- **Free:** Full access, 1 run/day rate limit
+- **Pro ($4.99–$7.99/month):** Multiple profiles, monthly refresh, shareable profile links
+- **Gift Emergency ($2.99 one-time):** 10 recs, no account needed — impulse buyer capture
+
+These are NOT enforced yet. The Stripe integration (`/subscribe` route) exists but isn't wired to gatekeeping. Do not wire the paywall until inventory and traffic thresholds above are met.
+
+### North Star: Affiliate vs. Subscription Priority
+
+Right now affiliate revenue is the right focus because:
+1. It requires no payment friction — users just click links
+2. Every approved affiliate network multiplies revenue without code changes
+3. Subscription requires enough volume to justify the conversion funnel overhead
+
+Flip this priority when: monthly affiliate revenue is steady but clearly lower than what a 5% subscription conversion rate would generate at your traffic level.
+
 ## What This Is
 AI-powered gift recommendation app. Flask pipeline: scrape social media → Claude analyzes profile → enrich with static data → search retailers → Claude curates gifts → programmatic cleanup → display.
 

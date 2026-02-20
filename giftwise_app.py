@@ -331,6 +331,10 @@ STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID')
 AMAZON_AFFILIATE_TAG = os.environ.get('AMAZON_AFFILIATE_TAG', '')  # Optional: for affiliate links
 SKIMLINKS_PUBLISHER_ID = os.environ.get('SKIMLINKS_PUBLISHER_ID', '')  # Set when Skimlinks approved
 
+# OneSignal Web Push — set ONESIGNAL_APP_ID in Railway to activate
+ONESIGNAL_APP_ID = os.environ.get('ONESIGNAL_APP_ID', '')
+ONESIGNAL_SAFARI_ID = os.environ.get('ONESIGNAL_SAFARI_ID', '')
+
 # Claude model selection — toggle in Render env vars for A/B testing Opus vs Sonnet
 # Defaults to Sonnet for both. Set CLAUDE_CURATOR_MODEL to test Opus on curation.
 CLAUDE_PROFILE_MODEL = os.environ.get('CLAUDE_PROFILE_MODEL', 'claude-sonnet-4-20250514')
@@ -377,6 +381,18 @@ if ANTHROPIC_API_KEY:
     logger.info("Claude models — profile: %s, curator: %s", CLAUDE_PROFILE_MODEL, CLAUDE_CURATOR_MODEL)
 else:
     logger.warning("ANTHROPIC_API_KEY not set - recommendation generation will fail")
+
+# ============================================================================
+# TEMPLATE CONTEXT — makes config values available to all templates
+# ============================================================================
+
+@app.context_processor
+def inject_global_config():
+    """Inject site-wide config into every template automatically."""
+    return {
+        'onesignal_app_id': ONESIGNAL_APP_ID,
+        'onesignal_safari_id': ONESIGNAL_SAFARI_ID,
+    }
 
 # ============================================================================
 # FREEMIUM TIER CONFIGURATION + HYBRID PRICING
@@ -1346,6 +1362,13 @@ def debug_awin():
 # ============================================================================
 # API ROUTES
 # ============================================================================
+
+@app.route('/OneSignalSDKWorker.js')
+def onesignal_worker():
+    """Serve OneSignal service worker at root (required by OneSignal for push notifications)"""
+    from flask import send_from_directory
+    return send_from_directory('static', 'OneSignalSDKWorker.js',
+                               mimetype='application/javascript')
 
 @app.route('/')
 def index():

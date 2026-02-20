@@ -356,5 +356,23 @@
     -->
 
     {% block extra_js %}{% endblock %}
+
+    {% if onesignal_app_id %}
+    <!-- OneSignal Web Push — activated when ONESIGNAL_APP_ID is set in Railway Variables -->
+    <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+    <script>
+        window.OneSignalDeferred = window.OneSignalDeferred || [];
+        OneSignalDeferred.push(async function(OneSignal) {
+            await OneSignal.init({
+                appId: "{{ onesignal_app_id }}",
+                {% if onesignal_safari_id %}safari_web_id: "{{ onesignal_safari_id }}",{% endif %}
+                notifyButton: { enable: false },  // We control the prompt ourselves
+                allowLocalhostAsSecureOrigin: true,
+                serviceWorkerParam: { scope: "/" },
+                serviceWorkerPath: "/OneSignalSDKWorker.js"
+            });
+        });
+    </script>
+    {% endif %}
 </body>
 </html>

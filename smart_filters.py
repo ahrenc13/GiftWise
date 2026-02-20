@@ -195,26 +195,43 @@ class ObsoleteFormatFilter:
     OBSOLETE_CONTENT_KEYWORDS = [
         'dvd', 'blu-ray', 'bluray', 'blu ray', 'vhs',
         'laserdisc', 'betamax',
+        # CDs — "compact disc" is unambiguous; "cd" alone risks false positives so handled via regex
+        'compact disc',
+        # Vinyl records as a product — specific phrases only (avoids "vinyl sticker", "vinyl wrap")
+        'vinyl record', 'vinyl lp', 'vinyl album', 'vinyl ep', 'vinyl single',
+        'vinyl pressing', 'colored vinyl', 'colour vinyl', 'on vinyl', 'clear vinyl',
+        'limited edition vinyl', '12" vinyl', '7" vinyl',
     ]
 
-    # Patterns for media content in title (case-sensitive)
+    # Patterns for media content in title (case-sensitive regex)
     OBSOLETE_CONTENT_PATTERNS = [
         r'\bDVD\b', r'\bDVDs\b', r'\bVHS\b', r'\bBlu-?[Rr]ay\b',
+        # CD as standalone word — negative lookahead to skip "CD player", "CD drive"
+        r'\bCDs?\b(?!\s*(?:player|deck|drive|burner|changer|recorder|loader|case|sleeve|storage))',
+        # Vinyl LP abbreviation
+        r'\bLP\b(?!\s*(?:tank|gas|record player|sleeve))',  # "LP" = vinyl LP
     ]
 
     # Generic low-effort gift indicators (always filtered, no exceptions)
     LOW_EFFORT_KEYWORDS = [
         'bumper sticker', 'car sticker', 'fridge magnet',
         'rubber bracelet', 'lanyard', 'wristband',
+        # Generic surname/clan gifts — mass-produced eBay items that match any last name
+        # e.g. "Clan McPherson Scottish Tote Bag", "Smith surname gift"
+        'surname', 'clan gift', 'family name gift', 'family crest gift',
     ]
 
     # Retro/analog interest signals — if ANY interest matches these,
-    # skip the obsolete content filter for products tied to that interest
+    # skip the obsolete content filter for products tied to that interest.
+    # Also covers explicit CD/physical media collectors.
     RETRO_SIGNALS = [
         'vinyl', 'record', 'turntable', 'retro', 'analog', 'analogue',
         'cassette', 'tape deck', 'hi-fi', 'hifi', 'audiophile',
         'vintage audio', 'vintage music', 'record collection',
         'record store', 'crate digging',
+        # Explicit physical media collectors — only exempt if they SAID they collect these
+        'cd collecting', 'cd collection', 'compact disc collection',
+        'dvd collecting', 'blu-ray collection', 'physical media',
     ]
 
     @staticmethod

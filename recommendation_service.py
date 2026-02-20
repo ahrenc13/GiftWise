@@ -621,6 +621,13 @@ class RecommendationService:
         state_val = (loc_ctx.get('state') or '').strip()
         specific_places = loc_ctx.get('specific_places') or []
 
+        # Sanitize null-ish strings that Claude sometimes outputs instead of null
+        _NULL_LOCATION = {'n/a', 'null', 'none', 'unknown', 'not available', 'not specified', 'unknown location'}
+        if city_region.lower() in _NULL_LOCATION:
+            city_region = ''
+        if state_val.lower() in _NULL_LOCATION:
+            state_val = ''
+
         search_geography = city_region or ''
         if state_val and state_val not in search_geography:
             search_geography = f"{search_geography} {state_val}".strip()

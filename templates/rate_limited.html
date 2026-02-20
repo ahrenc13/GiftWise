@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Come Back Soon — GiftWise{% endblock %}
+
+{% block extra_css %}
+.rate-limit-container {
+    max-width: 520px;
+    margin: 80px auto;
+    text-align: center;
+    padding: 0 20px;
+}
+.rate-limit-icon {
+    font-size: 56px;
+    margin-bottom: 24px;
+}
+h1 {
+    color: #2d2d2d;
+    font-size: 28px;
+    margin-bottom: 16px;
+}
+.message {
+    color: #666;
+    font-size: 17px;
+    line-height: 1.6;
+    margin-bottom: 32px;
+}
+.reset-badge {
+    display: inline-block;
+    background: #f0eeff;
+    color: #7B68EE;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-weight: 600;
+    font-size: 16px;
+    margin-bottom: 36px;
+}
+.cta-links {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    align-items: center;
+}
+.cta-links a {
+    color: #7B68EE;
+    text-decoration: none;
+    font-size: 15px;
+}
+.cta-links a:hover {
+    text-decoration: underline;
+}
+{% endblock %}
+
+{% block content %}
+<div class="rate-limit-container">
+    <div class="rate-limit-icon">🎁</div>
+    <h1>You're all set for today!</h1>
+    <p class="message">
+        Each personalized recommendation takes real AI work — so we limit one full run per person per day to keep things fast for everyone.
+    </p>
+    <div class="reset-badge">Your next run unlocks at {{ reset_time }}</div>
+    <div class="cta-links">
+        <a href="/guides">Browse our gift guides while you wait →</a>
+        <a href="/blog">Read gift advice on the blog →</a>
+    </div>
+</div>
+{% endblock %}

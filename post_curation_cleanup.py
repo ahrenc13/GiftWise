@@ -469,7 +469,7 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
             replacement = {
                 'name': clean_title(p.get('title', 'Gift')),
                 'description': p.get('snippet', ''),
-                'why_perfect': f"Selected to bring variety — matches {p.get('interest_match', 'your')} interests",
+                'why_perfect': f"A strong match for their {p.get('interest_match', 'top')} interest — rounds out the gift set with something they'll actually use.",
                 'price': p.get('price', 'Price unknown'),
                 'where_to_buy': p.get('source_domain', 'Online'),
                 'product_url': link,

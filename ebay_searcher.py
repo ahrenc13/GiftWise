@@ -124,7 +124,7 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
             "q": query[:100],
             "limit": min(per_query, 50),
             "offset": random.choice([0, 0, 0, 0, 5]),
-            "filter": "conditionIds:{1000|1500|1750|2000|2500}",  # New, Open Box, New with defects, Certified Refurb, Seller Refurb
+            "filter": "conditionIds:{1000|1500},buyingOptions:{FIXED_PRICE}",  # New/Open Box, BuyItNow only (auctions have no price, bad for gifting)
         }
 
         data = client.get(
@@ -163,7 +163,7 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
             price_obj = item.get("price") or {}
             price_val = price_obj.get("value", "")
             currency = price_obj.get("currency", "USD")
-            price = f"${price_val} {currency}" if price_val else ""
+            price = f"${price_val}" if price_val else ""
             short_desc = (item.get("shortDescription") or "").strip()
             categories = item.get("categories") or []
             category_name = categories[0].get("categoryName", "") if categories else ""

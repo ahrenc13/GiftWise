@@ -449,28 +449,22 @@
                         ✓ {{ platforms.get('spotify_wrapped', {}).get('artists', []) | length }} artists saved
                     </div>
                     <div class="platform-actions">
-                        <a href="/oauth/spotify" class="btn btn-primary">Upgrade to full Spotify</a>
                         <form method="POST" action="/disconnect/spotify_wrapped" style="flex: 1;">
                             <button type="submit" class="btn btn-disconnect">Disconnect</button>
                         </form>
                     </div>
                 {% else %}
                     <div class="platform-status">
-                        Connect Spotify to pull your actual top artists, tracks, and genres — way better signal than a playlist link.
+                        Spotify doesn't allow direct access to your data, but if you have artists or music you'd like figured into these gift recs, drop them here.
                     </div>
-                    <div class="platform-actions">
-                        <a href="/oauth/spotify" class="btn btn-primary">Connect with Spotify</a>
-                    </div>
-                    <div style="text-align: center; margin-top: 12px; color: #9ca3af; font-size: 13px;">or</div>
                     <div class="input-group" style="margin-top: 8px;">
-                        <label for="spotify_artists" style="font-size: 13px; color: #6b7280;">Type your top artists manually</label>
                         <input
                             type="text"
                             id="spotify_artists"
-                            placeholder="Taylor Swift, The Weeknd, Billie Eilish"
+                            placeholder="Taylor Swift, The Weeknd, Billie Eilish..."
                             style="width: 100%; padding: 10px 12px; border: 1px solid #e5e7eb; border-radius: 8px; font-size: 14px; font-family: inherit; box-sizing: border-box;"
                         >
-                        <button class="btn btn-secondary" onclick="saveSpotifyArtists()" style="margin-top: 8px; width: 100%;">Save Artists</button>
+                        <button class="btn btn-secondary" onclick="saveSpotifyArtists()" style="margin-top: 8px; width: 100%;">Save</button>
                     </div>
                 {% endif %}
             </div>
@@ -566,7 +560,7 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    alert(`Saved ${data.artists_found} artists. For full music data, use Connect with Spotify.`);
+                    alert(`Saved ${data.artists_found} artists!`);
                     location.reload();
                 } else {
                     alert(data.error || 'Failed to save artists');

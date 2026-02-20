@@ -399,9 +399,9 @@
                     </div>
                 </div>
 
-                {% if platforms.get('pinterest', {}).get('status') == 'connected' %}
+                {% if platforms.get('pinterest', {}).get('status') in ('connected', 'ready', 'complete') %}
                     <div class="platform-status connected">
-                        ✓ Connected via OAuth
+                        ✓ Connected as <span class="username">@{{ platforms.get('pinterest', {}).get('username', '') }}</span>
                     </div>
                     <div class="platform-actions">
                         <form method="POST" action="/disconnect/pinterest" style="flex: 1;">

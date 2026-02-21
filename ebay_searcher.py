@@ -8,6 +8,7 @@ Returns products in our standard format (title, link, image, price, etc.).
 
 import base64
 import logging
+import os
 import time
 import random
 
@@ -26,6 +27,17 @@ EBAY_TOKEN_BUFFER = 300
 BROWSE_SEARCH_URL = "https://api.ebay.com/buy/browse/v1/item_summary/search"
 TOKEN_URL = "https://api.ebay.com/identity/v1/oauth2/token"
 SCOPE = "https://api.ebay.com/oauth/api_scope"
+
+# eBay Partner Network campaign ID for affiliate tracking
+EBAY_CAMPAIGN_ID = os.environ.get('EBAY_CAMPAIGN_ID', '5339236479')
+
+
+def _add_affiliate_params(url):
+    """Append eBay Partner Network tracking params to an item URL."""
+    if not url or not EBAY_CAMPAIGN_ID:
+        return url
+    sep = '&' if '?' in url else '?'
+    return f"{url}{sep}mkevt=1&mkcid=1&mkrid=711-53200-19255-0&campid={EBAY_CAMPAIGN_ID}"
 
 
 def _get_app_token(client_id, client_secret):
@@ -155,7 +167,7 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
             if condition.lower() in ("pre-owned", "used", "for parts or not working", "acceptable"):
                 logger.debug("Skipping used eBay item: %s (%s)", title[:50], condition)
                 continue
-            link = item.get("itemWebUrl") or ""
+            link = _add_affiliate_params(item.get("itemWebUrl") or "")
             if not link:
                 continue
             image_obj = item.get("image") or {}

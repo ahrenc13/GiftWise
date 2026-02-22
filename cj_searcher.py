@@ -895,6 +895,106 @@ _GROUNDLUXE_TRIGGER_INTERESTS = {
 }
 
 
+# ---------------------------------------------------------------------------
+# RUSSELL STOVER CHOCOLATES — Static curated products (approved CJ partner, Feb 2026)
+# Advertiser ID (ADV_CID): 4441453
+# Evergreen Link ID 15736776 — deep-link enabled, $1.50 7-day EPC
+#   Base: https://www.kqzyfj.com/click-101660899-15736776
+# Commission: 5%, 5-day referral period (short — must buy within 5 days), 1 occurrence
+# Non-commissionable: Gift Baskets, Gift Cards, Outlet items, Gift Wrap
+# T&C:
+#   - Trademark terms (Russell Stover, Whitman's, Build-A-Box, etc.) protected for SEM
+#     bidding only — editorial content use is permitted
+#   - Only CJ-provided images and creative
+#   - Only CJ-provided coupon codes
+#   - Email campaigns require prior written approval (not relevant — we don't email)
+# ---------------------------------------------------------------------------
+
+_RUSSELLSTOVER_ALL_PRODUCTS = [
+    {
+        # Evergreen link 15736776 — deep-link enabled (best general link)
+        'title': "Russell Stover Chocolates — Classic American Boxed Chocolates",
+        'link': 'https://www.kqzyfj.com/click-101660899-15736776',
+        'snippet': (
+            "Handcrafted American chocolates — assorted truffles, caramels, and creams "
+            "in classic gift boxes. A timeless, universally loved gift for any occasion."
+        ),
+        'image': 'https://www.tqlkg.com/image-101660899-12221994',
+        'thumbnail': 'https://www.tqlkg.com/image-101660899-12221994',
+        'image_url': 'https://www.tqlkg.com/image-101660899-12221994',
+        'source_domain': 'russellstover.com',
+        'price': 'From $12.99',
+        'product_id': 'russellstover-chocolates',
+        'search_query': 'boxed chocolates gift candy',
+        'interest_match': 'chocolate',
+        'interest_matches': {'chocolate', 'sweets', 'candy', 'confectionery', 'dessert', 'baking', 'gourmet food', 'foodie', 'entertaining'},
+        'priority': 3,
+        'brand': 'Russell Stover',
+        'advertiser_id': 'russellstover-cj',
+    },
+    {
+        # Link 12377127 — Build-A-Box custom chocolate box (compelling gift angle)
+        'title': "Russell Stover Build-A-Box — Custom Chocolate Gift",
+        'link': 'https://www.kqzyfj.com/click-101660899-12377127',
+        'snippet': (
+            "Build a personalized box of chocolates — choose your favorite flavors "
+            "from truffles, caramels, creams, and more. Available in four sizes."
+        ),
+        'image': 'https://www.lduhtrp.net/image-101660899-12222027',
+        'thumbnail': 'https://www.lduhtrp.net/image-101660899-12222027',
+        'image_url': 'https://www.lduhtrp.net/image-101660899-12222027',
+        'source_domain': 'russellstover.com',
+        'price': 'From $14.99',
+        'product_id': 'russellstover-buildabox',
+        'search_query': 'custom chocolate box personalized gift',
+        'interest_match': 'chocolate',
+        'interest_matches': {'chocolate', 'sweets', 'candy', 'confectionery', 'dessert', 'personalization', 'gourmet food', 'foodie'},
+        'priority': 3,
+        'brand': 'Russell Stover',
+        'advertiser_id': 'russellstover-cj',
+    },
+]
+
+_RUSSELLSTOVER_TRIGGER_INTERESTS = {
+    'chocolate', 'sweets', 'candy', 'confectionery', 'dessert',
+    'baking', 'gourmet food', 'foodie', 'entertaining',
+}
+
+
+def get_russellstover_products_for_profile(profile):
+    """
+    Return Russell Stover products when the profile has chocolate/sweets interests.
+
+    Static list using direct CJ click URLs. ADV_CID: 4441453.
+    Commission: 5%, 5-day cookie (short). NON-commissionable: Gift Baskets, Gift Cards.
+
+    Returns at most 1 product — MonthlyClubs already covers artisan chocolate subscriptions;
+    Russell Stover is the "classic American boxed chocolates" option.
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    scored = []
+    for p in _RUSSELLSTOVER_ALL_PRODUCTS:
+        score = 0
+        for key in p.get('interest_matches', set()):
+            if key in interest_names:
+                score += 2
+            elif any(key in n or n in key for n in interest_names):
+                score += 1
+        if score > 0:
+            scored.append((score, p))
+
+    if not scored:
+        return []
+
+    scored.sort(key=lambda x: -x[0])
+    # Prefer Build-A-Box when "personalization" matches; otherwise generic chocolates
+    result = [p for _, p in scored[:1]]
+    logger.info(f"Russell Stover: {len(result)} products matched profile interests {interest_names & _RUSSELLSTOVER_TRIGGER_INTERESTS}")
+    return result
+
+
 def get_groundluxe_products_for_profile(profile):
     """
     Return GroundLuxe products when the profile has wellness/sleep interests.
@@ -1334,6 +1434,7 @@ def search_products_cj(profile, api_key, company_id=None, publisher_id=None, tar
         (get_gamefly_products_for_profile, "GameFly"),
         (get_greatergood_products_for_profile, "GreaterGood"),
         (get_groundluxe_products_for_profile, "GroundLuxe"),
+        (get_russellstover_products_for_profile, "Russell Stover"),
     ]:
         products = getter(profile)
         if products:

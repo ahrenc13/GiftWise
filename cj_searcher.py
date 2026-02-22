@@ -300,80 +300,148 @@ def get_illy_products_for_profile(profile):
 
 
 # ---------------------------------------------------------------------------
-# MONTHYCLUBS.COM — Static curated products (approved CJ partner, Feb 16 2026)
-# TODO: Replace PLACEHOLDER link IDs with real IDs from CJ dashboard:
-#   CJ Dashboard → Advertisers → MonthlyClubs.com → Links → Get Links
-# Commission: 8-15% per CLAUDE.md, high AOV gift subscriptions
-# Trigger: beer/wine/cheese/chocolate/foodie/gourmet interests
+# MONTHLYCLUBS.COM — Static curated products (approved CJ partner, Feb 2026)
+# Publisher ID: 101660899 (embedded in all click URLs)
+# Commission: 5–11.5% tiered by item group, 90-day referral period
+# T&C: No cigar keywords. Only use promo codes provided via CJ interface.
+# Links selected by highest 3-month EPC from CJ link data.
 # ---------------------------------------------------------------------------
 
 _MONTHLYCLUBS_ALL_PRODUCTS = [
     {
-        'title': "Beer of the Month Club — Craft Beer Subscription",
-        'link': f'https://www.dpbolvw.net/click-{_ILLY_COMPANY_ID}-PLACEHOLDER_MC_LINK_1',
+        # Beer Club Homepage — $8.96 EPC (link 10569413)
+        'title': "Microbrewed Beer of the Month Club",
+        'link': 'https://www.tkqlhce.com/click-101660899-10569413',
         'snippet': (
-            "Monthly delivery of 12 handcrafted beers from small-batch breweries across the country. "
-            "Includes tasting notes and brewery stories. Perfect for the craft beer enthusiast."
+            "Monthly delivery of craft and imported microbrews from small-batch breweries. "
+            "Each shipment includes tasting notes and brewery backstories."
         ),
-        'image': '',
-        'thumbnail': '',
-        'image_url': '',
-        'source_domain': 'monthlyclub.com',
+        'image': 'https://www.lduhtrp.net/image-101660899-11162860',
+        'thumbnail': 'https://www.lduhtrp.net/image-101660899-11162860',
+        'image_url': 'https://www.lduhtrp.net/image-101660899-11162860',
+        'source_domain': 'monthlyclubs.com',
         'price': 'From $42.95/month',
         'product_id': 'mc-beer-club',
         'search_query': 'craft beer subscription gift',
         'interest_match': 'craft beer',
+        'interest_matches': {'beer', 'craft beer', 'brewery', 'drinking', 'homebrewing'},
         'priority': 2,
         'brand': 'MonthlyClubs',
-        'advertiser_id': 'monthyclubs-cj',
-        '_needs_real_link': True,
+        'advertiser_id': 'monthlyclubs-cj',
     },
     {
-        'title': "Wine of the Month Club — Wine Subscription",
-        'link': f'https://www.dpbolvw.net/click-{_ILLY_COMPANY_ID}-PLACEHOLDER_MC_LINK_2',
+        # Hop Heads Beer Club — $68.00 EPC (link 15890384) — IPA lovers
+        'title': "The Hop Heads Beer Club — IPA Subscription",
+        'link': 'https://www.dpbolvw.net/click-101660899-15890384',
         'snippet': (
-            "Two expertly selected wines delivered monthly — mix of reds, whites, and international varietals. "
-            "Includes vintage notes and food pairing suggestions. A gift that keeps giving."
+            "All hoppy beers, all the time — IPAs, DIPAs, and experimental hop-forward styles "
+            "from craft breweries across the country. Monthly delivery with tasting notes."
         ),
-        'image': '',
-        'thumbnail': '',
-        'image_url': '',
-        'source_domain': 'monthlyclub.com',
+        'image': 'https://www.lduhtrp.net/image-101660899-11162860',
+        'thumbnail': 'https://www.lduhtrp.net/image-101660899-11162860',
+        'image_url': 'https://www.lduhtrp.net/image-101660899-11162860',
+        'source_domain': 'monthlyclubs.com',
+        'price': 'From $42.95/month',
+        'product_id': 'mc-hopheads-club',
+        'search_query': 'IPA beer subscription gift',
+        'interest_match': 'ipa',
+        'interest_matches': {'ipa', 'hop', 'hops', 'hoppy beer', 'pale ale'},
+        'priority': 3,
+        'brand': 'MonthlyClubs',
+        'advertiser_id': 'monthlyclubs-cj',
+    },
+    {
+        # Premier Series Wine Club — $69.07 EPC (link 10569609) — highest EPC overall
+        'title': "International Wine of the Month Club — Premier Series",
+        'link': 'https://www.anrdoezrs.net/click-101660899-10569609',
+        'snippet': (
+            "Two hand-selected wines each month — red, white, and international varietals from "
+            "hard-to-find producers. Includes vintage notes and food pairing suggestions."
+        ),
+        'image': 'https://www.awltovhc.com/image-101660899-10746026',
+        'thumbnail': 'https://www.awltovhc.com/image-101660899-10746026',
+        'image_url': 'https://www.awltovhc.com/image-101660899-10746026',
+        'source_domain': 'monthlyclubs.com',
         'price': 'From $42.95/month',
         'product_id': 'mc-wine-club',
-        'search_query': 'wine subscription gift',
+        'search_query': 'wine subscription gift club',
         'interest_match': 'wine',
+        'interest_matches': {'wine', 'wine tasting', 'red wine', 'white wine', 'sommelier', 'oenophile'},
         'priority': 2,
         'brand': 'MonthlyClubs',
         'advertiser_id': 'monthlyclubs-cj',
-        '_needs_real_link': True,
     },
     {
-        'title': "Cheese of the Month Club",
-        'link': f'https://www.dpbolvw.net/click-{_ILLY_COMPANY_ID}-PLACEHOLDER_MC_LINK_3',
+        # Cheese Club Homepage — $25.06 EPC (link 10569573)
+        'title': "Gourmet Cheese of the Month Club",
+        'link': 'https://www.anrdoezrs.net/click-101660899-10569573',
         'snippet': (
-            "4 artisan cheeses selected from small creameries monthly — domestic and international varieties. "
+            "Four artisan cheeses from small creameries monthly — domestic and international varieties. "
             "Each shipment includes a cheese guide and pairing recommendations."
         ),
-        'image': '',
-        'thumbnail': '',
-        'image_url': '',
-        'source_domain': 'monthlyclub.com',
+        'image': 'https://www.awltovhc.com/image-101660899-12081130',
+        'thumbnail': 'https://www.awltovhc.com/image-101660899-12081130',
+        'image_url': 'https://www.awltovhc.com/image-101660899-12081130',
+        'source_domain': 'monthlyclubs.com',
         'price': 'From $42.95/month',
         'product_id': 'mc-cheese-club',
-        'search_query': 'cheese subscription gift',
+        'search_query': 'artisan cheese subscription gift',
         'interest_match': 'cheese',
+        'interest_matches': {'cheese', 'charcuterie', 'wine and cheese', 'gourmet food', 'foodie'},
         'priority': 2,
         'brand': 'MonthlyClubs',
         'advertiser_id': 'monthlyclubs-cj',
-        '_needs_real_link': True,
+    },
+    {
+        # Gourmet Chocolate Club — $2.69 EPC (link 15890394)
+        'title': "Gourmet Chocolate of the Month Club",
+        'link': 'https://www.jdoqocy.com/click-101660899-15890394',
+        'snippet': (
+            "Premium chocolates from artisan makers monthly — dark, milk, Belgian, and single-origin varieties. "
+            "Curated for chocolate lovers who want more than supermarket candy."
+        ),
+        'image': 'https://www.tqlkg.com/image-101660899-12082395',
+        'thumbnail': 'https://www.tqlkg.com/image-101660899-12082395',
+        'image_url': 'https://www.tqlkg.com/image-101660899-12082395',
+        'source_domain': 'monthlyclubs.com',
+        'price': 'From $42.95/month',
+        'product_id': 'mc-chocolate-club',
+        'search_query': 'gourmet chocolate subscription gift',
+        'interest_match': 'chocolate',
+        'interest_matches': {'chocolate', 'sweets', 'candy', 'baking', 'dessert', 'confectionery'},
+        'priority': 2,
+        'brand': 'MonthlyClubs',
+        'advertiser_id': 'monthlyclubs-cj',
+    },
+    {
+        # Flower Club Homepage — $1.86 EPC (link 10569584) — good for Mother's Day
+        'title': "Fresh Cut Flower of the Month Club",
+        'link': 'https://www.tkqlhce.com/click-101660899-10569584',
+        'snippet': (
+            "Professionally designed seasonal bouquets delivered monthly — orchids, roses, lilies, "
+            "and more from specialty growers. A gift that arrives fresh every month."
+        ),
+        'image': 'https://www.lduhtrp.net/image-101660899-12082386',
+        'thumbnail': 'https://www.lduhtrp.net/image-101660899-12082386',
+        'image_url': 'https://www.lduhtrp.net/image-101660899-12082386',
+        'source_domain': 'monthlyclubs.com',
+        'price': 'From $42.95/month',
+        'product_id': 'mc-flower-club',
+        'search_query': 'flower subscription gift monthly bouquet',
+        'interest_match': 'flowers',
+        'interest_matches': {'flowers', 'gardening', 'floral', 'plants', 'botanicals', 'nature'},
+        'priority': 2,
+        'brand': 'MonthlyClubs',
+        'advertiser_id': 'monthlyclubs-cj',
     },
 ]
 
 _MONTHLYCLUBS_TRIGGER_INTERESTS = {
-    'beer', 'craft beer', 'wine', 'cheese', 'chocolate', 'foodie',
-    'gourmet', 'gourmet food', 'entertaining', 'cooking', 'drinking',
-    'wine tasting', 'brewery', 'charcuterie', 'brunch',
+    'beer', 'craft beer', 'ipa', 'brewery', 'homebrewing', 'drinking',
+    'wine', 'wine tasting', 'red wine', 'white wine', 'sommelier',
+    'cheese', 'charcuterie', 'chocolate', 'sweets', 'baking', 'dessert',
+    'flowers', 'gardening', 'floral', 'plants',
+    'foodie', 'gourmet', 'gourmet food', 'entertaining', 'cooking', 'brunch',
 }
 
 
@@ -381,36 +449,31 @@ def get_monthlyclubs_products_for_profile(profile):
     """
     Return MonthlyClubs subscription products when the profile has matching interests.
 
-    TODO: Fill in real CJ link IDs from dashboard before enabling.
-    Commission: 8-15%.
+    Commission: 5–11.5% tiered, 90-day referral period.
+    Selects the 2 products whose interest_matches best overlap the profile.
     """
-    if any(p.get('_needs_real_link') for p in _MONTHLYCLUBS_ALL_PRODUCTS):
-        logger.debug("MonthlyClubs products skipped — link IDs not yet filled in (see TODO in cj_searcher.py)")
-        return []
-
     interests = profile.get('interests', [])
     interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
 
-    matched = interest_names & _MONTHLYCLUBS_TRIGGER_INTERESTS
-    if not matched:
-        for name in interest_names:
-            for trigger in _MONTHLYCLUBS_TRIGGER_INTERESTS:
-                if trigger in name or name in trigger:
-                    matched.add(name)
-                    break
+    # Score each product by how specifically it matches this profile's interests
+    scored = []
+    for p in _MONTHLYCLUBS_ALL_PRODUCTS:
+        score = 0
+        for key in p.get('interest_matches', set()):
+            if key in interest_names:
+                score += 2
+            elif any(key in n or n in key for n in interest_names):
+                score += 1
+        if score > 0:
+            scored.append((score, p))
 
-    if not matched:
+    if not scored:
         return []
 
-    logger.info(f"MonthlyClubs triggered by profile interests: {matched}")
-
-    # Select products relevant to matched interests
-    relevant = []
-    for p in _MONTHLYCLUBS_ALL_PRODUCTS:
-        if p['interest_match'] in interest_names or any(t in interest_names for t in _MONTHLYCLUBS_TRIGGER_INTERESTS):
-            relevant.append(p)
-
-    return relevant[:2]  # Cap at 2 — subscription products take up significant card space
+    scored.sort(key=lambda x: -x[0])
+    result = [p for _, p in scored[:2]]
+    logger.info(f"MonthlyClubs: {len(result)} products matched profile interests {interest_names & _MONTHLYCLUBS_TRIGGER_INTERESTS}")
+    return result
 
 
 def get_peets_products_for_profile(profile):

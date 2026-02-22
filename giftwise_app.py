@@ -3071,14 +3071,23 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
 
             logger.info(f"MATERIALS: Matched '{item_name[:40]}' → '{best.get('title', '')[:50]}' (score={best_score})")
         else:
-            # No match in inventory - decide whether to show search fallback or skip entirely
-            # Search fallbacks add little value ("Find on Amazon" = user could search themselves)
-            # Better to either: (1) skip the material, or (2) do a targeted mini-search for real product
-
-            # For now: Skip unmatched materials entirely (cleaner UX than useless search links)
-            # TODO: Add optional mini-search feature for unmatched materials (adds latency)
-            logger.info(f"MATERIALS: No match for '{item_name[:40]}' → skipping (would have been search fallback)")
-            continue  # Don't add this material to output
+            # No match in inventory — add an Amazon search link so the shopping list isn't empty.
+            # An Amazon search link is better than nothing: the experience card at least shows
+            # the material name + a clickable path to find it. Skip only truly non-purchasable items.
+            if not item_name or item_name.lower() in _NON_PURCHASABLE_SIGNALS:
+                logger.info(f"MATERIALS: '{item_name[:40]}' is non-purchasable, skipping entirely")
+                continue
+            query = item_name.replace(' ', '+')
+            tag = affiliate_tag or AMAZON_AFFILIATE_TAG
+            if tag:
+                search_url = f"https://www.amazon.com/s?k={query}&tag={tag}"
+            else:
+                search_url = f"https://www.amazon.com/s?k={query}"
+            m['product_url'] = search_url
+            m['where_to_buy'] = 'amazon.com'
+            m['is_search_link'] = True
+            m['thumbnail'] = None
+            logger.info(f"MATERIALS: No inventory match for '{item_name[:40]}' → Amazon search link")
         # Apply affiliate tracking to all material links
         if m.get('product_url'):
             m['product_url'] = _apply_affiliate_tag(m['product_url'])

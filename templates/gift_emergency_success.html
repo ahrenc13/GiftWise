@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}You're Good to Go — GiftWise{% endblock %}
+
+{% block extra_css %}
+.success-container {
+    max-width: 480px;
+    margin: 80px auto;
+    padding: 0 20px;
+    text-align: center;
+}
+.success-icon {
+    font-size: 56px;
+    margin-bottom: 20px;
+}
+h1 {
+    color: #2d2d2d;
+    font-size: 26px;
+    margin-bottom: 12px;
+}
+.message {
+    color: #6b7280;
+    font-size: 16px;
+    line-height: 1.6;
+    margin-bottom: 32px;
+}
+.email-note {
+    background: #f0fdf4;
+    border: 1px solid #86efac;
+    border-radius: 10px;
+    padding: 14px 20px;
+    color: #15803d;
+    font-size: 14px;
+    margin-bottom: 32px;
+}
+.run-btn {
+    display: inline-block;
+    background: #7B68EE;
+    color: white;
+    text-decoration: none;
+    border-radius: 12px;
+    padding: 16px 36px;
+    font-size: 17px;
+    font-weight: 700;
+    box-shadow: 0 6px 18px rgba(123, 104, 238, 0.3);
+    transition: background 0.15s;
+}
+.run-btn:hover {
+    background: #6a5acd;
+    text-decoration: none;
+    color: white;
+}
+.fine-print {
+    margin-top: 20px;
+    color: #9ca3af;
+    font-size: 13px;
+}
+{% endblock %}
+
+{% block content %}
+<div class="success-container">
+    <div class="success-icon">✅</div>
+    <h1>You're good to go!</h1>
+    <p class="message">
+        Your run credit is ready. Head back to GiftWise and enter the
+        social handle you want recommendations for — we'll skip the rate limit
+        and run the full analysis.
+    </p>
+
+    {% if email %}
+    <div class="email-note">
+        Receipt sent to <strong>{{ email }}</strong>
+    </div>
+    {% endif %}
+
+    <a href="/" class="run-btn">Run GiftWise now →</a>
+
+    <p class="fine-print">
+        Your credit is linked to the email you used at checkout.<br>
+        Make sure to use that same email if you sign in.
+    </p>
+</div>
+{% endblock %}

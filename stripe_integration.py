@@ -71,6 +71,35 @@ def create_checkout_session(user_email, price_id, success_url, cancel_url, metad
         return None
 
 
+def create_one_time_checkout_session(customer_email, price_id, success_url, cancel_url, metadata=None):
+    """
+    Create a Stripe Checkout Session for a one-time payment (gift_emergency).
+    Uses mode='payment' instead of mode='subscription'.
+    """
+    if not STRIPE_SECRET_KEY:
+        logger.error("Stripe not configured")
+        return None
+
+    try:
+        session = stripe.checkout.Session.create(
+            customer_email=customer_email,
+            payment_method_types=['card'],
+            line_items=[{
+                'price': price_id,
+                'quantity': 1,
+            }],
+            mode='payment',
+            success_url=success_url + '?session_id={CHECKOUT_SESSION_ID}',
+            cancel_url=cancel_url,
+            metadata=metadata or {},
+        )
+        logger.info(f"Created one-time checkout for {customer_email}: {session.id}")
+        return session.url
+    except Exception as e:
+        logger.error(f"One-time checkout error: {e}")
+        return None
+
+
 def create_portal_session(customer_id, return_url):
     """
     Create a Stripe Customer Portal session for managing subscription
@@ -137,7 +166,17 @@ def handle_webhook(payload, sig_header):
     
     # Handle different event types
     if event_type == 'checkout.session.completed':
-        # Payment successful, subscription created
+        mode = data.get('mode')
+        if mode == 'payment':
+            # One-time payment (gift_emergency)
+            return {
+                'event_type': 'one_time_payment_completed',
+                'success': True,
+                'customer_email': data.get('customer_email'),
+                'amount_total': data.get('amount_total', 0) / 100,
+                'metadata': data.get('metadata', {})
+            }
+        # Recurring subscription
         return {
             'event_type': 'subscription_created',
             'success': True,

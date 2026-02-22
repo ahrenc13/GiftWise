@@ -476,6 +476,288 @@ def get_monthlyclubs_products_for_profile(profile):
     return result
 
 
+# ---------------------------------------------------------------------------
+# FLOWERS FAST — Static curated products (approved CJ partner, Feb 2026)
+# Advertiser ID (ADV_CID): 231679
+# Evergreen Link ID 15734454 — deep-link enabled, $74.28 3-month EPC
+#   Base: https://www.tkqlhce.com/click-101660899-15734454
+# Commission: 20%, 45-day referral period. AOV: ~$65, CR: ~3%.
+# T&C:
+#   - Do NOT use "FTD" or "Teleflora" trademarks anywhere in publisher copy
+#   - Only use CJ-provided coupon codes (none currently active)
+#   - Social media, email, sub-affiliates, and deep-linking allowed
+# ---------------------------------------------------------------------------
+
+_FLOWERSFAST_EVERGREEN_BASE = "https://www.tkqlhce.com/click-101660899-15734454"
+
+
+def _flowersfast_deep_link(path):
+    """Build a CJ deep link to a specific flowersfast.com page."""
+    destination = f"https://www.flowersfast.com{path}"
+    return f"{_FLOWERSFAST_EVERGREEN_BASE}?url={urllib.parse.quote(destination, safe='')}"
+
+
+_FLOWERSFAST_ALL_PRODUCTS = [
+    {
+        # Link 1035863 — "Same Day Delivery" ($63.29 EPC — highest text link EPC)
+        'title': "FlowersFast — Same-Day Fresh Flower Delivery",
+        'link': 'https://www.tkqlhce.com/click-101660899-1035863',
+        'snippet': (
+            "Beautiful, hand-arranged bouquets delivered same-day from a local florist. "
+            "Roses, lilies, sunflowers, and seasonal arrangements — fresh and delivered fast."
+        ),
+        'image': 'https://www.tqlkg.com/image-101660899-10542072',
+        'thumbnail': 'https://www.tqlkg.com/image-101660899-10542072',
+        'image_url': 'https://www.tqlkg.com/image-101660899-10542072',
+        'source_domain': 'flowersfast.com',
+        'price': 'From $39.99',
+        'product_id': 'flowersfast-same-day',
+        'search_query': 'flower delivery gift bouquet',
+        'interest_match': 'flowers',
+        'interest_matches': {'flowers', 'floral', 'gardening', 'plants', 'botanicals', 'nature', 'home decor', 'interior design'},
+        'priority': 2,
+        'brand': 'FlowersFast',
+        'advertiser_id': 'flowersfast-cj',
+    },
+    {
+        # Link 678765 — "Romance Flowers"
+        'title': "FlowersFast — Anniversary & Romance Flower Arrangements",
+        'link': 'https://www.tkqlhce.com/click-101660899-678765',
+        'snippet': (
+            "Romantic roses and signature arrangements for anniversaries, date nights, and "
+            "special moments. Same-day delivery available."
+        ),
+        'image': 'https://www.awltovhc.com/image-101660899-13462919',
+        'thumbnail': 'https://www.awltovhc.com/image-101660899-13462919',
+        'image_url': 'https://www.awltovhc.com/image-101660899-13462919',
+        'source_domain': 'flowersfast.com',
+        'price': 'From $49.99',
+        'product_id': 'flowersfast-romance',
+        'search_query': 'anniversary romance flowers',
+        'interest_match': 'romance',
+        'interest_matches': {'romance', 'relationships', 'dating', 'anniversary', 'love', 'weddings', 'bridal'},
+        'priority': 2,
+        'brand': 'FlowersFast',
+        'advertiser_id': 'flowersfast-cj',
+    },
+    {
+        # Link 1035858 — "Birthday Flowers"
+        'title': "FlowersFast — Birthday Bouquets",
+        'link': 'https://www.kqzyfj.com/click-101660899-1035858',
+        'snippet': (
+            "Bright, cheerful birthday arrangements hand-designed by local florists — "
+            "delivered same day. Sunflowers, gerbera daisies, and seasonal favorites."
+        ),
+        'image': 'https://www.lduhtrp.net/image-101660899-56033',
+        'thumbnail': 'https://www.lduhtrp.net/image-101660899-56033',
+        'image_url': 'https://www.lduhtrp.net/image-101660899-56033',
+        'source_domain': 'flowersfast.com',
+        'price': 'From $39.99',
+        'product_id': 'flowersfast-birthday',
+        'search_query': 'birthday flowers bouquet',
+        'interest_match': 'birthday',
+        'interest_matches': {'birthday', 'celebration', 'party', 'entertaining', 'festive'},
+        'priority': 2,
+        'brand': 'FlowersFast',
+        'advertiser_id': 'flowersfast-cj',
+    },
+    {
+        # Link 13462924 — "Get Well Flowers"
+        'title': "FlowersFast — Get Well & Sympathy Flowers",
+        'link': 'https://www.tkqlhce.com/click-101660899-13462924',
+        'snippet': (
+            "Uplifting arrangements and sympathy bouquets for life's tender moments — "
+            "same-day delivery from local florists who know the occasion matters."
+        ),
+        'image': 'https://www.ftjcfx.com/image-101660899-13462924',
+        'thumbnail': 'https://www.ftjcfx.com/image-101660899-13462924',
+        'image_url': 'https://www.ftjcfx.com/image-101660899-13462924',
+        'source_domain': 'flowersfast.com',
+        'price': 'From $39.99',
+        'product_id': 'flowersfast-get-well',
+        'search_query': 'get well sympathy flowers',
+        'interest_match': 'wellness',
+        'interest_matches': {'wellness', 'health', 'yoga', 'mindfulness', 'self-care', 'meditation', 'kindness'},
+        'priority': 3,
+        'brand': 'FlowersFast',
+        'advertiser_id': 'flowersfast-cj',
+    },
+]
+
+_FLOWERSFAST_TRIGGER_INTERESTS = {
+    'flowers', 'floral', 'gardening', 'plants', 'botanicals', 'nature',
+    'home decor', 'interior design', 'romance', 'relationships', 'dating',
+    'anniversary', 'love', 'birthday', 'celebration', 'weddings', 'bridal',
+    'wellness', 'yoga', 'mindfulness', 'self-care',
+}
+
+
+# ---------------------------------------------------------------------------
+# FRAGRANCESHOP.COM — Static curated products (approved CJ partner, Feb 2026)
+# Advertiser ID (ADV_CID): 7287203
+# Evergreen Link ID 16942179 — deep-link enabled, $43.59 3-month EPC
+#   Base: https://www.tkqlhce.com/click-101660899-16942179
+# Commission: 5%, 45-day referral period
+# Daily updated product feed (products may also surface via CJ GraphQL search)
+# T&C:
+#   - Do NOT claim "authorized wholesaler" or "official site"
+#   - Do NOT use specific discount percentages that may be outdated
+#   - Only use CJ-provided coupon codes
+#   - Social media, email, sub-affiliates, and deep-linking all allowed
+# ---------------------------------------------------------------------------
+
+_FRAGRANCESHOP_EVERGREEN_BASE = "https://www.tkqlhce.com/click-101660899-16942179"
+
+
+def _fragranceshop_deep_link(path):
+    """Build a CJ deep link to a specific fragranceshop.com page."""
+    destination = f"https://www.fragranceshop.com{path}"
+    return f"{_FRAGRANCESHOP_EVERGREEN_BASE}?url={urllib.parse.quote(destination, safe='')}"
+
+
+_FRAGRANCESHOP_ALL_PRODUCTS = [
+    {
+        # Evergreen link 16942179 — $43.59 3-month EPC, $44.57 7-day EPC (best link)
+        'title': "FragranceShop — Designer Fragrances & Colognes",
+        'link': 'https://www.tkqlhce.com/click-101660899-16942179',
+        'snippet': (
+            "Over 10,000 authentic brand-name perfumes, colognes, and fragrances — "
+            "Chanel, Dior, Versace, and more. Free shipping and a 30-day return policy."
+        ),
+        'image': 'https://www.lduhtrp.net/image-101660899-16941521',
+        'thumbnail': 'https://www.lduhtrp.net/image-101660899-16941521',
+        'image_url': 'https://www.lduhtrp.net/image-101660899-16941521',
+        'source_domain': 'fragranceshop.com',
+        'price': 'Varies by fragrance',
+        'product_id': 'fragranceshop-general',
+        'search_query': 'designer fragrance perfume gift',
+        'interest_match': 'fragrance',
+        'interest_matches': {'fragrance', 'perfume', 'cologne', 'beauty', 'luxury', 'fashion', 'style', 'grooming', 'self-care', 'cosmetics'},
+        'priority': 2,
+        'brand': 'FragranceShop',
+        'advertiser_id': 'fragranceshop-cj',
+    },
+    {
+        # Link 16942204 — Women's Perfume
+        'title': "FragranceShop — Women's Perfume Collection",
+        'link': 'https://www.kqzyfj.com/click-101660899-16942204',
+        'snippet': (
+            "Authentic designer perfumes for women — from classics to the latest releases. "
+            "Chanel No. 5, Marc Jacobs, YSL, and hundreds more brands. Free shipping."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'fragranceshop.com',
+        'price': 'Varies by fragrance',
+        'product_id': 'fragranceshop-womens',
+        'search_query': "women's perfume gift",
+        'interest_match': 'perfume',
+        'interest_matches': {'perfume', 'beauty', 'makeup', 'skincare', 'fashion', 'style', 'luxury', 'self-care', 'personal care'},
+        'priority': 2,
+        'brand': 'FragranceShop',
+        'advertiser_id': 'fragranceshop-cj',
+    },
+    {
+        # Link 16942203 — Men's Cologne
+        'title': "FragranceShop — Men's Cologne Collection",
+        'link': 'https://www.tkqlhce.com/click-101660899-16942203',
+        'snippet': (
+            "Authentic designer colognes for men — from barbershop classics to modern niche releases. "
+            "Acqua di Gio, Bleu de Chanel, Dior Sauvage, and hundreds more. Free shipping."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'fragranceshop.com',
+        'price': 'Varies by fragrance',
+        'product_id': 'fragranceshop-mens',
+        'search_query': "men's cologne gift",
+        'interest_match': 'cologne',
+        'interest_matches': {'cologne', 'grooming', 'menswear', 'fashion', 'style', 'luxury', 'self-care', 'personal care'},
+        'priority': 2,
+        'brand': 'FragranceShop',
+        'advertiser_id': 'fragranceshop-cj',
+    },
+]
+
+_FRAGRANCESHOP_TRIGGER_INTERESTS = {
+    'fragrance', 'perfume', 'cologne', 'beauty', 'makeup', 'skincare',
+    'grooming', 'self-care', 'fashion', 'style', 'luxury', 'cosmetics',
+    'personal care', 'menswear', 'personal style',
+}
+
+
+def get_fragranceshop_products_for_profile(profile):
+    """
+    Return FragranceShop products when the profile has matching interests.
+
+    Static list using direct CJ click URLs. ADV_CID: 7287203.
+    Commission: 5%, 45-day cookie. Deep-link enabled via Evergreen link.
+
+    T&C: Do not claim "authorized wholesaler" or "official site".
+    Do not use outdated discount percentages. Only CJ-provided coupon codes.
+
+    Returns at most 2 products scored by interest match.
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    scored = []
+    for p in _FRAGRANCESHOP_ALL_PRODUCTS:
+        score = 0
+        for key in p.get('interest_matches', set()):
+            if key in interest_names:
+                score += 2
+            elif any(key in n or n in key for n in interest_names):
+                score += 1
+        if score > 0:
+            scored.append((score, p))
+
+    if not scored:
+        return []
+
+    scored.sort(key=lambda x: -x[0])
+    result = [p for _, p in scored[:2]]
+    logger.info(f"FragranceShop: {len(result)} products matched profile interests {interest_names & _FRAGRANCESHOP_TRIGGER_INTERESTS}")
+    return result
+
+
+def get_flowersfast_products_for_profile(profile):
+    """
+    Return FlowersFast products when the profile has matching interests.
+
+    Static list using direct CJ click URLs. ADV_CID: 231679.
+    Commission: 20%, 45-day cookie. AOV: ~$65.
+
+    T&C: Do NOT use "FTD" or "Teleflora" trademarks in any publisher copy.
+    No coupon codes currently available through CJ.
+
+    Returns at most 2 products scored by interest match.
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    scored = []
+    for p in _FLOWERSFAST_ALL_PRODUCTS:
+        score = 0
+        for key in p.get('interest_matches', set()):
+            if key in interest_names:
+                score += 2
+            elif any(key in n or n in key for n in interest_names):
+                score += 1
+        if score > 0:
+            scored.append((score, p))
+
+    if not scored:
+        return []
+
+    scored.sort(key=lambda x: -x[0])
+    result = [p for _, p in scored[:2]]
+    logger.info(f"FlowersFast: {len(result)} products matched profile interests {interest_names & _FLOWERSFAST_TRIGGER_INTERESTS}")
+    return result
+
+
 def get_peets_products_for_profile(profile):
     """
     Return curated Peet's Coffee products when the profile has matching interests.
@@ -738,6 +1020,8 @@ def search_products_cj(profile, api_key, company_id=None, publisher_id=None, tar
         (get_peets_products_for_profile, "Peet's Coffee"),
         (get_illy_products_for_profile, "illy caffè"),
         (get_monthlyclubs_products_for_profile, "MonthlyClubs"),
+        (get_flowersfast_products_for_profile, "FlowersFast"),
+        (get_fragranceshop_products_for_profile, "FragranceShop"),
     ]:
         products = getter(profile)
         if products:

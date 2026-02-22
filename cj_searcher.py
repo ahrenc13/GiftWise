@@ -826,6 +826,110 @@ _GREATERGOOD_TRIGGER_INTERESTS = {
 }
 
 
+# ---------------------------------------------------------------------------
+# GROUNDLUXE — Static curated products (approved CJ partner, Feb 2026)
+# Advertiser ID (ADV_CID): 7681501
+# Evergreen Link ID 17180505 — deep-link enabled, $150.60 3-month EPC (highest in stack)
+#   Base: https://www.kqzyfj.com/click-101660899-17180505
+# Commission: 10%, 30-day cookie
+# Product: Luxury grounding sheets (90% organic cotton + 10% silver fiber)
+# AOV: High — estimated $150-300+ based on EPC data
+# Target: Wellness-minded adults 45-65, sleep/recovery/natural health seekers
+# T&C: No trademark bidding (SEM, not our concern). No other restrictions noted.
+# NOTE: Do NOT make specific medical/health claims ("proven to reduce pain").
+#       Use earthing/grounding wellness framing instead.
+# ---------------------------------------------------------------------------
+
+_GROUNDLUXE_ALL_PRODUCTS = [
+    {
+        # Evergreen 17180505 — $150.60 EPC (best reliable link)
+        'title': "GroundLuxe Luxury Grounding Sheets",
+        'link': 'https://www.kqzyfj.com/click-101660899-17180505',
+        'snippet': (
+            "The #1 bestselling grounding (earthing) sheet set — 90% organic cotton with "
+            "conductive silver fibers that connect you to the Earth's natural energy while you sleep. "
+            "Soft as luxury hotel bedding. USA-owned, exceptional customer support."
+        ),
+        'image': 'https://www.lduhtrp.net/image-101660899-17168754',
+        'thumbnail': 'https://www.lduhtrp.net/image-101660899-17168754',
+        'image_url': 'https://www.lduhtrp.net/image-101660899-17168754',
+        'source_domain': 'groundluxe.com',
+        'price': 'From $149',
+        'product_id': 'groundluxe-sheets',
+        'search_query': 'grounding sheets wellness sleep gift',
+        'interest_match': 'wellness',
+        'interest_matches': {'wellness', 'yoga', 'meditation', 'mindfulness', 'holistic health', 'natural health', 'alternative medicine', 'sleep', 'sleep health', 'recovery', 'biohacking', 'self-care', 'health', 'pilates', 'fitness'},
+        'priority': 1,  # Highest EPC in stack — prioritize this
+        'brand': 'GroundLuxe',
+        'advertiser_id': 'groundluxe-cj',
+    },
+    {
+        # Link 17168758 — $221.09 EPC ("reduce inflammation" framing)
+        'title': "GroundLuxe Grounding Sheet — Sleep & Recovery",
+        'link': 'https://www.jdoqocy.com/click-101660899-17168758',
+        'snippet': (
+            "Grounding sheets used by athletes and wellness enthusiasts for overnight recovery — "
+            "silver-fiber sheets that conduct the Earth's natural electrical charge. "
+            "Organic cotton, made in the USA, trusted by thousands of sleepers."
+        ),
+        'image': 'https://www.awltovhc.com/image-101660899-17165115',
+        'thumbnail': 'https://www.awltovhc.com/image-101660899-17165115',
+        'image_url': 'https://www.awltovhc.com/image-101660899-17165115',
+        'source_domain': 'groundluxe.com',
+        'price': 'From $149',
+        'product_id': 'groundluxe-recovery',
+        'search_query': 'grounding earthing sheets sleep recovery',
+        'interest_match': 'wellness',
+        'interest_matches': {'recovery', 'fitness', 'running', 'cycling', 'sports', 'health', 'natural health', 'holistic health', 'wellness', 'chronic pain', 'inflammation', 'biohacking'},
+        'priority': 1,
+        'brand': 'GroundLuxe',
+        'advertiser_id': 'groundluxe-cj',
+    },
+]
+
+_GROUNDLUXE_TRIGGER_INTERESTS = {
+    'wellness', 'yoga', 'meditation', 'mindfulness', 'holistic health',
+    'natural health', 'alternative medicine', 'sleep', 'sleep health',
+    'recovery', 'biohacking', 'self-care', 'health', 'pilates',
+    'fitness', 'running', 'cycling', 'sports', 'chronic pain',
+}
+
+
+def get_groundluxe_products_for_profile(profile):
+    """
+    Return GroundLuxe products when the profile has wellness/sleep interests.
+
+    Static list using direct CJ click URLs. ADV_CID: 7681501.
+    Commission: 10%, 30-day cookie. Highest EPC in the static partner stack.
+
+    NOTE: Write copy as earthing/grounding wellness — do NOT make specific
+    medical claims ("proven to reduce pain") in publisher-generated content.
+
+    Returns at most 1-2 products scored by interest match.
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    scored = []
+    for p in _GROUNDLUXE_ALL_PRODUCTS:
+        score = 0
+        for key in p.get('interest_matches', set()):
+            if key in interest_names:
+                score += 2
+            elif any(key in n or n in key for n in interest_names):
+                score += 1
+        if score > 0:
+            scored.append((score, p))
+
+    if not scored:
+        return []
+
+    scored.sort(key=lambda x: -x[0])
+    result = [p for _, p in scored[:2]]
+    logger.info(f"GroundLuxe: {len(result)} products matched profile interests {interest_names & _GROUNDLUXE_TRIGGER_INTERESTS}")
+    return result
+
+
 def get_greatergood_products_for_profile(profile):
     """
     Return GreaterGood products when the profile has matching interests.
@@ -1229,6 +1333,7 @@ def search_products_cj(profile, api_key, company_id=None, publisher_id=None, tar
         (get_fragranceshop_products_for_profile, "FragranceShop"),
         (get_gamefly_products_for_profile, "GameFly"),
         (get_greatergood_products_for_profile, "GreaterGood"),
+        (get_groundluxe_products_for_profile, "GroundLuxe"),
     ]:
         products = getter(profile)
         if products:

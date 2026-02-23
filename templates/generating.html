@@ -284,7 +284,7 @@
                 <div class="step-icon">1</div>
                 <div>
                     <div class="step-label">Analyzing personality profile</div>
-                    <div class="step-detail" id="step-profile-detail">Reading their posts and interests...</div>
+                    <div class="step-detail" id="step-profile-detail">{% if recipient_type == 'myself' %}Mapping your interests, habits, and personal style...{% else %}Mapping their interests, habits, and personal style...{% endif %}</div>
                 </div>
             </div>
             <div class="step" id="step-search">
@@ -424,24 +424,40 @@
                 const retailerDisplay = {
                     'Etsy': { icon: '🛍️', label: 'Etsy' },
                     'Awin': { icon: '🏷️', label: 'Specialty Brands' },
+                    'CJ': { icon: '🏷️', label: 'Specialty Brands' },
                     'eBay': { icon: '📦', label: 'eBay' },
                     'Amazon': { icon: '📱', label: 'Amazon' },
                     'ShareASale': { icon: '🏪', label: 'Partner Stores' },
                 };
 
-                let html = '';
+                // Merge retailers that share a display label before rendering
+                const merged = {};
                 for (const [name, info] of Object.entries(retailers)) {
                     const display = retailerDisplay[name] || { icon: '🏬', label: name };
+                    const key = display.label;
+                    if (!merged[key]) {
+                        merged[key] = { icon: display.icon, label: display.label, status: info.status, count: info.count || 0 };
+                    } else {
+                        // Combine counts; if either is still searching, show searching
+                        merged[key].count += (info.count || 0);
+                        if (info.status === 'searching') merged[key].status = 'searching';
+                    }
+                }
+
+                let html = '';
+                for (const [label, info] of Object.entries(merged)) {
+                    // Skip done rows with zero results — no reason to show users an empty bucket
+                    if (info.status === 'done' && info.count === 0) continue;
+                    if (info.status === 'skipped') continue;
+
                     let statusHtml = '';
                     if (info.status === 'searching') {
                         statusHtml = '<span class="dot searching"></span> Searching...';
                     } else if (info.status === 'done') {
-                        statusHtml = '<span class="dot done"></span> ' + (info.count || 0) + ' found';
-                    } else if (info.status === 'skipped') {
-                        statusHtml = '<span class="dot skipped"></span> Skipped';
+                        statusHtml = '<span class="dot done"></span> ' + info.count + ' found';
                     }
                     html += '<div class="retailer-row">' +
-                            '<span class="retailer-name">' + display.icon + ' ' + display.label + '</span>' +
+                            '<span class="retailer-name">' + info.icon + ' ' + info.label + '</span>' +
                             '<span class="retailer-status">' + statusHtml + '</span>' +
                             '</div>';
                 }

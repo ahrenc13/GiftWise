@@ -28,6 +28,16 @@ import time
 import urllib.parse
 from collections import deque
 import requests
+
+# Optional catalog cache — eliminates live CJ API calls for recently-synced terms.
+# Degrades gracefully if catalog_sync.py isn't available or DB isn't warmed.
+try:
+    from catalog_sync import is_term_cache_fresh, get_cached_products_for_interest
+    _CATALOG_CACHE_AVAILABLE = True
+except ImportError:
+    _CATALOG_CACHE_AVAILABLE = False
+    def is_term_cache_fresh(*a, **kw): return False      # noqa: E704
+    def get_cached_products_for_interest(*a, **kw): return []  # noqa: E704
 import json
 
 logger = logging.getLogger(__name__)
@@ -2008,6 +2018,30 @@ def search_products_cj(profile, api_key, company_id=None, publisher_id=None, tar
     for term in search_terms:
         if not term:
             continue
+
+        # ----------------------------------------------------------------
+        # Cache check — use SQLite catalog if this term was synced recently.
+        # Saves 3–5 seconds of live API latency per term.
+        # Falls back to live API on cache miss, import error, or DB failure.
+        # ----------------------------------------------------------------
+        if _CATALOG_CACHE_AVAILABLE:
+            try:
+                if is_term_cache_fresh(term):
+                    cached = get_cached_products_for_interest(
+                        term, limit=min(60, target_count)
+                    )
+                    if cached:
+                        all_products.extend(cached)
+                        logger.info(
+                            f"CJ catalog cache hit '{term}': {len(cached)} products"
+                        )
+                        if len(all_products) >= target_count:
+                            break
+                        continue
+                    # Cache is fresh but empty for this term — fall through to live
+            except Exception as _ce:
+                logger.debug(f"Cache lookup failed for '{term}': {_ce}")
+        # ----------------------------------------------------------------
 
         try:
             # Rate limiting

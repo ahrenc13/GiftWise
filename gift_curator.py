@@ -287,6 +287,13 @@ A gift should make someone say "you GET me," not "thanks, I needed that." REJECT
 - Plain storage containers, drawer organizers, label makers
 If an item is something people buy for themselves at a drugstore or airport, it is NOT a gift. Gifts are personal, thoughtful, and a little surprising.
 
+GIFTING TROPES — REQUIRE DIRECT JUSTIFICATION:
+Chocolate boxes, wine/gift baskets, and flower arrangements are last-resort defaults that signal low effort. They appear in the inventory because some profiles genuinely love these things — but "genuinely" means a direct, specific signal:
+- Chocolate: they explicitly follow chocolate/dessert/pastry accounts, post about confectionery, or love French food. A "foodie" or "entertaining" interest is NOT sufficient.
+- Wine or gift baskets: they are an actual wine enthusiast (wine tasting, winery visits, sommelier content) or explicitly love cheese/charcuterie. "Hosting" or "social" interests are NOT sufficient.
+- Baby baskets: only if the profile has an explicit baby shower or new parent signal.
+If a profile has these items in inventory but no direct justification, skip them and find the more specific, personal gift. A hiking enthusiast who also happens to like good food should get hiking gear, not a gourmet basket.
+
 DIVERSITY & EVIDENCE:
 - BRAND DIVERSITY (CRITICAL): NEVER select 2 products from the same brand or manufacturer. If you see "Yankee Candle" twice, pick ONE and replace the other with something different. Same for any brand—one product per brand, no exceptions.
 - CATEGORY DIVERSITY: NEVER select 2 products that are essentially the same type of item (e.g., two candles, two mugs, two t-shirts, two posters). Each product should feel like a genuinely different type of gift.

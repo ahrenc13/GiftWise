@@ -1368,17 +1368,21 @@ _ZCHOCOLAT_ALL_PRODUCTS = [
 ]
 
 _ZCHOCOLAT_TRIGGER_INTERESTS = {
-    # Direct chocolate triggers
-    'chocolate', 'dark chocolate', 'truffles', 'bonbons', 'confectionery',
-    'gourmet chocolate', 'french chocolate',
-    # Gourmet / foodie adjacent
-    'gourmet', 'gourmet food', 'foodie', 'french cuisine', 'french food',
-    'pastry', 'baking', 'desserts', 'sweets', 'candy',
-    # Luxury / occasion
-    'luxury', 'luxury gifts', 'fine dining', 'indulgence',
-    # Lifestyle signals that convert well for premium chocolate
-    'brunch', 'entertaining', 'hosting', 'wine', 'champagne',
-    'anniversary', 'romance', 'date night',
+    # Must have a genuine chocolate/confectionery affinity — not just "foodie"
+    'chocolate', 'dark chocolate', 'milk chocolate', 'truffles', 'bonbons',
+    'confectionery', 'gourmet chocolate', 'french chocolate', 'artisan chocolate',
+    # French food passion — zChocolat is quintessentially French patisserie
+    'french cuisine', 'french food', 'patisserie', 'pastry',
+    # Strong dessert/baking signal (not generic lifestyle)
+    'gourmet food', 'desserts', 'baking', 'sweets',
+    # Vegan — dedicated vegan line worth surfacing for plant-based profiles
+    'vegan', 'plant-based',
+    # Luxury taste — premium chocolate is a legitimate luxury gift category
+    'luxury', 'fine dining',
+    # NOTE: 'foodie', 'gourmet', 'entertaining', 'hosting', 'wine', 'champagne',
+    # 'anniversary', 'romance', 'date night' intentionally excluded.
+    # Those are too broad — chocolate should only appear when the profile
+    # genuinely loves chocolate/French confectionery, not as a trope fallback.
 }
 
 _ZCHOCOLAT_VEGAN_SIGNALS = {
@@ -1547,24 +1551,24 @@ _WINEBASKET_ALL_PRODUCTS = [
 ]
 
 _WINEBASKET_TRIGGER_INTERESTS = {
-    # Wine / drinks
+    # Wine enthusiasts only — not just "drinks" or "social"
     'wine', 'wine tasting', 'winery', 'vineyard', 'wine lover', 'wine bar',
-    'champagne', 'sparkling wine', 'red wine', 'white wine', 'rosé',
-    'craft beer', 'cocktails', 'drinking', 'entertaining', 'hosting',
-    # Baby / new parent
+    'champagne', 'sparkling wine', 'red wine', 'white wine', 'rosé', 'sommelier',
+    # Baby/new parent — high-intent, genuinely occasion-specific for baby basket
     'baby shower', 'newborn', 'new baby', 'new parent', 'pregnancy',
     'expecting', 'motherhood', 'fatherhood', 'nursery',
-    # Gourmet / foodie
-    'gourmet', 'gourmet food', 'foodie', 'cheese', 'charcuterie',
-    'fruit basket', 'gift basket', 'gourmet gifts',
-    # General gifting occasions that convert well for baskets
-    'corporate gifts', 'housewarming', 'get well', 'sympathy',
+    # Direct food/cheese passion — not generic "foodie" or "entertaining"
+    'gourmet food', 'cheese', 'charcuterie', 'artisan food', 'food lover',
+    # NOTE: 'craft beer', 'cocktails', 'drinking', 'entertaining', 'hosting',
+    # 'corporate gifts', 'housewarming', 'get well', 'sympathy', 'gourmet',
+    # 'foodie' intentionally excluded — those are trope-adjacent triggers that
+    # would surface gift baskets as a lazy fallback for social/hosting profiles.
 }
 
 _WINEBASKET_WINE_SIGNALS = {
+    # Genuine wine lover signals only
     'wine', 'wine tasting', 'winery', 'vineyard', 'wine lover', 'wine bar',
-    'champagne', 'sparkling wine', 'red wine', 'white wine', 'rosé',
-    'craft beer', 'cocktails', 'drinking', 'entertaining', 'hosting',
+    'champagne', 'sparkling wine', 'red wine', 'white wine', 'rosé', 'sommelier',
 }
 
 _WINEBASKET_BABY_SIGNALS = {
@@ -1573,9 +1577,8 @@ _WINEBASKET_BABY_SIGNALS = {
 }
 
 _WINEBASKET_GOURMET_SIGNALS = {
-    'gourmet', 'gourmet food', 'foodie', 'cheese', 'charcuterie',
-    'fruit basket', 'gift basket', 'gourmet gifts', 'food lover',
-    'artisan food', 'corporate gifts', 'housewarming',
+    # Direct food passion — not "foodie" (too generic) or occasion-based
+    'gourmet food', 'cheese', 'charcuterie', 'artisan food', 'food lover',
 }
 
 

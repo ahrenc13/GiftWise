@@ -198,6 +198,15 @@ SELECT {rec_count} BEST PRODUCTS from above. Requirements:
 
 SELECTION PRINCIPLE: The best gift fills an aspiration gap — something they WANT but don't yet HAVE. A gift matching a current interest risks duplicating what they own. A gift matching an aspiration makes them say "how did you KNOW?" At least 60% of your picks should target gaps/aspirational interests, not current ones.
 
+SYNTHESIS OVER CHECKLIST: A gift set built by mapping one product to each interest is a spreadsheet, not a gift. The best sets find products at the INTERSECTION of two or more interests, or express familiar interests through unexpected forms.
+
+Before finalizing each pick, ask:
+1. Can one product bridge TWO of their interests? (e.g., music + dogs → dog breed tote with band-style art, not a band poster AND a dog toy separately)
+2. Am I defaulting to the most obvious product form? Band → poster. Coffee lover → mug. Reader → book. If yes, justify it or find something more specific and surprising.
+3. Am I stacking the same product type across multiple interests? (three posters, three shirts, three mugs?) If so, you're repeating a form, not adding variety. Use each form at most once.
+
+FOR MUSIC-HEAVY PROFILES: Do NOT pick a poster for each artist they like. Pick at most ONE poster for their top artist. Express the rest of the music passion through different forms — concert-ready accessories, music-themed apparel, instruments/gear, listening equipment, or a curated experience. A wall of band posters is a record store, not a gift set.
+
 - PRIORITIZE products matching GIFT SWEET SPOTS (gaps/aspirational interests) - these are the best opportunities
 - If the profile includes EXPLICIT WANT SIGNALS (phrases like "I need this", "someone buy me"), treat those as your highest-priority targets
 - Match interests with SPECIFIC profile evidence (cite posts, behaviors, venues)
@@ -322,6 +331,7 @@ If a profile has these items in inventory but no direct justification, skip them
 DIVERSITY & EVIDENCE:
 - BRAND DIVERSITY (CRITICAL): NEVER select 2 products from the same brand or manufacturer. If you see "Yankee Candle" twice, pick ONE and replace the other with something different. Same for any brand—one product per brand, no exceptions.
 - CATEGORY DIVERSITY: NEVER select 2 products that are essentially the same type of item (e.g., two candles, two mugs, two t-shirts, two posters). Each product should feel like a genuinely different type of gift.
+- FORM DIVERSITY: Limit to 1 poster, 1 apparel item, 1 book — full stop, regardless of how many interests are present. If you have 6 music interests and 6 posters in the inventory, pick ONE poster. Express the other 5 interests through different product forms.
 - INTEREST SPREAD: Max 2 products per single interest/theme (e.g., max 2 per band). Spread across at least 5+ distinct interests.
 - NOVELTY: Prioritize unique, surprising, and thoughtful gifts over obvious/generic ones. A creative niche product is better than a mass-market default.
 - Each recommendation must have SPECIFIC evidence from the profile (not generic "they'll love this")

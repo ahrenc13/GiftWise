@@ -382,12 +382,38 @@ def _normalize_title_for_dedup(title):
     'Hallmark Holiday Traditions Christmas Silk Tie' collapse to the same key."""
     if not title:
         return ''
-    # Lowercase, strip non-alpha, remove very common filler
+    # Lowercase, strip non-alpha, remove very common filler (including colors/sizes
+    # which only distinguish variants of the same product, not distinct products)
     words = re.sub(r'[^a-z0-9 ]', '', title.lower()).split()
     noise = {'the', 'a', 'an', 'and', 'or', 'for', 'of', 'with', 'in', 'on',
-             'new', 'set', 'lot', 'pack', 'pcs', 'piece', 'pieces'}
+             'new', 'set', 'lot', 'pack', 'pcs', 'piece', 'pieces',
+             # Colors / variant words that distinguish SKUs but not distinct products
+             'black', 'white', 'red', 'blue', 'green', 'pink', 'grey', 'gray',
+             'brown', 'beige', 'navy', 'gold', 'silver', 'purple', 'orange', 'yellow',
+             'small', 'medium', 'large', 'xlarge', 'xxl', 'mini', 'size', 'single', 'double'}
     key_words = sorted(w for w in words if w not in noise and len(w) > 2)
     return ' '.join(key_words)
+
+
+def _is_near_duplicate_title(norm_title, used_titles_set):
+    """Return True if norm_title is an exact or near-duplicate of any title in used_titles_set.
+    Near-duplicate = 85%+ word overlap (catches color/size variants with identical base titles)."""
+    if not norm_title:
+        return False
+    if norm_title in used_titles_set:
+        return True
+    candidate_words = set(norm_title.split())
+    if len(candidate_words) < 3:
+        return False  # Too short to fuzzy-match reliably
+    for existing in used_titles_set:
+        existing_words = set(existing.split())
+        if not existing_words:
+            continue
+        overlap = len(candidate_words & existing_words)
+        smaller = min(len(candidate_words), len(existing_words))
+        if smaller > 0 and overlap / smaller >= 0.85:
+            return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -515,9 +541,9 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
             link = (p.get('link') or '').strip()
             if not link or link in used_urls or link.rstrip('/') in used_urls:
                 continue
-            # Skip products whose titles match something already selected
+            # Skip products whose titles match (exact or near-duplicate) something already selected
             norm_title = _normalize_title_for_dedup(p.get('title', ''))
-            if norm_title and norm_title in used_titles:
+            if _is_near_duplicate_title(norm_title, used_titles):
                 continue
             brand = extract_brand(p.get('title', ''))
             category = detect_category(p.get('title', ''), p.get('snippet', ''))
@@ -561,7 +587,7 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
             if not link or link in used_urls or link.rstrip('/') in used_urls:
                 continue
             norm_title = _normalize_title_for_dedup(p.get('title', ''))
-            if norm_title and norm_title in used_titles:
+            if _is_near_duplicate_title(norm_title, used_titles):
                 continue
             brand = extract_brand(p.get('title', ''))
             category = detect_category(p.get('title', ''), p.get('snippet', ''))

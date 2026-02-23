@@ -685,7 +685,7 @@ class RecommendationService:
             exp_category = (exp.get('experience_category') or '').strip()
             exp_desc = exp.get('description', '')
             experience_provider_links = self._get_provider_links(
-                exp_name, search_loc, f"{exp_category} {exp_desc}"
+                exp_name, search_loc, exp_desc, category=exp_category
             )
 
             # Determine primary link
@@ -828,13 +828,13 @@ class RecommendationService:
             logger.info(f"EXP LINK: Rejected bad {link_type} for '{name[:40]}': {url[:80]}")
             return self._make_experience_search_link(name, location, link_type)
 
-    def _get_provider_links(self, exp_name: str, location: str, description: str) -> List[Dict]:
+    def _get_provider_links(self, exp_name: str, location: str, description: str, category: str = '') -> List[Dict]:
         """Get curated experience provider links."""
         if not self.get_experience_providers:
             return []
 
         try:
-            links = self.get_experience_providers(exp_name, location=location, description=description)
+            links = self.get_experience_providers(exp_name, location=location, description=description, category=category or None)
             # Apply affiliate tracking
             for link in links:
                 link['url'] = self._apply_affiliate_tag(link['url'])

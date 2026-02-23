@@ -263,19 +263,44 @@ EXPERIENCE GIFTS:
 - description should SELL the experience in 1-2 punchy sentences. Not a dry summary.
   BAD: "A cooking class focused on Thai cuisine."
   GOOD: "Learn to make authentic pad thai and green curry from scratch — then eat everything you made with a glass of wine."
-- experience_category: Pick the BEST match from the list. This helps us find booking platforms automatically.
+
+BOOKABLE vs. DIY — PICK THE RIGHT TYPE:
+There are two valid experience types. Match the category to what can actually be delivered:
+
+  BOOKABLE experiences (use specific categories: cooking_class, art_class, dining, spa_wellness, wine_beer, fitness_class, outdoor_adventure, museum_culture):
+  These exist on-demand in virtually any city. Someone can go to Cozymeal/OpenTable/ClassPass right now and book them.
+  Examples: Thai cooking class, pottery workshop, wine tasting, spa day, guided hike, jazz dinner
+
+  DIY/PLAN-YOURSELF experiences (use category: other):
+  The gift-giver creates the experience with advance purchases — no external booking needed.
+  These are always reliable because they don't depend on a show existing or a class being offered.
+  Examples: Themed listening party, backyard concert setup, movie marathon night, record store crawl
+  Use category "other" for ALL of these. Do NOT use "concerts" for DIY music experiences.
+
+CONCERTS RULE — BE HONEST ABOUT WHAT CAN BE BOOKED:
+  ONLY use experience_category "concerts" if the artist is a well-known act who actively tours arenas or major venues (Taylor Swift, Beyoncé, Bruce Springsteen, etc.) — someone for whom tickets are likely available on Ticketmaster right now or in the near future.
+  DO NOT use "concerts" for:
+  - Tribute bands (e.g. "ELO Tribute Band Night") — these depend on a specific show existing in a specific city, which is highly unlikely and unverifiable
+  - Niche or legacy artists who rarely tour
+  - DIY backyard/home music events
+  - "Music festival setup" or any self-organized event
+  Instead, for music-interest profiles where a real concert is uncertain: suggest a THEMED LISTENING PARTY (category: other) with specific materials (quality Bluetooth speaker, artist poster, themed snacks), or a CONCERT FUND experience where the gift-giver sets aside money specifically for when the artist announces a tour.
+
+- experience_category: Pick the category that determines HOW this gets booked. This directly controls what booking platforms we show. Wrong category = wrong links.
+  - cooking_class, art_class, dining, spa_wellness, wine_beer, fitness_class, outdoor_adventure, museum_culture, concerts, sports_events → bookable, we show booking platform links
+  - other → DIY, no external booking, just materials and a plan. Use this for themed home events, listening parties, backyard experiences.
 - estimated_price: Be realistic. Include the class/tickets/booking fee AND materials.
-- DO NOT include reservation_link or venue_website — we handle booking links automatically based on location and category. You focus on the WHAT and WHY, we handle the WHERE.
+- DO NOT include reservation_link or venue_website — we handle booking links automatically based on category. You focus on the WHAT and WHY, we handle the WHERE.
 - materials_needed: Items the gift-giver buys IN ADVANCE to prepare or elevate the experience.
-  * GOOD: "Watercolor paint set" for an art class, "Portable Bluetooth speaker" for a picnic, "Dog life jacket" for a lake day
+  * GOOD: "Watercolor paint set" for an art class, "Portable Bluetooth speaker" for a listening party, "Dog life jacket" for a lake day
   * BAD: "Water bottles" (everyone has these), "Tickets" (that's the booking, not a material), "Concert merch" (bought at the event), "Good vibes" (not a product)
   * NEVER suggest vinyl records, CDs, DVDs, or Blu-rays as materials — assume the recipient streams music and movies on Spotify/Apple Music/Netflix. The only exception: if the profile explicitly lists vinyl collecting, record collecting, or physical media as a stated passion.
   * Only include item name + estimated_price. We match products and add links automatically.
   * If the experience needs no advance purchases (e.g., restaurant dinner), use an empty list []
-- how_to_execute: Write 3-5 SHORT sentences the gift-giver can act on. Be specific: "Search Cozymeal for Thai cooking classes in their city" not "Find a local cooking class."
+- how_to_execute: Write 3-5 SHORT sentences the gift-giver can act on. Be specific: "Search Cozymeal for Thai cooking classes in {recipient_city}" not "Find a local cooking class."
 - MUST be personal/leisure ONLY — never work-themed, never professional development
-- If no location context in profile, DO NOT suggest location-specific experiences
-- CONCERT/SHOW NAMES: NEVER include a distant city name in an experience. Write "Leslie Odom Jr. Concert Night" not "Leslie Odom Jr. at Boston Garden". We automatically generate ticket search links for the recipient's city ({recipient_city}).
+- If no location context in profile, DO NOT suggest location-specific bookable experiences (use DIY/other instead)
+- CONCERT/SHOW NAMES: NEVER include a distant city name in an experience. Write "Chappell Roan Concert Night" not "Chappell Roan at Madison Square Garden". We automatically generate ticket search links for the recipient's city ({recipient_city}).
 
 GIFT TASTE — REJECT BORING PRACTICAL ITEMS:
 A gift should make someone say "you GET me," not "thanks, I needed that." REJECT these categories entirely:

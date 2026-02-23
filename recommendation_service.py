@@ -325,13 +325,9 @@ class RecommendationService:
         def retailer_progress(retailer, count=None, searching=False, done=False, skipped=False):
             """Progress callback for retailer searches."""
             status = 'searching' if searching else ('done' if done else ('skipped' if skipped else 'unknown'))
-            if done or skipped:
-                from progress_service import ProgressTracker
-                # Create temporary tracker to update retailer progress
-                # (This is a bit awkward but maintains compatibility)
-                self.progress_callback(
-                    retailers={retailer: {'status': status, 'count': count or 0}}
-                )
+            self.progress_callback(
+                retailers={retailer: {'status': status, 'count': count or 0}}
+            )
 
         products = self.search_products_multi_retailer(
             profile_for_backend,

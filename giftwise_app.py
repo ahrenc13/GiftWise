@@ -4013,6 +4013,10 @@ def admin_stats():
     return render_template('admin_stats.html', data=data)
 
 
+import threading as _threading
+_catalog_sync_lock = _threading.Lock()
+
+
 @app.route('/admin/sync-catalog', methods=['GET', 'POST'])
 def admin_sync_catalog():
     """
@@ -4020,8 +4024,9 @@ def admin_sync_catalog():
 
     GET  ?key=KEY&mode=refresh  — runs sync in background, returns immediately
     GET  ?key=KEY&stats=1       — returns current catalog stats as JSON
+    Returns 409 if a sync is already running (lock guard prevents doubles).
     """
-    import threading, json as _json
+    import json as _json
 
     key = request.args.get('key', '')
     if not ADMIN_KEY or key != ADMIN_KEY:
@@ -4034,22 +4039,29 @@ def admin_sync_catalog():
     if request.args.get('stats'):
         return _json.dumps(get_catalog_stats()), 200, {'Content-Type': 'application/json'}
 
+    # Guard against concurrent syncs
+    if _catalog_sync_lock.locked():
+        return _json.dumps({
+            'status': 'already_running',
+            'message': 'A catalog sync is already in progress.',
+        }), 409, {'Content-Type': 'application/json'}
+
     mode = request.args.get('mode', 'refresh')
     terms_raw = request.args.get('terms', '')
     terms = [t.strip() for t in terms_raw.split(',') if t.strip()] or None
 
     def _run():
-        try:
-            app.logger.info(f"Catalog sync started: mode={mode}")
-            result = run_catalog_sync(mode=mode, terms=terms)
-            app.logger.info(
-                f"Catalog sync complete: {result.get('total_stored', 0)} products stored"
-            )
-        except Exception as e:
-            app.logger.error(f"Catalog sync failed: {e}")
+        with _catalog_sync_lock:
+            try:
+                app.logger.info(f"Catalog sync started: mode={mode}")
+                result = run_catalog_sync(mode=mode, terms=terms)
+                app.logger.info(
+                    f"Catalog sync complete: {result.get('total_stored', 0)} products stored"
+                )
+            except Exception as e:
+                app.logger.error(f"Catalog sync failed: {e}")
 
-    thread = threading.Thread(target=_run, daemon=True)
-    thread.start()
+    _threading.Thread(target=_run, daemon=False).start()
 
     return _json.dumps({
         'status': 'started',

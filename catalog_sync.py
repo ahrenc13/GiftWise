@@ -309,7 +309,7 @@ def ensure_catalog_schema():
     Called automatically on import.
     """
     os.makedirs(os.path.dirname(_DB_PATH), exist_ok=True)
-    conn = sqlite3.connect(_DB_PATH)
+    conn = sqlite3.connect(_DB_PATH, timeout=10)  # timeout prevents indefinite lock-wait
     try:
         cur = conn.cursor()
 
@@ -924,8 +924,9 @@ def run_catalog_sync(
     # Mark products not refreshed in STALE_PRODUCT_DAYS as removed
     stale_count = 0
     if not dry_run:
+        conn = None
         try:
-            conn = sqlite3.connect(_DB_PATH)
+            conn = sqlite3.connect(_DB_PATH, timeout=10)
             cutoff = (datetime.now() - timedelta(days=STALE_PRODUCT_DAYS)).isoformat()
             with conn:
                 cur = conn.cursor()
@@ -937,9 +938,11 @@ def run_catalog_sync(
                       AND retailer LIKE '%CJ%'
                 """, (datetime.now().isoformat(), cutoff))
                 stale_count = cur.rowcount
-            conn.close()
         except Exception as e:
             logger.error(f"Stale purge failed: {e}")
+        finally:
+            if conn:
+                conn.close()
 
     summary = {
         'mode':          mode,

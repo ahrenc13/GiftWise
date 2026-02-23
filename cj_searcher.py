@@ -745,16 +745,16 @@ def get_techforless_products_for_profile(profile):
     )
 
     def _get(pid):
-        return next(p for p in _TFL_ALL_PRODUCTS if p['product_id'] == pid)
+        return next((p for p in _TFL_ALL_PRODUCTS if p['product_id'] == pid), None)
 
     if is_gaming:
-        return [_get('tfl-gaming'), _get('tfl-laptops')]
+        return [p for p in [_get('tfl-gaming'), _get('tfl-laptops')] if p]
     elif is_photography:
-        return [_get('tfl-cameras'), _get('tfl-home')]
+        return [p for p in [_get('tfl-cameras'), _get('tfl-home')] if p]
     elif is_apple:
-        return [_get('tfl-macbooks'), _get('tfl-home')]
+        return [p for p in [_get('tfl-macbooks'), _get('tfl-home')] if p]
     else:
-        return [_get('tfl-laptops'), _get('tfl-home')]
+        return [p for p in [_get('tfl-laptops'), _get('tfl-home')] if p]
 
 
 # ---------------------------------------------------------------------------
@@ -946,14 +946,14 @@ def get_tenergy_products_for_profile(profile):
     )
 
     def _get(pid):
-        return next(p for p in _TENERGY_ALL_PRODUCTS if p['product_id'] == pid)
+        return next((p for p in _TENERGY_ALL_PRODUCTS if p['product_id'] == pid), None)
 
     if is_rc_or_drone:
-        return [_get('tenergy-rc-hobby'), _get('tenergy-charger-kit')]
+        return [p for p in [_get('tenergy-rc-hobby'), _get('tenergy-charger-kit')] if p]
     elif is_kitchen:
-        return [_get('tenergy-life-appliances'), _get('tenergy-rechargeable')]
+        return [p for p in [_get('tenergy-life-appliances'), _get('tenergy-rechargeable')] if p]
     else:
-        return [_get('tenergy-rechargeable'), _get('tenergy-charger-kit')]
+        return [p for p in [_get('tenergy-rechargeable'), _get('tenergy-charger-kit')] if p]
 
 
 # ---------------------------------------------------------------------------
@@ -1205,7 +1205,7 @@ def get_trinityroad_products_for_profile(profile):
     logger.info(f"Trinity Road (Catholic Co.) triggered by profile interests: {matched}")
 
     def _get(pid):
-        return next(p for p in _TRINITYROAD_ALL_PRODUCTS if p['product_id'] == pid)
+        return next((p for p in _TRINITYROAD_ALL_PRODUCTS if p['product_id'] == pid), None)
 
     is_communion = bool(interest_names & _TRINITYROAD_COMMUNION_SIGNALS) or any(
         'communion' in n for n in interest_names
@@ -1224,17 +1224,17 @@ def get_trinityroad_products_for_profile(profile):
     )
 
     if is_communion:
-        return [_get('catholicco-communion'), _get('catholicco-rosary')]
+        return [p for p in [_get('catholicco-communion'), _get('catholicco-rosary')] if p]
     elif is_confirmation:
-        return [_get('catholicco-confirmation'), _get('catholicco-gifts')]
+        return [p for p in [_get('catholicco-confirmation'), _get('catholicco-gifts')] if p]
     elif is_baptism:
-        return [_get('catholicco-baptism'), _get('catholicco-gifts')]
+        return [p for p in [_get('catholicco-baptism'), _get('catholicco-gifts')] if p]
     elif is_coffee:
-        return [_get('catholicco-coffee'), _get('catholicco-gifts')]
+        return [p for p in [_get('catholicco-coffee'), _get('catholicco-gifts')] if p]
     elif is_adult_humor:
-        return [_get('catholicco-saints-book'), _get('catholicco-rosary')]
+        return [p for p in [_get('catholicco-saints-book'), _get('catholicco-rosary')] if p]
     else:
-        return [_get('catholicco-gifts'), _get('catholicco-rosary')]
+        return [p for p in [_get('catholicco-gifts'), _get('catholicco-rosary')] if p]
 
 
 # ---------------------------------------------------------------------------
@@ -1444,7 +1444,7 @@ def get_zchocolat_products_for_profile(profile):
     logger.info(f"zChocolat triggered by profile interests: {matched}")
 
     def _get(pid):
-        return next(p for p in _ZCHOCOLAT_ALL_PRODUCTS if p['product_id'] == pid)
+        return next((p for p in _ZCHOCOLAT_ALL_PRODUCTS if p['product_id'] == pid), None)
 
     is_vegan = bool(interest_names & _ZCHOCOLAT_VEGAN_SIGNALS) or any(
         'vegan' in n or 'plant' in n or 'dairy' in n for n in interest_names
@@ -1458,13 +1458,13 @@ def get_zchocolat_products_for_profile(profile):
     )
 
     if is_vegan:
-        return [_get('zchocolat-vegan'), _get('zchocolat-assortments')]
+        return [p for p in [_get('zchocolat-vegan'), _get('zchocolat-assortments')] if p]
     elif is_luxury:
-        return [_get('zchocolat-gold'), _get('zchocolat-personalized')]
+        return [p for p in [_get('zchocolat-gold'), _get('zchocolat-personalized')] if p]
     elif is_personalization:
-        return [_get('zchocolat-personalized'), _get('zchocolat-assortments')]
+        return [p for p in [_get('zchocolat-personalized'), _get('zchocolat-assortments')] if p]
     else:
-        return [_get('zchocolat-assortments'), _get('zchocolat-home')]
+        return [p for p in [_get('zchocolat-assortments'), _get('zchocolat-home')] if p]
 
 
 # ---------------------------------------------------------------------------
@@ -1623,7 +1623,7 @@ def get_winebasket_products_for_profile(profile):
     logger.info(f"Winebasket/BabyBasket/Capalbo's triggered by profile interests: {matched}")
 
     def _get(pid):
-        return next(p for p in _WINEBASKET_ALL_PRODUCTS if p['product_id'] == pid)
+        return next((p for p in _WINEBASKET_ALL_PRODUCTS if p['product_id'] == pid), None)
 
     is_baby = bool(interest_names & _WINEBASKET_BABY_SIGNALS) or any(
         'baby' in n or 'newborn' in n or 'pregnan' in n or 'parent' in n
@@ -1640,13 +1640,13 @@ def get_winebasket_products_for_profile(profile):
     )
 
     if is_baby:
-        return [_get('winebasket-baby'), _get('winebasket-wine')]
+        return [p for p in [_get('winebasket-baby'), _get('winebasket-wine')] if p]
     elif is_gourmet:
-        return [_get('winebasket-gourmet'), _get('winebasket-wine')]
+        return [p for p in [_get('winebasket-gourmet'), _get('winebasket-wine')] if p]
     elif is_wine:
-        return [_get('winebasket-wine'), _get('winebasket-gourmet')]
+        return [p for p in [_get('winebasket-wine'), _get('winebasket-gourmet')] if p]
     else:
-        return [_get('winebasket-wine'), _get('winebasket-gourmet')]
+        return [p for p in [_get('winebasket-wine'), _get('winebasket-gourmet')] if p]
 
 
 def get_soccergarage_products_for_profile(profile):
@@ -1687,24 +1687,15 @@ def get_soccergarage_products_for_profile(profile):
         'youth' in n or 'kid' in n or 'child' in n or 'parent' in n for n in interest_names
     )
 
+    def _get(pid):
+        return next((p for p in _SOCCERGARAGE_ALL_PRODUCTS if p['product_id'] == pid), None)
+
     if is_goalkeeper:
-        # Lead with goalkeeper gear, add cleats as second pick
-        return [
-            next(p for p in _SOCCERGARAGE_ALL_PRODUCTS if p['product_id'] == 'soccergarage-goalkeeper'),
-            next(p for p in _SOCCERGARAGE_ALL_PRODUCTS if p['product_id'] == 'soccergarage-cleats'),
-        ]
+        return [p for p in [_get('soccergarage-goalkeeper'), _get('soccergarage-cleats')] if p]
     elif is_youth_or_parent:
-        # Lead with youth gear, add general homepage
-        return [
-            next(p for p in _SOCCERGARAGE_ALL_PRODUCTS if p['product_id'] == 'soccergarage-youth'),
-            next(p for p in _SOCCERGARAGE_ALL_PRODUCTS if p['product_id'] == 'soccergarage-home'),
-        ]
+        return [p for p in [_get('soccergarage-youth'), _get('soccergarage-home')] if p]
     else:
-        # General soccer fan: cleats (highest AOV, most gifted) + homepage
-        return [
-            next(p for p in _SOCCERGARAGE_ALL_PRODUCTS if p['product_id'] == 'soccergarage-cleats'),
-            next(p for p in _SOCCERGARAGE_ALL_PRODUCTS if p['product_id'] == 'soccergarage-home'),
-        ]
+        return [p for p in [_get('soccergarage-cleats'), _get('soccergarage-home')] if p]
 
 
 def get_peets_products_for_profile(profile):

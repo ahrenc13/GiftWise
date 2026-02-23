@@ -10,7 +10,7 @@
 - **Platform:** Railway.app (NOT Render, NOT Heroku)
 - **Auto-deploy branch:** `main` (pushes to `main` trigger automatic deployment)
 - **Config file:** `railway.json` (Nixpacks builder, Gunicorn start command)
-- **Start command:** `gunicorn giftwise_app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 600`
+- **Start command:** `gunicorn giftwise_app:app --bind 0.0.0.0:$PORT --workers 3 --timeout 600 --graceful-timeout 120 --worker-class sync --log-level info`
 - **Environment variables:** Set in Railway dashboard → Settings → Variables (see RAILWAY_DEBUG_GUIDE.md for required vars)
 - **Logs:** Railway dashboard → Deployments → View Logs (or `railway logs` via CLI)
 - **Database:** Uses shelve (ephemeral filesystem) — consider migrating to Railway Postgres for persistence across deploys
@@ -141,21 +141,24 @@ Flip this priority when: monthly affiliate revenue is steady but clearly lower t
 ## What This Is
 AI-powered gift recommendation app. Flask pipeline: scrape social media → Claude analyzes profile → enrich with static data → search retailers → Claude curates gifts → programmatic cleanup → display.
 
-**Current State (TL;DR):** App is feature-complete and polished, but inventory is bottlenecked. Only Amazon + eBay active (~30 products/session). Waiting on affiliate network approvals: Skimlinks (submitted 2/9), CJ Affiliate (~70 brands submitted 2/15), Awin (need to join advertisers), Impact (account type issue). Valentine's removed (2/15), Mother's Day ready (guide built). TikTok launch on hold until inventory improves. Demo mode ready for testing. 10 gift guides + 4 blog posts deployed for SEO and network approval. 4754-line Flask app with SQLite product DB, revenue optimizer, and click tracking.
+**Current State (TL;DR):** App is live and polished. CJ Affiliate is now the primary inventory driver with 15+ wired static partners. Amazon + eBay active too. Skimlinks pending (submitted 2/9, still waiting as of 2/23). CJ GraphQL search wired and filtering live. Per-IP rate limiting active (1 run/day). 3 Gunicorn workers deployed. TikTok launch-ready. 10 gift guides + 4 blog posts live for SEO. Group chat sharing + OneSignal push notifications added.
 
-## Current State (Feb 16, 2026)
+## Current State (Feb 23, 2026)
 
-### Major Changes Since Feb 9
-1. **Valentine's Day completely removed** (Feb 15) — All V-Day routes, templates, messaging, and promo-specific code deleted. Sharing/referral infrastructure preserved as generic features.
-2. **Mother's Day guide added** (Feb 14) — `/guides/mothers-day` ready for May 11 promotion
-3. **Blog architecture launched** (Feb 15) — 4 SEO-optimized blog posts for organic traffic and affiliate approval
-4. **3 Etsy gift guides added** (Feb 14) — etsy-home-decor, etsy-jewelry, etsy-under-50 (total now 10 guides)
-5. **Demo/skip mode** (Feb 13) — `/demo` bypasses social handle requirement. Admin mode (`?admin=true`) pre-fills @chadahren for real testing.
-6. **Revenue optimizer** (Feb 11) — `revenue_optimizer.py` scores products by commission rate + interest match before curator sees them
-7. **Product database** (Feb 11) — SQLite catalog caches products, tracks clicks, enables learning loop
-8. **Waitlist system** (Feb 10) — `/waitlist` for handle-based early access (Gen Z engagement)
-9. **Spotify Wrapped integration** (Feb 10) — Text paste alternative to OAuth for music preferences
-10. **CJ Affiliate strategy** (Feb 15) — Batch applications to ~70 brands, T&C analysis, revenue projections added to docs
+### Major Changes Since Feb 16
+1. **CJ Affiliate fully wired** — GraphQL product search integrated, filtering non-joined advertisers, 15+ static partners active
+2. **15+ new CJ static partners added** — MonthlyClubs, SoccerGarage, TechForLess, Tenergy, TrinityRoad/Catholic Company, zChocolat (20% — highest commission!), Winebasket/BabyBasket/Capalbo's, plus all previously listed partners
+3. **catalog_sync.py added** — CJ product catalog pre-scorer and session cache for discovered CJ products
+4. **Per-IP rate limiting live** — 1 run/day per IP (implemented for TikTok launch)
+5. **3 Gunicorn workers** — Upgraded from 1 worker to 3 for launch traffic handling
+6. **Share-to-unlock gate disabled** — All recommendations shown free (removed friction for launch)
+7. **Spotify OAuth removed** — Simplified back to text-only paste at `/connect/spotify-wrapped` (OAuth was causing infinite waits/403s)
+8. **Group chat sharing added** — Share recs directly to group chats (Gen Z engagement)
+9. **OneSignal web push added** — Opt-in push notifications (activated via `ONESIGNAL_APP_ID` env var in Railway)
+10. **Experience quality overhaul** — Bookable vs DIY badges, concert realism fixes, experience synthesis improvements
+11. **Curation quality improvements** — Synthesis principle, poster flood fix, dedup bug fixed, anti-trope guidance in curator prompt
+12. **AI/algorithm language removed** — Copy shifted to warm "we" voice throughout
+13. **eBay affiliate tracking fixed** — EPN campaign params now appended to all links
 
 ### What's working
 - **Full recommendation pipeline:** Instagram + TikTok scraping → profile analysis → multi-retailer search → curation → cleanup → display
@@ -163,58 +166,68 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 - **Model toggle via env vars:** `CLAUDE_PROFILE_MODEL`, `CLAUDE_CURATOR_MODEL` (default Sonnet for both)
 - **Smart filters:** work exclusion, passive/active filtering, obsolete media filter (respects retro/vinyl interests), low-effort item filter
 - **Post-curation cleanup:** brand dedup, category dedup (23 patterns), interest spread (max 2), source diversity cap
-- **Experience providers:** 13 categories mapped to real booking platforms (Ticketmaster, Cozymeal, Viator, etc.)
+- **Experience providers:** 13 categories mapped to real booking platforms (Ticketmaster, Cozymeal, Viator, etc.). Bookable vs DIY badges visible on cards.
 - **Search query cleaning:** `_clean_interest_for_search()` strips filler from interest names, category-specific suffixes
 - **Material matching:** word-overlap scoring with expanded stopwords and 40% threshold
-- **Sharing infrastructure:** `/api/share` creates shareable links, `shared_recommendations.html`, `share_generator.py` SVG cards (generic, no campaign-specific code)
+- **Sharing infrastructure:** `/api/share` creates shareable links, `shared_recommendations.html`, `share_generator.py` SVG cards, group chat sharing
 - **Referral system:** `referral_system.py` generates codes, tracks referrals (generic, no promo-specific bonuses)
 - **Admin dashboard:** `/admin/stats?key=ADMIN_DASHBOARD_KEY` — tracks signups, rec_run, share_create, share_view, guide_hit, error
 - **10 editorial gift guides** at `/guides/<slug>` for affiliate approval (6 general + 3 Etsy-focused + 1 Mother's Day)
 - **Blog architecture:** `/blog` landing + 4 SEO-optimized articles (cash vs physical gifts, gift mistakes, gifts for people who have everything, last-minute gifts)
 - **Demo/skip mode:** `/demo` bypasses social handle requirement. Admin variant (`?admin=true`) pre-fills @chadahren for real pipeline testing.
 - **Waitlist system:** `/waitlist` for handle-based early access (Gen Z engagement)
-- **Spotify Wrapped integration:** `/connect/spotify-wrapped` accepts text paste of Spotify data for music preference analysis
+- **Spotify Wrapped integration:** `/connect/spotify-wrapped` accepts text paste of Spotify data for music preference analysis (OAuth removed — text-only)
 - **Revenue optimization:** `revenue_optimizer.py` smart pre-filtering scores products before curator sees them (prioritizes high-commission sources)
 - **Product database:** SQLite catalog (`database.py`) caches products, tracks click analytics, enables learning loop
+- **CJ GraphQL product search:** `cj_searcher.py` queries CJ product feeds for joined advertisers, filters non-joined ones
+- **Catalog sync:** `catalog_sync.py` pre-scores discovered CJ products and maintains session cache
 - **Affiliate click tracking:** `track_affiliate_click()` logs every product click for performance analysis
+- **Per-IP rate limiting:** 1 run/day per IP (active, shown on `rate_limited.html` template)
+- **OneSignal push notifications:** Opt-in, activated via `ONESIGNAL_APP_ID` Railway env var. Service worker at `/OneSignalSDKWorker.js`.
 - **Privacy, terms, affiliate disclosure** in footer
-- **Skimlinks JS snippet** in all 40 templates (publisher ID: 298548X178612)
+- **Skimlinks JS snippet** in all templates (publisher ID: 298548X178612)
 
 ### What's NOT working / pending
-- **Etsy:** 403 on all queries — awaiting developer credentials approval (still pending as of Feb 16)
-- **Awin:** Code works but 0 joined advertisers — returns [] immediately. Need to join at https://www.awin.com/us/search/advertiser-directory (priority: Etsy, UGG, Lululemon, Portland Leather). User was trying to research which partners to join but Awin's interface is difficult.
-- **Skimlinks:** Code complete, awaiting publisher approval (submitted Feb 9, still pending as of Feb 16 — can take up to 7 business days)
-- **Inventory is thin:** Only Amazon (RapidAPI) + eBay (Browse API) active. ~30 products per run. This affects recommendation quality significantly.
+- **Etsy:** 403 on all queries — awaiting developer credentials approval (still pending as of Feb 23)
+- **Awin:** Code works but 0 joined advertisers — returns [] immediately. Need to join at https://www.awin.com/us/search/advertiser-directory (priority: Etsy, UGG, Lululemon, Portland Leather)
+- **Skimlinks:** Code complete, awaiting publisher approval (submitted Feb 9, still pending as of Feb 23 — well past expected 7-business-day window)
 - **Impact.com:** User accidentally signed up as brand instead of publisher. Ticket submitted, no response yet.
-- **CJ Affiliate:** Batch applications to ~70 brands submitted Feb 15. Awaiting responses (auto-approve in 24-48h or manual review 3-7 days).
 - **Rakuten:** Signed up, need to apply to individual brands
 - **Walmart Creator:** Application submitted
+- **FlexOffers:** Application submitted 2/16, approval status unknown
 
-### Affiliate network applications status (Updated Feb 16)
+### Affiliate network applications status (Updated Feb 23)
 **See `AFFILIATE_APPLICATIONS_TRACKER.md` for detailed tracking.**
 
 | Network | Status | Brands Covered |
 |---------|--------|---------------|
-| Skimlinks | Pending approval (submitted 2/9, expected by 2/18-20) | ~48,500 merchants (blanket access) |
-| CJ Affiliate | ✅ Multiple approvals Feb 16-23. See individual partner rows below for fully wired partners. Others pending. | Subscription clubs, flowers, jewelry, fragrances, gaming, wellness, chocolates, artisan jewelry, charity shopping, coffee |
-| FlexOffers | Application submitted 2/16, awaiting approval (same-day to 48h) | 12,000+ advertisers, niche brands |
+| Skimlinks | ⏳ Still pending (submitted 2/9 — past expected window, follow up) | ~48,500 merchants (blanket access) |
+| CJ Affiliate | ✅ Active. GraphQL search wired + 15+ static partners live. See partner rows below. | Subscription clubs, flowers, jewelry, fragrances, gaming, wellness, chocolates, artisan jewelry, charity shopping, coffee, soccer, refurb electronics, batteries, religious gifts, wine/gourmet baskets |
+| FlexOffers | ⏳ Application submitted 2/16, status unknown | 12,000+ advertisers, niche brands |
 | Awin | ✅ Account active, need to join ShareASale merchants (migrated Oct 2025) | Uncommon Goods, Personalization Mall, Things Remembered, etc. |
-| Impact | Wrong account type (signed up as brand not publisher), ticket submitted, no response | Target, Ulta, Kohl's, Gap, Home Depot, Adidas, Dyson |
+| Impact | ❌ Wrong account type (signed up as brand not publisher), ticket open | Target, Ulta, Kohl's, Gap, Home Depot, Adidas, Dyson |
 | Rakuten | Account active, need to apply to individual brands | Sephora, Nordstrom, Anthropologie, Free People, Coach |
 | Walmart Creator | Application submitted | Walmart |
 | Etsy Direct | Developer credentials pending | Etsy (would bypass Awin if approved) |
-| Amazon Associates | ✅ Active (tag added to Railway Feb 16) | Amazon |
-| eBay Partner Network | ✅ Active | eBay |
-| illy caffè (via CJ) | ✅ Approved Feb 17 — awaiting product feed check | Premium Italian coffee, espresso machines, membership program (6% new / 4% existing, 45-day cookie, ~$125 AOV). Trigger: coffee/espresso interests. Do NOT use discount language — terms prohibit it. |
-| Peet's Coffee (via CJ) | ✅ Approved Feb 17 — wired with static curated products (no product feed) | **10% commission**, 45-day cookie. Evergreen link ID 15734720, Gift bundle link ID 15596392. Coupons: NEWSUB30 (30% off first sub, valid Dec 2029), WEBFRIEND5 (5% sitewide, valid Dec 2026). Trigger: coffee/espresso/tea/gourmet/craft culture interests. Static products in `cj_searcher.py` → `_PEETS_ALL_PRODUCTS`. Do NOT use discount language beyond stated coupons. Non-commissionable: Gift Cards. |
-| Macorner (via CJ) | ✅ Approved Feb 17 — category links only, no product feed. Do NOT add to recommendation pipeline. Only valid if profile explicitly signals sentimental/memory-keeping interest. | Photo pillows, custom mugs, engraved keychains — "polite smile" gift tier |
-| FlowersFast (via CJ) | ✅ Wired Feb 2026 — static products in `cj_searcher.py` → `_FLOWERSFAST_ALL_PRODUCTS` | **20% commission**, 45-day cookie, $74 EPC, ~$65 AOV. Same-day flower delivery. Trigger: flowers, romance, anniversaries, birthdays, get well. T&C: Do NOT use "FTD" or "Teleflora" trademarks in any publisher copy. ADV_CID: 231679. |
-| FragranceShop (via CJ) | ✅ Wired Feb 2026 — static products in `cj_searcher.py` → `_FRAGRANCESHOP_ALL_PRODUCTS` | **5% commission**, 45-day cookie, $43 EPC. Discount designer fragrances. Trigger: perfume, cologne, fragrance, grooming, beauty, fashion. T&C: No "authorized wholesaler" or "official site" claims; no outdated % off claims. ADV_CID: 7287203. |
-| GameFly (via CJ) | ✅ Wired Feb 2026 — static products in `cj_searcher.py` → `_GAMEFLY_ALL_PRODUCTS` | **$5/lead** (subscription), **10%** used games/accessories. 0% on new games/consoles. Trigger: gaming, video games, PlayStation, Xbox, Nintendo. Gift certificates non-commissionable. ADV_CID: 1132500. |
-| GreaterGood (via CJ) | ✅ Wired Feb 2026 — static products in `cj_searcher.py` → `_GREATERGOOD_ALL_PRODUCTS` | **2% baseline, up to 15%** (Animal Rescue Site). Charity-linked shopping. Trigger: dogs, cats, pets, animals, philanthropy, cause-driven. Max 1 product returned. ADV_CID: 4046728. |
-| GroundLuxe (via CJ) | ✅ Wired Feb 2026 — static products in `cj_searcher.py` → `_GROUNDLUXE_ALL_PRODUCTS` | **10% commission**, 30-day cookie, $150–221 EPC (highest in static stack). Luxury grounding/earthing sheets. Trigger: wellness, sleep, yoga, meditation, biohacking. T&C: No medical claims ("proven to reduce pain") — use earthing/grounding wellness framing. priority=1. ADV_CID: 7681501. |
-| Russell Stover (via CJ) | ✅ Wired Feb 2026 — static products in `cj_searcher.py` → `_RUSSELLSTOVER_ALL_PRODUCTS` | **5% commission**, **5-day cookie** (very short), $1.50 EPC. Classic American boxed chocolates. Trigger: chocolate, sweets, candy, dessert, foodie. Non-commissionable: Gift Baskets, Gift Cards, Outlet, Gift Wrap. priority=3 (lower due to short cookie). Max 1 product returned. ADV_CID: 4441453. |
-| SilverRushStyle (via CJ) | ✅ Wired Feb 2026 — static products in `cj_searcher.py` → `_SILVERRUSHSTYLE_ALL_PRODUCTS` | **15% commission**, 60-day cookie, $17–147 EPC (turquoise category highest at $147.62). ~$114 AOV. Handmade artisan sterling silver gemstone jewelry, 10,000+ designs. Trigger: jewelry, gemstones, crystals, turquoise, bohemian, artisan, handmade, witchy. T&C: Very clean — public coupon codes allowed; only SEM trademark bidding restricted. ADV_CID: 3874186. |
+| Amazon Associates | ✅ Active | Amazon |
+| eBay Partner Network | ✅ Active (EPN campaign params wired to all links Feb 23) | eBay |
+| illy caffè (via CJ) | ✅ Wired — static products in `_ILLY_ALL_PRODUCTS`. Evergreen link 15734901. | **6% new / 4% existing**, 45-day cookie, ~$125 AOV. Trigger: coffee/espresso interests. Do NOT use discount language — terms prohibit it. ADV_CID: 2184930. |
+| Peet's Coffee (via CJ) | ✅ Wired — static products in `_PEETS_ALL_PRODUCTS` | **10% commission**, 45-day cookie. Coupons: NEWSUB30 (30% off first sub), WEBFRIEND5 (5% sitewide). Trigger: coffee/espresso/tea/gourmet/craft culture. Non-commissionable: Gift Cards. |
+| MonthlyClubs (via CJ) | ✅ Wired — static products in `_MONTHLYCLUBS_ALL_PRODUCTS`. 6 clubs (beer, wine, cheese, flowers, chocolate, coffee). | Commission varies by club. Trigger: subscription gifting, foodies, alcohol, coffee. |
+| Macorner (via CJ) | ✅ Approved — category links only, no product feed. Do NOT add to recommendation pipeline. Only valid if profile explicitly signals sentimental/memory-keeping interest. | Photo pillows, custom mugs, engraved keychains — "polite smile" gift tier |
+| FlowersFast (via CJ) | ✅ Wired — static products in `_FLOWERSFAST_ALL_PRODUCTS` | **20% commission**, 45-day cookie, $74 EPC, ~$65 AOV. Same-day flower delivery. Trigger: flowers, romance, anniversaries, birthdays. T&C: Do NOT use "FTD" or "Teleflora" trademarks. ADV_CID: 231679. |
+| FragranceShop (via CJ) | ✅ Wired — static products in `_FRAGRANCESHOP_ALL_PRODUCTS` | **5% commission**, 45-day cookie. Trigger: perfume, cologne, fragrance, grooming, beauty, fashion. ADV_CID: 7287203. |
+| GameFly (via CJ) | ✅ Wired — static products in `_GAMEFLY_ALL_PRODUCTS` | **$5/lead** (subscription), **10%** used games/accessories. 0% on new games/consoles. Trigger: gaming, video games. ADV_CID: 1132500. |
+| GreaterGood (via CJ) | ✅ Wired — static products in `_GREATERGOOD_ALL_PRODUCTS` | **2–15% commission**. Charity-linked shopping. Trigger: pets, animals, philanthropy. Max 1 product returned. ADV_CID: 4046728. |
+| GroundLuxe (via CJ) | ✅ Wired — static products in `_GROUNDLUXE_ALL_PRODUCTS` | **10% commission**, $150–221 EPC (highest EPC in stack). Luxury grounding sheets. Trigger: wellness, sleep, yoga, biohacking. No medical claims. ADV_CID: 7681501. |
+| Russell Stover (via CJ) | ✅ Wired — static products in `_RUSSELLSTOVER_ALL_PRODUCTS` | **5% commission**, **5-day cookie** (very short). Classic boxed chocolates. Trigger: chocolate, sweets, candy, dessert. ADV_CID: 4441453. |
+| SilverRushStyle (via CJ) | ✅ Wired — static products in `_SILVERRUSHSTYLE_ALL_PRODUCTS` | **15% commission**, 60-day cookie, up to $147 EPC. Artisan silver gemstone jewelry. Trigger: jewelry, gemstones, crystals, bohemian, witchy. ADV_CID: 3874186. |
+| SoccerGarage (via CJ) | ✅ Wired — static products in `_SOCCERGARAGE_ALL_PRODUCTS` | **7% commission** (scales to 10% at $7.5K/mo), 60-day cookie, ~$125 AOV. Soccer cleats, gear, apparel. Trigger: soccer, football. ADV_CID: 2061630. |
+| TechForLess (via CJ) | ✅ Wired — static products in `_TFL_ALL_PRODUCTS` | **5% commission**, 14-day cookie, ~$185 AOV. Refurb/open-box electronics. Trigger: tech, gadgets, laptops. Deep-link enabled (Evergreen ID 15733604). ADV_CID: 3297514. |
+| Tenergy (via CJ) | ✅ Wired — static products in `_TENERGY_ALL_PRODUCTS` | **8% commission**, 30-day cookie, $11–13 EPC. Rechargeable batteries, solar, home appliances. Trigger: eco, sustainability, tech accessories. Deep-link enabled. ADV_CID: 1826017. |
+| TrinityRoad / Catholic Company (via CJ) | ✅ Wired — static products in `_TRINITYROAD_ALL_PRODUCTS` | **8% commission**, 30–45 day cookie. 6 sites incl. catholiccompany.com, rosary.com. Trigger: Catholic faith milestones (Confirmation, Communion, Baptism, Christmas). Deep-link enabled. ADV_CID: 2871603. |
+| zChocolat (via CJ) | ✅ Wired — static products in `_ZCHOCOLAT_ALL_PRODUCTS` | **20% commission** (highest of any partner), 45-day cookie, ~$120 AOV, $75–367 EPC. World-champion French chocolatier, ships to 244 countries. Trigger: chocolate, gourmet, luxury gifts. Deep-link enabled. ADV_CID: 1124214. |
+| Winebasket / BabyBasket / Capalbo's (via CJ) | ✅ Wired — static products in `_WINEBASKET_ALL_PRODUCTS` | **7% commission**, 15-day cookie, ~$110 AOV, $52–66 EPC. Wine baskets, baby gift baskets, gourmet food baskets. Trigger: wine, new baby, gourmet food, celebrations. Deep-link enabled. ADV_CID: 2387081. |
 
 **IMPORTANT:** ShareASale migrated to Awin in Oct 2025. All ShareASale merchants are now accessible through Awin.
 
@@ -288,20 +301,20 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 
 ### Critical (Revenue & Retention)
 1. **`why_perfect` is hidden on default card view** — the #1 differentiator is buried behind a click. Show truncated version on compact card. (`templates/recommendations.html` ~line 390)
-2. **Curator selects boring practical items** — travel adapters, medicine kits, cable organizers are "needs" not gifts. Add rejection guidance to curator prompt. (`gift_curator.py` prompt section)
+2. **~~Curator selects boring practical items~~** — ✅ Fixed Feb 23: Anti-trope guidance added to curator prompt + gifting trope triggers tightened.
 3. **Experience material links mostly unmatched** — 7/9 hit "Search Amazon" fallback in last test. Improve UX framing + consider targeted mini-searches for unmatched materials. (`giftwise_app.py` ~line 2687)
 
 ### High (Quality)
 4. **Image placeholder rate not tracked as metric** — 23% placeholders in last run. Need structured logging. (`image_fetcher.py`, `site_stats.py`)
 5. **Search queries still too verbose for eBay** — long interest names cause 400 errors. Cap query length after cleaning. (`ebay_searcher.py`, `rapidapi_amazon_searcher.py`)
-6. **No "boring practical item" guidance in curator prompt** — don't build a code filter for this; it's a taste/judgment problem for the prompt. Prompts for taste, code for rules.
+6. **~~No "boring practical item" guidance in curator prompt~~** — ✅ Fixed Feb 23 (see #2 above).
 
 ### Medium (Edge Cases)
 7. **Material matching stopwords too aggressive** — "portable," "travel," "home" carry meaning but are stripped. Split into noise vs context tiers. (`giftwise_app.py` ~line 2700)
-8. **Category dedup misses uncategorized duplicates** — two products sharing 3+ title words but matching no category pattern both pass. (`post_curation_cleanup.py`)
+8. **~~Category dedup misses uncategorized duplicates~~** — ✅ Fixed Feb 23: Duplicate replacement products fixed in post-curation cleanup.
 9. **Brand dedup blocks Taylor Swift poster + Taylor Swift notebook** — same brand, different categories, arguably both good picks for a Swiftie. Consider relaxing when categories differ.
 10. **Shared recommendations page needs more personality** — explain HOW picks were made, not just show them. (`templates/shared_recommendations.html`)
-11. **Experience cards don't distinguish bookable vs DIY** — add visual badge. (`templates/recommendations.html`)
+11. **~~Experience cards don't distinguish bookable vs DIY~~** — ✅ Fixed Feb 23: Bookable vs DIY badges added to experience cards.
 12. **Rec count subtitle says "13 gifts" but includes experiences** — should say "10 picks + 3 experiences." (`templates/recommendations.html` ~line 624)
 
 ### Meta-Principle for the Audit
@@ -310,28 +323,33 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 ## Technical Architecture Notes
 
 ### Key Files
-- `giftwise_app.py` — Main app (4754 lines as of Feb 16), orchestrates the full pipeline
+- `giftwise_app.py` — Main app, orchestrates the full pipeline
 - `profile_analyzer.py` — Claude call #1: social data → structured profile. Model via `CLAUDE_PROFILE_MODEL` env var.
 - `gift_curator.py` — Claude call #2: profile + inventory → curated recommendations. Model via `CLAUDE_CURATOR_MODEL` env var.
 - `post_curation_cleanup.py` — Programmatic enforcement of diversity rules (brand, category, interest, source). 23 category patterns.
 - `enrichment_engine.py` — Static intelligence layer (do_buy/dont_buy per interest, demographics, trending)
-- `multi_retailer_searcher.py` — Orchestrates all retailer searches, merges inventory pool. Order: Etsy → Awin → eBay → ShareASale → Skimlinks → Amazon
+- `multi_retailer_searcher.py` — Orchestrates all retailer searches, merges inventory pool. Order: Etsy → Awin → CJ → eBay → Skimlinks → Amazon
 - `rapidapi_amazon_searcher.py` — Amazon search + shared query cleaning functions (`_clean_interest_for_search`, `_categorize_interest`, `_QUERY_SUFFIXES`)
-- `ebay_searcher.py` — eBay search (imports query cleaning from amazon searcher)
+- `ebay_searcher.py` — eBay search with EPN campaign params on all links
 - `etsy_searcher.py`, `awin_searcher.py`, `skimlinks_searcher.py`, `cj_searcher.py` — Per-retailer search modules
+- `cj_searcher.py` — CJ Affiliate: GraphQL product search + 15+ static partner product lists. All `_*_ALL_PRODUCTS` lists live here.
+- `catalog_sync.py` — CJ product catalog pre-scorer and session cache for discovered CJ products
+- `spotify_parser.py` — Spotify Wrapped text parser (text-only; OAuth was removed)
 - `smart_filters.py` — Work exclusion, passive/active filtering, `ObsoleteFormatFilter` (respects retro interests), low-effort item filter
 - `image_fetcher.py` — Thumbnail validation and fallback chain
 - `relationship_rules.py` — Relationship-appropriate gift guidance (soft curator guidance, not hard filter)
 - `experience_providers.py` — Maps 13 experience categories to real booking platforms (Ticketmaster, Cozymeal, Viator, etc.)
+- `experience_architect.py` — Builds bookable vs DIY experience packages with cost breakdowns
 - `revenue_optimizer.py` — Smart pre-filtering: scores products by commission rate, past performance, interest match before sending to curator
 - `database.py` — SQLite product catalog for caching, click tracking, learning loop
-- `oauth_integrations.py` — OAuth flows for Pinterest, Spotify, Etsy, Google/YouTube (supplements scraping)
+- `oauth_integrations.py` — OAuth flows for Pinterest, Etsy, Google/YouTube. (Spotify OAuth removed — text paste only now)
 - `site_stats.py` — Lightweight event counter for admin dashboard (shelve-backed)
 - `share_manager.py` — Share link generation and storage (shelve-backed, 30-day expiry)
 - `share_generator.py` — SVG share card generator (generic, no campaign-specific code)
 - `referral_system.py` — Referral codes, tracking (generic, no promo-specific bonuses)
 - `social_conversion.py` — Generic urgency messaging, growth loops (campaign-specific code removed)
 - `OPUS_AUDIT.md` — Detailed audit checklist with file/line references for quality review
+- `AFFILIATE_APPLICATIONS_TRACKER.md` — Detailed affiliate network status tracker
 - `AFFILIATE_NETWORK_RESEARCH.md` — Brand-to-network mapping for ~70 brands from family wishlist
 
 ### Searcher module pattern
@@ -370,11 +388,10 @@ Each searcher exports a `search_products_<source>()` function returning a list o
 - Enables smart pre-filtering based on historical performance
 
 **OAuth Integrations (`oauth_integrations.py`):**
-- Spotify OAuth + Spotify Wrapped text paste for music preferences
 - Pinterest OAuth for visual taste analysis
 - Etsy OAuth for favorites (when approved)
 - Google OAuth for YouTube subscriptions
-- Supplements scraping with first-party data (better quality, no rate limits)
+- NOTE: Spotify OAuth was added then removed (caused infinite waits/403s). Now text-only paste via `spotify_parser.py` at `/connect/spotify-wrapped`.
 
 ### Patterns to Follow
 - Images are resolved programmatically from inventory, never from curator LLM output
@@ -400,10 +417,11 @@ Each searcher exports a `search_products_<source>()` function returning a list o
 
 ### Current Status of Retailer Integrations
 - Amazon (RapidAPI): Active, working (~20 products per run)
-- eBay (Browse API): Active, working (~12 products per run, some 400s on verbose queries)
+- eBay (Browse API): Active, working (~12 products per run). EPN campaign params wired to all links.
+- CJ Affiliate (GraphQL): Active — searches product feeds for joined advertisers, skips non-joined. 15+ static partner lists as fallback/supplement.
 - Etsy (v3 API): Awaiting developer credentials (all queries return 403)
 - Awin (Data Feed API): Code working, but gated — returns [] until advertisers are joined
-- Skimlinks (Product Key API v2): Code complete, awaiting publisher approval
+- Skimlinks (Product Key API v2): Code complete, awaiting publisher approval (submitted 2/9, still pending 2/23)
 - ShareASale: Migrated to Awin (Oct 2025). Legacy code still present but not active.
 
 ### Editorial Content (for Affiliate Network Approval)
@@ -973,64 +991,64 @@ Every product recommendation is an affiliate link opportunity. Revenue per click
 - More Etsy/Awin/eBay = higher average commission per click
 - Session cost ~$0.10 on Sonnet, ~$0.25-0.50 on Opus. Revenue must exceed cost.
 
-## Recent Commit History (Last 20, since Feb 9)
+## Recent Commit History (Last 20, as of Feb 23)
 
 ```
-e0a41d7 Merge pull request #39 from ahrenc13/claude/review-documentation-zban7
-1add50a Add CJ Affiliate partnership strategy to project documentation
-17f9062 Add blog architecture and publisher pages for affiliate network approval
-ff06454 Add Mother's Day 2026 gift guide
-296b34f Wire up 3 existing Etsy gift guides
-323b149 Remove all Valentine's Day code while preserving sharing infrastructure
-9cf3520 Fix demo route and remove friction from testing flow
-f3d9681 Disable username validation for owner testing
-3efd0ce Add admin test route to run real pipeline with owner's Instagram
-c7fb9c0 Make home page CTA go directly to demo (zero friction)
-e34ecca Add Skip/Demo mode to bypass social handle requirement
-a197578 Add admin bypass for share-to-unlock viral gates
-056208c Add share-to-unlock viral growth mechanics for TikTok campaign
-d68c08a Rewrite beta messaging with warmth and genuine apology
-815bc57 Add honest beta messaging for thin inventory state
-fb13fde Fix experience cards: Add validation for materials/links like products
-ef325ab Revenue optimization: Smart pre-filtering & learning loop
-210631c Phase 1 refactoring: Repository pattern, auth middleware, config management
-ae4ea43 Add monetization infrastructure: affiliate tracking, click analytics, email capture
-f1a0df3 Add complete waitlist system for TikTok viral campaign
+7cd33d5 Remove AI/algorithm language, shift to warm "we" voice
+57279e1 Fix catalog queries excluding TikTok Shop products
+2221fbd Improve curation quality: synthesis principle, poster flood fix, dedup bug
+f0c46f9 Improve generating page: merge CJ into Specialty Brands, hide zero-result retailers
+c8fec4b Improve experience gift quality: bookable vs DIY, concert realism, routing fix
+fbfb21c Block holiday-themed interest replacements with no thematic title match
+2fb993b Fix duplicate replacement products in post-curation cleanup
+f51c437 Document deferred "Also on Amazon" dual-link idea with constraints
+e5f7f61 Fix audit findings: crash safety, thread safety, DB concurrency
+5616784 Add catalog_sync.py: CJ product catalog pre-scorer and session cache
+052bea4 Tighten gifting trope triggers and add curator anti-trope guidance
+9594968 Add zChocolat and Winebasket/BabyBasket/Capalbo's as CJ static partners
+37095e8 Add Trinity Road / Catholic Company as CJ static partner
+d142e83 Add SoccerGarage, Tech For Less, and Tenergy as CJ static partners
+7779173 Remove Spotify OAuth, simplify music input to text-only
+99e101c Prep for TikTok launch: 3 workers + per-IP rate limiting
+70000e5 Add group chat sharing and OneSignal web push for Gen Z re-engagement
+29b553d Fix static partner injection (Peet's/illy/MonthlyClubs survive CJ API outage)
+8d51c63 Fix eBay affiliate tracking — append EPN campaign params to all links
+0a87c5c Add FlowersFast and FragranceShop static CJ affiliate partners
 ```
 
-Key themes: Valentine's removed, Mother's Day added, friction reduction, revenue optimization, waitlist/viral mechanics, CJ Affiliate strategy.
+Key themes: CJ fully wired (GraphQL + 15 static partners), launch hardening (3 workers, rate limiting), experience quality, curation quality, Spotify OAuth removed.
 
 ## Current Development Focus
 
-**Immediate Priority: Unlock Inventory**
-The app's #1 bottleneck is thin inventory (Amazon + eBay only, ~30 products per session). Everything else is blocked on getting more affiliate networks approved:
+**Immediate Priority: Unlock More Inventory**
+CJ is live with 15+ static partners. Now need to expand further:
 
-1. **Skimlinks** (highest impact) — Blanket access to ~48,500 merchants if approved. Submitted Feb 9, expecting response by Feb 18-20.
+1. **Skimlinks** (highest remaining impact) — Blanket access to ~48,500 merchants. Submitted Feb 9, still pending Feb 23. Follow up directly.
 2. **Awin** (high impact) — Account active. Need to join former ShareASale merchants: Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar.
-3. **FlexOffers** (high impact) — Applied Feb 16. Many auto-approve programs, often same-day approval.
-4. **CJ Affiliate** (~70 brands) — Batch applications submitted Feb 15. Auto-approvals should start coming in 24-48h, manual reviews 3-7 days.
-5. **Impact.com** (fix account type) — Accidentally signed up as brand not publisher. Ticket submitted, waiting for support.
+3. **FlexOffers** (high impact) — Applied Feb 16. Status unknown — check dashboard.
+4. **Impact.com** (fix account type) — Accidentally signed up as brand not publisher. Ticket open, no response.
+5. **Rakuten** — Account active, need to apply to individual brands (Sephora, Nordstrom, etc.)
 
-**Secondary: Content & Traffic**
-- 10 gift guides deployed (6 general + 3 Etsy + 1 Mother's Day)
-- 4 blog posts live for SEO
-- Waitlist system ready for viral growth
-- Demo mode eliminates friction for testing/sharing
+**Secondary: Quality & Conversion**
+- Curation quality improved (synthesis principle, anti-trope guidance)
+- Experience pipeline overhauled (bookable vs DIY)
+- AI/algorithm language removed, warm "we" voice throughout
+- Watch admin dashboard for CTR and affiliate click patterns
 
-**Holding Pattern: TikTok Launch**
-User's kid has viral post (150k+ likes) but waiting to post follow-up until inventory improves. Don't want to drive traffic to a thin product catalog.
+**Ready: TikTok Launch**
+App is in good shape. 3 workers, rate limiting, all recs shown free. Per CLAUDE.md paywall guidance — keep fully free until 15+ sessions/day.
 
-## What the User Wants Next (Updated Feb 16)
+## What the User Wants Next (Updated Feb 23)
 
-1. **Join Awin advertisers** — Search for and join former ShareASale merchants (Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar)
-2. **Monitor affiliate approvals** — FlexOffers (same-day to 48h), CJ (~70 brands, rolling approvals), Skimlinks (by Feb 18-20)
-3. **Build FlexOffers searcher** — `flexoffers_searcher.py` module once approved
-4. **Fix Impact account** — Ticket open for account type issue
-5. **Monitor and iterate on quality** — admin dashboard at `/admin/stats?key=ADMIN_DASHBOARD_KEY`
-6. **TikTok soft launch** — User's kid has viral post (150k+ likes). Waiting for inventory to improve before posting follow-up.
-7. **Paywall timing** — monitor engagement via admin dashboard, flip paywall when sessions consistently generate more API cost than affiliate revenue
-8. **Opus A/B test** — run same profile through Sonnet and Opus curation with improved inventory (200+ products)
-9. **Mother's Day (May 11)** — Guide built, promote once inventory is better
+1. **Follow up on Skimlinks** — Past the 7-business-day window. Contact publisher support directly.
+2. **Join Awin advertisers** — Search for and join former ShareASale merchants (Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar)
+3. **Check FlexOffers status** — Applied Feb 16, status unknown
+4. **Fix Impact account** — Ticket open for wrong account type (brand instead of publisher)
+5. **Monitor quality** — admin dashboard at `/admin/stats?key=ADMIN_DASHBOARD_KEY`. Watch rec_run, affiliate click events.
+6. **TikTok launch** — App is launch-ready. User's kid has viral post (150k+ likes). Inventory much better now with CJ partners live.
+7. **Paywall timing** — monitor engagement via admin dashboard per the paywall thresholds above
+8. **Opus A/B test** — run same profile through Sonnet and Opus curation (now viable with better inventory)
+9. **Mother's Day (May 11)** — Guide built, start promoting in late March/early April
 10. **"Also on Amazon" dual-link (deferred)** — For products where we can cleanly verify an *identical* item on the vendor's own Amazon storefront (not just a similar product), surface a secondary "Also on Amazon →" link below the primary CTA. No routing by preference, no comparative framing — just a second link for Prime users. **Hard requirement:** must be the same SKU via the brand's Amazon storefront, not a look-alike. Build only after multi-retailer inventory is live and click data shows demand. See OPUS_AUDIT.md for implementation notes.
 
 **See `AFFILIATE_APPLICATIONS_TRACKER.md` for detailed affiliate network status.**

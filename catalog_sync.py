@@ -687,7 +687,7 @@ def get_cached_products_for_interest(
             FROM products
             WHERE in_stock = 1
               AND removed_at IS NULL
-              AND retailer LIKE '%CJ%'
+              AND cj_advertiser_id != ''
               AND (
                     interest_tags LIKE ?
                     OR title       LIKE ?
@@ -980,10 +980,10 @@ def get_catalog_stats() -> Dict:
         conn.row_factory = sqlite3.Row
         cur = conn.cursor()
 
-        # Total CJ products in DB
+        # Total catalog products in DB (all CJ advertisers, identified by cj_advertiser_id)
         cur.execute("""
             SELECT COUNT(*) FROM products
-            WHERE retailer LIKE '%CJ%' AND removed_at IS NULL AND in_stock = 1
+            WHERE cj_advertiser_id != '' AND removed_at IS NULL AND in_stock = 1
         """)
         total_cj = cur.fetchone()[0]
 
@@ -1018,10 +1018,10 @@ def get_catalog_stats() -> Dict:
         row = cur.fetchone()
         last_sync = row[0] if row and row[0] else 'Never'
 
-        # Avg gift score across all CJ products
+        # Avg gift score across all catalog products
         cur.execute("""
             SELECT AVG(gift_score) FROM products
-            WHERE retailer LIKE '%CJ%' AND removed_at IS NULL
+            WHERE cj_advertiser_id != '' AND removed_at IS NULL
               AND gift_score IS NOT NULL
         """)
         avg_score_row = cur.fetchone()

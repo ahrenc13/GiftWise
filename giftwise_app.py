@@ -231,6 +231,14 @@ except ImportError:
     def get_dashboard_data(): return {}
     pass
 
+try:
+    from catalog_sync import get_catalog_stats, run_catalog_sync
+    CATALOG_SYNC_AVAILABLE = True
+except ImportError:
+    CATALOG_SYNC_AVAILABLE = False
+    def get_catalog_stats(): return {}
+    def run_catalog_sync(**kw): return {}
+
 # Enhanced modules (FIXED VERSIONS)
 try:
     from link_validation import process_recommendation_links, get_reliable_link
@@ -4111,7 +4119,68 @@ def admin_stats():
         return render_template('error.html', error="Not found.", error_code=404), 404
 
     data = get_dashboard_data()
+    data['catalog'] = get_catalog_stats()
     return render_template('admin_stats.html', data=data)
+
+
+import threading as _threading
+_catalog_sync_lock = _threading.Lock()
+
+
+@app.route('/admin/sync-catalog', methods=['GET', 'POST'])
+def admin_sync_catalog():
+    """
+    Trigger a CJ catalog sync from the admin dashboard.
+
+    GET  ?key=KEY&mode=refresh  — runs sync in background, returns immediately
+    GET  ?key=KEY&stats=1       — returns current catalog stats as JSON
+    Returns 409 if a sync is already running (lock guard prevents doubles).
+    """
+    import json as _json
+
+    key = request.args.get('key', '')
+    if not ADMIN_KEY or key != ADMIN_KEY:
+        return {'error': 'Unauthorized'}, 403
+
+    if not CATALOG_SYNC_AVAILABLE:
+        return {'error': 'catalog_sync module not available'}, 500
+
+    # Stats-only request
+    if request.args.get('stats'):
+        return _json.dumps(get_catalog_stats()), 200, {'Content-Type': 'application/json'}
+
+    # Guard against concurrent syncs
+    if _catalog_sync_lock.locked():
+        return _json.dumps({
+            'status': 'already_running',
+            'message': 'A catalog sync is already in progress.',
+        }), 409, {'Content-Type': 'application/json'}
+
+    mode = request.args.get('mode', 'refresh')
+    terms_raw = request.args.get('terms', '')
+    terms = [t.strip() for t in terms_raw.split(',') if t.strip()] or None
+
+    def _run():
+        with _catalog_sync_lock:
+            try:
+                app.logger.info(f"Catalog sync started: mode={mode}")
+                result = run_catalog_sync(mode=mode, terms=terms)
+                app.logger.info(
+                    f"Catalog sync complete: {result.get('total_stored', 0)} products stored"
+                )
+            except Exception as e:
+                app.logger.error(f"Catalog sync failed: {e}")
+
+    _threading.Thread(target=_run, daemon=False).start()
+
+    return _json.dumps({
+        'status': 'started',
+        'mode': mode,
+        'message': (
+            f"Catalog sync ({mode}) running in background. "
+            f"Check logs or GET /admin/sync-catalog?key={key}&stats=1 for results."
+        ),
+    }), 202, {'Content-Type': 'application/json'}
 
 
 @app.route('/admin/test')

@@ -1031,5 +1031,6 @@ User's kid has viral post (150k+ likes) but waiting to post follow-up until inve
 7. **Paywall timing** — monitor engagement via admin dashboard, flip paywall when sessions consistently generate more API cost than affiliate revenue
 8. **Opus A/B test** — run same profile through Sonnet and Opus curation with improved inventory (200+ products)
 9. **Mother's Day (May 11)** — Guide built, promote once inventory is better
+10. **"Also on Amazon" dual-link (deferred)** — For products where we can cleanly verify an *identical* item on the vendor's own Amazon storefront (not just a similar product), surface a secondary "Also on Amazon →" link below the primary CTA. No routing by preference, no comparative framing — just a second link for Prime users. **Hard requirement:** must be the same SKU via the brand's Amazon storefront, not a look-alike. Build only after multi-retailer inventory is live and click data shows demand. See OPUS_AUDIT.md for implementation notes.
 
 **See `AFFILIATE_APPLICATIONS_TRACKER.md` for detailed affiliate network status.**

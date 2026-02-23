@@ -28,6 +28,16 @@ import time
 import urllib.parse
 from collections import deque
 import requests
+
+# Optional catalog cache — eliminates live CJ API calls for recently-synced terms.
+# Degrades gracefully if catalog_sync.py isn't available or DB isn't warmed.
+try:
+    from catalog_sync import is_term_cache_fresh, get_cached_products_for_interest
+    _CATALOG_CACHE_AVAILABLE = True
+except ImportError:
+    _CATALOG_CACHE_AVAILABLE = False
+    def is_term_cache_fresh(*a, **kw): return False      # noqa: E704
+    def get_cached_products_for_interest(*a, **kw): return []  # noqa: E704
 import json
 
 logger = logging.getLogger(__name__)
@@ -1281,6 +1291,1281 @@ def get_flowersfast_products_for_profile(profile):
     return result
 
 
+# ---------------------------------------------------------------------------
+# SOCCERGARAGE.COM — Static curated products (approved CJ partner, Feb 2026)
+# ADV_CID: 2061630
+# Commission: 7% base (scales to 8/9/10% at $3.5K/$5.5K/$7.5K monthly sales)
+# Cookie: 60 days (locking: 40 days) | AOV: ~$125 | US only
+#
+# No product feed — category/text links only.
+# T&C: No SEM bidding on brand terms (irrelevant). No expired coupons
+#   (2012-era coupon codes 5C4J2U / GARAGE10 are stale — do NOT use).
+# ---------------------------------------------------------------------------
+
+_SOCCERGARAGE_ALL_PRODUCTS = [
+    {
+        # Link ID 10479694 — Soccer Shoes category page
+        'title': "Soccer Cleats & Shoes — SoccerGarage.com",
+        'link': 'https://www.tkqlhce.com/click-101660899-10479694',
+        'snippet': (
+            "One of the largest online soccer retailers in the US — adidas, New Balance, "
+            "Diadora, and more. Full range of cleats for firm ground, turf, and indoor play. "
+            "Free shipping on orders over $150."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'soccergarage.com',
+        'price': 'From $30.00',
+        'product_id': 'soccergarage-cleats',
+        'search_query': 'soccer cleats gift',
+        'interest_match': 'soccer',
+        'priority': 2,
+        'brand': 'SoccerGarage.com',
+        'advertiser_id': 'soccergarage-cj',
+    },
+    {
+        # Link ID 11017728 — Goalkeeper Soccer Sale (keeper-specific)
+        'title': "Goalkeeper Gloves & Equipment — SoccerGarage.com",
+        'link': 'https://www.anrdoezrs.net/click-101660899-11017728',
+        'snippet': (
+            "Full goalkeeper shop — Reusch, Storelli, and more. Gloves, chest protectors, "
+            "training gear, and positional coaching equipment. Trusted by club keepers nationwide."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'soccergarage.com',
+        'price': 'From $25.00',
+        'product_id': 'soccergarage-goalkeeper',
+        'search_query': 'goalkeeper gear gift',
+        'interest_match': 'goalkeeper',
+        'priority': 2,
+        'brand': 'SoccerGarage.com',
+        'advertiser_id': 'soccergarage-cj',
+    },
+    {
+        # Link ID 11017023 — Youth soccer gear
+        'title': "Youth Soccer Gear — SoccerGarage.com",
+        'link': 'https://www.dpbolvw.net/click-101660899-11017023',
+        'snippet': (
+            "Everything a young player needs — youth cleats, balls, shin guards, bags, "
+            "and uniforms. All the top brands in kids' sizes. Ships to teams and clubs too."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'soccergarage.com',
+        'price': 'From $15.00',
+        'product_id': 'soccergarage-youth',
+        'search_query': 'youth soccer gear gift',
+        'interest_match': 'youth soccer',
+        'priority': 2,
+        'brand': 'SoccerGarage.com',
+        'advertiser_id': 'soccergarage-cj',
+    },
+    {
+        # Link ID 10479704 — Evergreen homepage (general / browse)
+        'title': "Soccer Equipment & Apparel — SoccerGarage.com",
+        'link': 'https://www.tkqlhce.com/click-101660899-10479704',
+        'snippet': (
+            "The go-to online source for soccer players, teams, and clubs. "
+            "Cleats, balls, jerseys, bags, goals, and training gear — "
+            "all the top brands in one place. Free shipping on orders over $150."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'soccergarage.com',
+        'price': 'From $15.00',
+        'product_id': 'soccergarage-home',
+        'search_query': 'soccer gear gift',
+        'interest_match': 'soccer',
+        'priority': 2,
+        'brand': 'SoccerGarage.com',
+        'advertiser_id': 'soccergarage-cj',
+    },
+]
+
+_SOCCERGARAGE_TRIGGER_INTERESTS = {
+    'soccer', 'football', 'futbol', 'soccer player', 'soccer fan',
+    'goalkeeper', 'goalie', 'keeper', 'soccer coach', 'coaching soccer',
+    'youth soccer', 'kids soccer', 'soccer dad', 'soccer mom',
+    'mls', 'premier league', 'champions league', 'la liga', 'bundesliga',
+    'world cup', 'fifa', 'sports', 'athletic', 'team sports',
+}
+
+# Goalkeeper-specific interests — trigger the keeper product instead of general cleats
+_SOCCERGARAGE_GOALKEEPER_INTERESTS = {
+    'goalkeeper', 'goalie', 'keeper', 'soccer goalkeeper',
+}
+
+# Youth-specific signals — trigger youth gear product
+_SOCCERGARAGE_YOUTH_INTERESTS = {
+    'youth soccer', 'kids soccer', 'soccer dad', 'soccer mom',
+    'youth sports', 'kids sports', 'parenting',
+}
+
+
+# ---------------------------------------------------------------------------
+# TECH FOR LESS — Static curated products (approved CJ partner, Feb 2026)
+# ADV_CID: 3297514
+# Commission: 5% | Cookie: 14 days (locking: 60 days) | AOV: ~$185
+# Serviceable: US, Canada, UK (effectively US-only per conversion data)
+#
+# Positioning: New, open box, and certified refurbished electronics —
+#   same tech at 10-50% below retail. One of the web's highest-rated
+#   refurb merchants (Amazon, Bizrate, PriceGrabber). In business since 2001.
+#
+# No product feed — category text links only.
+# Deep-link enabled: Evergreen link ID 15733604
+#   Base: https://www.kqzyfj.com/click-101660899-15733604
+#   Deep-link: append ?url=encoded_destination
+#
+# T&C: Coupons only through CJ affiliate program interface (none currently
+#   available). No SEM bidding on brand terms. Direct linking allowed.
+# DO NOT use link 10891878 (explicitly labeled "DO NOT USE" by advertiser).
+# ---------------------------------------------------------------------------
+
+_TFL_EVERGREEN_BASE = "https://www.kqzyfj.com/click-101660899-15733604"
+
+
+def _tfl_deep_link(path):
+    """Build a CJ deep link to a specific techforless.com page."""
+    destination = f"https://www.techforless.com{path}"
+    return f"{_TFL_EVERGREEN_BASE}?url={urllib.parse.quote(destination, safe='')}"
+
+
+_TFL_ALL_PRODUCTS = [
+    {
+        # Link ID 10886632 — Laptops (updated May 2023)
+        'title': "Laptops & Notebooks — New & Open Box at TechForLess",
+        'link': 'https://www.kqzyfj.com/click-101660899-10886632',
+        'snippet': (
+            "HP, Lenovo, Dell, and more — new, open box, and certified refurbished laptops "
+            "at 10-50% below retail. Same technology, thoroughly tested. "
+            "8,000+ items in stock, free shipping on thousands of items."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'techforless.com',
+        'price': 'From $150.00',
+        'product_id': 'tfl-laptops',
+        'search_query': 'laptop gift',
+        'interest_match': 'technology',
+        'priority': 2,
+        'brand': 'Tech For Less',
+        'advertiser_id': 'techforless-cj',
+    },
+    {
+        # Link ID 15443907 — Apple MacBooks (updated Jan 2023, $9.15 EPC)
+        'title': "MacBook Laptops — New & Open Box at TechForLess",
+        'link': 'https://www.dpbolvw.net/click-101660899-15443907',
+        'snippet': (
+            "New and open box Apple MacBook and MacBook Air — same Apple hardware, "
+            "10-50% below Apple Store pricing. Thoroughly tested, limited quantities. "
+            "One of the web's highest-rated sources for open box Apple gear."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'techforless.com',
+        'price': 'From $400.00',
+        'product_id': 'tfl-macbooks',
+        'search_query': 'MacBook laptop gift',
+        'interest_match': 'apple',
+        'priority': 2,
+        'brand': 'Tech For Less',
+        'advertiser_id': 'techforless-cj',
+    },
+    {
+        # Link ID 13446839 — Video Game Consoles & Accessories
+        'title': "Video Game Consoles & Accessories — TechForLess",
+        'link': 'https://www.anrdoezrs.net/click-101660899-13446839',
+        'snippet': (
+            "Gaming consoles and accessories — new, open box, and refurbished at "
+            "significant savings. Controllers, headsets, and more from major brands. "
+            "Free shipping on thousands of items."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'techforless.com',
+        'price': 'From $30.00',
+        'product_id': 'tfl-gaming',
+        'search_query': 'gaming console gift',
+        'interest_match': 'gaming',
+        'priority': 2,
+        'brand': 'Tech For Less',
+        'advertiser_id': 'techforless-cj',
+    },
+    {
+        # Link ID 13446829 — Cameras (DSLR to webcams)
+        'title': "Cameras — DSLR, Mirrorless & More at TechForLess",
+        'link': 'https://www.kqzyfj.com/click-101660899-13446829',
+        'snippet': (
+            "DSLR, mirrorless, and point-and-shoot cameras — new and open box at "
+            "10-50% below retail. Also webcams, lenses, and accessories. "
+            "Thoroughly tested by one of the web's top-rated electronics resellers."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'techforless.com',
+        'price': 'From $75.00',
+        'product_id': 'tfl-cameras',
+        'search_query': 'camera gift',
+        'interest_match': 'photography',
+        'priority': 2,
+        'brand': 'Tech For Less',
+        'advertiser_id': 'techforless-cj',
+    },
+    {
+        # Link ID 13067706 — Homepage ($6.88 EPC, evergreen)
+        'title': "Computers & Electronics — Same Technology, Lower Prices",
+        'link': 'https://www.dpbolvw.net/click-101660899-13067706',
+        'snippet': (
+            "TechForLess.com — new, open box, and certified refurbished computers, "
+            "tablets, monitors, and electronics at 10-50% below retail. "
+            "In business since 2001, one of the web's highest-rated tech retailers."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'techforless.com',
+        'price': 'From $15.00',
+        'product_id': 'tfl-home',
+        'search_query': 'electronics gift',
+        'interest_match': 'technology',
+        'priority': 2,
+        'brand': 'Tech For Less',
+        'advertiser_id': 'techforless-cj',
+    },
+]
+
+_TFL_TRIGGER_INTERESTS = {
+    'technology', 'tech', 'gadgets', 'electronics', 'computers', 'computing',
+    'laptops', 'coding', 'programming', 'software', 'hardware', 'it',
+    'home office', 'remote work', 'work from home', 'streaming',
+    'content creation', 'youtube', 'twitch', 'podcasting',
+    'gaming', 'video games', 'pc gaming', 'esports',
+    'photography', 'camera', 'filmmaker', 'videography',
+    'apple', 'mac', 'macbook', 'ipad',
+}
+
+_TFL_GAMING_INTERESTS = {
+    'gaming', 'video games', 'pc gaming', 'esports', 'game', 'gamer',
+    'playstation', 'xbox', 'nintendo', 'console gaming',
+}
+
+_TFL_PHOTOGRAPHY_INTERESTS = {
+    'photography', 'camera', 'filmmaker', 'videography', 'photo',
+    'dslr', 'mirrorless', 'film photography', 'content creation',
+}
+
+_TFL_APPLE_INTERESTS = {
+    'apple', 'mac', 'macbook', 'ipad', 'ios', 'apple ecosystem',
+}
+
+
+def get_techforless_products_for_profile(profile):
+    """
+    Return curated Tech For Less products when the profile has tech interest.
+
+    No product feed — static list using category text link IDs.
+    Commission: 5%, 14-day cookie. AOV ~$185.
+    Specializes in new, open box, and certified refurbished electronics.
+
+    Smart selection (cap 2):
+    - Gaming profile → gaming consoles + laptops
+    - Photography profile → cameras + general
+    - Apple/Mac profile → MacBooks + general
+    - General tech → laptops + general homepage
+
+    T&C: No external coupons. Do NOT use link 10891878 (labeled DO NOT USE).
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    matched = interest_names & _TFL_TRIGGER_INTERESTS
+    if not matched:
+        for name in interest_names:
+            for trigger in _TFL_TRIGGER_INTERESTS:
+                if trigger in name or name in trigger:
+                    matched.add(name)
+                    break
+
+    if not matched:
+        return []
+
+    logger.info(f"Tech For Less triggered by profile interests: {matched}")
+
+    is_gaming = bool(interest_names & _TFL_GAMING_INTERESTS) or any(
+        'gam' in n or 'xbox' in n or 'playstation' in n or 'nintendo' in n
+        for n in interest_names
+    )
+    is_photography = bool(interest_names & _TFL_PHOTOGRAPHY_INTERESTS) or any(
+        'photo' in n or 'camera' in n or 'film' in n for n in interest_names
+    )
+    is_apple = bool(interest_names & _TFL_APPLE_INTERESTS) or any(
+        'apple' in n or 'mac' in n or 'ipad' in n for n in interest_names
+    )
+
+    def _get(pid):
+        return next((p for p in _TFL_ALL_PRODUCTS if p['product_id'] == pid), None)
+
+    if is_gaming:
+        return [p for p in [_get('tfl-gaming'), _get('tfl-laptops')] if p]
+    elif is_photography:
+        return [p for p in [_get('tfl-cameras'), _get('tfl-home')] if p]
+    elif is_apple:
+        return [p for p in [_get('tfl-macbooks'), _get('tfl-home')] if p]
+    else:
+        return [p for p in [_get('tfl-laptops'), _get('tfl-home')] if p]
+
+
+# ---------------------------------------------------------------------------
+# TENERGY — Static curated products (approved CJ partner, Feb 2026)
+# ADV_CID: 1826017
+# Commission: 8% | Cookie: 30 days | EPC: $11.64 (3-mo) / $13.09 (7-day)
+# Two sites: power.tenergy.com (batteries/chargers) | life.tenergy.com (appliances)
+#
+# No product feed — Evergreen link ID 15733324 is deep-link enabled.
+#   Base: https://www.anrdoezrs.net/click-101660899-15733324
+#   Deep-link: append ?url=encoded_destination
+#
+# Promo code THANKS: free ground shipping on orders $50+ (lower 48 states).
+#   Sourced from official CJ affiliate materials — treat as evergreen until
+#   it stops working. Do NOT stack with other promo codes.
+#
+# T&C: No SEM bidding on brand terms (irrelevant for content). No obscene,
+#   harmful, or discriminatory site content.
+# ---------------------------------------------------------------------------
+
+_TENERGY_EVERGREEN_BASE = "https://www.anrdoezrs.net/click-101660899-15733324"
+
+
+def _tenergy_deep_link(path, site='power'):
+    """Build a CJ deep link to a specific Tenergy page.
+
+    Args:
+        path: URL path (e.g., '/collections/aa-batteries')
+        site: 'power' for power.tenergy.com or 'life' for life.tenergy.com
+    """
+    destination = f"https://{site}.tenergy.com{path}"
+    return f"{_TENERGY_EVERGREEN_BASE}?url={urllib.parse.quote(destination, safe='')}"
+
+
+_TENERGY_ALL_PRODUCTS = [
+    {
+        # Deep-link → Tenergy Power homepage (rechargeable batteries for home)
+        'title': "Rechargeable AA/AAA Battery Kit — Tenergy Power",
+        'link': _tenergy_deep_link('/'),
+        'snippet': (
+            "Tenergy rechargeable NiMH batteries and smart chargers — high-capacity AA and AAA "
+            "for remotes, cameras, toys, and everyday devices. American brand since 2004. "
+            "Use code THANKS for free shipping on orders $50+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'power.tenergy.com',
+        'price': 'From $20.00',
+        'product_id': 'tenergy-rechargeable',
+        'search_query': 'rechargeable battery kit gift',
+        'interest_match': 'sustainability',
+        'priority': 2,
+        'brand': 'Tenergy',
+        'advertiser_id': 'tenergy-cj',
+    },
+    {
+        # Deep-link → Tenergy RC/hobby battery category
+        'title': "RC Hobby & Drone Batteries — Tenergy Power",
+        'link': _tenergy_deep_link('/collections/hobby-rc'),
+        'snippet': (
+            "High-performance LiPo, NiMH, and NiCd packs for RC cars, trucks, boats, "
+            "airsoft AEGs, and drones. Tenergy is the go-to brand for hobbyists who need "
+            "reliable power. Use code THANKS for free shipping on orders $50+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'power.tenergy.com',
+        'price': 'From $25.00',
+        'product_id': 'tenergy-rc-hobby',
+        'search_query': 'RC car battery gift',
+        'interest_match': 'rc cars',
+        'priority': 2,
+        'brand': 'Tenergy',
+        'advertiser_id': 'tenergy-cj',
+    },
+    {
+        # Deep-link → Tenergy Life homepage (small kitchen/home appliances)
+        'title': "Kitchen & Home Appliances — Tenergy Life",
+        'link': _tenergy_deep_link('/', site='life'),
+        'snippet': (
+            "Tenergy Life — small kitchen appliances and home electronics built to the same "
+            "exacting standard as their battery line. Blenders, air fryers, toasters, and more. "
+            "Use code THANKS for free shipping on orders $50+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'life.tenergy.com',
+        'price': 'From $30.00',
+        'product_id': 'tenergy-life-appliances',
+        'search_query': 'kitchen appliance gift',
+        'interest_match': 'cooking',
+        'priority': 2,
+        'brand': 'Tenergy',
+        'advertiser_id': 'tenergy-cj',
+    },
+    {
+        # Evergreen base → general Power site (smart chargers + batteries)
+        'title': "Smart Battery Charger & Batteries — Tenergy Power",
+        'link': _TENERGY_EVERGREEN_BASE,
+        'snippet': (
+            "Tenergy smart chargers with AA, AAA, C, and D rechargeable batteries — "
+            "the practical gift that pays for itself. Trusted for photography, RC hobbies, "
+            "and everyday devices. Use code THANKS for free shipping on orders $50+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'power.tenergy.com',
+        'price': 'From $30.00',
+        'product_id': 'tenergy-charger-kit',
+        'search_query': 'battery charger gift',
+        'interest_match': 'gadgets',
+        'priority': 2,
+        'brand': 'Tenergy',
+        'advertiser_id': 'tenergy-cj',
+    },
+]
+
+_TENERGY_TRIGGER_INTERESTS = {
+    # RC / hobby
+    'rc cars', 'remote control', 'radio controlled', 'rc trucks', 'rc boats',
+    'rc helicopters', 'rc planes', 'hobby rc', 'model cars',
+    # Airsoft / tactical
+    'airsoft', 'airsoft guns', 'tactical',
+    # Drone
+    'drones', 'drone', 'quadcopter', 'fpv', 'fpv racing',
+    # Photography (camera flash batteries)
+    'photography', 'camera', 'flash photography',
+    # Sustainability / eco
+    'sustainability', 'eco-friendly', 'green living', 'zero waste', 'environment',
+    # Kitchen / home
+    'cooking', 'baking', 'kitchen', 'home cooking', 'meal prep',
+    # General tech/gadgets that may need lots of batteries
+    'gadgets', 'smart home', 'robotics',
+}
+
+_TENERGY_RC_INTERESTS = {
+    'rc cars', 'remote control', 'radio controlled', 'rc trucks', 'rc boats',
+    'rc helicopters', 'rc planes', 'hobby rc', 'model cars',
+    'airsoft', 'drones', 'drone', 'quadcopter', 'fpv', 'fpv racing',
+}
+
+_TENERGY_KITCHEN_INTERESTS = {
+    'cooking', 'baking', 'kitchen', 'home cooking', 'meal prep', 'air fryer',
+    'homemaker', 'food', 'culinary',
+}
+
+
+def get_tenergy_products_for_profile(profile):
+    """
+    Return curated Tenergy products when the profile has matching interests.
+
+    No product feed — static list using CJ deep links off Evergreen ID 15733324.
+    Commission: 8%, 30-day cookie. Strong EPC ($13).
+
+    Smart selection (cap 2):
+    - RC/airsoft/drone profile → RC batteries + charger kit
+    - Kitchen/home profile → Life appliances + rechargeable
+    - General eco/gadget → rechargeable kit + charger kit
+
+    Promo code THANKS = free ground shipping $50+ (lower 48 states only).
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    matched = interest_names & _TENERGY_TRIGGER_INTERESTS
+    if not matched:
+        for name in interest_names:
+            for trigger in _TENERGY_TRIGGER_INTERESTS:
+                if trigger in name or name in trigger:
+                    matched.add(name)
+                    break
+
+    if not matched:
+        return []
+
+    logger.info(f"Tenergy triggered by profile interests: {matched}")
+
+    is_rc_or_drone = bool(interest_names & _TENERGY_RC_INTERESTS) or any(
+        'rc' in n or 'drone' in n or 'airsoft' in n or 'quadcopter' in n
+        or 'remote control' in n or 'fpv' in n
+        for n in interest_names
+    )
+    is_kitchen = bool(interest_names & _TENERGY_KITCHEN_INTERESTS) or any(
+        'cook' in n or 'bak' in n or 'kitchen' in n for n in interest_names
+    )
+
+    def _get(pid):
+        return next((p for p in _TENERGY_ALL_PRODUCTS if p['product_id'] == pid), None)
+
+    if is_rc_or_drone:
+        return [p for p in [_get('tenergy-rc-hobby'), _get('tenergy-charger-kit')] if p]
+    elif is_kitchen:
+        return [p for p in [_get('tenergy-life-appliances'), _get('tenergy-rechargeable')] if p]
+    else:
+        return [p for p in [_get('tenergy-rechargeable'), _get('tenergy-charger-kit')] if p]
+
+
+# ---------------------------------------------------------------------------
+# TRINITY ROAD WEBSITES (The Catholic Company) — Static curated products
+# Approved CJ partner, Feb 2026 | ADV_CID: 2871603
+# Commission: 8% across all sites | Cookie: 30-45 days
+# EPC: $2.66 (3-mo) / $2.27 (7-day)
+# Sites: catholiccompany.com (main), catholiccoffee.com, thankgodforcoffee.com,
+#        goodcatholic.com, jlily.com, rosary.com
+#
+# No product feed — category text links + deep links to catholiccompany.com.
+# Deep link ID 12058792 for catholiccompany.com (use for custom landing pages).
+# Free shipping on orders $75+. 20,000+ items.
+#
+# T&C: Coupons only through CJ affiliate program. No external coupon codes.
+#   The "15% off first order" link (13286183) IS CJ-provided — valid to promote.
+#   Do NOT use RetailMeNot co-brand links (12666306, 13424511) — those are for
+#   RetailMeNot publishers only. No brand SEM bidding (irrelevant for content).
+#   Affiliates may not represent themselves as any Trinity Road brand.
+#
+# Key occasions: First Communion, Confirmation, Baptism/Christening, Christmas,
+#   Easter, Catholic wedding, Lent. These are high-intent milestone gift moments.
+# ---------------------------------------------------------------------------
+
+_CATHOLICCO_DEEP_LINK_BASE = "https://www.tkqlhce.com/click-101660899-12058792"
+
+
+def _catholicco_deep_link(path):
+    """Build a CJ deep link to a specific catholiccompany.com page."""
+    destination = f"https://www.catholiccompany.com{path}"
+    return f"{_CATHOLICCO_DEEP_LINK_BASE}?url={urllib.parse.quote(destination, safe='')}"
+
+
+_TRINITYROAD_ALL_PRODUCTS = [
+    {
+        # Link ID 10753028 — General Catholic Books & Gifts ($12.43 EPC)
+        'title': "Catholic Books & Gifts — The Catholic Company",
+        'link': 'https://www.anrdoezrs.net/click-101660899-10753028',
+        'snippet': (
+            "The world's #1 Catholic store — 20,000+ Catholic books, rosaries, jewelry, "
+            "art, and gifts. Patron saint medals, personalized items, and sacramental gifts "
+            "for every occasion. Free shipping on orders $75+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'catholiccompany.com',
+        'price': 'From $8.00',
+        'product_id': 'catholicco-gifts',
+        'search_query': 'Catholic gifts',
+        'interest_match': 'catholicism',
+        'priority': 2,
+        'brand': 'The Catholic Company',
+        'advertiser_id': 'trinityroad-cj',
+    },
+    {
+        # Link ID 13291163 — Exclusive Rosaries ($14.09 EPC)
+        'title': "Catholic Company Exclusive Rosaries",
+        'link': 'https://www.jdoqocy.com/click-101660899-13291163',
+        'snippet': (
+            "Beautifully crafted rosaries — sterling silver, heirloom wood, crystal, and "
+            "handmade artisan styles. Catholic Company exclusive designs not found elsewhere. "
+            "A timeless and meaningful gift for any occasion. Free shipping on orders $75+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'catholiccompany.com',
+        'price': 'From $15.00',
+        'product_id': 'catholicco-rosary',
+        'search_query': 'Catholic rosary gift',
+        'interest_match': 'catholicism',
+        'priority': 2,
+        'brand': 'The Catholic Company',
+        'advertiser_id': 'trinityroad-cj',
+    },
+    {
+        # Link ID 13286147 — First Holy Communion Gifts (personalization available)
+        'title': "First Holy Communion Gifts — The Catholic Company",
+        'link': 'https://www.anrdoezrs.net/click-101660899-13286147',
+        'snippet': (
+            "Curated gifts for First Holy Communion — personalized rosaries, keepsake bibles, "
+            "jewelry, prayer cards, and keepsakes. Many items can be engraved or personalized. "
+            "Free shipping on orders $75+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'catholiccompany.com',
+        'price': 'From $12.00',
+        'product_id': 'catholicco-communion',
+        'search_query': 'First Communion gift',
+        'interest_match': 'first communion',
+        'priority': 2,
+        'brand': 'The Catholic Company',
+        'advertiser_id': 'trinityroad-cj',
+    },
+    {
+        # Link ID 13286185 — Confirmation Gifts
+        'title': "Confirmation Gifts — The Catholic Company",
+        'link': 'https://www.kqzyfj.com/click-101660899-13286185',
+        'snippet': (
+            "Gifts for the sacrament of Confirmation — saint medals, personalized crosses, "
+            "bibles, jewelry, and keepsake items. Celebrate this milestone with a meaningful, "
+            "lasting gift. Free shipping on orders $75+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'catholiccompany.com',
+        'price': 'From $12.00',
+        'product_id': 'catholicco-confirmation',
+        'search_query': 'Catholic Confirmation gift',
+        'interest_match': 'confirmation',
+        'priority': 2,
+        'brand': 'The Catholic Company',
+        'advertiser_id': 'trinityroad-cj',
+    },
+    {
+        # Link ID 13286177 — Baby Baptism and Christening Gifts
+        'title': "Baby Baptism & Christening Gifts — The Catholic Company",
+        'link': 'https://www.kqzyfj.com/click-101660899-13286177',
+        'snippet': (
+            "Baptism and christening keepsakes — personalized water bottles, godparent gifts, "
+            "guardian angel pillowcases, rosaries, and Catholic baby items. "
+            "Meaningful gifts for a child's first sacrament. Free shipping on orders $75+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'catholiccompany.com',
+        'price': 'From $10.00',
+        'product_id': 'catholicco-baptism',
+        'search_query': 'Catholic baptism gift',
+        'interest_match': 'baptism',
+        'priority': 2,
+        'brand': 'The Catholic Company',
+        'advertiser_id': 'trinityroad-cj',
+    },
+    {
+        # Link ID 15590515 — Catholic Coffee Main (US only)
+        'title': "Catholic Coffee — Heavenly Roasts",
+        'link': 'https://www.kqzyfj.com/click-101660899-15590515',
+        'snippet': (
+            "Faith-inspired specialty coffee from Catholic Coffee — uniquely named roasts "
+            "that make a conversation-starting gift for the Catholic coffee lover in your life. "
+            "Rich, carefully sourced blends with a sense of humor."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'catholiccoffee.com',
+        'price': 'From $14.00',
+        'product_id': 'catholicco-coffee',
+        'search_query': 'Catholic coffee gift',
+        'interest_match': 'coffee',
+        'priority': 2,
+        'brand': 'Catholic Coffee',
+        'advertiser_id': 'trinityroad-cj',
+    },
+    {
+        # Link ID 13291965 — "Drinking with the Saints" Book & Bar Towel Gift Set
+        'title': '"Drinking with the Saints" Book & Bar Towel Gift Set',
+        'link': 'https://www.jdoqocy.com/click-101660899-13291965',
+        'snippet': (
+            "The beloved Catholic drinking guide meets bar towel — the perfect gift for "
+            "Catholics who appreciate a good cocktail and a great story. "
+            "Recipes, saint stories, and liturgical humor in one irreverent package."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'catholiccompany.com',
+        'price': 'From $25.00',
+        'product_id': 'catholicco-saints-book',
+        'search_query': 'Catholic gift for adults',
+        'interest_match': 'catholicism',
+        'priority': 2,
+        'brand': 'The Catholic Company',
+        'advertiser_id': 'trinityroad-cj',
+    },
+]
+
+_TRINITYROAD_TRIGGER_INTERESTS = {
+    # Faith signals
+    'catholic', 'catholicism', 'roman catholic', 'christianity', 'christian',
+    'faith', 'religion', 'religious', 'church', 'mass', 'prayer',
+    # Catholic-specific practices
+    'rosary', 'saints', 'saint', 'patron saint', 'lent', 'advent',
+    'scripture', 'bible', 'gospel', 'pope', 'vatican',
+    # Sacraments / milestones
+    'first communion', 'confirmation', 'baptism', 'christening',
+    'sacrament', 'rcia',
+    # Lifestyle signals
+    'catholic school', 'parochial school', 'catholic education',
+}
+
+# Occasion-specific interest signals — trigger the milestone product first
+_TRINITYROAD_COMMUNION_SIGNALS = {
+    'first communion', 'first holy communion', 'communion',
+}
+_TRINITYROAD_CONFIRMATION_SIGNALS = {
+    'confirmation', 'confirmed', 'sacrament of confirmation',
+}
+_TRINITYROAD_BAPTISM_SIGNALS = {
+    'baptism', 'christening', 'baptismal', 'godparent', 'godfather', 'godmother',
+}
+_TRINITYROAD_COFFEE_SIGNALS = {
+    'coffee', 'espresso', 'specialty coffee', 'cafe culture', 'morning routine',
+    'craft coffee', 'artisan',
+}
+_TRINITYROAD_ADULT_HUMOR_SIGNALS = {
+    'beer', 'cocktails', 'wine', 'pub', 'humor', 'books', 'reading', 'history',
+    'craft beer', 'drinking', 'bar',
+}
+
+
+def get_trinityroad_products_for_profile(profile):
+    """
+    Return curated Trinity Road / Catholic Company products for faith-aligned profiles.
+
+    No product feed — static list using CJ category text links and deep links.
+    Commission: 8%, 30-45 day cookie. Free shipping $75+.
+
+    Smart selection (cap 2):
+    - First Communion signals → communion gifts + rosary
+    - Confirmation signals → confirmation gifts + general store
+    - Baptism signals → baptism gifts + general store
+    - Catholic + coffee → Catholic Coffee + general store
+    - Catholic + adult humor/books → Drinking with Saints + rosary
+    - General Catholic/Christian faith → general store + rosary
+
+    T&C: No external coupons. Do NOT use RetailMeNot co-brand links.
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    matched = interest_names & _TRINITYROAD_TRIGGER_INTERESTS
+    if not matched:
+        for name in interest_names:
+            for trigger in _TRINITYROAD_TRIGGER_INTERESTS:
+                if trigger in name or name in trigger:
+                    matched.add(name)
+                    break
+
+    if not matched:
+        return []
+
+    logger.info(f"Trinity Road (Catholic Co.) triggered by profile interests: {matched}")
+
+    def _get(pid):
+        return next((p for p in _TRINITYROAD_ALL_PRODUCTS if p['product_id'] == pid), None)
+
+    is_communion = bool(interest_names & _TRINITYROAD_COMMUNION_SIGNALS) or any(
+        'communion' in n for n in interest_names
+    )
+    is_confirmation = bool(interest_names & _TRINITYROAD_CONFIRMATION_SIGNALS) or any(
+        'confirm' in n for n in interest_names
+    )
+    is_baptism = bool(interest_names & _TRINITYROAD_BAPTISM_SIGNALS) or any(
+        'bapti' in n or 'christen' in n or 'godpar' in n for n in interest_names
+    )
+    is_coffee = bool(interest_names & _TRINITYROAD_COFFEE_SIGNALS) or any(
+        'coffee' in n or 'espresso' in n for n in interest_names
+    )
+    is_adult_humor = bool(interest_names & _TRINITYROAD_ADULT_HUMOR_SIGNALS) or any(
+        'beer' in n or 'cocktail' in n or 'pub' in n for n in interest_names
+    )
+
+    if is_communion:
+        return [p for p in [_get('catholicco-communion'), _get('catholicco-rosary')] if p]
+    elif is_confirmation:
+        return [p for p in [_get('catholicco-confirmation'), _get('catholicco-gifts')] if p]
+    elif is_baptism:
+        return [p for p in [_get('catholicco-baptism'), _get('catholicco-gifts')] if p]
+    elif is_coffee:
+        return [p for p in [_get('catholicco-coffee'), _get('catholicco-gifts')] if p]
+    elif is_adult_humor:
+        return [p for p in [_get('catholicco-saints-book'), _get('catholicco-rosary')] if p]
+    else:
+        return [p for p in [_get('catholicco-gifts'), _get('catholicco-rosary')] if p]
+
+
+# ---------------------------------------------------------------------------
+# ZCHOCOLAT.COM — Static curated products (approved CJ partner, Feb 2026)
+# ADV_CID: 1124214
+# Commission: 20% confirmed sale | Cookie: 45 days | AOV: $120
+# EPC: Evergreen $75 (3-mo) / $367 (7-day) | Assortments $133 (3-mo) / $169 (7-day)
+#
+# Pascal Caffet, World-Champion chocolatier. Hand-made French chocolates.
+# Ships worldwide via DHL to 244 countries. 4.9/5 on TrustPilot (5,000+ reviews).
+# Rated "Best Chocolate Store 2022" (Top Consumer Reviews), NYT "Best Present Idea",
+# Food Network "Top 5 Chocolate Gifts", WSJ "Best Lesser Known Gift Site on the Net."
+#
+# Evergreen link ID 15734455 — deep-link enabled.
+#   Base: https://www.jdoqocy.com/click-101660899-15734455
+#   Deep-link: append ?url=encoded_destination
+#
+# T&C: No bidding on "zchocolat", "zchocolat.com", "zchocolat coupon", or
+#   misspellings in PPC (irrelevant for content). No other restrictions for
+#   content publishers. Use any text/images from their website freely.
+#
+# NOTE: 20% commission is the highest of any partner in this file.
+#   ~$24 per average sale. Prioritize for chocolate/gourmet/luxury triggers.
+# ---------------------------------------------------------------------------
+
+_ZCHOCOLAT_EVERGREEN_BASE = "https://www.jdoqocy.com/click-101660899-15734455"
+
+
+def _zchocolat_deep_link(path):
+    """Build a CJ deep link to a specific zchocolat.com page."""
+    destination = f"https://www.zchocolat.com{path}"
+    return f"{_ZCHOCOLAT_EVERGREEN_BASE}?url={urllib.parse.quote(destination, safe='')}"
+
+
+_ZCHOCOLAT_ALL_PRODUCTS = [
+    {
+        # Link ID 13093353 — Chocolate Gift Assortments ($132.69 EPC / $169.13 EPC) ← STAR
+        'title': "French Chocolate Gift Assortments — zChocolat",
+        'link': 'https://www.jdoqocy.com/click-101660899-13093353',
+        'snippet': (
+            "Fifteen sumptuous French chocolate assortments by World-Champion pâtissier Pascal Caffet — "
+            "hand-made, no preservatives, high cocoa content. Each box is a voyage through the "
+            "zChocolat universe. Rated #1 by NYT, Food Network, and TrustPilot (4.9/5, 5,000+ reviews)."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'zchocolat.com',
+        'price': 'From $49.00',
+        'product_id': 'zchocolat-assortments',
+        'search_query': 'gourmet chocolate gift',
+        'interest_match': 'chocolate',
+        'priority': 2,
+        'brand': 'zChocolat',
+        'advertiser_id': 'zchocolat-cj',
+    },
+    {
+        # Link ID 12981989 — Personalized Assortments (pick your own chocolates)
+        'title': "Personalized French Chocolate Box — zChocolat",
+        'link': 'https://www.kqzyfj.com/click-101660899-12981989',
+        'snippet': (
+            "Build your own dream chocolate collection — handpick your favorite zChocolat recipes "
+            "to create a completely personalized box. World-champion hand-made French truffles, "
+            "delivered worldwide in chic black and white packaging."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'zchocolat.com',
+        'price': 'From $49.00',
+        'product_id': 'zchocolat-personalized',
+        'search_query': 'personalized chocolate gift',
+        'interest_match': 'personalization',
+        'priority': 2,
+        'brand': 'zChocolat',
+        'advertiser_id': 'zchocolat-cj',
+    },
+    {
+        # Link ID 12981986 — 24 Karat Edible Gold Collection (luxury/milestone)
+        'title': "24 Karat Edible Gold French Chocolates — zChocolat",
+        'link': 'https://www.tkqlhce.com/click-101660899-12981986',
+        'snippet': (
+            "Every piece of chocolate hand-coated in exquisite 24-karat edible gold by World-Champion "
+            "chocolatier Pascal Caffet. Packaged in artisan mahogany boxes handcrafted in the Jura "
+            "region of France. The ultimate luxury chocolate gift for milestone occasions."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'zchocolat.com',
+        'price': 'From $89.00',
+        'product_id': 'zchocolat-gold',
+        'search_query': 'luxury chocolate gift',
+        'interest_match': 'luxury',
+        'priority': 2,
+        'brand': 'zChocolat',
+        'advertiser_id': 'zchocolat-cj',
+    },
+    {
+        # Link ID 13086892 — All-Natural Vegan Selection
+        'title': "Vegan French Chocolate Collection — zChocolat",
+        'link': 'https://www.kqzyfj.com/click-101660899-13086892',
+        'snippet': (
+            "World-champion French chocolates made for vegan palates — no animal or dairy products, "
+            "no alcohol, no preservatives. High cocoa content, low sugar, 100% pure cocoa butter. "
+            "Pascal Caffet's plant-based creations, delivered worldwide."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'zchocolat.com',
+        'price': 'From $49.00',
+        'product_id': 'zchocolat-vegan',
+        'search_query': 'vegan chocolate gift',
+        'interest_match': 'vegan',
+        'priority': 2,
+        'brand': 'zChocolat',
+        'advertiser_id': 'zchocolat-cj',
+    },
+    {
+        # Link ID 10020803 — Homepage ($35.89 EPC / $52.54 EPC) — solid general fallback
+        'title': "zChocolat — World's Finest French Chocolates",
+        'link': 'https://www.anrdoezrs.net/click-101660899-10020803',
+        'snippet': (
+            "Hand-made French chocolates by Pascal Caffet, World-Champion pâtissier. "
+            "Rated 'Best Chocolate Store' (Top Consumer Reviews), 'Best Present Idea' (NYT), "
+            "'Top 5 Chocolate Gifts' (Food Network). Ships to 244 countries via DHL."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'zchocolat.com',
+        'price': 'From $49.00',
+        'product_id': 'zchocolat-home',
+        'search_query': 'French chocolate gift',
+        'interest_match': 'chocolate',
+        'priority': 2,
+        'brand': 'zChocolat',
+        'advertiser_id': 'zchocolat-cj',
+    },
+]
+
+_ZCHOCOLAT_TRIGGER_INTERESTS = {
+    # Must have a genuine chocolate/confectionery affinity — not just "foodie"
+    'chocolate', 'dark chocolate', 'milk chocolate', 'truffles', 'bonbons',
+    'confectionery', 'gourmet chocolate', 'french chocolate', 'artisan chocolate',
+    # French food passion — zChocolat is quintessentially French patisserie
+    'french cuisine', 'french food', 'patisserie', 'pastry',
+    # Strong dessert/baking signal (not generic lifestyle)
+    'gourmet food', 'desserts', 'baking', 'sweets',
+    # Vegan — dedicated vegan line worth surfacing for plant-based profiles
+    'vegan', 'plant-based',
+    # Luxury taste — premium chocolate is a legitimate luxury gift category
+    'luxury', 'fine dining',
+    # NOTE: 'foodie', 'gourmet', 'entertaining', 'hosting', 'wine', 'champagne',
+    # 'anniversary', 'romance', 'date night' intentionally excluded.
+    # Those are too broad — chocolate should only appear when the profile
+    # genuinely loves chocolate/French confectionery, not as a trope fallback.
+}
+
+_ZCHOCOLAT_VEGAN_SIGNALS = {
+    'vegan', 'plant-based', 'plant based', 'dairy-free', 'dairy free',
+    'veganism', 'plant-based diet', 'whole food', 'clean eating',
+}
+
+_ZCHOCOLAT_LUXURY_SIGNALS = {
+    'luxury', 'luxury gifts', 'fine dining', 'indulgence', 'premium',
+    'milestone', 'anniversary', 'engagement', 'wedding', 'champagne',
+}
+
+_ZCHOCOLAT_PERSONALIZATION_SIGNALS = {
+    'personalization', 'personalized gifts', 'custom gifts', 'sentimental',
+    'memory keeping', 'keepsake',
+}
+
+
+def get_zchocolat_products_for_profile(profile):
+    """
+    Return curated zChocolat.com products when the profile has matching interests.
+
+    No product feed — static list using direct CJ click URLs + Evergreen deep links.
+    Commission: 20% confirmed sale (highest in the partner set). 45-day cookie.
+    AOV: $120 → ~$24 avg commission per sale. Strong EPC on Assortments link.
+
+    Smart selection (cap 2):
+    - Vegan/plant-based → Vegan Selection + Assortments
+    - Luxury/milestone/anniversary → 24K Gold + Personalized
+    - Personalization interest → Personalized + Assortments
+    - General chocolate/gourmet/foodie → Assortments + Homepage
+
+    T&C: No PPC brand bidding (irrelevant). No other restrictions for content.
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    matched = interest_names & _ZCHOCOLAT_TRIGGER_INTERESTS
+    if not matched:
+        for name in interest_names:
+            for trigger in _ZCHOCOLAT_TRIGGER_INTERESTS:
+                if trigger in name or name in trigger:
+                    matched.add(name)
+                    break
+
+    if not matched:
+        return []
+
+    logger.info(f"zChocolat triggered by profile interests: {matched}")
+
+    def _get(pid):
+        return next((p for p in _ZCHOCOLAT_ALL_PRODUCTS if p['product_id'] == pid), None)
+
+    is_vegan = bool(interest_names & _ZCHOCOLAT_VEGAN_SIGNALS) or any(
+        'vegan' in n or 'plant' in n or 'dairy' in n for n in interest_names
+    )
+    is_luxury = bool(interest_names & _ZCHOCOLAT_LUXURY_SIGNALS) or any(
+        'luxury' in n or 'anniversar' in n or 'milestone' in n or 'engag' in n
+        for n in interest_names
+    )
+    is_personalization = bool(interest_names & _ZCHOCOLAT_PERSONALIZATION_SIGNALS) or any(
+        'personal' in n or 'custom' in n or 'sentimental' in n for n in interest_names
+    )
+
+    if is_vegan:
+        return [p for p in [_get('zchocolat-vegan'), _get('zchocolat-assortments')] if p]
+    elif is_luxury:
+        return [p for p in [_get('zchocolat-gold'), _get('zchocolat-personalized')] if p]
+    elif is_personalization:
+        return [p for p in [_get('zchocolat-personalized'), _get('zchocolat-assortments')] if p]
+    else:
+        return [p for p in [_get('zchocolat-assortments'), _get('zchocolat-home')] if p]
+
+
+# ---------------------------------------------------------------------------
+# WINEBASKET / BABYBASKET / CAPALBOSONLINE — Static curated products
+# Approved CJ partner, Feb 2026 | ADV_CID: 2387081
+# Commission: 7% | Cookie: 15 days | AOV: $110
+# EPC: Evergreen $66.39 (3-mo) / $52.96 (7-day)
+#
+# Three distinct sites under one CJ program:
+#   winebasket.com     — wine gift baskets and wine-themed gifts
+#   babybasket.com     — baby shower and newborn gift baskets
+#   capalbosonline.com — gourmet fruit, cheese, and food gift baskets
+#
+# Evergreen link ID 15733435 — deep-link enabled.
+#   Base: https://www.kqzyfj.com/click-101660899-15733435
+#   Deep-link: append ?url=encoded_destination to route to specific site/page
+#
+# T&C: Standard CJ terms. No prohibited coupon sources noted.
+# ---------------------------------------------------------------------------
+
+_WINEBASKET_EVERGREEN_BASE = "https://www.kqzyfj.com/click-101660899-15733435"
+
+
+def _winebasket_deep_link(domain, path='/'):
+    """Build a CJ deep link to a specific site page under the Winebasket program."""
+    destination = f"https://www.{domain}{path}"
+    return f"{_WINEBASKET_EVERGREEN_BASE}?url={urllib.parse.quote(destination, safe='')}"
+
+
+_WINEBASKET_ALL_PRODUCTS = [
+    {
+        # Deep-link → winebasket.com homepage
+        'title': "Wine Gift Baskets — WineBasket.com",
+        'link': _winebasket_deep_link('winebasket.com'),
+        'snippet': (
+            "Beautifully curated wine gift baskets delivered nationwide — red, white, rosé, "
+            "and sparkling selections paired with gourmet snacks and accessories. "
+            "Perfect for holidays, corporate gifts, hostess gifts, and celebrations."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'winebasket.com',
+        'price': 'From $49.00',
+        'product_id': 'winebasket-wine',
+        'search_query': 'wine gift basket',
+        'interest_match': 'wine',
+        'priority': 2,
+        'brand': 'WineBasket.com',
+        'advertiser_id': 'winebasket-cj',
+    },
+    {
+        # Deep-link → babybasket.com homepage
+        'title': "Baby Gift Baskets — BabyBasket.com",
+        'link': _winebasket_deep_link('babybasket.com'),
+        'snippet': (
+            "Thoughtfully curated baby shower and newborn gift baskets delivered nationwide — "
+            "soft essentials, keepsakes, and pampering items for new parents. "
+            "Gender-neutral and themed options available."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'babybasket.com',
+        'price': 'From $49.00',
+        'product_id': 'winebasket-baby',
+        'search_query': 'baby gift basket',
+        'interest_match': 'baby shower',
+        'priority': 2,
+        'brand': 'BabyBasket.com',
+        'advertiser_id': 'winebasket-cj',
+    },
+    {
+        # Deep-link → capalbosonline.com homepage
+        'title': "Gourmet Fruit & Cheese Gift Baskets — Capalbo's",
+        'link': _winebasket_deep_link('capalbosonline.com'),
+        'snippet': (
+            "Capalbo's classic gourmet gift baskets — premium fresh fruit, artisan cheeses, "
+            "charcuterie, and gourmet snacks beautifully arranged and delivered nationwide. "
+            "A timeless gift for foodies, hosts, and corporate occasions."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'capalbosonline.com',
+        'price': 'From $59.00',
+        'product_id': 'winebasket-gourmet',
+        'search_query': 'gourmet gift basket',
+        'interest_match': 'gourmet',
+        'priority': 2,
+        'brand': "Capalbo's",
+        'advertiser_id': 'winebasket-cj',
+    },
+]
+
+_WINEBASKET_TRIGGER_INTERESTS = {
+    # Wine enthusiasts only — not just "drinks" or "social"
+    'wine', 'wine tasting', 'winery', 'vineyard', 'wine lover', 'wine bar',
+    'champagne', 'sparkling wine', 'red wine', 'white wine', 'rosé', 'sommelier',
+    # Baby/new parent — high-intent, genuinely occasion-specific for baby basket
+    'baby shower', 'newborn', 'new baby', 'new parent', 'pregnancy',
+    'expecting', 'motherhood', 'fatherhood', 'nursery',
+    # Direct food/cheese passion — not generic "foodie" or "entertaining"
+    'gourmet food', 'cheese', 'charcuterie', 'artisan food', 'food lover',
+    # NOTE: 'craft beer', 'cocktails', 'drinking', 'entertaining', 'hosting',
+    # 'corporate gifts', 'housewarming', 'get well', 'sympathy', 'gourmet',
+    # 'foodie' intentionally excluded — those are trope-adjacent triggers that
+    # would surface gift baskets as a lazy fallback for social/hosting profiles.
+}
+
+_WINEBASKET_WINE_SIGNALS = {
+    # Genuine wine lover signals only
+    'wine', 'wine tasting', 'winery', 'vineyard', 'wine lover', 'wine bar',
+    'champagne', 'sparkling wine', 'red wine', 'white wine', 'rosé', 'sommelier',
+}
+
+_WINEBASKET_BABY_SIGNALS = {
+    'baby shower', 'newborn', 'new baby', 'new parent', 'pregnancy',
+    'expecting', 'motherhood', 'fatherhood', 'nursery', 'parenting',
+}
+
+_WINEBASKET_GOURMET_SIGNALS = {
+    # Direct food passion — not "foodie" (too generic) or occasion-based
+    'gourmet food', 'cheese', 'charcuterie', 'artisan food', 'food lover',
+}
+
+
+def get_winebasket_products_for_profile(profile):
+    """
+    Return curated Winebasket / Babybasket / Capalbo's products for matching profiles.
+
+    No product feed — static list using Evergreen deep links to each site.
+    Commission: 7%, 15-day cookie. Strong EPC ($66 3-mo / $53 7-day on Evergreen).
+    AOV ~$110 → ~$7.70 avg commission per sale.
+
+    Smart selection (cap 2):
+    - Wine/drinks/entertaining → WineBasket + Capalbo's gourmet
+    - Baby/new parent/pregnancy → BabyBasket + WineBasket (as add-on)
+    - Gourmet/foodie/cheese → Capalbo's + WineBasket
+    - General gifting occasions → WineBasket + Capalbo's
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    matched = interest_names & _WINEBASKET_TRIGGER_INTERESTS
+    if not matched:
+        for name in interest_names:
+            for trigger in _WINEBASKET_TRIGGER_INTERESTS:
+                if trigger in name or name in trigger:
+                    matched.add(name)
+                    break
+
+    if not matched:
+        return []
+
+    logger.info(f"Winebasket/BabyBasket/Capalbo's triggered by profile interests: {matched}")
+
+    def _get(pid):
+        return next((p for p in _WINEBASKET_ALL_PRODUCTS if p['product_id'] == pid), None)
+
+    is_baby = bool(interest_names & _WINEBASKET_BABY_SIGNALS) or any(
+        'baby' in n or 'newborn' in n or 'pregnan' in n or 'parent' in n
+        or 'nursery' in n or 'expect' in n
+        for n in interest_names
+    )
+    is_gourmet = bool(interest_names & _WINEBASKET_GOURMET_SIGNALS) or any(
+        'gourmet' in n or 'foodie' in n or 'cheese' in n or 'charcuteri' in n
+        for n in interest_names
+    )
+    is_wine = bool(interest_names & _WINEBASKET_WINE_SIGNALS) or any(
+        'wine' in n or 'champagne' in n or 'cocktail' in n or 'winery' in n
+        for n in interest_names
+    )
+
+    if is_baby:
+        return [p for p in [_get('winebasket-baby'), _get('winebasket-wine')] if p]
+    elif is_gourmet:
+        return [p for p in [_get('winebasket-gourmet'), _get('winebasket-wine')] if p]
+    elif is_wine:
+        return [p for p in [_get('winebasket-wine'), _get('winebasket-gourmet')] if p]
+    else:
+        return [p for p in [_get('winebasket-wine'), _get('winebasket-gourmet')] if p]
+
+
+def get_soccergarage_products_for_profile(profile):
+    """
+    Return curated SoccerGarage.com products when the profile has soccer interest.
+
+    No product feed via CJ — static list using category text link IDs.
+    Commission: 7% base, scales to 8-10% at volume thresholds. 60-day cookie.
+
+    Smart selection:
+    - Goalkeeper profile → goalkeeper gear + cleats
+    - Youth/parent profile → youth gear + general
+    - General soccer fan → cleats + general homepage
+    Cap: 2 products max to keep recommendation pool balanced.
+
+    T&C: Do NOT use expired 2012 coupon codes (GARAGE10, 5C4J2U).
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    matched = interest_names & _SOCCERGARAGE_TRIGGER_INTERESTS
+    if not matched:
+        for name in interest_names:
+            for trigger in _SOCCERGARAGE_TRIGGER_INTERESTS:
+                if trigger in name or name in trigger:
+                    matched.add(name)
+                    break
+
+    if not matched:
+        return []
+
+    logger.info(f"SoccerGarage.com triggered by profile interests: {matched}")
+
+    is_goalkeeper = bool(interest_names & _SOCCERGARAGE_GOALKEEPER_INTERESTS) or any(
+        'goal' in n or 'keeper' in n or 'goalie' in n for n in interest_names
+    )
+    is_youth_or_parent = bool(interest_names & _SOCCERGARAGE_YOUTH_INTERESTS) or any(
+        'youth' in n or 'kid' in n or 'child' in n or 'parent' in n for n in interest_names
+    )
+
+    def _get(pid):
+        return next((p for p in _SOCCERGARAGE_ALL_PRODUCTS if p['product_id'] == pid), None)
+
+    if is_goalkeeper:
+        return [p for p in [_get('soccergarage-goalkeeper'), _get('soccergarage-cleats')] if p]
+    elif is_youth_or_parent:
+        return [p for p in [_get('soccergarage-youth'), _get('soccergarage-home')] if p]
+    else:
+        return [p for p in [_get('soccergarage-cleats'), _get('soccergarage-home')] if p]
+
+
 def get_peets_products_for_profile(profile):
     """
     Return curated Peet's Coffee products when the profile has matching interests.
@@ -1543,6 +2828,12 @@ def search_products_cj(profile, api_key, company_id=None, publisher_id=None, tar
         (get_peets_products_for_profile, "Peet's Coffee"),
         (get_illy_products_for_profile, "illy caffè"),
         (get_monthlyclubs_products_for_profile, "MonthlyClubs"),
+        (get_soccergarage_products_for_profile, "SoccerGarage.com"),
+        (get_techforless_products_for_profile, "Tech For Less"),
+        (get_tenergy_products_for_profile, "Tenergy"),
+        (get_trinityroad_products_for_profile, "Trinity Road / Catholic Co."),
+        (get_zchocolat_products_for_profile, "zChocolat"),
+        (get_winebasket_products_for_profile, "Winebasket/BabyBasket/Capalbo's"),
         (get_flowersfast_products_for_profile, "FlowersFast"),
         (get_fragranceshop_products_for_profile, "FragranceShop"),
         (get_gamefly_products_for_profile, "GameFly"),
@@ -1593,6 +2884,30 @@ def search_products_cj(profile, api_key, company_id=None, publisher_id=None, tar
     for term in search_terms:
         if not term:
             continue
+
+        # ----------------------------------------------------------------
+        # Cache check — use SQLite catalog if this term was synced recently.
+        # Saves 3–5 seconds of live API latency per term.
+        # Falls back to live API on cache miss, import error, or DB failure.
+        # ----------------------------------------------------------------
+        if _CATALOG_CACHE_AVAILABLE:
+            try:
+                if is_term_cache_fresh(term):
+                    cached = get_cached_products_for_interest(
+                        term, limit=min(60, target_count)
+                    )
+                    if cached:
+                        all_products.extend(cached)
+                        logger.info(
+                            f"CJ catalog cache hit '{term}': {len(cached)} products"
+                        )
+                        if len(all_products) >= target_count:
+                            break
+                        continue
+                    # Cache is fresh but empty for this term — fall through to live
+            except Exception as _ce:
+                logger.debug(f"Cache lookup failed for '{term}': {_ce}")
+        # ----------------------------------------------------------------
 
         try:
             # Rate limiting

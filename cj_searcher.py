@@ -413,6 +413,597 @@ def get_monthlyclubs_products_for_profile(profile):
     return relevant[:2]  # Cap at 2 — subscription products take up significant card space
 
 
+# ---------------------------------------------------------------------------
+# SOCCERGARAGE.COM — Static curated products (approved CJ partner, Feb 2026)
+# ADV_CID: 2061630
+# Commission: 7% base (scales to 8/9/10% at $3.5K/$5.5K/$7.5K monthly sales)
+# Cookie: 60 days (locking: 40 days) | AOV: ~$125 | US only
+#
+# No product feed — category/text links only.
+# T&C: No SEM bidding on brand terms (irrelevant). No expired coupons
+#   (2012-era coupon codes 5C4J2U / GARAGE10 are stale — do NOT use).
+# ---------------------------------------------------------------------------
+
+_SOCCERGARAGE_ALL_PRODUCTS = [
+    {
+        # Link ID 10479694 — Soccer Shoes category page
+        'title': "Soccer Cleats & Shoes — SoccerGarage.com",
+        'link': 'https://www.tkqlhce.com/click-101660899-10479694',
+        'snippet': (
+            "One of the largest online soccer retailers in the US — adidas, New Balance, "
+            "Diadora, and more. Full range of cleats for firm ground, turf, and indoor play. "
+            "Free shipping on orders over $150."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'soccergarage.com',
+        'price': 'From $30.00',
+        'product_id': 'soccergarage-cleats',
+        'search_query': 'soccer cleats gift',
+        'interest_match': 'soccer',
+        'priority': 2,
+        'brand': 'SoccerGarage.com',
+        'advertiser_id': 'soccergarage-cj',
+    },
+    {
+        # Link ID 11017728 — Goalkeeper Soccer Sale (keeper-specific)
+        'title': "Goalkeeper Gloves & Equipment — SoccerGarage.com",
+        'link': 'https://www.anrdoezrs.net/click-101660899-11017728',
+        'snippet': (
+            "Full goalkeeper shop — Reusch, Storelli, and more. Gloves, chest protectors, "
+            "training gear, and positional coaching equipment. Trusted by club keepers nationwide."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'soccergarage.com',
+        'price': 'From $25.00',
+        'product_id': 'soccergarage-goalkeeper',
+        'search_query': 'goalkeeper gear gift',
+        'interest_match': 'goalkeeper',
+        'priority': 2,
+        'brand': 'SoccerGarage.com',
+        'advertiser_id': 'soccergarage-cj',
+    },
+    {
+        # Link ID 11017023 — Youth soccer gear
+        'title': "Youth Soccer Gear — SoccerGarage.com",
+        'link': 'https://www.dpbolvw.net/click-101660899-11017023',
+        'snippet': (
+            "Everything a young player needs — youth cleats, balls, shin guards, bags, "
+            "and uniforms. All the top brands in kids' sizes. Ships to teams and clubs too."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'soccergarage.com',
+        'price': 'From $15.00',
+        'product_id': 'soccergarage-youth',
+        'search_query': 'youth soccer gear gift',
+        'interest_match': 'youth soccer',
+        'priority': 2,
+        'brand': 'SoccerGarage.com',
+        'advertiser_id': 'soccergarage-cj',
+    },
+    {
+        # Link ID 10479704 — Evergreen homepage (general / browse)
+        'title': "Soccer Equipment & Apparel — SoccerGarage.com",
+        'link': 'https://www.tkqlhce.com/click-101660899-10479704',
+        'snippet': (
+            "The go-to online source for soccer players, teams, and clubs. "
+            "Cleats, balls, jerseys, bags, goals, and training gear — "
+            "all the top brands in one place. Free shipping on orders over $150."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'soccergarage.com',
+        'price': 'From $15.00',
+        'product_id': 'soccergarage-home',
+        'search_query': 'soccer gear gift',
+        'interest_match': 'soccer',
+        'priority': 2,
+        'brand': 'SoccerGarage.com',
+        'advertiser_id': 'soccergarage-cj',
+    },
+]
+
+_SOCCERGARAGE_TRIGGER_INTERESTS = {
+    'soccer', 'football', 'futbol', 'soccer player', 'soccer fan',
+    'goalkeeper', 'goalie', 'keeper', 'soccer coach', 'coaching soccer',
+    'youth soccer', 'kids soccer', 'soccer dad', 'soccer mom',
+    'mls', 'premier league', 'champions league', 'la liga', 'bundesliga',
+    'world cup', 'fifa', 'sports', 'athletic', 'team sports',
+}
+
+# Goalkeeper-specific interests — trigger the keeper product instead of general cleats
+_SOCCERGARAGE_GOALKEEPER_INTERESTS = {
+    'goalkeeper', 'goalie', 'keeper', 'soccer goalkeeper',
+}
+
+# Youth-specific signals — trigger youth gear product
+_SOCCERGARAGE_YOUTH_INTERESTS = {
+    'youth soccer', 'kids soccer', 'soccer dad', 'soccer mom',
+    'youth sports', 'kids sports', 'parenting',
+}
+
+
+# ---------------------------------------------------------------------------
+# TECH FOR LESS — Static curated products (approved CJ partner, Feb 2026)
+# ADV_CID: 3297514
+# Commission: 5% | Cookie: 14 days (locking: 60 days) | AOV: ~$185
+# Serviceable: US, Canada, UK (effectively US-only per conversion data)
+#
+# Positioning: New, open box, and certified refurbished electronics —
+#   same tech at 10-50% below retail. One of the web's highest-rated
+#   refurb merchants (Amazon, Bizrate, PriceGrabber). In business since 2001.
+#
+# No product feed — category text links only.
+# Deep-link enabled: Evergreen link ID 15733604
+#   Base: https://www.kqzyfj.com/click-101660899-15733604
+#   Deep-link: append ?url=encoded_destination
+#
+# T&C: Coupons only through CJ affiliate program interface (none currently
+#   available). No SEM bidding on brand terms. Direct linking allowed.
+# DO NOT use link 10891878 (explicitly labeled "DO NOT USE" by advertiser).
+# ---------------------------------------------------------------------------
+
+_TFL_EVERGREEN_BASE = "https://www.kqzyfj.com/click-101660899-15733604"
+
+
+def _tfl_deep_link(path):
+    """Build a CJ deep link to a specific techforless.com page."""
+    destination = f"https://www.techforless.com{path}"
+    return f"{_TFL_EVERGREEN_BASE}?url={urllib.parse.quote(destination, safe='')}"
+
+
+_TFL_ALL_PRODUCTS = [
+    {
+        # Link ID 10886632 — Laptops (updated May 2023)
+        'title': "Laptops & Notebooks — New & Open Box at TechForLess",
+        'link': 'https://www.kqzyfj.com/click-101660899-10886632',
+        'snippet': (
+            "HP, Lenovo, Dell, and more — new, open box, and certified refurbished laptops "
+            "at 10-50% below retail. Same technology, thoroughly tested. "
+            "8,000+ items in stock, free shipping on thousands of items."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'techforless.com',
+        'price': 'From $150.00',
+        'product_id': 'tfl-laptops',
+        'search_query': 'laptop gift',
+        'interest_match': 'technology',
+        'priority': 2,
+        'brand': 'Tech For Less',
+        'advertiser_id': 'techforless-cj',
+    },
+    {
+        # Link ID 15443907 — Apple MacBooks (updated Jan 2023, $9.15 EPC)
+        'title': "MacBook Laptops — New & Open Box at TechForLess",
+        'link': 'https://www.dpbolvw.net/click-101660899-15443907',
+        'snippet': (
+            "New and open box Apple MacBook and MacBook Air — same Apple hardware, "
+            "10-50% below Apple Store pricing. Thoroughly tested, limited quantities. "
+            "One of the web's highest-rated sources for open box Apple gear."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'techforless.com',
+        'price': 'From $400.00',
+        'product_id': 'tfl-macbooks',
+        'search_query': 'MacBook laptop gift',
+        'interest_match': 'apple',
+        'priority': 2,
+        'brand': 'Tech For Less',
+        'advertiser_id': 'techforless-cj',
+    },
+    {
+        # Link ID 13446839 — Video Game Consoles & Accessories
+        'title': "Video Game Consoles & Accessories — TechForLess",
+        'link': 'https://www.anrdoezrs.net/click-101660899-13446839',
+        'snippet': (
+            "Gaming consoles and accessories — new, open box, and refurbished at "
+            "significant savings. Controllers, headsets, and more from major brands. "
+            "Free shipping on thousands of items."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'techforless.com',
+        'price': 'From $30.00',
+        'product_id': 'tfl-gaming',
+        'search_query': 'gaming console gift',
+        'interest_match': 'gaming',
+        'priority': 2,
+        'brand': 'Tech For Less',
+        'advertiser_id': 'techforless-cj',
+    },
+    {
+        # Link ID 13446829 — Cameras (DSLR to webcams)
+        'title': "Cameras — DSLR, Mirrorless & More at TechForLess",
+        'link': 'https://www.kqzyfj.com/click-101660899-13446829',
+        'snippet': (
+            "DSLR, mirrorless, and point-and-shoot cameras — new and open box at "
+            "10-50% below retail. Also webcams, lenses, and accessories. "
+            "Thoroughly tested by one of the web's top-rated electronics resellers."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'techforless.com',
+        'price': 'From $75.00',
+        'product_id': 'tfl-cameras',
+        'search_query': 'camera gift',
+        'interest_match': 'photography',
+        'priority': 2,
+        'brand': 'Tech For Less',
+        'advertiser_id': 'techforless-cj',
+    },
+    {
+        # Link ID 13067706 — Homepage ($6.88 EPC, evergreen)
+        'title': "Computers & Electronics — Same Technology, Lower Prices",
+        'link': 'https://www.dpbolvw.net/click-101660899-13067706',
+        'snippet': (
+            "TechForLess.com — new, open box, and certified refurbished computers, "
+            "tablets, monitors, and electronics at 10-50% below retail. "
+            "In business since 2001, one of the web's highest-rated tech retailers."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'techforless.com',
+        'price': 'From $15.00',
+        'product_id': 'tfl-home',
+        'search_query': 'electronics gift',
+        'interest_match': 'technology',
+        'priority': 2,
+        'brand': 'Tech For Less',
+        'advertiser_id': 'techforless-cj',
+    },
+]
+
+_TFL_TRIGGER_INTERESTS = {
+    'technology', 'tech', 'gadgets', 'electronics', 'computers', 'computing',
+    'laptops', 'coding', 'programming', 'software', 'hardware', 'it',
+    'home office', 'remote work', 'work from home', 'streaming',
+    'content creation', 'youtube', 'twitch', 'podcasting',
+    'gaming', 'video games', 'pc gaming', 'esports',
+    'photography', 'camera', 'filmmaker', 'videography',
+    'apple', 'mac', 'macbook', 'ipad',
+}
+
+_TFL_GAMING_INTERESTS = {
+    'gaming', 'video games', 'pc gaming', 'esports', 'game', 'gamer',
+    'playstation', 'xbox', 'nintendo', 'console gaming',
+}
+
+_TFL_PHOTOGRAPHY_INTERESTS = {
+    'photography', 'camera', 'filmmaker', 'videography', 'photo',
+    'dslr', 'mirrorless', 'film photography', 'content creation',
+}
+
+_TFL_APPLE_INTERESTS = {
+    'apple', 'mac', 'macbook', 'ipad', 'ios', 'apple ecosystem',
+}
+
+
+def get_techforless_products_for_profile(profile):
+    """
+    Return curated Tech For Less products when the profile has tech interest.
+
+    No product feed — static list using category text link IDs.
+    Commission: 5%, 14-day cookie. AOV ~$185.
+    Specializes in new, open box, and certified refurbished electronics.
+
+    Smart selection (cap 2):
+    - Gaming profile → gaming consoles + laptops
+    - Photography profile → cameras + general
+    - Apple/Mac profile → MacBooks + general
+    - General tech → laptops + general homepage
+
+    T&C: No external coupons. Do NOT use link 10891878 (labeled DO NOT USE).
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    matched = interest_names & _TFL_TRIGGER_INTERESTS
+    if not matched:
+        for name in interest_names:
+            for trigger in _TFL_TRIGGER_INTERESTS:
+                if trigger in name or name in trigger:
+                    matched.add(name)
+                    break
+
+    if not matched:
+        return []
+
+    logger.info(f"Tech For Less triggered by profile interests: {matched}")
+
+    is_gaming = bool(interest_names & _TFL_GAMING_INTERESTS) or any(
+        'gam' in n or 'xbox' in n or 'playstation' in n or 'nintendo' in n
+        for n in interest_names
+    )
+    is_photography = bool(interest_names & _TFL_PHOTOGRAPHY_INTERESTS) or any(
+        'photo' in n or 'camera' in n or 'film' in n for n in interest_names
+    )
+    is_apple = bool(interest_names & _TFL_APPLE_INTERESTS) or any(
+        'apple' in n or 'mac' in n or 'ipad' in n for n in interest_names
+    )
+
+    def _get(pid):
+        return next(p for p in _TFL_ALL_PRODUCTS if p['product_id'] == pid)
+
+    if is_gaming:
+        return [_get('tfl-gaming'), _get('tfl-laptops')]
+    elif is_photography:
+        return [_get('tfl-cameras'), _get('tfl-home')]
+    elif is_apple:
+        return [_get('tfl-macbooks'), _get('tfl-home')]
+    else:
+        return [_get('tfl-laptops'), _get('tfl-home')]
+
+
+# ---------------------------------------------------------------------------
+# TENERGY — Static curated products (approved CJ partner, Feb 2026)
+# ADV_CID: 1826017
+# Commission: 8% | Cookie: 30 days | EPC: $11.64 (3-mo) / $13.09 (7-day)
+# Two sites: power.tenergy.com (batteries/chargers) | life.tenergy.com (appliances)
+#
+# No product feed — Evergreen link ID 15733324 is deep-link enabled.
+#   Base: https://www.anrdoezrs.net/click-101660899-15733324
+#   Deep-link: append ?url=encoded_destination
+#
+# Promo code THANKS: free ground shipping on orders $50+ (lower 48 states).
+#   Sourced from official CJ affiliate materials — treat as evergreen until
+#   it stops working. Do NOT stack with other promo codes.
+#
+# T&C: No SEM bidding on brand terms (irrelevant for content). No obscene,
+#   harmful, or discriminatory site content.
+# ---------------------------------------------------------------------------
+
+_TENERGY_EVERGREEN_BASE = "https://www.anrdoezrs.net/click-101660899-15733324"
+
+
+def _tenergy_deep_link(path, site='power'):
+    """Build a CJ deep link to a specific Tenergy page.
+
+    Args:
+        path: URL path (e.g., '/collections/aa-batteries')
+        site: 'power' for power.tenergy.com or 'life' for life.tenergy.com
+    """
+    destination = f"https://{site}.tenergy.com{path}"
+    return f"{_TENERGY_EVERGREEN_BASE}?url={urllib.parse.quote(destination, safe='')}"
+
+
+_TENERGY_ALL_PRODUCTS = [
+    {
+        # Deep-link → Tenergy Power homepage (rechargeable batteries for home)
+        'title': "Rechargeable AA/AAA Battery Kit — Tenergy Power",
+        'link': _tenergy_deep_link('/'),
+        'snippet': (
+            "Tenergy rechargeable NiMH batteries and smart chargers — high-capacity AA and AAA "
+            "for remotes, cameras, toys, and everyday devices. American brand since 2004. "
+            "Use code THANKS for free shipping on orders $50+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'power.tenergy.com',
+        'price': 'From $20.00',
+        'product_id': 'tenergy-rechargeable',
+        'search_query': 'rechargeable battery kit gift',
+        'interest_match': 'sustainability',
+        'priority': 2,
+        'brand': 'Tenergy',
+        'advertiser_id': 'tenergy-cj',
+    },
+    {
+        # Deep-link → Tenergy RC/hobby battery category
+        'title': "RC Hobby & Drone Batteries — Tenergy Power",
+        'link': _tenergy_deep_link('/collections/hobby-rc'),
+        'snippet': (
+            "High-performance LiPo, NiMH, and NiCd packs for RC cars, trucks, boats, "
+            "airsoft AEGs, and drones. Tenergy is the go-to brand for hobbyists who need "
+            "reliable power. Use code THANKS for free shipping on orders $50+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'power.tenergy.com',
+        'price': 'From $25.00',
+        'product_id': 'tenergy-rc-hobby',
+        'search_query': 'RC car battery gift',
+        'interest_match': 'rc cars',
+        'priority': 2,
+        'brand': 'Tenergy',
+        'advertiser_id': 'tenergy-cj',
+    },
+    {
+        # Deep-link → Tenergy Life homepage (small kitchen/home appliances)
+        'title': "Kitchen & Home Appliances — Tenergy Life",
+        'link': _tenergy_deep_link('/', site='life'),
+        'snippet': (
+            "Tenergy Life — small kitchen appliances and home electronics built to the same "
+            "exacting standard as their battery line. Blenders, air fryers, toasters, and more. "
+            "Use code THANKS for free shipping on orders $50+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'life.tenergy.com',
+        'price': 'From $30.00',
+        'product_id': 'tenergy-life-appliances',
+        'search_query': 'kitchen appliance gift',
+        'interest_match': 'cooking',
+        'priority': 2,
+        'brand': 'Tenergy',
+        'advertiser_id': 'tenergy-cj',
+    },
+    {
+        # Evergreen base → general Power site (smart chargers + batteries)
+        'title': "Smart Battery Charger & Batteries — Tenergy Power",
+        'link': _TENERGY_EVERGREEN_BASE,
+        'snippet': (
+            "Tenergy smart chargers with AA, AAA, C, and D rechargeable batteries — "
+            "the practical gift that pays for itself. Trusted for photography, RC hobbies, "
+            "and everyday devices. Use code THANKS for free shipping on orders $50+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'power.tenergy.com',
+        'price': 'From $30.00',
+        'product_id': 'tenergy-charger-kit',
+        'search_query': 'battery charger gift',
+        'interest_match': 'gadgets',
+        'priority': 2,
+        'brand': 'Tenergy',
+        'advertiser_id': 'tenergy-cj',
+    },
+]
+
+_TENERGY_TRIGGER_INTERESTS = {
+    # RC / hobby
+    'rc cars', 'remote control', 'radio controlled', 'rc trucks', 'rc boats',
+    'rc helicopters', 'rc planes', 'hobby rc', 'model cars',
+    # Airsoft / tactical
+    'airsoft', 'airsoft guns', 'tactical',
+    # Drone
+    'drones', 'drone', 'quadcopter', 'fpv', 'fpv racing',
+    # Photography (camera flash batteries)
+    'photography', 'camera', 'flash photography',
+    # Sustainability / eco
+    'sustainability', 'eco-friendly', 'green living', 'zero waste', 'environment',
+    # Kitchen / home
+    'cooking', 'baking', 'kitchen', 'home cooking', 'meal prep',
+    # General tech/gadgets that may need lots of batteries
+    'gadgets', 'smart home', 'robotics',
+}
+
+_TENERGY_RC_INTERESTS = {
+    'rc cars', 'remote control', 'radio controlled', 'rc trucks', 'rc boats',
+    'rc helicopters', 'rc planes', 'hobby rc', 'model cars',
+    'airsoft', 'drones', 'drone', 'quadcopter', 'fpv', 'fpv racing',
+}
+
+_TENERGY_KITCHEN_INTERESTS = {
+    'cooking', 'baking', 'kitchen', 'home cooking', 'meal prep', 'air fryer',
+    'homemaker', 'food', 'culinary',
+}
+
+
+def get_tenergy_products_for_profile(profile):
+    """
+    Return curated Tenergy products when the profile has matching interests.
+
+    No product feed — static list using CJ deep links off Evergreen ID 15733324.
+    Commission: 8%, 30-day cookie. Strong EPC ($13).
+
+    Smart selection (cap 2):
+    - RC/airsoft/drone profile → RC batteries + charger kit
+    - Kitchen/home profile → Life appliances + rechargeable
+    - General eco/gadget → rechargeable kit + charger kit
+
+    Promo code THANKS = free ground shipping $50+ (lower 48 states only).
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    matched = interest_names & _TENERGY_TRIGGER_INTERESTS
+    if not matched:
+        for name in interest_names:
+            for trigger in _TENERGY_TRIGGER_INTERESTS:
+                if trigger in name or name in trigger:
+                    matched.add(name)
+                    break
+
+    if not matched:
+        return []
+
+    logger.info(f"Tenergy triggered by profile interests: {matched}")
+
+    is_rc_or_drone = bool(interest_names & _TENERGY_RC_INTERESTS) or any(
+        'rc' in n or 'drone' in n or 'airsoft' in n or 'quadcopter' in n
+        or 'remote control' in n or 'fpv' in n
+        for n in interest_names
+    )
+    is_kitchen = bool(interest_names & _TENERGY_KITCHEN_INTERESTS) or any(
+        'cook' in n or 'bak' in n or 'kitchen' in n for n in interest_names
+    )
+
+    def _get(pid):
+        return next(p for p in _TENERGY_ALL_PRODUCTS if p['product_id'] == pid)
+
+    if is_rc_or_drone:
+        return [_get('tenergy-rc-hobby'), _get('tenergy-charger-kit')]
+    elif is_kitchen:
+        return [_get('tenergy-life-appliances'), _get('tenergy-rechargeable')]
+    else:
+        return [_get('tenergy-rechargeable'), _get('tenergy-charger-kit')]
+
+
+def get_soccergarage_products_for_profile(profile):
+    """
+    Return curated SoccerGarage.com products when the profile has soccer interest.
+
+    No product feed via CJ — static list using category text link IDs.
+    Commission: 7% base, scales to 8-10% at volume thresholds. 60-day cookie.
+
+    Smart selection:
+    - Goalkeeper profile → goalkeeper gear + cleats
+    - Youth/parent profile → youth gear + general
+    - General soccer fan → cleats + general homepage
+    Cap: 2 products max to keep recommendation pool balanced.
+
+    T&C: Do NOT use expired 2012 coupon codes (GARAGE10, 5C4J2U).
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    matched = interest_names & _SOCCERGARAGE_TRIGGER_INTERESTS
+    if not matched:
+        for name in interest_names:
+            for trigger in _SOCCERGARAGE_TRIGGER_INTERESTS:
+                if trigger in name or name in trigger:
+                    matched.add(name)
+                    break
+
+    if not matched:
+        return []
+
+    logger.info(f"SoccerGarage.com triggered by profile interests: {matched}")
+
+    is_goalkeeper = bool(interest_names & _SOCCERGARAGE_GOALKEEPER_INTERESTS) or any(
+        'goal' in n or 'keeper' in n or 'goalie' in n for n in interest_names
+    )
+    is_youth_or_parent = bool(interest_names & _SOCCERGARAGE_YOUTH_INTERESTS) or any(
+        'youth' in n or 'kid' in n or 'child' in n or 'parent' in n for n in interest_names
+    )
+
+    if is_goalkeeper:
+        # Lead with goalkeeper gear, add cleats as second pick
+        return [
+            next(p for p in _SOCCERGARAGE_ALL_PRODUCTS if p['product_id'] == 'soccergarage-goalkeeper'),
+            next(p for p in _SOCCERGARAGE_ALL_PRODUCTS if p['product_id'] == 'soccergarage-cleats'),
+        ]
+    elif is_youth_or_parent:
+        # Lead with youth gear, add general homepage
+        return [
+            next(p for p in _SOCCERGARAGE_ALL_PRODUCTS if p['product_id'] == 'soccergarage-youth'),
+            next(p for p in _SOCCERGARAGE_ALL_PRODUCTS if p['product_id'] == 'soccergarage-home'),
+        ]
+    else:
+        # General soccer fan: cleats (highest AOV, most gifted) + homepage
+        return [
+            next(p for p in _SOCCERGARAGE_ALL_PRODUCTS if p['product_id'] == 'soccergarage-cleats'),
+            next(p for p in _SOCCERGARAGE_ALL_PRODUCTS if p['product_id'] == 'soccergarage-home'),
+        ]
+
+
 def get_peets_products_for_profile(profile):
     """
     Return curated Peet's Coffee products when the profile has matching interests.
@@ -675,6 +1266,9 @@ def search_products_cj(profile, api_key, company_id=None, publisher_id=None, tar
         (get_peets_products_for_profile, "Peet's Coffee"),
         (get_illy_products_for_profile, "illy caffè"),
         (get_monthlyclubs_products_for_profile, "MonthlyClubs"),
+        (get_soccergarage_products_for_profile, "SoccerGarage.com"),
+        (get_techforless_products_for_profile, "Tech For Less"),
+        (get_tenergy_products_for_profile, "Tenergy"),
     ]:
         products = getter(profile)
         if products:

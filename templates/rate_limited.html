@@ -48,6 +48,42 @@ h1 {
 .cta-links a:hover {
     text-decoration: underline;
 }
+.emergency-divider {
+    margin: 36px auto 0;
+    max-width: 200px;
+    border: none;
+    border-top: 1px solid #e5e7eb;
+}
+.emergency-upsell {
+    margin-top: 28px;
+    text-align: center;
+}
+.emergency-upsell p {
+    color: #9ca3af;
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+.emergency-button {
+    display: inline-block;
+    color: #7B68EE;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid #e0dcff;
+    border-radius: 8px;
+    padding: 8px 18px;
+    background: #fafaff;
+    transition: background 0.15s;
+}
+.emergency-button:hover {
+    background: #f0eeff;
+    text-decoration: none;
+}
+.emergency-subtext {
+    color: #d1d5db;
+    font-size: 12px;
+    margin-top: 8px;
+}
 {% endblock %}
 
 {% block content %}
@@ -62,5 +98,13 @@ h1 {
         <a href="/guides">Browse our gift guides while you wait →</a>
         <a href="/blog">Read gift advice on the blog →</a>
     </div>
+    {% if stripe_configured %}
+    <hr class="emergency-divider">
+    <div class="emergency-upsell">
+        <p>Need it right now?</p>
+        <a href="/gift-emergency" class="emergency-button">Run again for $2.99</a>
+        <p class="emergency-subtext">One-time · No subscription</p>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

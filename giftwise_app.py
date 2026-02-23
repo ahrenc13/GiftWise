@@ -260,8 +260,36 @@ except ImportError:
     STRIPE_INTEGRATION_AVAILABLE = False
     pass  # Logger not defined yet
 
+STRIPE_GIFT_EMERGENCY_PRICE_ID = os.environ.get('STRIPE_GIFT_EMERGENCY_PRICE_ID')
+
 # Database (using simple JSON for MVP - upgrade to PostgreSQL later)
 import shelve
+
+# Gift Emergency run credits — shelve-backed, keyed by email
+GIFT_EMERGENCY_DB = 'data/gift_emergency'
+os.makedirs('data', exist_ok=True)
+
+def grant_gift_emergency_run(email):
+    """Record that an email paid for a gift emergency run."""
+    email = email.strip().lower()
+    with shelve.open(GIFT_EMERGENCY_DB) as db:
+        db[email] = db.get(email, 0) + 1
+
+def consume_gift_emergency_run(email):
+    """Consume one run credit. Returns True if a credit was available."""
+    email = email.strip().lower()
+    with shelve.open(GIFT_EMERGENCY_DB) as db:
+        count = db.get(email, 0)
+        if count > 0:
+            db[email] = count - 1
+            return True
+    return False
+
+def has_gift_emergency_run(email):
+    """Check if this email has a paid run credit waiting."""
+    email = email.strip().lower()
+    with shelve.open(GIFT_EMERGENCY_DB) as db:
+        return db.get(email, 0) > 0
 
 # Configure logging
 logging.basicConfig(
@@ -1809,6 +1837,13 @@ def stripe_webhook():
                 save_user(user_id, user)
                 logger.info(f"User {customer_email} upgraded to Pro")
     
+    # Handle one-time gift emergency payment
+    elif event_type == 'one_time_payment_completed':
+        customer_email = event_data.get('customer_email')
+        if customer_email:
+            grant_gift_emergency_run(customer_email)
+            logger.info(f"Gift emergency run granted to {customer_email}")
+
     # Handle subscription cancelled
     elif event_type == 'subscription_cancelled':
         subscription_id = event_data.get('subscription_id')
@@ -1826,6 +1861,55 @@ def stripe_webhook():
             logger.error(f"Error downgrading user: {e}")
     
     return jsonify({'status': 'success'}), 200
+
+
+# ============================================================================
+# GIFT EMERGENCY — $2.99 one-time run credit
+# Shown only on the rate limit page. No account required.
+# ============================================================================
+
+@app.route('/gift-emergency')
+def gift_emergency_page():
+    """Show the Gift Emergency purchase page."""
+    stripe_configured = STRIPE_INTEGRATION_AVAILABLE and bool(STRIPE_GIFT_EMERGENCY_PRICE_ID)
+    return render_template('gift_emergency.html', stripe_configured=stripe_configured)
+
+@app.route('/gift-emergency/checkout', methods=['POST'])
+def gift_emergency_checkout():
+    """Create a Stripe one-time checkout for $2.99 gift emergency run. No login required."""
+    if not STRIPE_INTEGRATION_AVAILABLE or not STRIPE_GIFT_EMERGENCY_PRICE_ID:
+        return jsonify({'error': 'Payment not configured'}), 503
+
+    email = request.form.get('email', '').strip().lower()
+    if not email or '@' not in email:
+        return jsonify({'error': 'Valid email required'}), 400
+
+    success_url = request.url_root.rstrip('/') + '/gift-emergency/success'
+    cancel_url = request.url_root.rstrip('/') + '/gift-emergency'
+
+    checkout_url = stripe_integration.create_one_time_checkout_session(
+        customer_email=email,
+        price_id=STRIPE_GIFT_EMERGENCY_PRICE_ID,
+        success_url=success_url,
+        cancel_url=cancel_url,
+        metadata={'plan': 'gift_emergency', 'email': email}
+    )
+
+    if checkout_url:
+        # Store email in session so success page can show it
+        session['gift_emergency_email'] = email
+        session.modified = True
+        return redirect(checkout_url)
+    else:
+        return render_template('gift_emergency.html',
+                               stripe_configured=True,
+                               error='Payment setup failed — please try again.'), 500
+
+@app.route('/gift-emergency/success')
+def gift_emergency_success():
+    """Post-payment success page. Stripe webhook grants the run credit."""
+    email = session.get('gift_emergency_email', '')
+    return render_template('gift_emergency_success.html', email=email)
 
 
 @app.route('/connect-platforms')
@@ -2410,15 +2494,23 @@ def generate_recommendations_route():
 
     # RATE LIMITING: 1 full pipeline run per IP per 24 hours
     # Admin emails (set via ADMIN_EMAILS env var) bypass the limit for testing
+    # Paid gift_emergency credits also bypass the IP limit (one credit consumed per run)
     user_email = user.get('email', '').strip().lower()
     admin_emails = [e.strip().lower() for e in os.getenv('ADMIN_EMAILS', '').split(',') if e.strip()]
     is_admin = user_email in admin_emails
     if not is_admin:
-        client_ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
-        allowed, reset_time = check_and_record_pipeline_run(client_ip)
-        if not allowed:
-            reset_str = reset_time.strftime('%-I:%M %p') if reset_time else 'tomorrow'
-            return render_template('rate_limited.html', reset_time=reset_str), 429
+        # Check for paid gift_emergency credit first
+        emergency_credit_used = user_email and consume_gift_emergency_run(user_email)
+        if emergency_credit_used:
+            logger.info(f"Gift emergency credit consumed for {user_email}")
+        else:
+            client_ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+            allowed, reset_time = check_and_record_pipeline_run(client_ip)
+            if not allowed:
+                reset_str = reset_time.strftime('%-I:%M %p') if reset_time else 'tomorrow'
+                stripe_configured = STRIPE_INTEGRATION_AVAILABLE and bool(STRIPE_GIFT_EMERGENCY_PRICE_ID)
+                return render_template('rate_limited.html', reset_time=reset_str,
+                                       stripe_configured=stripe_configured), 429
 
     platforms = user.get('platforms', {})
     
@@ -3071,14 +3163,23 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
 
             logger.info(f"MATERIALS: Matched '{item_name[:40]}' → '{best.get('title', '')[:50]}' (score={best_score})")
         else:
-            # No match in inventory - decide whether to show search fallback or skip entirely
-            # Search fallbacks add little value ("Find on Amazon" = user could search themselves)
-            # Better to either: (1) skip the material, or (2) do a targeted mini-search for real product
-
-            # For now: Skip unmatched materials entirely (cleaner UX than useless search links)
-            # TODO: Add optional mini-search feature for unmatched materials (adds latency)
-            logger.info(f"MATERIALS: No match for '{item_name[:40]}' → skipping (would have been search fallback)")
-            continue  # Don't add this material to output
+            # No match in inventory — add an Amazon search link so the shopping list isn't empty.
+            # An Amazon search link is better than nothing: the experience card at least shows
+            # the material name + a clickable path to find it. Skip only truly non-purchasable items.
+            if not item_name or item_name.lower() in _NON_PURCHASABLE_SIGNALS:
+                logger.info(f"MATERIALS: '{item_name[:40]}' is non-purchasable, skipping entirely")
+                continue
+            query = item_name.replace(' ', '+')
+            tag = affiliate_tag or AMAZON_AFFILIATE_TAG
+            if tag:
+                search_url = f"https://www.amazon.com/s?k={query}&tag={tag}"
+            else:
+                search_url = f"https://www.amazon.com/s?k={query}"
+            m['product_url'] = search_url
+            m['where_to_buy'] = 'amazon.com'
+            m['is_search_link'] = True
+            m['thumbnail'] = None
+            logger.info(f"MATERIALS: No inventory match for '{item_name[:40]}' → Amazon search link")
         # Apply affiliate tracking to all material links
         if m.get('product_url'):
             m['product_url'] = _apply_affiliate_tag(m['product_url'])
@@ -3505,8 +3606,17 @@ def create_share():
     session.modified = True
 
     # Add UTM params for viral attribution tracking
+    # Include referral code so signups from this share are credited back to the sharer
     position = session.get('position_number', 0)
-    share_url = request.url_root.rstrip('/') + f'/share/{share_id}?utm_source=giftwise&utm_medium=share&utm_campaign=share2026&ref={position}'
+    user_email = user.get('email', '')
+    ref_code = None
+    if SHARING_FEATURES_AVAILABLE and user_email:
+        try:
+            ref_code = generate_referral_code(user_email)
+        except Exception:
+            pass
+    ref_param = ref_code if ref_code else str(position)
+    share_url = request.url_root.rstrip('/') + f'/share/{share_id}?utm_source=giftwise&utm_medium=share&utm_campaign=share2026&ref={ref_param}'
 
     return jsonify({'success': True, 'share_url': share_url, 'share_id': share_id, 'unlocked': True})
 

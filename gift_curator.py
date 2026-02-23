@@ -174,7 +174,7 @@ SPECIFIC VENUES/PLACES:
 """
     
     # Format products for prompt
-    products_summary = format_products(products)
+    products_summary = f"━━━ PRODUCT INVENTORY ({len(products)} items) — ONLY PICK FROM THIS LIST ━━━\n\n" + format_products(products) + "\n\n━━━ END OF INVENTORY — every product_url must come from above ━━━"
     
     # Pronoun guidance: "your/you" when recipient is user themselves, "their/they" when buying for someone else
     pronoun_possessive = "your" if recipient_type == 'myself' else "their"
@@ -295,6 +295,12 @@ DIVERSITY & EVIDENCE:
 - Each recommendation must have SPECIFIC evidence from the profile (not generic "they'll love this")
 - Total: {rec_count} product gifts + 3 experience gifts (we will filter to keep 2-3)
 - Every product gift product_url MUST be an exact copy of a URL from the INVENTORY list above - no invented products, no search pages.
+
+BEFORE RETURNING YOUR JSON — SELF-CHECK (do this mentally for every product gift):
+1. Find this product's URL in the INVENTORY list above. Scroll back and locate it.
+2. If you cannot find the exact URL in the INVENTORY, you MUST replace this pick with a product that IS listed.
+3. Products not in the inventory list DO NOT EXIST in our system and will be silently dropped, wasting a recommendation slot.
+Common failure mode: you think of the "ideal" product for an interest (e.g., a specific brand nail polish, a specific artist t-shirt) and write a plausible URL — but that product is NOT in the inventory. Always verify against the numbered list above before including it.
 
 {relationship_context}
 

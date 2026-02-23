@@ -173,19 +173,19 @@ def intelligent_product_filter(products: List[Dict], profile: Dict, relationship
         score = score_product_for_profile(product, profile, relationship)
         scored_products.append((score, product))
 
-    # Sort by score (highest first)
+    # Sort by score (highest first) and take top N.
+    # No hard score threshold: the database has no history in early sessions so scores are
+    # commission-rate + keyword-match only (typically 0.05–0.25). A fixed cutoff of 0.25 failed
+    # every run and triggered a warning fallback that undid the sort. Sorting IS still valuable —
+    # higher-commission products (Peet's, Etsy) and keyword-matched products float up. Once
+    # sessions accumulate click data, scores will widen and a threshold can be reintroduced.
     scored_products.sort(reverse=True, key=lambda x: x[0])
+    filtered = [product for score, product in scored_products[:target_count]]
 
-    # Take top N with score > threshold
-    min_score = 0.25  # Don't send junk to curator
-    filtered = [product for score, product in scored_products if score >= min_score][:target_count]
-
-    logger.info(f"Filtered to {len(filtered)} high-quality products (scores {scored_products[0][0]:.2f}-{scored_products[min(len(scored_products)-1, target_count-1)][0]:.2f})")
-
-    # Fallback: if we filtered too aggressively, take top N regardless of score
-    if len(filtered) < target_count // 2:
-        logger.warning(f"Aggressive filtering left only {len(filtered)} products, relaxing threshold")
-        filtered = [product for score, product in scored_products[:target_count]]
+    if scored_products:
+        top = scored_products[0][0]
+        bottom = scored_products[min(len(scored_products) - 1, target_count - 1)][0]
+        logger.info(f"Pre-filtered to {len(filtered)} products by relevance score (range {bottom:.2f}–{top:.2f})")
 
     return filtered
 

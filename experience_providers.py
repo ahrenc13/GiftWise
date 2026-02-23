@@ -98,7 +98,10 @@ _PROVIDERS = {
 # -------------------------------------------------------------------
 
 _EXPERIENCE_SIGNALS = {
-    'concerts': ['concert', 'live music', 'tour', 'show tickets', 'music festival', 'gig'],
+    # NOTE: "music festival setup" / "backyard festival" are DIY events — they should not
+    # trigger concerts. Only use 'concerts' if someone can actually buy tickets.
+    'concerts': ['concert', 'live music', 'tour', 'show tickets', 'gig',
+                 'music festival tickets', 'see them live', 'ticket night'],
     'sports_events': ['game tickets', 'sports event', 'match tickets', 'nba', 'nfl', 'mlb', 'nhl',
                       'basketball game', 'football game', 'baseball game', 'soccer match', 'hockey game'],
     'cooking_class': ['cooking class', 'culinary class', 'baking class', 'cooking lesson',
@@ -154,19 +157,30 @@ def _slugify_location(location):
     return re.sub(r'[^a-z0-9]+', '-', city.lower()).strip('-')
 
 
-def get_experience_providers(experience_name, location='', description=''):
+def get_experience_providers(experience_name, location='', description='', category=None):
     """Get curated provider links for an experience.
 
     Args:
         experience_name: e.g. "Thai Cooking Class" or "Chappell Roan Concert"
         location: e.g. "Indianapolis, Indiana"
         description: optional longer description for better classification
+        category: optional explicit category from the curator (e.g. 'concerts', 'cooking_class').
+                  When provided and valid, this is used directly instead of text re-classification.
+                  The curator's judgment should take priority — text classification is fallback only.
 
     Returns:
         List of dicts: [{"name": "Cozymeal", "url": "https://..."}, ...]
         Empty list if no providers match (caller should fall back to Google).
     """
-    category = _classify_experience(experience_name, description)
+    # Respect curator's explicit category when it maps to a known provider group.
+    # DIY categories ('other') intentionally have no provider links.
+    if category and category in _PROVIDERS:
+        pass  # use it as-is below
+    elif category == 'other':
+        return []  # DIY experience — no booking platforms needed
+    else:
+        category = _classify_experience(experience_name, description)
+
     if not category or category not in _PROVIDERS:
         logger.debug(f"No provider category for experience: '{experience_name[:50]}'")
         return []

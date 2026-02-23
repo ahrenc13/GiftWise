@@ -72,6 +72,13 @@ class ProgressTracker:
                 update_data['stage_label'] = stage_label
             update_data.update(kwargs)
 
+            # Merge retailers dict instead of replacing it, so each retailer's
+            # progress is accumulated rather than overwritten by the next one.
+            if 'retailers' in update_data:
+                merged = dict(self.storage[user_id].get('retailers', {}))
+                merged.update(update_data.pop('retailers'))
+                update_data['retailers'] = merged
+
             self.storage[user_id].update(update_data)
 
     def get_progress(self, user_id: str) -> Dict[str, Any]:

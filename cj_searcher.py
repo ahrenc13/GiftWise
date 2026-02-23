@@ -995,6 +995,120 @@ def get_russellstover_products_for_profile(profile):
     return result
 
 
+# ---------------------------------------------------------------------------
+# SILVERRUSHSTYLE — Static curated products (approved CJ partner, Feb 2026)
+# Advertiser ID (ADV_CID): 3874186
+# Home page Link ID 11260306 — $16.79 EPC
+#   Base: https://www.kqzyfj.com/click-101660899-11260306
+# Turquoise category Link ID 11272766 — $147.62 EPC (highest for this partner)
+#   Base: https://www.kqzyfj.com/click-101660899-11272766
+# Commission: 15%, 60-day referral period (generous)
+# AOV: ~$114, handmade artisan sterling silver gemstone jewelry, 10,000+ designs
+# T&C:
+#   - Public coupon codes are permitted (very clean T&C)
+#   - No SEM bidding on trademark terms only
+#   - Ships worldwide; 100% US conversions
+# ---------------------------------------------------------------------------
+
+_SILVERRUSHSTYLE_ALL_PRODUCTS = [
+    {
+        # Link 11272766 — Turquoise category ($147.62 EPC — best performing link)
+        'title': "SilverRushStyle — Handcrafted Turquoise Sterling Silver Jewelry",
+        'link': 'https://www.kqzyfj.com/click-101660899-11272766',
+        'snippet': (
+            "Artisan-crafted sterling silver jewelry featuring genuine turquoise, "
+            "coral, and other natural gemstones. Over 10,000 handmade designs — "
+            "rings, pendants, earrings, and bracelets. Each piece is one-of-a-kind."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'silverrushstyle.com',
+        'price': 'From $30',
+        'product_id': 'silverrushstyle-turquoise',
+        'search_query': 'turquoise sterling silver gemstone jewelry handmade',
+        'interest_match': 'jewelry',
+        'interest_matches': {
+            'jewelry', 'turquoise', 'gemstones', 'crystals', 'minerals',
+            'bohemian', 'boho', 'southwest', 'artisan', 'handmade',
+            'silver jewelry', 'accessories', 'fashion', 'nature',
+        },
+        'priority': 2,
+        'brand': 'SilverRushStyle',
+        'advertiser_id': 'silverrushstyle-cj',
+    },
+    {
+        # Link 11260306 — Home page ($16.79 EPC — broad gemstone jewelry)
+        'title': "SilverRushStyle — Artisan Sterling Silver Gemstone Jewelry",
+        'link': 'https://www.kqzyfj.com/click-101660899-11260306',
+        'snippet': (
+            "10,000+ handcrafted sterling silver jewelry pieces featuring genuine "
+            "gemstones — amethyst, labradorite, moonstone, opal, and more. "
+            "Unique artisan gifts that can't be found in mainstream stores."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'silverrushstyle.com',
+        'price': 'From $25',
+        'product_id': 'silverrushstyle-home',
+        'search_query': 'artisan sterling silver gemstone jewelry gift',
+        'interest_match': 'jewelry',
+        'interest_matches': {
+            'jewelry', 'gemstones', 'crystals', 'minerals', 'amethyst',
+            'labradorite', 'moonstone', 'opal', 'bohemian', 'boho',
+            'artisan', 'handmade', 'silver jewelry', 'accessories',
+            'fashion', 'witchy', 'spiritual', 'nature',
+        },
+        'priority': 2,
+        'brand': 'SilverRushStyle',
+        'advertiser_id': 'silverrushstyle-cj',
+    },
+]
+
+_SILVERRUSHSTYLE_TRIGGER_INTERESTS = {
+    'jewelry', 'accessories', 'fashion', 'gemstones', 'crystals', 'minerals',
+    'turquoise', 'amethyst', 'labradorite', 'moonstone', 'opal',
+    'bohemian', 'boho', 'southwest', 'artisan', 'handmade',
+    'silver jewelry', 'witchy', 'spiritual', 'nature',
+}
+
+
+def get_silverrushstyle_products_for_profile(profile):
+    """
+    Return SilverRushStyle products when the profile has jewelry/gemstone interests.
+
+    Static list using direct CJ click URLs. ADV_CID: 3874186.
+    Commission: 15%, 60-day cookie. ~$114 AOV, 10,000+ handmade designs.
+    Best link: Turquoise category (link 11272766, $147.62 EPC).
+
+    T&C: Very clean — public coupon codes allowed; no SEM trademark bidding only.
+
+    Returns at most 2 products — turquoise first when profile signals that interest.
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    scored = []
+    for p in _SILVERRUSHSTYLE_ALL_PRODUCTS:
+        score = 0
+        for key in p.get('interest_matches', set()):
+            if key in interest_names:
+                score += 2
+            elif any(key in n or n in key for n in interest_names):
+                score += 1
+        if score > 0:
+            scored.append((score, p))
+
+    if not scored:
+        return []
+
+    scored.sort(key=lambda x: -x[0])
+    result = [p for _, p in scored[:2]]
+    logger.info(f"SilverRushStyle: {len(result)} products matched profile interests {interest_names & _SILVERRUSHSTYLE_TRIGGER_INTERESTS}")
+    return result
+
+
 def get_groundluxe_products_for_profile(profile):
     """
     Return GroundLuxe products when the profile has wellness/sleep interests.
@@ -1435,6 +1549,7 @@ def search_products_cj(profile, api_key, company_id=None, publisher_id=None, tar
         (get_greatergood_products_for_profile, "GreaterGood"),
         (get_groundluxe_products_for_profile, "GroundLuxe"),
         (get_russellstover_products_for_profile, "Russell Stover"),
+        (get_silverrushstyle_products_for_profile, "SilverRushStyle"),
     ]:
         products = getter(profile)
         if products:

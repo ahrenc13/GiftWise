@@ -334,6 +334,25 @@ A good gift makes someone say "you GET me." A travel adapter makes them say "tha
 
 ---
 
+## DEFERRED — Build When Data Supports It
+
+### 14. "Also on Amazon" secondary link for verified identical products
+**Status:** Deferred — do not build until multi-retailer inventory is live and click data confirms demand.
+**Idea:** For products from a brand that also sells on their own Amazon storefront, surface a secondary "Also on Amazon →" link below the primary CTA. Lets Prime users checkout in their preferred environment without disrupting the primary affiliate link.
+**Hard requirement:** Only wire this when:
+1. The *identical SKU* is confirmed on the **vendor's Amazon storefront** (not a similar or generic product)
+2. The Amazon ASIN is known at product-ingestion time (not a search fallback)
+3. There is no comparative framing — never "also cheaper on Amazon," just "Also on Amazon →"
+**Why not yet:** Current inventory is Amazon-heavy anyway. The value is for Etsy/Awin/CJ products that also happen to be on Amazon. That use case requires robust non-Amazon inventory first.
+**Compliance note:** T&C-clean as long as there is no comparative pricing language. Neutral dual-link is fine under all current affiliate agreements.
+**Implementation path (when ready):**
+- Add `amazon_asin` optional field to the `Product` schema (`product_schema.py`)
+- Populate it at ingest time for CJ/Awin brands that maintain an Amazon storefront
+- In `recommendations.html`, render secondary link only when `amazon_asin` is set
+- Tag the Amazon link with Associates tag; tag the primary link with its own network
+
+---
+
 ## ROLE OF OPUS IN THE REVIEW
 
 When running an Opus A/B test:

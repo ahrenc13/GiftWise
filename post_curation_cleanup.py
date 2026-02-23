@@ -153,11 +153,75 @@ _QUERY_STOPWORDS = {'a', 'an', 'the', 'and', 'or', 'for', 'of', 'in', 'on', 'at'
 # buried in the listing description/tags — but the product has no Halloween theming.
 # This is a factual/rule mismatch (zero overlap), not a taste judgment.
 _OCCASION_TITLE_ANCHORS = {
-    'halloween': {'halloween', 'spooky', 'ghost', 'witch', 'pumpkin', 'skull', 'horror', 'haunted', 'bat', 'boo', 'trick', 'undead', 'zombie', 'vampire'},
-    'christmas':  {'christmas', 'xmas', 'santa', 'holiday', 'festive', 'ornament', 'wreath', 'reindeer', 'elf', 'noel'},
-    'thanksgiving': {'thanksgiving', 'turkey', 'harvest', 'pilgrim', 'autumn', 'fall'},
-    'easter':     {'easter', 'bunny', 'egg hunt', 'spring basket'},
-    'hanukkah':   {'hanukkah', 'chanukah', 'menorah', 'dreidel'},
+    'halloween': {
+        'halloween', 'spooky', 'scary', 'creepy', 'eerie', 'ghoulish', 'macabre', 'sinister',
+        'ghost', 'ghostly', 'spirit', 'specter',
+        'witch', 'witchy', 'cauldron', 'broomstick', 'coven',
+        'pumpkin', 'jack-o-lantern', 'jack o lantern',
+        'skull', 'skeleton', 'bones', 'grim reaper',
+        'horror', 'horrifying', 'haunted', 'haunt',
+        'bat', 'boo', 'trick', 'treat', 'costume',
+        'undead', 'zombie', 'vampire', 'werewolf', 'mummy', 'demon', 'frankenstein', 'dracula',
+        'cobweb', 'spider', 'raven', 'black cat', 'graveyard', 'cemetery', 'tombstone',
+        'monster', 'goblin', 'ogre', 'wicked',
+    },
+    'christmas': {
+        'christmas', 'xmas', 'x-mas',
+        'santa', 'saint nick', 'st nick', 'st. nick', 'father christmas',
+        'holiday', 'festive', 'yuletide', 'jolly', 'merry',
+        'ornament', 'garland', 'tinsel', 'wreath', 'stocking',
+        'reindeer', 'rudolph', 'prancer', 'dasher', 'comet', 'vixen', 'sleigh', 'jingle',
+        'elf', 'elves', 'workshop', 'north pole',
+        'noel', 'advent', 'carol', 'caroling',
+        'snowflake', 'snowman', 'frosty',
+        'mistletoe', 'holly', 'nutcracker', 'gingerbread',
+    },
+    'thanksgiving': {
+        'thanksgiving', 'turkey', 'gobble',
+        'harvest', 'cornucopia', 'pilgrim', 'mayflower',
+        'pumpkin pie', 'cranberry', 'stuffing', 'gravy',
+        'autumn', 'fall leaves', 'november',
+    },
+    'easter': {
+        'easter', 'bunny', 'rabbit',
+        'egg hunt', 'easter egg', 'pastel',
+        'chick', 'duckling', 'spring basket',
+        'resurrection', 'cross', 'lily',
+    },
+    'hanukkah': {
+        'hanukkah', 'chanukah', 'hanukah',
+        'menorah', 'dreidel', 'gelt', 'latke',
+        'star of david', 'jewish', 'hebrew',
+    },
+    'valentine': {
+        'valentine', "valentine's", 'valentines',
+        'love', 'romantic', 'romance', 'sweetheart', 'darling',
+        'heart', 'hearts', 'cupid', 'roses', 'red roses', 'bouquet',
+        'anniversary', 'beloved', 'affection', 'xoxo',
+    },
+    "st patrick": {
+        "st patrick", "saint patrick", "st. patrick",
+        'shamrock', 'clover', 'four leaf', 'leprechaun',
+        'irish', 'ireland', 'celtic', 'emerald',
+    },
+    'mothers day': {
+        "mother's day", 'mothers day',
+        'mom', 'mother', 'mama', 'mommy', 'mum',
+    },
+    'fathers day': {
+        "father's day", 'fathers day',
+        'dad', 'father', 'papa', 'daddy',
+    },
+    'fourth of july': {
+        'fourth of july', '4th of july', 'independence day',
+        'patriotic', 'american flag', 'fireworks', 'stars and stripes',
+        'usa', 'red white blue', 'liberty', 'freedom',
+    },
+    'new year': {
+        'new year', "new year's", 'nye', 'new years eve',
+        'countdown', 'midnight', 'champagne', 'resolution',
+        'celebration', 'confetti', 'fireworks',
+    },
 }
 
 def _is_query_relevant_to_product(product):

@@ -147,18 +147,34 @@ def extract_brand(title):
 
 _QUERY_STOPWORDS = {'a', 'an', 'the', 'and', 'or', 'for', 'of', 'in', 'on', 'at', 'to', 'with', 'fan', 'gift', 'music'}
 
+# For holiday/occasion interests, the product title must contain at least one
+# thematically related word. Without this, eBay's search can return a generic
+# "Wall-Mounted Storage Box" for "halloween decorating" because Halloween is
+# buried in the listing description/tags — but the product has no Halloween theming.
+# This is a factual/rule mismatch (zero overlap), not a taste judgment.
+_OCCASION_TITLE_ANCHORS = {
+    'halloween': {'halloween', 'spooky', 'ghost', 'witch', 'pumpkin', 'skull', 'horror', 'haunted', 'bat', 'boo', 'trick', 'undead', 'zombie', 'vampire'},
+    'christmas':  {'christmas', 'xmas', 'santa', 'holiday', 'festive', 'ornament', 'wreath', 'reindeer', 'elf', 'noel'},
+    'thanksgiving': {'thanksgiving', 'turkey', 'harvest', 'pilgrim', 'autumn', 'fall'},
+    'easter':     {'easter', 'bunny', 'egg hunt', 'spring basket'},
+    'hanukkah':   {'hanukkah', 'chanukah', 'menorah', 'dreidel'},
+}
+
 def _is_query_relevant_to_product(product):
     """
     Check that an inventory product is genuinely relevant to the search query it came from.
     Catches cases like artist-name searches (e.g. "JD McPherson") returning generic
     surname-only products (e.g. "McPherson T-Shirt", "Clan McPherson Tote Bag").
+    Also catches holiday searches returning generic storage/utility products with no
+    thematic connection to the holiday (e.g. "Wall-Mounted Storage Box" for "halloween decorating").
 
-    Returns True if the product is relevant (keep), False if it's a surname-only match (skip).
+    Returns True if the product is relevant (keep), False if it's a mismatch (skip).
     """
     title = (product.get('title') or '').lower()
     query = (product.get('search_query') or '').lower().strip()
+    interest = (product.get('interest_match') or '').lower().strip()
 
-    if not query or not title:
+    if not title:
         return True  # Can't judge — keep it
 
     # Hard block: generic surname/clan/heritage products are always low-relevance
@@ -168,6 +184,19 @@ def _is_query_relevant_to_product(product):
     if any(phrase in title for phrase in bad_phrases):
         logger.info(f"CLEANUP: Skipping replacement (generic surname product): {title[:60]}")
         return False
+
+    # Holiday/occasion check: if the interest is holiday-themed, require at least one
+    # thematically related word in the title. eBay sometimes returns products with
+    # holiday keywords buried in description/tags that don't belong in a gift set.
+    for occasion, anchor_words in _OCCASION_TITLE_ANCHORS.items():
+        if occasion in interest or occasion in query:
+            if not any(w in title for w in anchor_words):
+                logger.info(f"CLEANUP: Skipping replacement (no {occasion} theme in title): {title[:60]}")
+                return False
+            break  # Only one occasion can apply; stop after first match
+
+    if not query:
+        return True
 
     # For person-name queries (2 tokens, first is short initial OR normal first name),
     # require the title to contain the first token (first name / initial).

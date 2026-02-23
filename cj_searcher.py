@@ -946,6 +946,287 @@ def get_tenergy_products_for_profile(profile):
         return [_get('tenergy-rechargeable'), _get('tenergy-charger-kit')]
 
 
+# ---------------------------------------------------------------------------
+# TRINITY ROAD WEBSITES (The Catholic Company) — Static curated products
+# Approved CJ partner, Feb 2026 | ADV_CID: 2871603
+# Commission: 8% across all sites | Cookie: 30-45 days
+# EPC: $2.66 (3-mo) / $2.27 (7-day)
+# Sites: catholiccompany.com (main), catholiccoffee.com, thankgodforcoffee.com,
+#        goodcatholic.com, jlily.com, rosary.com
+#
+# No product feed — category text links + deep links to catholiccompany.com.
+# Deep link ID 12058792 for catholiccompany.com (use for custom landing pages).
+# Free shipping on orders $75+. 20,000+ items.
+#
+# T&C: Coupons only through CJ affiliate program. No external coupon codes.
+#   The "15% off first order" link (13286183) IS CJ-provided — valid to promote.
+#   Do NOT use RetailMeNot co-brand links (12666306, 13424511) — those are for
+#   RetailMeNot publishers only. No brand SEM bidding (irrelevant for content).
+#   Affiliates may not represent themselves as any Trinity Road brand.
+#
+# Key occasions: First Communion, Confirmation, Baptism/Christening, Christmas,
+#   Easter, Catholic wedding, Lent. These are high-intent milestone gift moments.
+# ---------------------------------------------------------------------------
+
+_CATHOLICCO_DEEP_LINK_BASE = "https://www.tkqlhce.com/click-101660899-12058792"
+
+
+def _catholicco_deep_link(path):
+    """Build a CJ deep link to a specific catholiccompany.com page."""
+    destination = f"https://www.catholiccompany.com{path}"
+    return f"{_CATHOLICCO_DEEP_LINK_BASE}?url={urllib.parse.quote(destination, safe='')}"
+
+
+_TRINITYROAD_ALL_PRODUCTS = [
+    {
+        # Link ID 10753028 — General Catholic Books & Gifts ($12.43 EPC)
+        'title': "Catholic Books & Gifts — The Catholic Company",
+        'link': 'https://www.anrdoezrs.net/click-101660899-10753028',
+        'snippet': (
+            "The world's #1 Catholic store — 20,000+ Catholic books, rosaries, jewelry, "
+            "art, and gifts. Patron saint medals, personalized items, and sacramental gifts "
+            "for every occasion. Free shipping on orders $75+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'catholiccompany.com',
+        'price': 'From $8.00',
+        'product_id': 'catholicco-gifts',
+        'search_query': 'Catholic gifts',
+        'interest_match': 'catholicism',
+        'priority': 2,
+        'brand': 'The Catholic Company',
+        'advertiser_id': 'trinityroad-cj',
+    },
+    {
+        # Link ID 13291163 — Exclusive Rosaries ($14.09 EPC)
+        'title': "Catholic Company Exclusive Rosaries",
+        'link': 'https://www.jdoqocy.com/click-101660899-13291163',
+        'snippet': (
+            "Beautifully crafted rosaries — sterling silver, heirloom wood, crystal, and "
+            "handmade artisan styles. Catholic Company exclusive designs not found elsewhere. "
+            "A timeless and meaningful gift for any occasion. Free shipping on orders $75+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'catholiccompany.com',
+        'price': 'From $15.00',
+        'product_id': 'catholicco-rosary',
+        'search_query': 'Catholic rosary gift',
+        'interest_match': 'catholicism',
+        'priority': 2,
+        'brand': 'The Catholic Company',
+        'advertiser_id': 'trinityroad-cj',
+    },
+    {
+        # Link ID 13286147 — First Holy Communion Gifts (personalization available)
+        'title': "First Holy Communion Gifts — The Catholic Company",
+        'link': 'https://www.anrdoezrs.net/click-101660899-13286147',
+        'snippet': (
+            "Curated gifts for First Holy Communion — personalized rosaries, keepsake bibles, "
+            "jewelry, prayer cards, and keepsakes. Many items can be engraved or personalized. "
+            "Free shipping on orders $75+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'catholiccompany.com',
+        'price': 'From $12.00',
+        'product_id': 'catholicco-communion',
+        'search_query': 'First Communion gift',
+        'interest_match': 'first communion',
+        'priority': 2,
+        'brand': 'The Catholic Company',
+        'advertiser_id': 'trinityroad-cj',
+    },
+    {
+        # Link ID 13286185 — Confirmation Gifts
+        'title': "Confirmation Gifts — The Catholic Company",
+        'link': 'https://www.kqzyfj.com/click-101660899-13286185',
+        'snippet': (
+            "Gifts for the sacrament of Confirmation — saint medals, personalized crosses, "
+            "bibles, jewelry, and keepsake items. Celebrate this milestone with a meaningful, "
+            "lasting gift. Free shipping on orders $75+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'catholiccompany.com',
+        'price': 'From $12.00',
+        'product_id': 'catholicco-confirmation',
+        'search_query': 'Catholic Confirmation gift',
+        'interest_match': 'confirmation',
+        'priority': 2,
+        'brand': 'The Catholic Company',
+        'advertiser_id': 'trinityroad-cj',
+    },
+    {
+        # Link ID 13286177 — Baby Baptism and Christening Gifts
+        'title': "Baby Baptism & Christening Gifts — The Catholic Company",
+        'link': 'https://www.kqzyfj.com/click-101660899-13286177',
+        'snippet': (
+            "Baptism and christening keepsakes — personalized water bottles, godparent gifts, "
+            "guardian angel pillowcases, rosaries, and Catholic baby items. "
+            "Meaningful gifts for a child's first sacrament. Free shipping on orders $75+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'catholiccompany.com',
+        'price': 'From $10.00',
+        'product_id': 'catholicco-baptism',
+        'search_query': 'Catholic baptism gift',
+        'interest_match': 'baptism',
+        'priority': 2,
+        'brand': 'The Catholic Company',
+        'advertiser_id': 'trinityroad-cj',
+    },
+    {
+        # Link ID 15590515 — Catholic Coffee Main (US only)
+        'title': "Catholic Coffee — Heavenly Roasts",
+        'link': 'https://www.kqzyfj.com/click-101660899-15590515',
+        'snippet': (
+            "Faith-inspired specialty coffee from Catholic Coffee — uniquely named roasts "
+            "that make a conversation-starting gift for the Catholic coffee lover in your life. "
+            "Rich, carefully sourced blends with a sense of humor."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'catholiccoffee.com',
+        'price': 'From $14.00',
+        'product_id': 'catholicco-coffee',
+        'search_query': 'Catholic coffee gift',
+        'interest_match': 'coffee',
+        'priority': 2,
+        'brand': 'Catholic Coffee',
+        'advertiser_id': 'trinityroad-cj',
+    },
+    {
+        # Link ID 13291965 — "Drinking with the Saints" Book & Bar Towel Gift Set
+        'title': '"Drinking with the Saints" Book & Bar Towel Gift Set',
+        'link': 'https://www.jdoqocy.com/click-101660899-13291965',
+        'snippet': (
+            "The beloved Catholic drinking guide meets bar towel — the perfect gift for "
+            "Catholics who appreciate a good cocktail and a great story. "
+            "Recipes, saint stories, and liturgical humor in one irreverent package."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'catholiccompany.com',
+        'price': 'From $25.00',
+        'product_id': 'catholicco-saints-book',
+        'search_query': 'Catholic gift for adults',
+        'interest_match': 'catholicism',
+        'priority': 2,
+        'brand': 'The Catholic Company',
+        'advertiser_id': 'trinityroad-cj',
+    },
+]
+
+_TRINITYROAD_TRIGGER_INTERESTS = {
+    # Faith signals
+    'catholic', 'catholicism', 'roman catholic', 'christianity', 'christian',
+    'faith', 'religion', 'religious', 'church', 'mass', 'prayer',
+    # Catholic-specific practices
+    'rosary', 'saints', 'saint', 'patron saint', 'lent', 'advent',
+    'scripture', 'bible', 'gospel', 'pope', 'vatican',
+    # Sacraments / milestones
+    'first communion', 'confirmation', 'baptism', 'christening',
+    'sacrament', 'rcia',
+    # Lifestyle signals
+    'catholic school', 'parochial school', 'catholic education',
+}
+
+# Occasion-specific interest signals — trigger the milestone product first
+_TRINITYROAD_COMMUNION_SIGNALS = {
+    'first communion', 'first holy communion', 'communion',
+}
+_TRINITYROAD_CONFIRMATION_SIGNALS = {
+    'confirmation', 'confirmed', 'sacrament of confirmation',
+}
+_TRINITYROAD_BAPTISM_SIGNALS = {
+    'baptism', 'christening', 'baptismal', 'godparent', 'godfather', 'godmother',
+}
+_TRINITYROAD_COFFEE_SIGNALS = {
+    'coffee', 'espresso', 'specialty coffee', 'cafe culture', 'morning routine',
+    'craft coffee', 'artisan',
+}
+_TRINITYROAD_ADULT_HUMOR_SIGNALS = {
+    'beer', 'cocktails', 'wine', 'pub', 'humor', 'books', 'reading', 'history',
+    'craft beer', 'drinking', 'bar',
+}
+
+
+def get_trinityroad_products_for_profile(profile):
+    """
+    Return curated Trinity Road / Catholic Company products for faith-aligned profiles.
+
+    No product feed — static list using CJ category text links and deep links.
+    Commission: 8%, 30-45 day cookie. Free shipping $75+.
+
+    Smart selection (cap 2):
+    - First Communion signals → communion gifts + rosary
+    - Confirmation signals → confirmation gifts + general store
+    - Baptism signals → baptism gifts + general store
+    - Catholic + coffee → Catholic Coffee + general store
+    - Catholic + adult humor/books → Drinking with Saints + rosary
+    - General Catholic/Christian faith → general store + rosary
+
+    T&C: No external coupons. Do NOT use RetailMeNot co-brand links.
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    matched = interest_names & _TRINITYROAD_TRIGGER_INTERESTS
+    if not matched:
+        for name in interest_names:
+            for trigger in _TRINITYROAD_TRIGGER_INTERESTS:
+                if trigger in name or name in trigger:
+                    matched.add(name)
+                    break
+
+    if not matched:
+        return []
+
+    logger.info(f"Trinity Road (Catholic Co.) triggered by profile interests: {matched}")
+
+    def _get(pid):
+        return next(p for p in _TRINITYROAD_ALL_PRODUCTS if p['product_id'] == pid)
+
+    is_communion = bool(interest_names & _TRINITYROAD_COMMUNION_SIGNALS) or any(
+        'communion' in n for n in interest_names
+    )
+    is_confirmation = bool(interest_names & _TRINITYROAD_CONFIRMATION_SIGNALS) or any(
+        'confirm' in n for n in interest_names
+    )
+    is_baptism = bool(interest_names & _TRINITYROAD_BAPTISM_SIGNALS) or any(
+        'bapti' in n or 'christen' in n or 'godpar' in n for n in interest_names
+    )
+    is_coffee = bool(interest_names & _TRINITYROAD_COFFEE_SIGNALS) or any(
+        'coffee' in n or 'espresso' in n for n in interest_names
+    )
+    is_adult_humor = bool(interest_names & _TRINITYROAD_ADULT_HUMOR_SIGNALS) or any(
+        'beer' in n or 'cocktail' in n or 'pub' in n for n in interest_names
+    )
+
+    if is_communion:
+        return [_get('catholicco-communion'), _get('catholicco-rosary')]
+    elif is_confirmation:
+        return [_get('catholicco-confirmation'), _get('catholicco-gifts')]
+    elif is_baptism:
+        return [_get('catholicco-baptism'), _get('catholicco-gifts')]
+    elif is_coffee:
+        return [_get('catholicco-coffee'), _get('catholicco-gifts')]
+    elif is_adult_humor:
+        return [_get('catholicco-saints-book'), _get('catholicco-rosary')]
+    else:
+        return [_get('catholicco-gifts'), _get('catholicco-rosary')]
+
+
 def get_soccergarage_products_for_profile(profile):
     """
     Return curated SoccerGarage.com products when the profile has soccer interest.
@@ -1269,6 +1550,7 @@ def search_products_cj(profile, api_key, company_id=None, publisher_id=None, tar
         (get_soccergarage_products_for_profile, "SoccerGarage.com"),
         (get_techforless_products_for_profile, "Tech For Less"),
         (get_tenergy_products_for_profile, "Tenergy"),
+        (get_trinityroad_products_for_profile, "Trinity Road / Catholic Co."),
     ]:
         products = getter(profile)
         if products:

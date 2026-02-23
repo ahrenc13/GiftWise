@@ -1227,6 +1227,415 @@ def get_trinityroad_products_for_profile(profile):
         return [_get('catholicco-gifts'), _get('catholicco-rosary')]
 
 
+# ---------------------------------------------------------------------------
+# ZCHOCOLAT.COM — Static curated products (approved CJ partner, Feb 2026)
+# ADV_CID: 1124214
+# Commission: 20% confirmed sale | Cookie: 45 days | AOV: $120
+# EPC: Evergreen $75 (3-mo) / $367 (7-day) | Assortments $133 (3-mo) / $169 (7-day)
+#
+# Pascal Caffet, World-Champion chocolatier. Hand-made French chocolates.
+# Ships worldwide via DHL to 244 countries. 4.9/5 on TrustPilot (5,000+ reviews).
+# Rated "Best Chocolate Store 2022" (Top Consumer Reviews), NYT "Best Present Idea",
+# Food Network "Top 5 Chocolate Gifts", WSJ "Best Lesser Known Gift Site on the Net."
+#
+# Evergreen link ID 15734455 — deep-link enabled.
+#   Base: https://www.jdoqocy.com/click-101660899-15734455
+#   Deep-link: append ?url=encoded_destination
+#
+# T&C: No bidding on "zchocolat", "zchocolat.com", "zchocolat coupon", or
+#   misspellings in PPC (irrelevant for content). No other restrictions for
+#   content publishers. Use any text/images from their website freely.
+#
+# NOTE: 20% commission is the highest of any partner in this file.
+#   ~$24 per average sale. Prioritize for chocolate/gourmet/luxury triggers.
+# ---------------------------------------------------------------------------
+
+_ZCHOCOLAT_EVERGREEN_BASE = "https://www.jdoqocy.com/click-101660899-15734455"
+
+
+def _zchocolat_deep_link(path):
+    """Build a CJ deep link to a specific zchocolat.com page."""
+    destination = f"https://www.zchocolat.com{path}"
+    return f"{_ZCHOCOLAT_EVERGREEN_BASE}?url={urllib.parse.quote(destination, safe='')}"
+
+
+_ZCHOCOLAT_ALL_PRODUCTS = [
+    {
+        # Link ID 13093353 — Chocolate Gift Assortments ($132.69 EPC / $169.13 EPC) ← STAR
+        'title': "French Chocolate Gift Assortments — zChocolat",
+        'link': 'https://www.jdoqocy.com/click-101660899-13093353',
+        'snippet': (
+            "Fifteen sumptuous French chocolate assortments by World-Champion pâtissier Pascal Caffet — "
+            "hand-made, no preservatives, high cocoa content. Each box is a voyage through the "
+            "zChocolat universe. Rated #1 by NYT, Food Network, and TrustPilot (4.9/5, 5,000+ reviews)."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'zchocolat.com',
+        'price': 'From $49.00',
+        'product_id': 'zchocolat-assortments',
+        'search_query': 'gourmet chocolate gift',
+        'interest_match': 'chocolate',
+        'priority': 2,
+        'brand': 'zChocolat',
+        'advertiser_id': 'zchocolat-cj',
+    },
+    {
+        # Link ID 12981989 — Personalized Assortments (pick your own chocolates)
+        'title': "Personalized French Chocolate Box — zChocolat",
+        'link': 'https://www.kqzyfj.com/click-101660899-12981989',
+        'snippet': (
+            "Build your own dream chocolate collection — handpick your favorite zChocolat recipes "
+            "to create a completely personalized box. World-champion hand-made French truffles, "
+            "delivered worldwide in chic black and white packaging."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'zchocolat.com',
+        'price': 'From $49.00',
+        'product_id': 'zchocolat-personalized',
+        'search_query': 'personalized chocolate gift',
+        'interest_match': 'personalization',
+        'priority': 2,
+        'brand': 'zChocolat',
+        'advertiser_id': 'zchocolat-cj',
+    },
+    {
+        # Link ID 12981986 — 24 Karat Edible Gold Collection (luxury/milestone)
+        'title': "24 Karat Edible Gold French Chocolates — zChocolat",
+        'link': 'https://www.tkqlhce.com/click-101660899-12981986',
+        'snippet': (
+            "Every piece of chocolate hand-coated in exquisite 24-karat edible gold by World-Champion "
+            "chocolatier Pascal Caffet. Packaged in artisan mahogany boxes handcrafted in the Jura "
+            "region of France. The ultimate luxury chocolate gift for milestone occasions."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'zchocolat.com',
+        'price': 'From $89.00',
+        'product_id': 'zchocolat-gold',
+        'search_query': 'luxury chocolate gift',
+        'interest_match': 'luxury',
+        'priority': 2,
+        'brand': 'zChocolat',
+        'advertiser_id': 'zchocolat-cj',
+    },
+    {
+        # Link ID 13086892 — All-Natural Vegan Selection
+        'title': "Vegan French Chocolate Collection — zChocolat",
+        'link': 'https://www.kqzyfj.com/click-101660899-13086892',
+        'snippet': (
+            "World-champion French chocolates made for vegan palates — no animal or dairy products, "
+            "no alcohol, no preservatives. High cocoa content, low sugar, 100% pure cocoa butter. "
+            "Pascal Caffet's plant-based creations, delivered worldwide."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'zchocolat.com',
+        'price': 'From $49.00',
+        'product_id': 'zchocolat-vegan',
+        'search_query': 'vegan chocolate gift',
+        'interest_match': 'vegan',
+        'priority': 2,
+        'brand': 'zChocolat',
+        'advertiser_id': 'zchocolat-cj',
+    },
+    {
+        # Link ID 10020803 — Homepage ($35.89 EPC / $52.54 EPC) — solid general fallback
+        'title': "zChocolat — World's Finest French Chocolates",
+        'link': 'https://www.anrdoezrs.net/click-101660899-10020803',
+        'snippet': (
+            "Hand-made French chocolates by Pascal Caffet, World-Champion pâtissier. "
+            "Rated 'Best Chocolate Store' (Top Consumer Reviews), 'Best Present Idea' (NYT), "
+            "'Top 5 Chocolate Gifts' (Food Network). Ships to 244 countries via DHL."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'zchocolat.com',
+        'price': 'From $49.00',
+        'product_id': 'zchocolat-home',
+        'search_query': 'French chocolate gift',
+        'interest_match': 'chocolate',
+        'priority': 2,
+        'brand': 'zChocolat',
+        'advertiser_id': 'zchocolat-cj',
+    },
+]
+
+_ZCHOCOLAT_TRIGGER_INTERESTS = {
+    # Direct chocolate triggers
+    'chocolate', 'dark chocolate', 'truffles', 'bonbons', 'confectionery',
+    'gourmet chocolate', 'french chocolate',
+    # Gourmet / foodie adjacent
+    'gourmet', 'gourmet food', 'foodie', 'french cuisine', 'french food',
+    'pastry', 'baking', 'desserts', 'sweets', 'candy',
+    # Luxury / occasion
+    'luxury', 'luxury gifts', 'fine dining', 'indulgence',
+    # Lifestyle signals that convert well for premium chocolate
+    'brunch', 'entertaining', 'hosting', 'wine', 'champagne',
+    'anniversary', 'romance', 'date night',
+}
+
+_ZCHOCOLAT_VEGAN_SIGNALS = {
+    'vegan', 'plant-based', 'plant based', 'dairy-free', 'dairy free',
+    'veganism', 'plant-based diet', 'whole food', 'clean eating',
+}
+
+_ZCHOCOLAT_LUXURY_SIGNALS = {
+    'luxury', 'luxury gifts', 'fine dining', 'indulgence', 'premium',
+    'milestone', 'anniversary', 'engagement', 'wedding', 'champagne',
+}
+
+_ZCHOCOLAT_PERSONALIZATION_SIGNALS = {
+    'personalization', 'personalized gifts', 'custom gifts', 'sentimental',
+    'memory keeping', 'keepsake',
+}
+
+
+def get_zchocolat_products_for_profile(profile):
+    """
+    Return curated zChocolat.com products when the profile has matching interests.
+
+    No product feed — static list using direct CJ click URLs + Evergreen deep links.
+    Commission: 20% confirmed sale (highest in the partner set). 45-day cookie.
+    AOV: $120 → ~$24 avg commission per sale. Strong EPC on Assortments link.
+
+    Smart selection (cap 2):
+    - Vegan/plant-based → Vegan Selection + Assortments
+    - Luxury/milestone/anniversary → 24K Gold + Personalized
+    - Personalization interest → Personalized + Assortments
+    - General chocolate/gourmet/foodie → Assortments + Homepage
+
+    T&C: No PPC brand bidding (irrelevant). No other restrictions for content.
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    matched = interest_names & _ZCHOCOLAT_TRIGGER_INTERESTS
+    if not matched:
+        for name in interest_names:
+            for trigger in _ZCHOCOLAT_TRIGGER_INTERESTS:
+                if trigger in name or name in trigger:
+                    matched.add(name)
+                    break
+
+    if not matched:
+        return []
+
+    logger.info(f"zChocolat triggered by profile interests: {matched}")
+
+    def _get(pid):
+        return next(p for p in _ZCHOCOLAT_ALL_PRODUCTS if p['product_id'] == pid)
+
+    is_vegan = bool(interest_names & _ZCHOCOLAT_VEGAN_SIGNALS) or any(
+        'vegan' in n or 'plant' in n or 'dairy' in n for n in interest_names
+    )
+    is_luxury = bool(interest_names & _ZCHOCOLAT_LUXURY_SIGNALS) or any(
+        'luxury' in n or 'anniversar' in n or 'milestone' in n or 'engag' in n
+        for n in interest_names
+    )
+    is_personalization = bool(interest_names & _ZCHOCOLAT_PERSONALIZATION_SIGNALS) or any(
+        'personal' in n or 'custom' in n or 'sentimental' in n for n in interest_names
+    )
+
+    if is_vegan:
+        return [_get('zchocolat-vegan'), _get('zchocolat-assortments')]
+    elif is_luxury:
+        return [_get('zchocolat-gold'), _get('zchocolat-personalized')]
+    elif is_personalization:
+        return [_get('zchocolat-personalized'), _get('zchocolat-assortments')]
+    else:
+        return [_get('zchocolat-assortments'), _get('zchocolat-home')]
+
+
+# ---------------------------------------------------------------------------
+# WINEBASKET / BABYBASKET / CAPALBOSONLINE — Static curated products
+# Approved CJ partner, Feb 2026 | ADV_CID: 2387081
+# Commission: 7% | Cookie: 15 days | AOV: $110
+# EPC: Evergreen $66.39 (3-mo) / $52.96 (7-day)
+#
+# Three distinct sites under one CJ program:
+#   winebasket.com     — wine gift baskets and wine-themed gifts
+#   babybasket.com     — baby shower and newborn gift baskets
+#   capalbosonline.com — gourmet fruit, cheese, and food gift baskets
+#
+# Evergreen link ID 15733435 — deep-link enabled.
+#   Base: https://www.kqzyfj.com/click-101660899-15733435
+#   Deep-link: append ?url=encoded_destination to route to specific site/page
+#
+# T&C: Standard CJ terms. No prohibited coupon sources noted.
+# ---------------------------------------------------------------------------
+
+_WINEBASKET_EVERGREEN_BASE = "https://www.kqzyfj.com/click-101660899-15733435"
+
+
+def _winebasket_deep_link(domain, path='/'):
+    """Build a CJ deep link to a specific site page under the Winebasket program."""
+    destination = f"https://www.{domain}{path}"
+    return f"{_WINEBASKET_EVERGREEN_BASE}?url={urllib.parse.quote(destination, safe='')}"
+
+
+_WINEBASKET_ALL_PRODUCTS = [
+    {
+        # Deep-link → winebasket.com homepage
+        'title': "Wine Gift Baskets — WineBasket.com",
+        'link': _winebasket_deep_link('winebasket.com'),
+        'snippet': (
+            "Beautifully curated wine gift baskets delivered nationwide — red, white, rosé, "
+            "and sparkling selections paired with gourmet snacks and accessories. "
+            "Perfect for holidays, corporate gifts, hostess gifts, and celebrations."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'winebasket.com',
+        'price': 'From $49.00',
+        'product_id': 'winebasket-wine',
+        'search_query': 'wine gift basket',
+        'interest_match': 'wine',
+        'priority': 2,
+        'brand': 'WineBasket.com',
+        'advertiser_id': 'winebasket-cj',
+    },
+    {
+        # Deep-link → babybasket.com homepage
+        'title': "Baby Gift Baskets — BabyBasket.com",
+        'link': _winebasket_deep_link('babybasket.com'),
+        'snippet': (
+            "Thoughtfully curated baby shower and newborn gift baskets delivered nationwide — "
+            "soft essentials, keepsakes, and pampering items for new parents. "
+            "Gender-neutral and themed options available."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'babybasket.com',
+        'price': 'From $49.00',
+        'product_id': 'winebasket-baby',
+        'search_query': 'baby gift basket',
+        'interest_match': 'baby shower',
+        'priority': 2,
+        'brand': 'BabyBasket.com',
+        'advertiser_id': 'winebasket-cj',
+    },
+    {
+        # Deep-link → capalbosonline.com homepage
+        'title': "Gourmet Fruit & Cheese Gift Baskets — Capalbo's",
+        'link': _winebasket_deep_link('capalbosonline.com'),
+        'snippet': (
+            "Capalbo's classic gourmet gift baskets — premium fresh fruit, artisan cheeses, "
+            "charcuterie, and gourmet snacks beautifully arranged and delivered nationwide. "
+            "A timeless gift for foodies, hosts, and corporate occasions."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'capalbosonline.com',
+        'price': 'From $59.00',
+        'product_id': 'winebasket-gourmet',
+        'search_query': 'gourmet gift basket',
+        'interest_match': 'gourmet',
+        'priority': 2,
+        'brand': "Capalbo's",
+        'advertiser_id': 'winebasket-cj',
+    },
+]
+
+_WINEBASKET_TRIGGER_INTERESTS = {
+    # Wine / drinks
+    'wine', 'wine tasting', 'winery', 'vineyard', 'wine lover', 'wine bar',
+    'champagne', 'sparkling wine', 'red wine', 'white wine', 'rosé',
+    'craft beer', 'cocktails', 'drinking', 'entertaining', 'hosting',
+    # Baby / new parent
+    'baby shower', 'newborn', 'new baby', 'new parent', 'pregnancy',
+    'expecting', 'motherhood', 'fatherhood', 'nursery',
+    # Gourmet / foodie
+    'gourmet', 'gourmet food', 'foodie', 'cheese', 'charcuterie',
+    'fruit basket', 'gift basket', 'gourmet gifts',
+    # General gifting occasions that convert well for baskets
+    'corporate gifts', 'housewarming', 'get well', 'sympathy',
+}
+
+_WINEBASKET_WINE_SIGNALS = {
+    'wine', 'wine tasting', 'winery', 'vineyard', 'wine lover', 'wine bar',
+    'champagne', 'sparkling wine', 'red wine', 'white wine', 'rosé',
+    'craft beer', 'cocktails', 'drinking', 'entertaining', 'hosting',
+}
+
+_WINEBASKET_BABY_SIGNALS = {
+    'baby shower', 'newborn', 'new baby', 'new parent', 'pregnancy',
+    'expecting', 'motherhood', 'fatherhood', 'nursery', 'parenting',
+}
+
+_WINEBASKET_GOURMET_SIGNALS = {
+    'gourmet', 'gourmet food', 'foodie', 'cheese', 'charcuterie',
+    'fruit basket', 'gift basket', 'gourmet gifts', 'food lover',
+    'artisan food', 'corporate gifts', 'housewarming',
+}
+
+
+def get_winebasket_products_for_profile(profile):
+    """
+    Return curated Winebasket / Babybasket / Capalbo's products for matching profiles.
+
+    No product feed — static list using Evergreen deep links to each site.
+    Commission: 7%, 15-day cookie. Strong EPC ($66 3-mo / $53 7-day on Evergreen).
+    AOV ~$110 → ~$7.70 avg commission per sale.
+
+    Smart selection (cap 2):
+    - Wine/drinks/entertaining → WineBasket + Capalbo's gourmet
+    - Baby/new parent/pregnancy → BabyBasket + WineBasket (as add-on)
+    - Gourmet/foodie/cheese → Capalbo's + WineBasket
+    - General gifting occasions → WineBasket + Capalbo's
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    matched = interest_names & _WINEBASKET_TRIGGER_INTERESTS
+    if not matched:
+        for name in interest_names:
+            for trigger in _WINEBASKET_TRIGGER_INTERESTS:
+                if trigger in name or name in trigger:
+                    matched.add(name)
+                    break
+
+    if not matched:
+        return []
+
+    logger.info(f"Winebasket/BabyBasket/Capalbo's triggered by profile interests: {matched}")
+
+    def _get(pid):
+        return next(p for p in _WINEBASKET_ALL_PRODUCTS if p['product_id'] == pid)
+
+    is_baby = bool(interest_names & _WINEBASKET_BABY_SIGNALS) or any(
+        'baby' in n or 'newborn' in n or 'pregnan' in n or 'parent' in n
+        or 'nursery' in n or 'expect' in n
+        for n in interest_names
+    )
+    is_gourmet = bool(interest_names & _WINEBASKET_GOURMET_SIGNALS) or any(
+        'gourmet' in n or 'foodie' in n or 'cheese' in n or 'charcuteri' in n
+        for n in interest_names
+    )
+    is_wine = bool(interest_names & _WINEBASKET_WINE_SIGNALS) or any(
+        'wine' in n or 'champagne' in n or 'cocktail' in n or 'winery' in n
+        for n in interest_names
+    )
+
+    if is_baby:
+        return [_get('winebasket-baby'), _get('winebasket-wine')]
+    elif is_gourmet:
+        return [_get('winebasket-gourmet'), _get('winebasket-wine')]
+    elif is_wine:
+        return [_get('winebasket-wine'), _get('winebasket-gourmet')]
+    else:
+        return [_get('winebasket-wine'), _get('winebasket-gourmet')]
+
+
 def get_soccergarage_products_for_profile(profile):
     """
     Return curated SoccerGarage.com products when the profile has soccer interest.
@@ -1551,6 +1960,8 @@ def search_products_cj(profile, api_key, company_id=None, publisher_id=None, tar
         (get_techforless_products_for_profile, "Tech For Less"),
         (get_tenergy_products_for_profile, "Tenergy"),
         (get_trinityroad_products_for_profile, "Trinity Road / Catholic Co."),
+        (get_zchocolat_products_for_profile, "zChocolat"),
+        (get_winebasket_products_for_profile, "Winebasket/BabyBasket/Capalbo's"),
     ]:
         products = getter(profile)
         if products:

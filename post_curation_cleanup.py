@@ -458,12 +458,21 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
         # Sort by diversity score (highest first)
         candidates.sort(key=lambda x: x[0], reverse=True)
 
-        for score, p in candidates[:needed]:
+        added = 0
+        for score, p in candidates:
+            if added >= needed:
+                break
             link = (p.get('link') or '').strip()
+            # Re-check dedup guards: candidates were built before any replacements
+            # were added, so the same product can appear multiple times in the list.
+            if not link or link in used_urls or link.rstrip('/') in used_urls:
+                continue
+            norm_title = _normalize_title_for_dedup(p.get('title', ''))
+            if norm_title and norm_title in used_titles:
+                continue
             brand = extract_brand(p.get('title', ''))
             category = detect_category(p.get('title', ''), p.get('snippet', ''))
             interest = (p.get('interest_match') or '').lower()
-            norm_title = _normalize_title_for_dedup(p.get('title', ''))
 
             # Build a gift dict from inventory product
             replacement = {
@@ -479,6 +488,7 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
                 'interest_match': p.get('interest_match', ''),
             }
             cleaned.append(replacement)
+            added += 1
             used_urls.add(link)
             if norm_title:
                 used_titles.add(norm_title)

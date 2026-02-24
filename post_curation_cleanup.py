@@ -18,6 +18,25 @@ import re
 import logging
 from collections import defaultdict
 
+# Marketplace names that should never appear as the display retailer.
+# When a product comes from one of these, show the brand instead.
+_MARKETPLACE_NAMES = {'tiktok shop', 'cj affiliate', 'cj', 'shareasale', 'unknown'}
+
+
+def _display_retailer(source_domain, brand=None):
+    """Return a display-friendly retailer label.
+
+    TikTok Shop, CJ Affiliate, etc. are backend networks — showing them
+    on cards signals 'dropship' to users and hurts conversion. When a
+    product comes from one of these, surface the brand if we have it,
+    otherwise fall back to 'Online Shop'.
+    """
+    if not source_domain or source_domain.lower() in _MARKETPLACE_NAMES:
+        if brand and len(brand.strip()) > 1:
+            return brand.strip().title()
+        return 'Online Shop'
+    return source_domain
+
 logger = logging.getLogger(__name__)
 
 # Words that look like proper nouns in product titles but are NOT person surnames.
@@ -599,7 +618,7 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
                 'description': p.get('snippet', ''),
                 'why_perfect': f"A strong match for their {p.get('interest_match', 'top')} interest — rounds out the gift set with something they'll actually use.",
                 'price': p.get('price', 'Price unknown'),
-                'where_to_buy': p.get('source_domain', 'Online'),
+                'where_to_buy': _display_retailer(p.get('source_domain'), p.get('brand')),
                 'product_url': link,
                 'image_url': p.get('image', '') or p.get('thumbnail', ''),
                 'confidence_level': 'safe_bet',

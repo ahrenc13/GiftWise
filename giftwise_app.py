@@ -3126,7 +3126,8 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
         if best:
             matched_link = (best.get('link') or '').strip()
             m['product_url'] = matched_link
-            m['where_to_buy'] = best.get('source_domain') or (best.get('where_to_buy') or 'Online')
+            from post_curation_cleanup import _display_retailer
+            m['where_to_buy'] = _display_retailer(best.get('source_domain'), best.get('brand'))
 
             # VALIDATE THUMBNAIL: Same validation as physical products
             try:

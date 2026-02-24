@@ -4111,6 +4111,74 @@ import threading as _threading
 _catalog_sync_lock = _threading.Lock()
 
 
+def _startup_catalog_sync():
+    """
+    On cold start with an empty catalog, kick off a background refresh sync.
+
+    Railway's filesystem is ephemeral — the SQLite DB is wiped on every
+    redeploy. This means the nightly cron alone isn't enough: we need a
+    startup check so the catalog self-populates after any deploy/restart.
+
+    Multi-worker safety: uses a file lock (/tmp/giftwise_catalog_sync.lock)
+    so only one of the 3 Gunicorn workers actually runs the sync. The others
+    see the lock taken and exit immediately.
+
+    Set CATALOG_SYNC_ON_STARTUP=off in Railway vars to disable entirely.
+    """
+    import fcntl
+
+    if not CATALOG_SYNC_AVAILABLE:
+        return
+
+    if os.environ.get('CATALOG_SYNC_ON_STARTUP', 'auto').lower() == 'off':
+        return
+
+    # Check catalog state before touching any locks
+    try:
+        stats = get_catalog_stats()
+        product_count = stats.get('total_cj_products', 0)
+        if product_count > 0:
+            logger.info(f"Startup catalog check: {product_count} products already in DB — skipping sync")
+            return
+    except Exception as e:
+        logger.warning(f"Startup catalog check failed: {e}")
+        return
+
+    # Catalog is empty. Race all workers to the file lock — first one wins.
+    lock_path = '/tmp/giftwise_catalog_sync.lock'
+    try:
+        lock_fd = open(lock_path, 'w')
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)  # non-blocking
+    except (IOError, OSError):
+        logger.info("Startup catalog sync: another worker already claimed the sync — skipping")
+        return
+
+    logger.info("Startup catalog sync: catalog is empty, starting background refresh...")
+
+    def _do_sync():
+        try:
+            result = run_catalog_sync(mode='refresh')
+            stored = result.get('total_stored', 0)
+            logger.info(f"Startup catalog sync complete: {stored} products stored")
+        except Exception as e:
+            logger.error(f"Startup catalog sync failed: {e}", exc_info=True)
+        finally:
+            try:
+                fcntl.flock(lock_fd, fcntl.LOCK_UN)
+                lock_fd.close()
+            except Exception:
+                pass
+
+    t = _threading.Thread(target=_do_sync, name='startup-catalog-sync', daemon=True)
+    t.start()
+
+
+# Run on every cold start. Skips immediately if catalog has data.
+# In debug mode Flask's reloader double-starts the app, so skip there.
+if not app.debug:
+    _startup_catalog_sync()
+
+
 @app.route('/admin/sync-catalog', methods=['GET', 'POST'])
 def admin_sync_catalog():
     """

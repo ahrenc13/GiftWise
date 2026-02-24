@@ -260,9 +260,14 @@ STRIPE_GIFT_EMERGENCY_PRICE_ID = os.environ.get('STRIPE_GIFT_EMERGENCY_PRICE_ID'
 # Database (using simple JSON for MVP - upgrade to PostgreSQL later)
 import shelve
 
+# Data directory — respects Railway volume mount (DATA_DIR=/data in Railway vars)
+_DATA_DIR = os.environ.get('DATA_DIR', 'data')
+os.makedirs(_DATA_DIR, exist_ok=True)
+
 # Gift Emergency run credits — shelve-backed, keyed by email
-GIFT_EMERGENCY_DB = 'data/gift_emergency'
-os.makedirs('data', exist_ok=True)
+GIFT_EMERGENCY_DB = os.path.join(_DATA_DIR, 'gift_emergency')
+# Legacy user shelve (fallback path when storage_service unavailable)
+USER_DB = os.path.join(_DATA_DIR, 'giftwise_db')
 
 def grant_gift_emergency_run(email):
     """Record that an email paid for a gift emergency run."""
@@ -630,7 +635,7 @@ def get_user(user_id):
         if not user_id:
             return None
         try:
-            with shelve.open('giftwise_db') as db:
+            with shelve.open(USER_DB) as db:
                 return db.get(f'user_{user_id}')
         except Exception as e:
             logger.error(f"Error getting user {user_id}: {e}")
@@ -653,7 +658,7 @@ def save_user(user_id, data):
         lock = get_db_lock(user_id)
         try:
             with lock:
-                with shelve.open('giftwise_db') as db:
+                with shelve.open(USER_DB) as db:
                     existing = db.get(f'user_{user_id}', {})
                     existing.update(data)
                     db[f'user_{user_id}'] = existing
@@ -4454,9 +4459,8 @@ def api_referral_stats():
 # WAITLIST ROUTES (handle-based for Gen Z)
 # ============================================================================
 
-WAITLIST_CSV = 'data/waitlist.csv'
+WAITLIST_CSV = os.path.join(_DATA_DIR, 'waitlist.csv')
 WAITLIST_FIELDS = ['handle', 'platform', 'email', 'phone', 'referrer', 'timestamp', 'position']
-os.makedirs('data', exist_ok=True)
 
 
 def _read_waitlist():

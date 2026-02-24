@@ -475,7 +475,15 @@ def format_products(products):
         link = p.get('link', '')
         snippet = p.get('snippet', '')
         price = p.get('price', 'Price unknown')
-        domain = p.get('source_domain', 'unknown')
+        raw_domain = p.get('source_domain', 'unknown')
+        # Don't expose marketplace backend names to the curator — they bias selection
+        # toward or against products based on network rather than gift quality.
+        _mktplace = {'tiktok shop', 'cj affiliate', 'cj', 'shareasale', 'unknown'}
+        brand = p.get('brand', '')
+        if raw_domain.lower() in _mktplace:
+            domain = brand.strip().title() if brand else 'Online Shop'
+        else:
+            domain = raw_domain
         interest = p.get('interest_match', 'general')
         formatted.append(f"{idx}. {title}\n   Price: {price} | Domain: {domain} | Interest match: {interest}\n   Description: {snippet[:100]}\n   URL: {link}")
     

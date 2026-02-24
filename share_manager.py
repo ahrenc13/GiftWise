@@ -9,10 +9,11 @@ import shelve
 from datetime import datetime, timedelta
 import os
 
-SHARE_DB_PATH = 'data/shares.db'
+_DATA_DIR = os.environ.get('DATA_DIR', 'data')
+SHARE_DB_PATH = os.path.join(_DATA_DIR, 'shares.db')
 SHARE_EXPIRY_DAYS = 30
 
-os.makedirs('data', exist_ok=True)
+os.makedirs(_DATA_DIR, exist_ok=True)
 
 def generate_share_id(recommendations, user_id):
     """

@@ -153,19 +153,6 @@ except ImportError:
 # Import image fetcher
 try:
     from image_fetcher import process_recommendation_images
-    # Set API keys for image fetching
-    import image_fetcher
-    # Get image API keys from environment (load_dotenv() already called above)
-    google_key = os.environ.get('GOOGLE_CSE_API_KEY', '')
-    google_engine = os.environ.get('GOOGLE_CUSTOM_SEARCH_ENGINE_ID', '')
-    unsplash_key = os.environ.get('UNSPLASH_ACCESS_KEY', '')
-    
-    if google_key:
-        image_fetcher.GOOGLE_CUSTOM_SEARCH_API_KEY = google_key
-    if google_engine:
-        image_fetcher.GOOGLE_CUSTOM_SEARCH_ENGINE_ID = google_engine
-    if unsplash_key:
-        image_fetcher.UNSPLASH_ACCESS_KEY = unsplash_key
     IMAGE_FETCHING_AVAILABLE = True
 except ImportError:
     IMAGE_FETCHING_AVAILABLE = False
@@ -273,9 +260,14 @@ STRIPE_GIFT_EMERGENCY_PRICE_ID = os.environ.get('STRIPE_GIFT_EMERGENCY_PRICE_ID'
 # Database (using simple JSON for MVP - upgrade to PostgreSQL later)
 import shelve
 
+# Data directory — respects Railway volume mount (DATA_DIR=/data in Railway vars)
+_DATA_DIR = os.environ.get('DATA_DIR', 'data')
+os.makedirs(_DATA_DIR, exist_ok=True)
+
 # Gift Emergency run credits — shelve-backed, keyed by email
-GIFT_EMERGENCY_DB = 'data/gift_emergency'
-os.makedirs('data', exist_ok=True)
+GIFT_EMERGENCY_DB = os.path.join(_DATA_DIR, 'gift_emergency')
+# Legacy user shelve (fallback path when storage_service unavailable)
+USER_DB = os.path.join(_DATA_DIR, 'giftwise_db')
 
 def grant_gift_emergency_run(email):
     """Record that an email paid for a gift emergency run."""
@@ -378,10 +370,6 @@ ONESIGNAL_SAFARI_ID = os.environ.get('ONESIGNAL_SAFARI_ID', '')
 # Defaults to Sonnet for both. Set CLAUDE_CURATOR_MODEL to test Opus on curation.
 CLAUDE_PROFILE_MODEL = os.environ.get('CLAUDE_PROFILE_MODEL', 'claude-sonnet-4-20250514')
 CLAUDE_CURATOR_MODEL = os.environ.get('CLAUDE_CURATOR_MODEL', 'claude-sonnet-4-20250514')
-
-# Image fetching APIs (optional)
-SERPAPI_API_KEY = os.environ.get('SERPAPI_API_KEY', '')
-UNSPLASH_ACCESS_KEY = os.environ.get('UNSPLASH_ACCESS_KEY', '')
 
 # Pinterest OAuth Configuration
 PINTEREST_CLIENT_ID = os.environ.get('PINTEREST_CLIENT_ID')
@@ -647,7 +635,7 @@ def get_user(user_id):
         if not user_id:
             return None
         try:
-            with shelve.open('giftwise_db') as db:
+            with shelve.open(USER_DB) as db:
                 return db.get(f'user_{user_id}')
         except Exception as e:
             logger.error(f"Error getting user {user_id}: {e}")
@@ -670,7 +658,7 @@ def save_user(user_id, data):
         lock = get_db_lock(user_id)
         try:
             with lock:
-                with shelve.open('giftwise_db') as db:
+                with shelve.open(USER_DB) as db:
                     existing = db.get(f'user_{user_id}', {})
                     existing.update(data)
                     db[f'user_{user_id}'] = existing
@@ -3143,7 +3131,8 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
         if best:
             matched_link = (best.get('link') or '').strip()
             m['product_url'] = matched_link
-            m['where_to_buy'] = best.get('source_domain') or (best.get('where_to_buy') or 'Online')
+            from post_curation_cleanup import _display_retailer
+            m['where_to_buy'] = _display_retailer(best.get('source_domain'), best.get('brand'))
 
             # VALIDATE THUMBNAIL: Same validation as physical products
             try:
@@ -4127,6 +4116,74 @@ import threading as _threading
 _catalog_sync_lock = _threading.Lock()
 
 
+def _startup_catalog_sync():
+    """
+    On cold start with an empty catalog, kick off a background refresh sync.
+
+    Railway's filesystem is ephemeral — the SQLite DB is wiped on every
+    redeploy. This means the nightly cron alone isn't enough: we need a
+    startup check so the catalog self-populates after any deploy/restart.
+
+    Multi-worker safety: uses a file lock (/tmp/giftwise_catalog_sync.lock)
+    so only one of the 3 Gunicorn workers actually runs the sync. The others
+    see the lock taken and exit immediately.
+
+    Set CATALOG_SYNC_ON_STARTUP=off in Railway vars to disable entirely.
+    """
+    import fcntl
+
+    if not CATALOG_SYNC_AVAILABLE:
+        return
+
+    if os.environ.get('CATALOG_SYNC_ON_STARTUP', 'auto').lower() == 'off':
+        return
+
+    # Check catalog state before touching any locks
+    try:
+        stats = get_catalog_stats()
+        product_count = stats.get('total_cj_products', 0)
+        if product_count > 0:
+            logger.info(f"Startup catalog check: {product_count} products already in DB — skipping sync")
+            return
+    except Exception as e:
+        logger.warning(f"Startup catalog check failed: {e}")
+        return
+
+    # Catalog is empty. Race all workers to the file lock — first one wins.
+    lock_path = '/tmp/giftwise_catalog_sync.lock'
+    try:
+        lock_fd = open(lock_path, 'w')
+        fcntl.flock(lock_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)  # non-blocking
+    except (IOError, OSError):
+        logger.info("Startup catalog sync: another worker already claimed the sync — skipping")
+        return
+
+    logger.info("Startup catalog sync: catalog is empty, starting background refresh...")
+
+    def _do_sync():
+        try:
+            result = run_catalog_sync(mode='refresh')
+            stored = result.get('total_stored', 0)
+            logger.info(f"Startup catalog sync complete: {stored} products stored")
+        except Exception as e:
+            logger.error(f"Startup catalog sync failed: {e}", exc_info=True)
+        finally:
+            try:
+                fcntl.flock(lock_fd, fcntl.LOCK_UN)
+                lock_fd.close()
+            except Exception:
+                pass
+
+    t = _threading.Thread(target=_do_sync, name='startup-catalog-sync', daemon=True)
+    t.start()
+
+
+# Run on every cold start. Skips immediately if catalog has data.
+# In debug mode Flask's reloader double-starts the app, so skip there.
+if not app.debug:
+    _startup_catalog_sync()
+
+
 @app.route('/admin/sync-catalog', methods=['GET', 'POST'])
 def admin_sync_catalog():
     """
@@ -4402,9 +4459,8 @@ def api_referral_stats():
 # WAITLIST ROUTES (handle-based for Gen Z)
 # ============================================================================
 
-WAITLIST_CSV = 'data/waitlist.csv'
+WAITLIST_CSV = os.path.join(_DATA_DIR, 'waitlist.csv')
 WAITLIST_FIELDS = ['handle', 'platform', 'email', 'phone', 'referrer', 'timestamp', 'position']
-os.makedirs('data', exist_ok=True)
 
 
 def _read_waitlist():

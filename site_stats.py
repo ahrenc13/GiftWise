@@ -14,8 +14,9 @@ import shelve
 import threading
 from datetime import datetime, timedelta
 
-STATS_DB_PATH = 'data/site_stats.db'
-os.makedirs('data', exist_ok=True)
+_DATA_DIR = os.environ.get('DATA_DIR', 'data')
+STATS_DB_PATH = os.path.join(_DATA_DIR, 'site_stats.db')
+os.makedirs(_DATA_DIR, exist_ok=True)
 
 _lock = threading.Lock()
 

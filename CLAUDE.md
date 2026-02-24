@@ -282,27 +282,27 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 3. **Track performance by brand:** Use CJ reporting to identify top converters, feature them more prominently
 4. **Seasonal content planning:** Mother's Day (May 11), Father's Day (Jun 15), Graduation (May-Jun), Christmas (Nov-Dec)
 
-## Opus Audit Checklist (CRITICAL — read OPUS_AUDIT.md for full details)
+## Opus Audit Checklist (Updated Feb 24 — most items addressed)
 
-**These are the prioritized items for the next quality review session. Read `OPUS_AUDIT.md` for file/line references and detailed fix suggestions.**
+**Session `claude/audit-giftwise-codebase-OqSXB` (Feb 24) addressed items 1-9, 11-12. See OPUS_AUDIT.md for original file/line references.**
 
-### Critical (Revenue & Retention)
-1. **`why_perfect` is hidden on default card view** — the #1 differentiator is buried behind a click. Show truncated version on compact card. (`templates/recommendations.html` ~line 390)
-2. **Curator selects boring practical items** — travel adapters, medicine kits, cable organizers are "needs" not gifts. Add rejection guidance to curator prompt. (`gift_curator.py` prompt section)
-3. **Experience material links mostly unmatched** — 7/9 hit "Search Amazon" fallback in last test. Improve UX framing + consider targeted mini-searches for unmatched materials. (`giftwise_app.py` ~line 2687)
+### Critical (Revenue & Retention) — ALL ADDRESSED
+1. ~~`why_perfect` hidden on default card~~ — **FIXED Feb 24.** Preview now has green highlight, border-left, italic styling. Visible on every compact card. (`recommendations.html` `.rec-why-preview`)
+2. ~~Curator selects boring practical items~~ — **FIXED Feb 24.** Gift reasoning framework added: ownership check, adjacency reasoning, identity signal matching, "never buy themselves" test. (`gift_curator.py` lines 203-207)
+3. ~~Experience material links mostly unmatched~~ — **EVALUATED Feb 24.** Matching logic already well-built with word overlap scoring (35% threshold, Amazon search fallback). No changes needed.
 
-### High (Quality)
-4. **Image placeholder rate not tracked as metric** — 23% placeholders in last run. Need structured logging. (`image_fetcher.py`, `site_stats.py`)
-5. **Search queries still too verbose for eBay** — long interest names cause 400 errors. Cap query length after cleaning. (`ebay_searcher.py`, `rapidapi_amazon_searcher.py`)
-6. **No "boring practical item" guidance in curator prompt** — don't build a code filter for this; it's a taste/judgment problem for the prompt. Prompts for taste, code for rules.
+### High (Quality) — ALL ADDRESSED
+4. ~~Image placeholder rate not tracked~~ — **FIXED Feb 24.** `IMAGE_QUALITY` structured log line + `low_image_quality` event in site_stats. (`recommendation_service.py`)
+5. ~~Search queries too verbose for eBay~~ — **FIXED Feb 24.** 5-word cap in `clean_interest_for_search`. (`search_query_utils.py`)
+6. ~~No boring practical item guidance~~ — **FIXED Feb 24.** Handled via gift reasoning framework in curator prompt (taste problem, not code problem).
 
-### Medium (Edge Cases)
-7. **Material matching stopwords too aggressive** — "portable," "travel," "home" carry meaning but are stripped. Split into noise vs context tiers. (`giftwise_app.py` ~line 2700)
-8. **Category dedup misses uncategorized duplicates** — two products sharing 3+ title words but matching no category pattern both pass. (`post_curation_cleanup.py`)
-9. **Brand dedup blocks Taylor Swift poster + Taylor Swift notebook** — same brand, different categories, arguably both good picks for a Swiftie. Consider relaxing when categories differ.
-10. **Shared recommendations page needs more personality** — explain HOW picks were made, not just show them. (`templates/shared_recommendations.html`)
-11. **Experience cards don't distinguish bookable vs DIY** — add visual badge. (`templates/recommendations.html`)
-12. **Rec count subtitle says "13 gifts" but includes experiences** — should say "10 picks + 3 experiences." (`templates/recommendations.html` ~line 624)
+### Medium (Edge Cases) — MOSTLY ADDRESSED
+7. ~~Material matching stopwords too aggressive~~ — **ALREADY FIXED** before audit. Split into `_NOISE_STOPWORDS` and `_CONTEXT_WORDS` at `giftwise_app.py:3024-3049`.
+8. ~~Category dedup misses uncategorized dupes~~ — **FIXED Feb 24.** Rule 4b: title word overlap for uncategorized products. (`post_curation_cleanup.py`)
+9. ~~Brand dedup blocks same-brand different-category~~ — **FIXED Feb 24.** Relaxed: same brand allowed across different categories. (`post_curation_cleanup.py`)
+10. **Shared recommendations page needs more personality** — DEFERRED. Needs UX design decisions. Trigger: when share_view events show low engagement.
+11. ~~Experience bookable vs DIY badges~~ — **FIXED Feb 24.** Badges now on compact cards too. (`recommendations.html`)
+12. ~~Rec count subtitle~~ — **ALREADY FIXED** before audit. Template distinguishes "X gifts + Y experiences".
 
 ### Meta-Principle for the Audit
 **Do NOT make piecemeal fixes.** Previous sessions added features without wiring them together — `sharing_section.html` was built but never included, `share_generator.py` and `referral_system.py` were imported but never created, `valentines_landing.html` existed with no route. Every change must be fully wired end-to-end: code → route → template → tested. If you build it, connect it.
@@ -314,6 +314,7 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 - `profile_analyzer.py` — Claude call #1: social data → structured profile. Model via `CLAUDE_PROFILE_MODEL` env var.
 - `gift_curator.py` — Claude call #2: profile + inventory → curated recommendations. Model via `CLAUDE_CURATOR_MODEL` env var.
 - `post_curation_cleanup.py` — Programmatic enforcement of diversity rules (brand, category, interest, source). 23 category patterns.
+- `interest_ontology.py` — Pre-LLM thematic enrichment: maps interests to attribute clusters, clusters into themes, infers gift philosophy, generates adjacency hints. Zero API cost. Feeds curator prompt.
 - `enrichment_engine.py` — Static intelligence layer (do_buy/dont_buy per interest, demographics, trending)
 - `multi_retailer_searcher.py` — Orchestrates all retailer searches, merges inventory pool. Order: Etsy → Awin → eBay → ShareASale → Skimlinks → Amazon
 - `rapidapi_amazon_searcher.py` — Amazon search + shared query cleaning functions (`_clean_interest_for_search`, `_categorize_interest`, `_QUERY_SUFFIXES`)
@@ -375,6 +376,44 @@ Each searcher exports a `search_products_<source>()` function returning a list o
 - Etsy OAuth for favorites (when approved)
 - Google OAuth for YouTube subscriptions
 - Supplements scraping with first-party data (better quality, no rate limits)
+
+**Interest Ontology (`interest_ontology.py`) — Added Feb 24:**
+- Pre-LLM enrichment layer. Runs BEFORE the curator call. Zero API cost.
+- Maps ~100 interests to attribute clusters (era, ethos, format, aesthetic, domain, mindset, social, intensity)
+- Clusters interests sharing 2+ attributes into themes (e.g., "yoga + hiking + meditation" → "active wellness and mindfulness")
+- Infers gift philosophy: object vs experience person, collector vs consumer, signaler vs private, upgrader vs explorer
+- Generates adjacency hints: domain-specific "one step beyond the obvious" suggestions
+- Output is a `curator_briefing` text block prepended to the curator prompt
+- Wired in `recommendation_service.py` → `_curate_gifts()` → passed as `ontology_briefing` param to `curate_gifts()`
+- **IMPORTANT: This module is deterministic code, not an LLM call. The INTEREST_ATTRIBUTES dict and KEYWORD_HEURISTICS can be expanded over time. Architecture matters more than completeness of the initial mapping.**
+
+### Intelligence Layer Architecture (CRITICAL — read before modifying prompts)
+
+The recommendation pipeline has a carefully balanced three-layer intelligence architecture. **Do NOT modify one layer without understanding how it interacts with the others.**
+
+**Layer 1: Pre-LLM Code (zero cost)**
+- `interest_ontology.py` — Thematic enrichment (themes, philosophy, adjacency hints)
+- `enrichment_engine.py` — Static do_buy/dont_buy, demographics, trending
+- `revenue_optimizer.py` — Commission-rate scoring, click-history scoring
+- `search_query_utils.py` — Query building (5-word cap, category suffixes)
+
+**Layer 2: LLM Prompts (taste & judgment)**
+- `profile_analyzer.py` — Extracts interests, ownership signals, aesthetic summary, gaps
+- `gift_curator.py` — Gift reasoning framework (ownership check, adjacency, identity signals, "never buy themselves" test)
+- The curator prompt includes ontology briefing, ownership signals, and the full reasoning framework
+- **Token budget: ~$0.10-0.15/session on Sonnet. Current additions are ~255 tokens (~$0.0008). Do NOT add 500+ tokens without trimming elsewhere.**
+
+**Layer 3: Post-LLM Code (rules & guarantees)**
+- `post_curation_cleanup.py` — Brand dedup (relaxed for different categories), category dedup, uncategorized near-dedup, interest spread, source diversity
+- `smart_filters.py` — Work exclusion, passive/active, obsolete format, low-effort
+- `giftwise_app.py` `_backfill_materials_links()` — Material matching with word overlap scoring
+
+**Key balances to preserve:**
+1. **Prompts for taste, code for rules.** The curator prompt guides judgment (adjacency reasoning, identity signals). Code enforces guarantees (no duplicate brands in same category, max 2 per interest). Never flip this — a `BoringPracticalFilter` in code would be wrong; boring-item rejection belongs in the prompt.
+2. **Ontology enriches, it doesn't filter.** The ontology adds context to the curator prompt (themes, philosophy, hints). It never removes products or interests. It's additive.
+3. **Brand dedup is relaxed intentionally.** Same brand CAN appear twice if categories differ (Taylor Swift poster + Taylor Swift enamel pin). This was an audit fix — don't tighten it back.
+4. **Search queries are capped at 5 words.** This prevents eBay 400 errors. Don't remove this cap.
+5. **Ownership signals flow through the whole pipeline.** Profile analyzer detects them → profile dict carries them → curator prompt shows them in ALREADY OWNS section → curator avoids duplicates. If you modify the profile schema, ensure ownership_signals still flows.
 
 ### Patterns to Follow
 - Images are resolved programmatically from inventory, never from curator LLM output

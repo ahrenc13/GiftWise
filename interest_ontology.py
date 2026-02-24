@@ -11,6 +11,23 @@ Purpose:
 4. Output structured enrichment that guides the curator toward thematic,
    inferential gift reasoning instead of 1:1 literal interest→product matching.
 
+IMPORTANT — READ BEFORE MODIFYING:
+- This module is ADDITIVE ONLY. It adds context to the curator prompt. It never
+  removes products or interests. Do not add filtering logic here.
+- The INTEREST_ATTRIBUTES dict can be expanded freely (add more interests).
+  Architecture matters more than completeness of the initial ~100 mapping.
+- KEYWORD_HEURISTICS is the fallback for unmapped interests. Keep heuristics
+  as substring matches — they're intentionally loose.
+- The curator_briefing output is injected into the curator prompt via
+  recommendation_service.py → _curate_gifts() → ontology_briefing param.
+  If you change the output format, verify gift_curator.py still renders it correctly.
+- Theme clustering requires 2+ shared attribute values to form a group. This
+  threshold is intentional — lowering to 1 produces garbage themes.
+- Gift philosophy inference uses simple signal counting. The "balanced" default
+  when signals are close is correct — don't remove it.
+- Token budget: the curator_briefing is typically 150-300 chars (~60-75 tokens).
+  Keep it under 400 chars to stay within the ~255 token budget for all audit additions.
+
 Author: Chad + Claude
 Date: February 2026
 """

@@ -411,6 +411,8 @@ class RecommendationService:
         )
 
         # INTEREST ONTOLOGY: Enrich profile with thematic intelligence (zero API cost)
+        # ⚠️ OPUS-ONLY: Do not modify the ontology wiring or briefing format.
+        # See interest_ontology.py docstring for what's safe to change.
         ontology_briefing = None
         try:
             from interest_ontology import enrich_profile_with_ontology

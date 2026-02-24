@@ -10,6 +10,21 @@ Fixes problems that prompt instructions alone cannot guarantee:
 4. URL inventory validation — every product_url must exist in the original pool
 5. Title cleanup — strip SEO spam, model numbers, size specs
 
+⚠️  OPUS-ONLY ZONE — NO EXCEPTIONS ⚠️
+The rule RELAXATIONS in this file are intentional and nuanced. Sonnet sessions
+must NOT modify:
+  - Rule 3 brand dedup relaxation (same brand allowed across DIFFERENT categories —
+    e.g., Taylor Swift poster + Taylor Swift enamel pin both pass. This is correct.)
+  - Rule 4b uncategorized near-duplicate logic (3+ word overlap threshold)
+  - MAX_PER_SOURCE_PCT (60% source diversity cap)
+  - The deferred→replacement backfill logic
+These were tuned to balance diversity with not killing good picks. Tightening any
+rule without understanding the cascade effects will silently degrade output quality.
+If you're Sonnet and see a cleanup problem, add "# SONNET-FLAG:" comment and move on.
+
+Safe for any session: adding new category patterns to detect_category(), adding
+new brand patterns to extract_brand(), fixing crashes or logging.
+
 Author: Chad + Claude
 Date: February 2026
 """

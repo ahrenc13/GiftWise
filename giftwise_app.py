@@ -153,19 +153,6 @@ except ImportError:
 # Import image fetcher
 try:
     from image_fetcher import process_recommendation_images
-    # Set API keys for image fetching
-    import image_fetcher
-    # Get image API keys from environment (load_dotenv() already called above)
-    google_key = os.environ.get('GOOGLE_CSE_API_KEY', '')
-    google_engine = os.environ.get('GOOGLE_CUSTOM_SEARCH_ENGINE_ID', '')
-    unsplash_key = os.environ.get('UNSPLASH_ACCESS_KEY', '')
-    
-    if google_key:
-        image_fetcher.GOOGLE_CUSTOM_SEARCH_API_KEY = google_key
-    if google_engine:
-        image_fetcher.GOOGLE_CUSTOM_SEARCH_ENGINE_ID = google_engine
-    if unsplash_key:
-        image_fetcher.UNSPLASH_ACCESS_KEY = unsplash_key
     IMAGE_FETCHING_AVAILABLE = True
 except ImportError:
     IMAGE_FETCHING_AVAILABLE = False
@@ -378,10 +365,6 @@ ONESIGNAL_SAFARI_ID = os.environ.get('ONESIGNAL_SAFARI_ID', '')
 # Defaults to Sonnet for both. Set CLAUDE_CURATOR_MODEL to test Opus on curation.
 CLAUDE_PROFILE_MODEL = os.environ.get('CLAUDE_PROFILE_MODEL', 'claude-sonnet-4-20250514')
 CLAUDE_CURATOR_MODEL = os.environ.get('CLAUDE_CURATOR_MODEL', 'claude-sonnet-4-20250514')
-
-# Image fetching APIs (optional)
-SERPAPI_API_KEY = os.environ.get('SERPAPI_API_KEY', '')
-UNSPLASH_ACCESS_KEY = os.environ.get('UNSPLASH_ACCESS_KEY', '')
 
 # Pinterest OAuth Configuration
 PINTEREST_CLIENT_ID = os.environ.get('PINTEREST_CLIENT_ID')

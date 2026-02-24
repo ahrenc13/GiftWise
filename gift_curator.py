@@ -2,7 +2,23 @@
 GIFT CURATOR - Curate Products and Experience Gifts
 Selects best-matching products and generates hyper-specific experience gifts
 
-Author: Chad + Claude  
+⚠️  OPUS-ONLY ZONE — NO EXCEPTIONS ⚠️
+The prompt text in this file is the engine's taste layer. The following sections
+were carefully tuned and must NOT be modified by Sonnet sessions:
+  - GIFT REASONING FRAMEWORK (the 4-step ownership/adjacency/identity/surprise logic)
+  - SELECTION PRINCIPLE (aspiration gap philosophy)
+  - SYNTHESIS OVER CHECKLIST paragraph
+  - ALREADY OWNS / ownership_section builder
+  - Pronoun guidance and warm-language instructions
+  - aesthetic_summary wiring in STYLE PREFERENCES
+If you're Sonnet and see a quality problem in recommendations, DOCUMENT IT as a
+code comment prefixed with "# SONNET-FLAG:" near the relevant prompt section.
+Do not reword, reorder, or add instructions to the prompt. Opus will review.
+
+Safe for any session: bug fixes (crashes, missing fields, format errors), adding
+new product fields to the JSON schema, fixing template rendering issues.
+
+Author: Chad + Claude
 Date: February 2026
 """
 

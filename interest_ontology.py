@@ -28,6 +28,16 @@ IMPORTANT — READ BEFORE MODIFYING:
 - Token budget: the curator_briefing is typically 150-300 chars (~60-75 tokens).
   Keep it under 400 chars to stay within the ~255 token budget for all audit additions.
 
+⚠️  OPUS-ONLY ZONE — NO EXCEPTIONS ⚠️
+The following require Opus-level review. Sonnet sessions must NOT modify:
+  - Theme clustering thresholds (the 2+ shared attributes minimum)
+  - Gift philosophy inference logic or signal weights
+  - The curator_briefing output format or token budget
+  - KEYWORD_HEURISTICS pattern logic
+If you're Sonnet and see a quality issue here, DOCUMENT IT in a code comment
+prefixed with "# SONNET-FLAG:" and move on. Do not attempt the fix.
+Adding new entries to INTEREST_ATTRIBUTES is safe for any session.
+
 Author: Chad + Claude
 Date: February 2026
 """

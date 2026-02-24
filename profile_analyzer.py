@@ -2,6 +2,18 @@
 PROFILE ANALYZER - Deep Analysis of Social Media Data
 Extracts comprehensive recipient profile for gift curation
 
+⚠️  OPUS-ONLY ZONE (partial) — The extraction prompt in this file feeds the
+entire downstream pipeline. Sonnet sessions must NOT modify:
+  - Section 1b OWNERSHIP SIGNALS prompt wording (drives the curator's
+    ownership check and "upgrade vs complement" reasoning)
+  - The aesthetic_summary field in the JSON schema (curator uses it for
+    thematic matching — changing format breaks gift_curator.py)
+  - The interest type taxonomy (aspirational|current) — the curator's
+    aspiration-gap philosophy depends on this exact distinction
+Safe for any session: adding new extraction sections, fixing JSON parsing,
+adjusting interest intensity thresholds, bug fixes.
+If you're Sonnet and see a profile quality issue, add "# SONNET-FLAG:" and move on.
+
 Author: Chad + Claude
 Date: February 2026
 """

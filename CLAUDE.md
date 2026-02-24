@@ -432,6 +432,19 @@ The recommendation pipeline has a carefully balanced three-layer intelligence ar
 4. **Search queries are capped at 5 words.** This prevents eBay 400 errors. Don't remove this cap.
 5. **Ownership signals flow through the whole pipeline.** Profile analyzer detects them → profile dict carries them → curator prompt shows them in ALREADY OWNS section → curator avoids duplicates. If you modify the profile schema, ensure ownership_signals still flows.
 
+### ⚠️ Opus-Only Zones — Sonnet Must Not Modify
+
+The files below contain in-code `⚠️ OPUS-ONLY ZONE` markers. These protect the recommendation engine's taste and quality layer. **Sonnet sessions: if you encounter a quality/taste issue in these areas, add a `# SONNET-FLAG:` comment describing the problem and move on. Do not attempt the fix.**
+
+| File | Protected Sections | Why |
+|------|--------------------|-----|
+| `interest_ontology.py` | Theme clustering thresholds, gift philosophy inference, curator_briefing format, keyword heuristics | Threshold changes produce garbage themes or bloated token costs. Adding interests to INTEREST_ATTRIBUTES is safe. |
+| `gift_curator.py` | GIFT REASONING FRAMEWORK, SELECTION PRINCIPLE, SYNTHESIS OVER CHECKLIST, ownership_section, pronoun/warm-language instructions, aesthetic_summary wiring | This is the taste engine. Rewording, reordering, or adding prompt instructions changes recommendation quality in subtle ways that are hard to test. |
+| `profile_analyzer.py` | Section 1b OWNERSHIP SIGNALS, aesthetic_summary schema field, interest type taxonomy (aspirational\|current) | Downstream pipeline depends on exact field names and the aspirational/current distinction. |
+| `post_curation_cleanup.py` | Rule 3 brand relaxation, Rule 4b uncategorized near-dedup, MAX_PER_SOURCE_PCT, deferred→replacement backfill | These relaxations are intentional. Tightening kills good picks; loosening causes duplicates. Adding new category/brand patterns is safe. |
+
+**What IS safe for Sonnet:** Bug fixes (crashes, missing fields, import errors), template rendering, CSS, API response handling, adding new category/brand patterns, adding entries to INTEREST_ATTRIBUTES, logging, and any code that doesn't touch prompt wording or rule thresholds.
+
 ### Patterns to Follow
 - Images are resolved programmatically from inventory, never from curator LLM output
 - Products are interleaved by source before the curator sees them (no positional bias)

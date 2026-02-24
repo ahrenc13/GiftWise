@@ -103,6 +103,12 @@ def clean_interest_for_search(name: str) -> str:
     cleaned = re.sub(r'\band\b\s*$', '', cleaned, flags=re.IGNORECASE).strip()
     cleaned = re.sub(r'^\band\b\s*', '', cleaned, flags=re.IGNORECASE).strip()
 
+    # Cap at 5 meaningful words — long queries cause 400 errors on eBay
+    # and return worse results on all APIs
+    words = cleaned.split()
+    if len(words) > 5:
+        cleaned = ' '.join(words[:5])
+
     # If cleaning removed everything, return original
     return cleaned or name
 

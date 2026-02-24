@@ -465,6 +465,11 @@ Extract and structure the following information:
    - **activity_type**: "passive" if they mainly watch/collect/consume (e.g. anime fan, book reader); "active" if they do it (cooking, sports); "both" if unclear
    - Example: "Thai cooking (passionate, current, active) - Posted pad thai 5x, tagged #thaifood 8x"
 
+1b. **OWNERSHIP SIGNALS** (what they ALREADY HAVE — critical for avoiding duplicate gifts):
+   - If they're holding, wearing, or standing in front of something in photos, they own it. Don't recommend it.
+   - Note specific products/brands visible in their content (e.g., "has a Hydro Flask", "wears Nike frequently", "owns a Cricut machine")
+   - This helps the gift curator recommend upgrades or complements rather than duplicates.
+
 2. **LOCATION CONTEXT**:
    - Where they live/are based (city, region) - ONLY if you have clear evidence (posts, venues, bio)
    - If city_region is unknown, do NOT invent a city; leave null
@@ -473,8 +478,9 @@ Extract and structure the following information:
    - If no clear location, state "Unknown - location-based recommendations not possible"
 
 3. **STYLE & AESTHETIC PREFERENCES**:
-   - Visual style (minimalist, maximalist, vintage, modern, etc.)
+   - Visual style (minimalist, maximalist, vintage, modern, bohemian, industrial, coastal, cottagecore, etc.)
    - Color preferences
+   - Overall aesthetic sensibility: Look at their photos holistically — are their spaces cluttered or sparse? Are their outfits coordinated or casual? Do they favor earth tones or bold colors? Describe in 1-2 sentences.
    - Brand preferences — be EXHAUSTIVE. List EVERY brand, company, team, artist, or creator they tag (@mentions), wear, use, hashtag, or reference. Include fashion brands (Zara, Lululemon), tech (Apple, Sony), food/drink (Starbucks, Nespresso), sports teams (Pacers, Colts), artists (Taylor Swift), creators, and niche brands. Aim for 5-15+ brands. More is better — we use this to personalize search results.
    - Quality level (budget, mid-range, premium, luxury)
 
@@ -517,8 +523,10 @@ Return ONLY a JSON object with this structure:
     "specific_places": ["specific venue/restaurant names"],
     "geographic_constraints": "description of location limitations"
   }},
+  "ownership_signals": ["specific items/products visible in their content that they already own — e.g., 'Hydro Flask', 'KitchenAid mixer', 'MacBook Pro'"],
   "style_preferences": {{
     "visual_style": "description",
+    "aesthetic_summary": "1-2 sentence holistic description of their aesthetic sensibility",
     "colors": ["color preferences"],
     "brands": ["EVERY brand/company/artist they tag, mention, wear, use, or follow — be exhaustive, not conservative. Include clothing brands, tech brands, food/drink brands, sports teams, artists, creators. Aim for 5-15 brands."],
     "quality_level": "budget|mid-range|premium|luxury"

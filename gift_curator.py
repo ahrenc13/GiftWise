@@ -12,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def curate_gifts(profile, products, recipient_type, relationship, claude_client, rec_count=10, enhanced_search_terms=None, enrichment_context=None, model=None):
+def curate_gifts(profile, products, recipient_type, relationship, claude_client, rec_count=10, enhanced_search_terms=None, enrichment_context=None, model=None, ontology_briefing=None):
     """
     Curate gift recommendations from real products and profile.
 
@@ -140,6 +140,17 @@ These are refined search terms from deep profile analysis - products matching th
     # Extract recipient city for location-aware instructions
     recipient_city = (profile.get('location_context') or {}).get('city_region') or 'Unknown'
 
+    # Build ontology section if available
+    ontology_section = ""
+    if ontology_briefing:
+        ontology_section = f"\n{ontology_briefing}\n"
+
+    # Build ownership signals section
+    ownership_section = ""
+    ownership_signals = profile.get('ownership_signals', [])
+    if ownership_signals:
+        ownership_section = f"\nALREADY OWNS (do NOT recommend these or near-duplicates — recommend upgrades or complements instead):\n{', '.join(ownership_signals[:15])}\n"
+
     # Format profile for prompt (gaps moved to top, rest supporting)
     profile_summary = f"""
 RECIPIENT PROFILE:
@@ -147,6 +158,8 @@ RECIPIENT PROFILE:
 {sweet_spots}
 {enhanced_terms_section}
 {enrichment_section}
+{ontology_section}
+{ownership_section}
 INTERESTS ({len(profile.get('interests', []))} identified):
 {format_interests(profile.get('interests', []))}
 
@@ -157,6 +170,7 @@ LOCATION CONTEXT:
 
 STYLE PREFERENCES:
 - Visual style: {profile.get('style_preferences', {}).get('visual_style', 'Unknown')}
+- Aesthetic: {profile.get('style_preferences', {}).get('aesthetic_summary', '')}
 - Preferred brands: {', '.join(profile.get('style_preferences', {}).get('brands', [])[:5])}
 - Quality level: {profile.get('style_preferences', {}).get('quality_level', 'Unknown')}
 
@@ -199,6 +213,12 @@ SELECT {rec_count} BEST PRODUCTS from above. Requirements:
 SELECTION PRINCIPLE: The best gift fills an aspiration gap — something they WANT but don't yet HAVE. A gift matching a current interest risks duplicating what they own. A gift matching an aspiration makes them say "how did you KNOW?" At least 60% of your picks should target gaps/aspirational interests, not current ones.
 
 SYNTHESIS OVER CHECKLIST: A gift set built by mapping one product to each interest is a spreadsheet, not a gift. The best sets find products at the INTERSECTION of two or more interests, or express familiar interests through unexpected forms.
+
+GIFT REASONING FRAMEWORK — follow these steps for EVERY pick:
+1. **Ownership check:** If the ALREADY OWNS section lists something similar, recommend the UPGRADE or the COMPLEMENT instead.
+2. **Adjacency reasoning:** For each interest, consider what's ONE STEP AWAY. Someone who likes cooking doesn't need another cookbook — they might love artisan ingredients, a hand-forged knife, or a foraging workshop. Someone into music doesn't need a band poster — they might love a listening equipment upgrade or a concert experience.
+3. **Identity signal matching:** Social media is identity performance. Gifts that let someone EXPRESS their identity in new ways convert better than direct-interest products. A dog person doesn't just want dog stuff — they want the thing that makes visitors say "oh you really love dogs" in a new way.
+4. **The "they'd never buy this for themselves" test:** The best gifts are slightly outside their normal purchasing behavior but perfectly aligned with who they are. It should make someone feel KNOWN, not CATEGORIZED.
 
 Before finalizing each pick, ask:
 1. Can one product bridge TWO of their interests? (e.g., music + dogs → dog breed tote with band-style art, not a band poster AND a dog toy separately)
@@ -455,7 +475,15 @@ def format_products(products):
         link = p.get('link', '')
         snippet = p.get('snippet', '')
         price = p.get('price', 'Price unknown')
-        domain = p.get('source_domain', 'unknown')
+        raw_domain = p.get('source_domain', 'unknown')
+        # Don't expose marketplace backend names to the curator — they bias selection
+        # toward or against products based on network rather than gift quality.
+        _mktplace = {'tiktok shop', 'cj affiliate', 'cj', 'shareasale', 'unknown'}
+        brand = p.get('brand', '')
+        if raw_domain.lower() in _mktplace:
+            domain = brand.strip().title() if brand else 'Online Shop'
+        else:
+            domain = raw_domain
         interest = p.get('interest_match', 'general')
         formatted.append(f"{idx}. {title}\n   Price: {price} | Domain: {domain} | Interest match: {interest}\n   Description: {snippet[:100]}\n   URL: {link}")
     

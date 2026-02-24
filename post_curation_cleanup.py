@@ -18,6 +18,25 @@ import re
 import logging
 from collections import defaultdict
 
+# Marketplace names that should never appear as the display retailer.
+# When a product comes from one of these, show the brand instead.
+_MARKETPLACE_NAMES = {'tiktok shop', 'cj affiliate', 'cj', 'shareasale', 'unknown'}
+
+
+def _display_retailer(source_domain, brand=None):
+    """Return a display-friendly retailer label.
+
+    TikTok Shop, CJ Affiliate, etc. are backend networks — showing them
+    on cards signals 'dropship' to users and hurts conversion. When a
+    product comes from one of these, surface the brand if we have it,
+    otherwise fall back to 'Online Shop'.
+    """
+    if not source_domain or source_domain.lower() in _MARKETPLACE_NAMES:
+        if brand and len(brand.strip()) > 1:
+            return brand.strip().title()
+        return 'Online Shop'
+    return source_domain
+
 logger = logging.getLogger(__name__)
 
 # Words that look like proper nouns in product titles but are NOT person surnames.
@@ -453,6 +472,7 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
 
     cleaned = []
     deferred = []  # Products that violated rules (might be used as replacements if needed)
+    used_titles = set()  # For title-based dedup (used in Rule 4b for uncategorized products)
 
     logger.info(f"Post-curation cleanup: {len(product_gifts)} gifts from curator, {len(inventory)} in pool")
 
@@ -481,17 +501,30 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
         brand = extract_brand(full_title)
         category = detect_category(full_title, inv_product.get('snippet', ''))
 
-        # Rule 3: Brand diversity — max 1 per brand
+        # Rule 3: Brand diversity — max 1 per brand, UNLESS categories differ
+        # (e.g., Taylor Swift poster + Taylor Swift enamel pin are different gift types)
         if brand and brand in used_brands:
-            logger.info(f"CLEANUP: Deferred (duplicate brand '{brand}'): {name[:50]}")
-            deferred.append(gift)
-            continue
+            if not category or category in used_categories:
+                logger.info(f"CLEANUP: Deferred (duplicate brand '{brand}'): {name[:50]}")
+                deferred.append(gift)
+                continue
+            else:
+                logger.info(f"CLEANUP: Allowed duplicate brand '{brand}' (different category '{category}'): {name[:50]}")
 
         # Rule 4: Category diversity — max 1 per category
         if category and category in used_categories:
             logger.info(f"CLEANUP: Deferred (duplicate category '{category}'): {name[:50]}")
             deferred.append(gift)
             continue
+
+        # Rule 4b: Uncategorized duplicate detection — if two products share no
+        # recognized category but have 3+ title words in common, treat as duplicate
+        if not category:
+            norm = _normalize_title_for_dedup(name)
+            if _is_near_duplicate_title(norm, used_titles):
+                logger.info(f"CLEANUP: Deferred (uncategorized near-duplicate title): {name[:50]}")
+                deferred.append(gift)
+                continue
 
         # Rule 5: Interest spread — max 2 per interest
         if interest:
@@ -518,17 +551,13 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
             used_brands.add(brand)
         if category:
             used_categories.add(category)
+        norm_t = _normalize_title_for_dedup(name)
+        if norm_t:
+            used_titles.add(norm_t)
         source_counts[source] += 1
         cleaned.append(gift)
 
     logger.info(f"After rules: {len(cleaned)} passed, {len(deferred)} deferred")
-
-    # Build set of normalized titles already in cleaned list (for title-based dedup)
-    used_titles = set()
-    for gift in cleaned:
-        t = _normalize_title_for_dedup(gift.get('name', ''))
-        if t:
-            used_titles.add(t)
 
     # If we're short, try to fill from inventory (products not already selected)
     if len(cleaned) < rec_count:
@@ -599,7 +628,7 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
                 'description': p.get('snippet', ''),
                 'why_perfect': f"A strong match for their {p.get('interest_match', 'top')} interest — rounds out the gift set with something they'll actually use.",
                 'price': p.get('price', 'Price unknown'),
-                'where_to_buy': p.get('source_domain', 'Online'),
+                'where_to_buy': _display_retailer(p.get('source_domain'), p.get('brand')),
                 'product_url': link,
                 'image_url': p.get('image', '') or p.get('thumbnail', ''),
                 'confidence_level': 'safe_bet',

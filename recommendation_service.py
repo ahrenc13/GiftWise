@@ -410,13 +410,28 @@ class RecommendationService:
             products, profile_for_backend, relationship
         )
 
+        # INTEREST ONTOLOGY: Enrich profile with thematic intelligence (zero API cost)
+        ontology_briefing = None
+        try:
+            from interest_ontology import enrich_profile_with_ontology
+            ontology_result = enrich_profile_with_ontology(profile_for_backend)
+            ontology_briefing = ontology_result.get('curator_briefing', '')
+            if ontology_briefing:
+                logger.info(f"Ontology enrichment: {len(ontology_result.get('themes', []))} themes, "
+                           f"philosophy={ontology_result.get('gift_philosophy', {})}")
+        except ImportError:
+            logger.info("interest_ontology not available, proceeding without thematic enrichment")
+        except Exception as e:
+            logger.warning(f"Ontology enrichment failed (continuing without): {e}")
+
         # Curate with Claude
         curated = self.curate_gifts(
             profile_for_backend, products_for_curator, recipient_type, relationship,
             self.claude_client, rec_count=product_rec_count + 4,
             enhanced_search_terms=enhanced_search_terms,
             enrichment_context=enrichment_context,
-            model=self.curator_model
+            model=self.curator_model,
+            ontology_briefing=ontology_briefing
         )
 
         product_gifts = curated.get('product_gifts', [])
@@ -858,7 +873,16 @@ class RecommendationService:
                     1 for r in recommendations
                     if r.get('image_url') and 'placeholder' not in (r.get('image_url') or '').lower()
                 )
-                logger.info(f"Images: {with_images}/{len(recommendations)} with thumbnails")
+                total_recs = len(recommendations)
+                pct = int(with_images / total_recs * 100) if total_recs else 0
+                logger.info(f"IMAGE_QUALITY: {with_images}/{total_recs} real ({pct}%)")
+                # Track as structured metric
+                try:
+                    from site_stats import track_event
+                    if pct < 70:
+                        track_event('low_image_quality')
+                except Exception:
+                    pass
             except Exception as img_err:
                 logger.warning(f"Image backfill failed (continuing): {img_err}")
 

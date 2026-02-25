@@ -181,6 +181,13 @@ def extract_brand(title):
 
 _QUERY_STOPWORDS = {'a', 'an', 'the', 'and', 'or', 'for', 'of', 'in', 'on', 'at', 'to', 'with', 'fan', 'gift', 'music'}
 
+# Price threshold for the replacement relevance gate. Replacements above this
+# price are only kept if at least one meaningful word from interest_match
+# appears in the product title. This prevents high-ticket off-interest items
+# (e.g. an $180 power drill from an Awin home-improvement feed) from winning
+# the replacement competition via source-diversity bonus alone.
+REPLACEMENT_PRICE_THRESHOLD = 120
+
 # For holiday/occasion interests, the product title must contain at least one
 # thematically related word. Without this, eBay's search can return a generic
 # "Wall-Mounted Storage Box" for "halloween decorating" because Halloween is
@@ -308,6 +315,30 @@ def _is_query_relevant_to_product(product):
         if last in title and first not in title:
             # Last name found but first name/initial missing — likely a surname-only match
             logger.info(f"CLEANUP: Skipping replacement (surname-only match, query='{query}'): {title[:60]}")
+            return False
+
+    # Price × interest-relevance gate for replacements.
+    # High-price items from broad-catalog feeds (Awin, CJ) can enter the pool via
+    # coincidental keyword matches and then win the replacement competition through
+    # the +3 source-diversity bonus. If price > threshold AND no meaningful word from
+    # interest_match appears in the product title, reject the replacement.
+    # This catches: $180 power drill (interest="home renovation", title has no
+    # interest words). This keeps: $150 espresso machine (interest="coffee",
+    # title contains "espresso" → shared domain word).
+    price_str = product.get('price', '')
+    try:
+        price_val = float(re.sub(r'[^\d.]', '', str(price_str).split('-')[0].split('From')[-1]))
+    except (ValueError, TypeError, IndexError):
+        price_val = None
+
+    if price_val is not None and price_val > REPLACEMENT_PRICE_THRESHOLD:
+        interest_words = [w for w in interest.split() if w not in _QUERY_STOPWORDS and len(w) > 2]
+        title_has_interest_word = any(w in title for w in interest_words)
+        if not title_has_interest_word:
+            logger.info(
+                f"CLEANUP: Skipping replacement (price ${price_val:.0f} > ${REPLACEMENT_PRICE_THRESHOLD}, "
+                f"no interest words in title, interest='{interest}'): {title[:60]}"
+            )
             return False
 
     return True
@@ -600,15 +631,6 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
             # when the search query was a full artist/person name (e.g. "JD McPherson" → "McPherson T-Shirt")
             if not _is_query_relevant_to_product(p):
                 continue
-            # SONNET-FLAG: Replacement scoring awards +3 for unrepresented sources, which
-            # can cause irrelevant high-price items (e.g. an $800 electric scooter from an
-            # Awin vehicle feed) to outscore everything else by coming from a fresh domain.
-            # The upstream Awin price cap (AWIN_MAX_PRICE_USD=200) is a partial bandage.
-            # The correct fix here is to extend _is_query_relevant_to_product() with a
-            # price × interest-relevance gate: reject a replacement if price > ~$150 AND
-            # no meaningful word from interest_match appears in the product title.
-            # This is an Opus-only zone — see §"Pending Opus Tasks" in CLAUDE.md.
-
             # Prefer products that bring new brands, categories, and source diversity
             score = 0
             if brand and brand not in used_brands:

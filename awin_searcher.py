@@ -59,6 +59,13 @@ def _decompress_if_gzipped(data):
     return data
 
 
+# Max price for Awin products. Awin feeds include full product catalogs (not curated gift
+# lists), so high-ticket items like $800 scooters can sneak through on coincidental keyword
+# matches. Products over this threshold are dropped before entering the inventory pool.
+# Opus-tracked: a deeper fix in post_curation_cleanup.py will add an interest-relevance gate
+# to the replacement backfill. This cap is the upstream safety valve.
+AWIN_MAX_PRICE_USD = 200
+
 # In-memory cache: feed list and one feed's products. TTL 1 hour.
 _awin_feed_list_cache = {}
 _awin_feed_list_ts = 0
@@ -460,17 +467,25 @@ def _product_text(row):
 
 
 def _matches_query(row, query_terms):
-    """True if product text contains the primary interest term (not just generic words like 'gift')."""
+    """True if product text contains enough meaningful query terms.
+
+    Awin feeds are full retail catalogs, not gift-curated lists. A single-word
+    match (e.g. "home" in an electric scooter description matching a "home
+    renovation" query) lets irrelevant products into the pool. Require 2
+    meaningful matches when the query has 3+ meaningful terms; 1 match is
+    still fine for short queries (e.g. "hiking" or "Taylor Swift").
+    """
     text = _product_text(row)
     generic_terms = {"and", "the", "or", "with", "from", "gift", "present", "idea", "unique", "personalized", "accessories", "lover", "fan"}
-    meaningful_matches = 0
+    meaningful_terms = []
     for term in query_terms:
         t = (term or "").strip().lower()
         if len(t) <= 1 or t in generic_terms:
             continue
-        if t in text:
-            meaningful_matches += 1
-    return meaningful_matches >= 1
+        meaningful_terms.append(t)
+    matched = sum(1 for t in meaningful_terms if t in text)
+    threshold = 2 if len(meaningful_terms) >= 3 else 1
+    return matched >= threshold
 
 
 def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_search_terms=None):
@@ -693,6 +708,22 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
         if all_products:
             feeds_used.append(first_feed.get("advertiser_name", "Awin"))
             logger.info("Awin fallback: took first %s products from %s", len(all_products), first_feed.get("advertiser_name"))
+
+    # Price filter: Awin feeds are full product catalogs, not gift-curated lists.
+    # Drop anything over AWIN_MAX_PRICE_USD before it reaches the inventory pool.
+    def _parse_price(price_str):
+        try:
+            return float(re.sub(r'[^\d.]', '', str(price_str)))
+        except (ValueError, TypeError):
+            return None
+
+    before = len(all_products)
+    all_products = [
+        p for p in all_products
+        if _parse_price(p.get("price", "")) is None or _parse_price(p.get("price", "")) <= AWIN_MAX_PRICE_USD
+    ]
+    if len(all_products) < before:
+        logger.info("Awin: removed %d overpriced items (>$%d)", before - len(all_products), AWIN_MAX_PRICE_USD)
 
     logger.info("Found %s Awin products from %s", len(all_products), ", ".join(feeds_used) or "Awin")
     return all_products[:target_count]

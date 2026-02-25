@@ -1,5 +1,20 @@
 # GiftWise — Project Intelligence
 
+## Pending Opus Tasks
+
+Tasks flagged `# SONNET-FLAG:` in the codebase that require Opus to implement correctly.
+Each entry below includes the Opus prompt to copy-paste.
+
+*No open tasks.*
+
+### [DONE] Replacement backfill relevance gate — post_curation_cleanup.py
+
+**Fixed Feb 25 2026 (Opus).** Three-layer fix for the $800 scooter incident:
+
+1. **Awin `_matches_query()` tightened** — now requires 2 meaningful term matches for queries with 3+ meaningful words. Short queries (1-2 terms like "hiking" or "Taylor Swift") still match on 1. (`awin_searcher.py`)
+2. **Upstream price cap** (Sonnet, Feb 25) — `AWIN_MAX_PRICE_USD = 200` in `awin_searcher.py`.
+3. **Price × interest-relevance gate** (Opus, Feb 25) — `_is_query_relevant_to_product()` now rejects replacements where price > `REPLACEMENT_PRICE_THRESHOLD` ($120) AND zero meaningful words from `interest_match` appear in the product title. SONNET-FLAG comment removed. (`post_curation_cleanup.py`)
+
 ## Environment Notes
 - **Git is installed and working.** Do not prompt the user to install git, git for windows, or any other tooling. The repo is active with full commit history. Just use it.
 - **Python/Flask app.** Run with `python giftwise_app.py` or via deployment. No special build step.
@@ -141,9 +156,9 @@ Flip this priority when: monthly affiliate revenue is steady but clearly lower t
 ## What This Is
 AI-powered gift recommendation app. Flask pipeline: scrape social media → Claude analyzes profile → enrich with static data → search retailers → Claude curates gifts → programmatic cleanup → display.
 
-**Current State (TL;DR):** App is live and polished. CJ Affiliate is now the primary inventory driver with 15+ wired static partners. Amazon + eBay active too. Skimlinks pending (submitted 2/9, still waiting as of 2/23). CJ GraphQL search wired and filtering live. Per-IP rate limiting active (1 run/day). 3 Gunicorn workers deployed. TikTok launch-ready. 10 gift guides + 4 blog posts live for SEO. Group chat sharing + OneSignal push notifications added.
+**Current State (TL;DR):** App is live and polished. CJ Affiliate is now the primary inventory driver with 15+ wired static partners. Amazon + eBay active. Skimlinks pending (submitted 2/9, still waiting as of 2/25). Awin: applied to ~35 new Gifts & Flowers merchants Feb 25, awaiting approvals. Impact.com: STAT tag + domain verification phrase added, awaiting support resolution. Per-IP rate limiting active. 3 Gunicorn workers. TikTok launch-ready. 10 gift guides + 4 blog posts live for SEO.
 
-## Current State (Feb 23, 2026)
+## Current State (Feb 25, 2026)
 
 ### Major Changes Since Feb 16
 1. **CJ Affiliate fully wired** — GraphQL product search integrated, filtering non-joined advertisers, 15+ static partners active
@@ -204,8 +219,8 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 | Skimlinks | ⏳ Still pending (submitted 2/9 — past expected window, follow up) | ~48,500 merchants (blanket access) |
 | CJ Affiliate | ✅ Active. GraphQL search wired + 15+ static partners live. See partner rows below. | Subscription clubs, flowers, jewelry, fragrances, gaming, wellness, chocolates, artisan jewelry, charity shopping, coffee, soccer, refurb electronics, batteries, religious gifts, wine/gourmet baskets |
 | FlexOffers | ⏳ Application submitted 2/16, status unknown | 12,000+ advertisers, niche brands |
-| Awin | ✅ Account active, need to join ShareASale merchants (migrated Oct 2025) | Uncommon Goods, Personalization Mall, Things Remembered, etc. |
-| Impact | ❌ Wrong account type (signed up as brand not publisher), ticket open | Target, Ulta, Kohl's, Gap, Home Depot, Adidas, Dyson |
+| Awin | ✅ Account active. Feb 25: applied to ~35 Gifts & Flowers merchants (see tiers below). Still need to join: Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar. | Quilling Card, Twisted Lily, LoveIsARose, Limoges Jewelry, Anthemion Flowers, Field Company, CanvasChamp, Sugarwish, Name Stories, Maison Balzac, Formulary 55, Miss to Mrs Box, Enjoy The Wood, La Boîte, Alice Mushrooms, BroBasket, Scribble, Crown and Paw, Palais des Thés, Farmgirl Flowers, Matr Boomie, Cosmos Within, Pacific Resources Intl, Grill Masters Club, Sports Box Co., KOW Steaks, Jasper Hill Farm, Dylan's Candy Bar, Woven Woven, VitaJuwel, Big Night, DEMDACO, Kosterina, Outdoor Fellow, Swanky Badger |
+| Impact | ⏳ Ticket open for wrong account type. STAT tag added to base.html (Feb 25). "Hi, Impact" domain verification phrase added to /about (Feb 25, branch `claude/review-claude-docs-kEdui` — merge to main to activate). Awaiting support response. | Target, Ulta, Kohl's, Gap, Home Depot, Adidas, Dyson |
 | Rakuten | Account active, need to apply to individual brands | Sephora, Nordstrom, Anthropologie, Free People, Coach |
 | Walmart Creator | Application submitted | Walmart |
 | Etsy Direct | Developer credentials pending | Etsy (would bypass Awin if approved) |
@@ -316,6 +331,8 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 10. **Shared recommendations page needs more personality** — DEFERRED. Needs UX design decisions. Trigger: when share_view events show low engagement.
 11. ~~Experience bookable vs DIY badges~~ — **FIXED Feb 23-24.** Badges on expanded (Feb 23) + compact cards (Feb 24). (`recommendations.html`)
 12. ~~Rec count subtitle~~ — **ALREADY FIXED** before audit. Template distinguishes "X gifts + Y experiences".
+
+13. ~~Replacement backfill relevance gate~~ — **FIXED Feb 25 (Opus).** Three-layer fix: Awin `_matches_query` tightened to 2-term threshold, `AWIN_MAX_PRICE_USD=200` cap (Sonnet), price × interest-relevance gate in `_is_query_relevant_to_product()` with `REPLACEMENT_PRICE_THRESHOLD=$120` (Opus). (`post_curation_cleanup.py`, `awin_searcher.py`)
 
 ### Meta-Principle for the Audit
 **Do NOT make piecemeal fixes.** Previous sessions added features without wiring them together — `sharing_section.html` was built but never included, `share_generator.py` and `referral_system.py` were imported but never created, `valentines_landing.html` existed with no route. Every change must be fully wired end-to-end: code → route → template → tested. If you build it, connect it.
@@ -1043,6 +1060,23 @@ Every product recommendation is an affiliate link opportunity. Revenue per click
 - More Etsy/Awin/eBay = higher average commission per click
 - Session cost ~$0.10 on Sonnet, ~$0.25-0.50 on Opus. Revenue must exceed cost.
 
+## Recent Fixes (Feb 25, 2026)
+
+### Awin price cap (`awin_searcher.py`)
+- **Added `AWIN_MAX_PRICE_USD = 200`.** Products over $200 are dropped before entering the inventory pool.
+- Awin feeds are full retail catalogs (not gift-curated). High-price items (e.g. $800 electric scooters) can enter via coincidental keyword matches and then win the post-curation replacement competition via source-diversity bonus.
+- Upstream bandage only. Full fix requires Opus — see §"Pending Opus Tasks".
+
+### eBay offset/limit pagination fix (`ebay_searcher.py`)
+- **Fixed 400 errors on paginated eBay queries.** eBay Browse API requires `offset` to be a multiple of `limit`. The previous code used `random.choice([0,0,0,0,5])` with `limit` as low as 3, producing invalid pairs like `offset=5, limit=3`.
+- Fixed to `random.choice([0, 0, 0, 0, limit])` — offset is now always a valid multiple.
+
+### Replacement relevance gate (Opus, Feb 25) — `post_curation_cleanup.py`, `awin_searcher.py`
+- **Root cause fix for $800 scooter incident.** Three layers:
+  1. `awin_searcher.py` `_matches_query()`: Now requires 2 meaningful term matches when query has 3+ meaningful words. Previously 1 was enough, letting "home" alone match a scooter to "home renovation."
+  2. `post_curation_cleanup.py` `_is_query_relevant_to_product()`: New price × interest-relevance gate. Replacements over `REPLACEMENT_PRICE_THRESHOLD` ($120) are rejected unless at least one meaningful word from `interest_match` appears in the product title.
+  3. Combined with Sonnet's `AWIN_MAX_PRICE_USD = 200` upstream cap, this creates defense-in-depth: price cap catches the worst offenders at intake, matching threshold prevents weak matches, relevance gate catches anything that slips through to the replacement backfill.
+
 ## Recent Commit History (Last 20, as of Feb 23)
 
 ```
@@ -1090,17 +1124,19 @@ CJ is live with 15+ static partners. Now need to expand further:
 **Ready: TikTok Launch**
 App is in good shape. 3 workers, rate limiting, all recs shown free. Per CLAUDE.md paywall guidance — keep fully free until 15+ sessions/day.
 
-## What the User Wants Next (Updated Feb 23)
+## What the User Wants Next (Updated Feb 25)
 
 1. **Follow up on Skimlinks** — Past the 7-business-day window. Contact publisher support directly.
-2. **Join Awin advertisers** — Search for and join former ShareASale merchants (Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar)
+2. **Awin — await approvals** — Applied Feb 25 to ~35 Gifts & Flowers merchants (see affiliate table). Still need to join: Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar. Auto-approvals expected 24-48h; manual 3-7 days.
 3. **Check FlexOffers status** — Applied Feb 16, status unknown
-4. **Fix Impact account** — Ticket open for wrong account type (brand instead of publisher)
+4. **Fix Impact account** — Ticket open. STAT tag + "Hi, Impact" verification phrase live on branch `claude/review-claude-docs-kEdui`. **Merge that branch to main** to activate the verification. Once Impact confirms, remove the "Hi, Impact" phrase from `/about`.
 5. **Monitor quality** — admin dashboard at `/admin/stats?key=ADMIN_DASHBOARD_KEY`. Watch rec_run, affiliate click events.
 6. **TikTok launch** — App is launch-ready. User's kid has viral post (150k+ likes). Inventory much better now with CJ partners live.
 7. **Paywall timing** — monitor engagement via admin dashboard per the paywall thresholds above
 8. **Opus A/B test** — run same profile through Sonnet and Opus curation (now viable with better inventory)
 9. **Mother's Day (May 11)** — Guide built, start promoting in late March/early April
+10. **Apple Music** — Not feasible. No "Wrapped" equivalent for easy user export; OAuth approach already failed with Spotify. Recommend free-text "favorite artists/genres" field instead — works for all music platforms.
 10. **"Also on Amazon" dual-link (deferred)** — For products where we can cleanly verify an *identical* item on the vendor's own Amazon storefront (not just a similar product), surface a secondary "Also on Amazon →" link below the primary CTA. No routing by preference, no comparative framing — just a second link for Prime users. **Hard requirement:** must be the same SKU via the brand's Amazon storefront, not a look-alike. Build only after multi-retailer inventory is live and click data shows demand. See OPUS_AUDIT.md for implementation notes.
 
 **See `AFFILIATE_APPLICATIONS_TRACKER.md` for detailed affiliate network status.**
+**See `AWIN_APPLICATIONS_FEB25.md` for the full Feb 25 Awin application list — tiers, metrics (Awin index, EPC, conversion rate), reasoning, which merchants have product feeds, which were skipped and why, and what to do when approvals arrive.**

@@ -1,5 +1,79 @@
 # GiftWise — Project Intelligence
 
+## Pending Opus Tasks
+
+Tasks flagged `# SONNET-FLAG:` in the codebase that require Opus to implement correctly.
+Each entry below includes the Opus prompt to copy-paste.
+
+### [OPEN] Replacement backfill relevance gate — post_curation_cleanup.py
+
+**Problem discovered:** Feb 25 2026. An $800 Yadea electric scooter was recommended to a Taylor Swift / Chappell Roan fan. Root cause traced through three layers:
+
+1. **Awin feed matching is too broad.** `_matches_query()` requires only 1 meaningful term to match. Awin feeds are full product catalogs, so a scooter with "home" in its description matches the "home renovation" interest query.
+2. **Upstream partial fix already applied (Sonnet, Feb 25):** `AWIN_MAX_PRICE_USD = 200` cap in `awin_searcher.py` removes items over $200 before they reach the pool. This is a bandage.
+3. **Root cause still open:** The replacement backfill in `post_curation_cleanup.py` (lines ~603–619) awards `+3` to items from unrepresented sources. If Awin (or any future retailer) contributes catalog items that survive the price cap but are still interest-irrelevant, the source-diversity bonus will promote them above genuinely relevant Amazon/eBay items. The `_is_query_relevant_to_product()` guard only blocks surname/clan and holiday mismatches — it has no price × interest-relevance gate.
+
+**SONNET-FLAG location:** `post_curation_cleanup.py` lines ~603–619 (replacement scoring block).
+
+**Opus prompt:**
+
+```
+You are working on GiftWise (giftwise.fit), an AI gift recommendation Flask app.
+Read CLAUDE.md fully before touching any code — pay special attention to §"⚠️ Opus-Only Zones"
+and §"Intelligence Layer Architecture".
+
+## Task: Add price × interest-relevance gate to the replacement backfill
+
+File: post_curation_cleanup.py
+Function: cleanup_curated_gifts() → the "if len(cleaned) < rec_count" replacement block
+Helper to extend: _is_query_relevant_to_product(product)
+
+## Background
+When the curator (LLM) selects 14 gifts and post-curation rules remove some for brand/category/
+source-cap violations, the backfill pulls replacements from the remaining inventory pool.
+Replacements are scored for diversity (+3 for new source, +2 for new brand, +2 for new category).
+This is intentional and correct for maintaining output diversity.
+
+The problem: Awin product feeds are full retail catalogs, not gift-curated lists. A product like
+an $800 electric scooter can enter the pool via a coincidental keyword match (e.g. "home" in the
+scooter description matching the "home renovation" interest). The scooter then wins the replacement
+competition because it comes from an unrepresented source (yadea.com → +3 bonus).
+
+An upstream price cap (AWIN_MAX_PRICE_USD = 200 in awin_searcher.py) catches the worst cases,
+but a narrower failure mode remains: a $180 product from an Awin home-improvement retailer could
+still appear in a Taylor Swift fan's gift set as a replacement.
+
+## What to build
+Extend _is_query_relevant_to_product() with a combined price × interest-signal check:
+
+  - Parse the product's price field (string, may include "$" or currency prefix).
+  - Extract the interest_match field (e.g. "Taylor Swift fandom", "home renovation").
+  - Tokenize the interest_match into meaningful words (strip generic stopwords already
+    defined in _QUERY_STOPWORDS).
+  - Check how many of those words appear in the product title (case-insensitive).
+  - If price > REPLACEMENT_PRICE_THRESHOLD (suggest $120–150, tune if needed) AND
+    zero interest words appear in the title → return False (reject as replacement).
+
+## Constraints
+- Do NOT change the scoring weights (+3/+2/+1) in the replacement loop — those are
+  tuned for diversity and work correctly for on-interest products.
+- Do NOT add this check to the main cleanup loop (only to the replacement backfill
+  path, i.e. only called from within the "if len(cleaned) < rec_count" block).
+  Products the curator explicitly selected should never be second-guessed by this gate.
+- Keep _is_query_relevant_to_product() as a single function — just add the new check
+  as an additional elif/block inside it.
+- Add a clear log line when a product is rejected by this gate (include price and
+  interest_match for debuggability).
+- Do NOT touch: Rule 3 brand relaxation, Rule 4b title overlap threshold,
+  MAX_PER_SOURCE_PCT, or the deferred→replacement backfill scoring weights.
+
+## Acceptance test (manual)
+Run /demo?admin=true with a profile that has music + lifestyle interests and no
+vehicle/transport interests. Confirm no products from automotive/vehicle retailers
+appear in the final 10 recommendations. Check Railway logs for the new gate's
+log lines to confirm it's firing.
+```
+
 ## Environment Notes
 - **Git is installed and working.** Do not prompt the user to install git, git for windows, or any other tooling. The repo is active with full commit history. Just use it.
 - **Python/Flask app.** Run with `python giftwise_app.py` or via deployment. No special build step.
@@ -316,6 +390,8 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 10. **Shared recommendations page needs more personality** — DEFERRED. Needs UX design decisions. Trigger: when share_view events show low engagement.
 11. ~~Experience bookable vs DIY badges~~ — **FIXED Feb 23-24.** Badges on expanded (Feb 23) + compact cards (Feb 24). (`recommendations.html`)
 12. ~~Rec count subtitle~~ — **ALREADY FIXED** before audit. Template distinguishes "X gifts + Y experiences".
+
+13. **Replacement backfill relevance gate** — OPEN (Opus). See §"Pending Opus Tasks" above for full prompt. `_is_query_relevant_to_product()` in `post_curation_cleanup.py` needs a price × interest-signal check so high-price off-interest items can't win the replacement competition via source-diversity bonus. **Partial upstream fix applied Feb 25:** `AWIN_MAX_PRICE_USD = 200` cap in `awin_searcher.py`.
 
 ### Meta-Principle for the Audit
 **Do NOT make piecemeal fixes.** Previous sessions added features without wiring them together — `sharing_section.html` was built but never included, `share_generator.py` and `referral_system.py` were imported but never created, `valentines_landing.html` existed with no route. Every change must be fully wired end-to-end: code → route → template → tested. If you build it, connect it.
@@ -1042,6 +1118,17 @@ Every product recommendation is an affiliate link opportunity. Revenue per click
 - Dead links are lost revenue. Every 404 is a bounced buyer.
 - More Etsy/Awin/eBay = higher average commission per click
 - Session cost ~$0.10 on Sonnet, ~$0.25-0.50 on Opus. Revenue must exceed cost.
+
+## Recent Fixes (Feb 25, 2026)
+
+### Awin price cap (`awin_searcher.py`)
+- **Added `AWIN_MAX_PRICE_USD = 200`.** Products over $200 are dropped before entering the inventory pool.
+- Awin feeds are full retail catalogs (not gift-curated). High-price items (e.g. $800 electric scooters) can enter via coincidental keyword matches and then win the post-curation replacement competition via source-diversity bonus.
+- Upstream bandage only. Full fix requires Opus — see §"Pending Opus Tasks".
+
+### eBay offset/limit pagination fix (`ebay_searcher.py`)
+- **Fixed 400 errors on paginated eBay queries.** eBay Browse API requires `offset` to be a multiple of `limit`. The previous code used `random.choice([0,0,0,0,5])` with `limit` as low as 3, producing invalid pairs like `offset=5, limit=3`.
+- Fixed to `random.choice([0, 0, 0, 0, limit])` — offset is now always a valid multiple.
 
 ## Recent Commit History (Last 20, as of Feb 23)
 

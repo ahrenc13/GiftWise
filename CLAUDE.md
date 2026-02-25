@@ -1105,3 +1105,4 @@ App is in good shape. 3 workers, rate limiting, all recs shown free. Per CLAUDE.
 10. **"Also on Amazon" dual-link (deferred)** — For products where we can cleanly verify an *identical* item on the vendor's own Amazon storefront (not just a similar product), surface a secondary "Also on Amazon →" link below the primary CTA. No routing by preference, no comparative framing — just a second link for Prime users. **Hard requirement:** must be the same SKU via the brand's Amazon storefront, not a look-alike. Build only after multi-retailer inventory is live and click data shows demand. See OPUS_AUDIT.md for implementation notes.
 
 **See `AFFILIATE_APPLICATIONS_TRACKER.md` for detailed affiliate network status.**
+**See `AWIN_APPLICATIONS_FEB25.md` for the full Feb 25 Awin application list — tiers, metrics (Awin index, EPC, conversion rate), reasoning, which merchants have product feeds, which were skipped and why, and what to do when approvals arrive.**

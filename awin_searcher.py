@@ -467,17 +467,25 @@ def _product_text(row):
 
 
 def _matches_query(row, query_terms):
-    """True if product text contains the primary interest term (not just generic words like 'gift')."""
+    """True if product text contains enough meaningful query terms.
+
+    Awin feeds are full retail catalogs, not gift-curated lists. A single-word
+    match (e.g. "home" in an electric scooter description matching a "home
+    renovation" query) lets irrelevant products into the pool. Require 2
+    meaningful matches when the query has 3+ meaningful terms; 1 match is
+    still fine for short queries (e.g. "hiking" or "Taylor Swift").
+    """
     text = _product_text(row)
     generic_terms = {"and", "the", "or", "with", "from", "gift", "present", "idea", "unique", "personalized", "accessories", "lover", "fan"}
-    meaningful_matches = 0
+    meaningful_terms = []
     for term in query_terms:
         t = (term or "").strip().lower()
         if len(t) <= 1 or t in generic_terms:
             continue
-        if t in text:
-            meaningful_matches += 1
-    return meaningful_matches >= 1
+        meaningful_terms.append(t)
+    matched = sum(1 for t in meaningful_terms if t in text)
+    threshold = 2 if len(meaningful_terms) >= 3 else 1
+    return matched >= threshold
 
 
 def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_search_terms=None):

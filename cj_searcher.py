@@ -225,6 +225,7 @@ _ILLY_ALL_PRODUCTS = [
         'image_url': '',
         'source_domain': 'illy.com',
         'price': '$16.99',
+        # IMAGE: Could not find stable image URL — illy.com returns 530 (Cloudflare)
         'product_id': 'illy-classico-ground',
         'search_query': 'espresso coffee gift',
         'interest_match': 'espresso',
@@ -245,6 +246,7 @@ _ILLY_ALL_PRODUCTS = [
         'image_url': '',
         'source_domain': 'illy.com',
         'price': '$12.99',
+        # IMAGE: Could not find stable image URL — illy.com returns 530 (Cloudflare)
         'product_id': 'illy-iperEspresso-capsules',
         'search_query': 'espresso capsules gift',
         'interest_match': 'espresso',
@@ -265,6 +267,7 @@ _ILLY_ALL_PRODUCTS = [
         'image_url': '',
         'source_domain': 'illy.com',
         'price': '$179.00',
+        # IMAGE: Could not find stable image URL — illy.com returns 530 (Cloudflare)
         'product_id': 'illy-x1-machine',
         'search_query': 'espresso machine gift',
         'interest_match': 'espresso',
@@ -660,6 +663,7 @@ _FRAGRANCESHOP_ALL_PRODUCTS = [
         'image_url': '',
         'source_domain': 'fragranceshop.com',
         'price': 'Varies by fragrance',
+        # IMAGE: Could not find stable image URL — fragranceshop.com blocked by Cloudflare
         'product_id': 'fragranceshop-womens',
         'search_query': "women's perfume gift",
         'interest_match': 'perfume',
@@ -681,6 +685,7 @@ _FRAGRANCESHOP_ALL_PRODUCTS = [
         'image_url': '',
         'source_domain': 'fragranceshop.com',
         'price': 'Varies by fragrance',
+        # IMAGE: Could not find stable image URL — fragranceshop.com blocked by Cloudflare
         'product_id': 'fragranceshop-mens',
         'search_query': "men's cologne gift",
         'interest_match': 'cologne',
@@ -1035,6 +1040,7 @@ _SILVERRUSHSTYLE_ALL_PRODUCTS = [
         'image_url': '',
         'source_domain': 'silverrushstyle.com',
         'price': 'From $30',
+        # IMAGE: Could not find stable image URL — silverrushstyle.com returns 403
         'product_id': 'silverrushstyle-turquoise',
         'search_query': 'turquoise sterling silver gemstone jewelry handmade',
         'interest_match': 'jewelry',
@@ -1061,6 +1067,7 @@ _SILVERRUSHSTYLE_ALL_PRODUCTS = [
         'image_url': '',
         'source_domain': 'silverrushstyle.com',
         'price': 'From $25',
+        # IMAGE: Could not find stable image URL — silverrushstyle.com returns 403
         'product_id': 'silverrushstyle-home',
         'search_query': 'artisan sterling silver gemstone jewelry gift',
         'interest_match': 'jewelry',
@@ -1388,11 +1395,13 @@ _SOCCERGARAGE_ALL_PRODUCTS = [
 ]
 
 _SOCCERGARAGE_TRIGGER_INTERESTS = {
+    # Soccer-specific only — 'sports', 'athletic', 'team sports' removed Feb 25 2026.
+    # SoccerGarage products are category pages; should only appear for genuine soccer fans.
     'soccer', 'football', 'futbol', 'soccer player', 'soccer fan',
     'goalkeeper', 'goalie', 'keeper', 'soccer coach', 'coaching soccer',
     'youth soccer', 'kids soccer', 'soccer dad', 'soccer mom',
     'mls', 'premier league', 'champions league', 'la liga', 'bundesliga',
-    'world cup', 'fifa', 'sports', 'athletic', 'team sports',
+    'world cup', 'fifa',
 }
 
 # Goalkeeper-specific interests — trigger the keeper product instead of general cleats
@@ -1437,27 +1446,6 @@ def _tfl_deep_link(path):
 
 
 _TFL_ALL_PRODUCTS = [
-    {
-        # Link ID 10886632 — Laptops (updated May 2023)
-        'title': "Laptops & Notebooks — New & Open Box at TechForLess",
-        'link': 'https://www.kqzyfj.com/click-101660899-10886632',
-        'snippet': (
-            "HP, Lenovo, Dell, and more — new, open box, and certified refurbished laptops "
-            "at 10-50% below retail. Same technology, thoroughly tested. "
-            "8,000+ items in stock, free shipping on thousands of items."
-        ),
-        'image': '',
-        'thumbnail': '',
-        'image_url': '',
-        'source_domain': 'techforless.com',
-        'price': 'From $150.00',
-        'product_id': 'tfl-laptops',
-        'search_query': 'laptop gift',
-        'interest_match': 'technology',
-        'priority': 2,
-        'brand': 'Tech For Less',
-        'advertiser_id': 'techforless-cj',
-    },
     {
         # Link ID 15443907 — Apple MacBooks (updated Jan 2023, $9.15 EPC)
         'title': "MacBook Laptops — New & Open Box at TechForLess",
@@ -1521,27 +1509,6 @@ _TFL_ALL_PRODUCTS = [
         'brand': 'Tech For Less',
         'advertiser_id': 'techforless-cj',
     },
-    {
-        # Link ID 13067706 — Homepage ($6.88 EPC, evergreen)
-        'title': "Computers & Electronics — Same Technology, Lower Prices",
-        'link': 'https://www.dpbolvw.net/click-101660899-13067706',
-        'snippet': (
-            "TechForLess.com — new, open box, and certified refurbished computers, "
-            "tablets, monitors, and electronics at 10-50% below retail. "
-            "In business since 2001, one of the web's highest-rated tech retailers."
-        ),
-        'image': '',
-        'thumbnail': '',
-        'image_url': '',
-        'source_domain': 'techforless.com',
-        'price': 'From $15.00',
-        'product_id': 'tfl-home',
-        'search_query': 'electronics gift',
-        'interest_match': 'technology',
-        'priority': 2,
-        'brand': 'Tech For Less',
-        'advertiser_id': 'techforless-cj',
-    },
 ]
 
 _TFL_TRIGGER_INTERESTS = {
@@ -1577,11 +1544,12 @@ def get_techforless_products_for_profile(profile):
     Commission: 5%, 14-day cookie. AOV ~$185.
     Specializes in new, open box, and certified refurbished electronics.
 
-    Smart selection (cap 2):
-    - Gaming profile → gaming consoles + laptops
-    - Photography profile → cameras + general
-    - Apple/Mac profile → MacBooks + general
-    - General tech → laptops + general homepage
+    Smart selection (cap 1 — specific interest required):
+    - Gaming profile → gaming consoles
+    - Photography profile → cameras
+    - Apple/Mac profile → MacBooks
+    - General tech → cameras (most broadly gift-appropriate)
+    Non-gift category pages (tfl-laptops, tfl-home) were removed Feb 25 2026.
 
     T&C: No external coupons. Do NOT use link 10891878 (labeled DO NOT USE).
     """
@@ -1616,13 +1584,14 @@ def get_techforless_products_for_profile(profile):
         return next((p for p in _TFL_ALL_PRODUCTS if p['product_id'] == pid), None)
 
     if is_gaming:
-        return [p for p in [_get('tfl-gaming'), _get('tfl-laptops')] if p]
+        return [p for p in [_get('tfl-gaming')] if p]
     elif is_photography:
-        return [p for p in [_get('tfl-cameras'), _get('tfl-home')] if p]
+        return [p for p in [_get('tfl-cameras')] if p]
     elif is_apple:
-        return [p for p in [_get('tfl-macbooks'), _get('tfl-home')] if p]
+        return [p for p in [_get('tfl-macbooks')] if p]
     else:
-        return [p for p in [_get('tfl-laptops'), _get('tfl-home')] if p]
+        # General tech: surface cameras as the most gift-appropriate specific product
+        return [p for p in [_get('tfl-cameras')] if p]
 
 
 # ---------------------------------------------------------------------------
@@ -1659,27 +1628,6 @@ def _tenergy_deep_link(path, site='power'):
 
 _TENERGY_ALL_PRODUCTS = [
     {
-        # Deep-link → Tenergy Power homepage (rechargeable batteries for home)
-        'title': "Rechargeable AA/AAA Battery Kit — Tenergy Power",
-        'link': _tenergy_deep_link('/'),
-        'snippet': (
-            "Tenergy rechargeable NiMH batteries and smart chargers — high-capacity AA and AAA "
-            "for remotes, cameras, toys, and everyday devices. American brand since 2004. "
-            "Use code THANKS for free shipping on orders $50+."
-        ),
-        'image': '',
-        'thumbnail': '',
-        'image_url': '',
-        'source_domain': 'power.tenergy.com',
-        'price': 'From $20.00',
-        'product_id': 'tenergy-rechargeable',
-        'search_query': 'rechargeable battery kit gift',
-        'interest_match': 'sustainability',
-        'priority': 2,
-        'brand': 'Tenergy',
-        'advertiser_id': 'tenergy-cj',
-    },
-    {
         # Deep-link → Tenergy RC/hobby battery category
         'title': "RC Hobby & Drone Batteries — Tenergy Power",
         'link': _tenergy_deep_link('/collections/hobby-rc'),
@@ -1696,48 +1644,6 @@ _TENERGY_ALL_PRODUCTS = [
         'product_id': 'tenergy-rc-hobby',
         'search_query': 'RC car battery gift',
         'interest_match': 'rc cars',
-        'priority': 2,
-        'brand': 'Tenergy',
-        'advertiser_id': 'tenergy-cj',
-    },
-    {
-        # Deep-link → Tenergy Life homepage (small kitchen/home appliances)
-        'title': "Kitchen & Home Appliances — Tenergy Life",
-        'link': _tenergy_deep_link('/', site='life'),
-        'snippet': (
-            "Tenergy Life — small kitchen appliances and home electronics built to the same "
-            "exacting standard as their battery line. Blenders, air fryers, toasters, and more. "
-            "Use code THANKS for free shipping on orders $50+."
-        ),
-        'image': '',
-        'thumbnail': '',
-        'image_url': '',
-        'source_domain': 'life.tenergy.com',
-        'price': 'From $30.00',
-        'product_id': 'tenergy-life-appliances',
-        'search_query': 'kitchen appliance gift',
-        'interest_match': 'cooking',
-        'priority': 2,
-        'brand': 'Tenergy',
-        'advertiser_id': 'tenergy-cj',
-    },
-    {
-        # Evergreen base → general Power site (smart chargers + batteries)
-        'title': "Smart Battery Charger & Batteries — Tenergy Power",
-        'link': _TENERGY_EVERGREEN_BASE,
-        'snippet': (
-            "Tenergy smart chargers with AA, AAA, C, and D rechargeable batteries — "
-            "the practical gift that pays for itself. Trusted for photography, RC hobbies, "
-            "and everyday devices. Use code THANKS for free shipping on orders $50+."
-        ),
-        'image': '',
-        'thumbnail': '',
-        'image_url': '',
-        'source_domain': 'power.tenergy.com',
-        'price': 'From $30.00',
-        'product_id': 'tenergy-charger-kit',
-        'search_query': 'battery charger gift',
-        'interest_match': 'gadgets',
         'priority': 2,
         'brand': 'Tenergy',
         'advertiser_id': 'tenergy-cj',
@@ -1781,10 +1687,10 @@ def get_tenergy_products_for_profile(profile):
     No product feed — static list using CJ deep links off Evergreen ID 15733324.
     Commission: 8%, 30-day cookie. Strong EPC ($13).
 
-    Smart selection (cap 2):
-    - RC/airsoft/drone profile → RC batteries + charger kit
-    - Kitchen/home profile → Life appliances + rechargeable
-    - General eco/gadget → rechargeable kit + charger kit
+    Smart selection (RC/hobby only — batteries are not gifts):
+    - RC/airsoft/drone profile → RC hobby batteries (only valid product remaining)
+    - All other interests → [] (kitchen appliances, charger kits removed Feb 25 2026
+      as non-gift category pages; rechargeable AA/AAA removed as too practical)
 
     Promo code THANKS = free ground shipping $50+ (lower 48 states only).
     """
@@ -1817,11 +1723,9 @@ def get_tenergy_products_for_profile(profile):
         return next((p for p in _TENERGY_ALL_PRODUCTS if p['product_id'] == pid), None)
 
     if is_rc_or_drone:
-        return [p for p in [_get('tenergy-rc-hobby'), _get('tenergy-charger-kit')] if p]
-    elif is_kitchen:
-        return [p for p in [_get('tenergy-life-appliances'), _get('tenergy-rechargeable')] if p]
+        return [p for p in [_get('tenergy-rc-hobby')] if p]
     else:
-        return [p for p in [_get('tenergy-rechargeable'), _get('tenergy-charger-kit')] if p]
+        return []
 
 
 # ---------------------------------------------------------------------------
@@ -2152,6 +2056,7 @@ _ZCHOCOLAT_ALL_PRODUCTS = [
         'image_url': '',
         'source_domain': 'zchocolat.com',
         'price': 'From $49.00',
+        # IMAGE: Could not find stable image URL — zchocolat.com blocked by Cloudflare
         'product_id': 'zchocolat-assortments',
         'search_query': 'gourmet chocolate gift',
         'interest_match': 'chocolate',
@@ -2173,6 +2078,7 @@ _ZCHOCOLAT_ALL_PRODUCTS = [
         'image_url': '',
         'source_domain': 'zchocolat.com',
         'price': 'From $49.00',
+        # IMAGE: Could not find stable image URL — zchocolat.com blocked by Cloudflare
         'product_id': 'zchocolat-personalized',
         'search_query': 'personalized chocolate gift',
         'interest_match': 'personalization',
@@ -2194,6 +2100,7 @@ _ZCHOCOLAT_ALL_PRODUCTS = [
         'image_url': '',
         'source_domain': 'zchocolat.com',
         'price': 'From $89.00',
+        # IMAGE: Could not find stable image URL — zchocolat.com blocked by Cloudflare
         'product_id': 'zchocolat-gold',
         'search_query': 'luxury chocolate gift',
         'interest_match': 'luxury',
@@ -2215,6 +2122,7 @@ _ZCHOCOLAT_ALL_PRODUCTS = [
         'image_url': '',
         'source_domain': 'zchocolat.com',
         'price': 'From $49.00',
+        # IMAGE: Could not find stable image URL — zchocolat.com blocked by Cloudflare
         'product_id': 'zchocolat-vegan',
         'search_query': 'vegan chocolate gift',
         'interest_match': 'vegan',
@@ -2236,6 +2144,7 @@ _ZCHOCOLAT_ALL_PRODUCTS = [
         'image_url': '',
         'source_domain': 'zchocolat.com',
         'price': 'From $49.00',
+        # IMAGE: Could not find stable image URL — zchocolat.com blocked by Cloudflare
         'product_id': 'zchocolat-home',
         'search_query': 'French chocolate gift',
         'interest_match': 'chocolate',

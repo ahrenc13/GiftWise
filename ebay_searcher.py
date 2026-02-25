@@ -130,12 +130,14 @@ def search_products_ebay(profile, client_id, client_secret, target_count=20):
         query = q["query"]
         interest = q["interest"]
         priority = q["priority"]
-        # Randomize offset so repeat runs surface different products
-        # Keep offset low — higher offsets cause 400 errors on narrow queries
+        # Randomize offset so repeat runs surface different products.
+        # IMPORTANT: eBay requires offset to be a multiple of limit — mismatched
+        # values (e.g. offset=5, limit=3) return 400 Bad Request.
+        limit = min(per_query, 50)
         params = {
             "q": query[:100],
-            "limit": min(per_query, 50),
-            "offset": random.choice([0, 0, 0, 0, 5]),
+            "limit": limit,
+            "offset": random.choice([0, 0, 0, 0, limit]),
             "filter": "conditionIds:{1000|1500},buyingOptions:{FIXED_PRICE}",  # New/Open Box, BuyItNow only (auctions have no price, bad for gifting)
         }
 

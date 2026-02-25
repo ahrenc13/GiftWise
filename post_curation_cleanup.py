@@ -600,6 +600,15 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
             # when the search query was a full artist/person name (e.g. "JD McPherson" → "McPherson T-Shirt")
             if not _is_query_relevant_to_product(p):
                 continue
+            # SONNET-FLAG: Replacement scoring awards +3 for unrepresented sources, which
+            # can cause irrelevant high-price items (e.g. an $800 electric scooter from an
+            # Awin vehicle feed) to outscore everything else by coming from a fresh domain.
+            # The upstream Awin price cap (AWIN_MAX_PRICE_USD=200) is a partial bandage.
+            # The correct fix here is to extend _is_query_relevant_to_product() with a
+            # price × interest-relevance gate: reject a replacement if price > ~$150 AND
+            # no meaningful word from interest_match appears in the product title.
+            # This is an Opus-only zone — see §"Pending Opus Tasks" in CLAUDE.md.
+
             # Prefer products that bring new brands, categories, and source diversity
             score = 0
             if brand and brand not in used_brands:

@@ -59,6 +59,13 @@ def _decompress_if_gzipped(data):
     return data
 
 
+# Max price for Awin products. Awin feeds include full product catalogs (not curated gift
+# lists), so high-ticket items like $800 scooters can sneak through on coincidental keyword
+# matches. Products over this threshold are dropped before entering the inventory pool.
+# Opus-tracked: a deeper fix in post_curation_cleanup.py will add an interest-relevance gate
+# to the replacement backfill. This cap is the upstream safety valve.
+AWIN_MAX_PRICE_USD = 200
+
 # In-memory cache: feed list and one feed's products. TTL 1 hour.
 _awin_feed_list_cache = {}
 _awin_feed_list_ts = 0
@@ -693,6 +700,22 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
         if all_products:
             feeds_used.append(first_feed.get("advertiser_name", "Awin"))
             logger.info("Awin fallback: took first %s products from %s", len(all_products), first_feed.get("advertiser_name"))
+
+    # Price filter: Awin feeds are full product catalogs, not gift-curated lists.
+    # Drop anything over AWIN_MAX_PRICE_USD before it reaches the inventory pool.
+    def _parse_price(price_str):
+        try:
+            return float(re.sub(r'[^\d.]', '', str(price_str)))
+        except (ValueError, TypeError):
+            return None
+
+    before = len(all_products)
+    all_products = [
+        p for p in all_products
+        if _parse_price(p.get("price", "")) is None or _parse_price(p.get("price", "")) <= AWIN_MAX_PRICE_USD
+    ]
+    if len(all_products) < before:
+        logger.info("Awin: removed %d overpriced items (>$%d)", before - len(all_products), AWIN_MAX_PRICE_USD)
 
     logger.info("Found %s Awin products from %s", len(all_products), ", ".join(feeds_used) or "Awin")
     return all_products[:target_count]

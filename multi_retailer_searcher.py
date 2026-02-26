@@ -1,6 +1,6 @@
 """
 MULTI-RETAILER PRODUCT ORCHESTRATOR
-Combines Etsy + Awin + eBay + ShareASale + Amazon
+Combines Etsy + Awin + eBay + ShareASale + Amazon + Skimlinks + CJ
 
 Strategy:
 - Build a large inventory from every available vendor (request target_count from each
@@ -11,10 +11,13 @@ Strategy:
   as the final list—no bypass, no "if one vendor filled the pool use it as-is."
 - Curator picks the best N from that pool—no forced vendor mix. If all 10 best fits
   are from Amazon (or one vendor), that's fine.
-Order: Etsy → Awin → eBay → ShareASale → Amazon.
+- Retailer searches run in PARALLEL via ThreadPoolExecutor. Total search time equals
+  the slowest single retailer, not their sum. Each retailer failure is isolated.
 """
 
+import concurrent.futures
 import logging
+import threading
 from collections import defaultdict
 
 logger = logging.getLogger(__name__)
@@ -112,6 +115,7 @@ def search_products_multi_retailer(
     # Curator will pick the best N; if they're all from one vendor, that's fine.
     per_vendor_target = min(target_count, MAX_INVENTORY_SIZE // 5)  # so 5 vendors don't exceed MAX
 
+    # _notify is called from worker threads — keep it lightweight and exception-safe.
     def _notify(retailer, count=None, searching=False, done=False, skipped=False):
         if progress_callback:
             try:
@@ -119,181 +123,129 @@ def search_products_multi_retailer(
             except Exception:
                 pass
 
-    # 1. Etsy
-    if etsy_key:
-        try:
-            from etsy_searcher import search_products_etsy
+    # Build the list of (name, callable) pairs for each enabled retailer.
+    # Each callable captures its credentials via closure and returns a product list.
+    # Failures are isolated — one retailer timing out doesn't block the others.
+    retailer_tasks = []
 
+    if etsy_key:
+        def _run_etsy():
+            from etsy_searcher import search_products_etsy
             _notify('Etsy', searching=True)
-            logger.info(f"Searching Etsy for {per_vendor_target} products...")
-            etsy_products = search_products_etsy(
-                profile, etsy_key, target_count=per_vendor_target
-            )
-            all_products.extend(etsy_products)
-            logger.info(f"Got {len(etsy_products)} products from Etsy")
-            _notify('Etsy', count=len(etsy_products), done=True)
-        except ImportError as e:
-            logger.warning(f"etsy_searcher not available: {e}")
-            _notify('Etsy', skipped=True)
-        except Exception as e:
-            logger.error(f"Etsy search failed: {e}")
-            _notify('Etsy', count=0, done=True)
+            products = search_products_etsy(profile, etsy_key, target_count=per_vendor_target)
+            _notify('Etsy', count=len(products), done=True)
+            return 'Etsy', products
+        retailer_tasks.append(_run_etsy)
     else:
         logger.info("Etsy API key not set - skipping Etsy")
 
-    # 2. Awin
     if awin_data_feed_api_key:
-        try:
+        def _run_awin():
             from awin_searcher import search_products_awin
-
             _notify('Awin', searching=True)
-            logger.info(f"Searching Awin for {per_vendor_target} products...")
-            awin_products = search_products_awin(
-                profile,
-                awin_data_feed_api_key,
+            products = search_products_awin(
+                profile, awin_data_feed_api_key,
                 target_count=per_vendor_target,
                 enhanced_search_terms=enhanced_search_terms,
             )
-            all_products.extend(awin_products)
-            logger.info(f"Got {len(awin_products)} products from Awin")
-            _notify('Awin', count=len(awin_products), done=True)
-        except ImportError as e:
-            logger.warning(f"awin_searcher not available: {e}")
-            _notify('Awin', skipped=True)
-        except Exception as e:
-            logger.error(f"Awin search failed: {e}")
-            _notify('Awin', count=0, done=True)
+            _notify('Awin', count=len(products), done=True)
+            return 'Awin', products
+        retailer_tasks.append(_run_awin)
     else:
         logger.info("Awin data feed API key not set - skipping Awin")
 
-    # 3. eBay
     if ebay_client_id and ebay_client_secret:
-        try:
+        def _run_ebay():
             from ebay_searcher import search_products_ebay
-
             _notify('eBay', searching=True)
-            logger.info(f"Searching eBay for {per_vendor_target} products...")
-            ebay_products = search_products_ebay(
-                profile,
-                ebay_client_id,
-                ebay_client_secret,
+            products = search_products_ebay(
+                profile, ebay_client_id, ebay_client_secret,
                 target_count=per_vendor_target,
             )
-            all_products.extend(ebay_products)
-            logger.info(f"Got {len(ebay_products)} products from eBay")
-            _notify('eBay', count=len(ebay_products), done=True)
-        except ImportError as e:
-            logger.warning(f"ebay_searcher not available: {e}")
-            _notify('eBay', skipped=True)
-        except Exception as e:
-            logger.error(f"eBay search failed: {e}")
-            _notify('eBay', count=0, done=True)
+            _notify('eBay', count=len(products), done=True)
+            return 'eBay', products
+        retailer_tasks.append(_run_ebay)
     else:
         logger.info("eBay credentials not set - skipping eBay")
 
-    # 4. ShareASale
     if all([shareasale_id, shareasale_token, shareasale_secret]):
-        try:
+        def _run_shareasale():
             from affiliate_searcher import search_products_shareasale
-
             _notify('ShareASale', searching=True)
-            logger.info(f"Searching ShareASale for {per_vendor_target} products...")
-            shareasale_products = search_products_shareasale(
-                profile,
-                shareasale_id,
-                shareasale_token,
-                shareasale_secret,
+            products = search_products_shareasale(
+                profile, shareasale_id, shareasale_token, shareasale_secret,
                 target_count=per_vendor_target,
             )
-            all_products.extend(shareasale_products)
-            logger.info(f"Got {len(shareasale_products)} products from ShareASale")
-            _notify('ShareASale', count=len(shareasale_products), done=True)
-        except ImportError as e:
-            logger.warning(f"affiliate_searcher not available: {e}")
-            _notify('ShareASale', skipped=True)
-        except Exception as e:
-            logger.error(f"ShareASale search failed: {e}")
-            _notify('ShareASale', count=0, done=True)
+            _notify('ShareASale', count=len(products), done=True)
+            return 'ShareASale', products
+        retailer_tasks.append(_run_shareasale)
     else:
         logger.info("ShareASale credentials not set - skipping ShareASale")
 
-    # 5. Skimlinks (aggregated: 48,500+ merchants across 50+ affiliate networks)
     if skimlinks_publisher_id:
-        try:
+        def _run_skimlinks():
             from skimlinks_searcher import search_products_skimlinks
-
             _notify('Skimlinks', searching=True)
-            logger.info(f"Searching Skimlinks for {per_vendor_target} products...")
-            skimlinks_products = search_products_skimlinks(
-                profile,
-                skimlinks_publisher_id,
-                skimlinks_client_id,
-                skimlinks_client_secret,
-                skimlinks_domain_id,
+            products = search_products_skimlinks(
+                profile, skimlinks_publisher_id,
+                skimlinks_client_id, skimlinks_client_secret, skimlinks_domain_id,
                 target_count=per_vendor_target,
                 enhanced_search_terms=enhanced_search_terms,
             )
-            all_products.extend(skimlinks_products)
-            logger.info(f"Got {len(skimlinks_products)} products from Skimlinks")
-            _notify('Skimlinks', count=len(skimlinks_products), done=True)
-        except ImportError as e:
-            logger.warning(f"skimlinks_searcher not available: {e}")
-            _notify('Skimlinks', skipped=True)
-        except Exception as e:
-            logger.error(f"Skimlinks search failed: {e}")
-            _notify('Skimlinks', count=0, done=True)
+            _notify('Skimlinks', count=len(products), done=True)
+            return 'Skimlinks', products
+        retailer_tasks.append(_run_skimlinks)
     else:
         logger.info("Skimlinks credentials not set - skipping Skimlinks")
 
-    # 6. CJ Affiliate
     if cj_api_key:
-        try:
+        def _run_cj():
             from cj_searcher import search_products_cj
-
             _notify('CJ Affiliate', searching=True)
-            logger.info(f"Searching CJ Affiliate for {per_vendor_target} products...")
-            cj_products = search_products_cj(
-                profile,
-                cj_api_key,
+            products = search_products_cj(
+                profile, cj_api_key,
                 company_id=cj_company_id,
                 publisher_id=cj_publisher_id,
                 target_count=per_vendor_target,
                 enhanced_search_terms=enhanced_search_terms,
-                joined_only=False  # Search all CJ advertisers
+                joined_only=False,
             )
-            all_products.extend(cj_products)
-            logger.info(f"Got {len(cj_products)} products from CJ Affiliate")
-            _notify('CJ Affiliate', count=len(cj_products), done=True)
-        except ImportError as e:
-            logger.warning(f"cj_searcher not available: {e}")
-            _notify('CJ Affiliate', skipped=True)
-        except Exception as e:
-            logger.error(f"CJ Affiliate search failed: {e}")
-            _notify('CJ Affiliate', count=0, done=True)
+            _notify('CJ Affiliate', count=len(products), done=True)
+            return 'CJ Affiliate', products
+        retailer_tasks.append(_run_cj)
     else:
         logger.info("CJ Affiliate credentials not set - skipping CJ")
 
-    # 7. Amazon
     if amazon_key:
-        try:
+        def _run_amazon():
             from rapidapi_amazon_searcher import search_products_rapidapi_amazon
-
             _notify('Amazon', searching=True)
-            logger.info(f"Searching Amazon for {per_vendor_target} products...")
-            amazon_products = search_products_rapidapi_amazon(
-                profile, amazon_key, target_count=per_vendor_target
-            )
-            all_products.extend(amazon_products)
-            logger.info(f"Got {len(amazon_products)} products from Amazon")
-            _notify('Amazon', count=len(amazon_products), done=True)
-        except ImportError:
-            logger.warning("rapidapi_amazon_searcher not found - Amazon skipped")
-            _notify('Amazon', skipped=True)
-        except Exception as e:
-            logger.error(f"Amazon search failed: {e}")
-            _notify('Amazon', count=0, done=True)
+            products = search_products_rapidapi_amazon(profile, amazon_key, target_count=per_vendor_target)
+            _notify('Amazon', count=len(products), done=True)
+            return 'Amazon', products
+        retailer_tasks.append(_run_amazon)
     else:
         logger.info("Amazon key not set - skipping Amazon")
+
+    # Run all retailer searches in parallel. Total wall-clock time = slowest single
+    # retailer rather than the sum of all retailers. Each is independently isolated:
+    # a timeout or exception in one does not affect the others.
+    if retailer_tasks:
+        logger.info(f"Launching {len(retailer_tasks)} retailer searches in parallel")
+        with concurrent.futures.ThreadPoolExecutor(max_workers=len(retailer_tasks)) as executor:
+            futures = {executor.submit(task): task.__name__ for task in retailer_tasks}
+            for future in concurrent.futures.as_completed(futures, timeout=90):
+                task_name = futures[future]
+                try:
+                    retailer_name, products = future.result()
+                    all_products.extend(products)
+                    logger.info(f"Got {len(products)} products from {retailer_name}")
+                except ImportError as e:
+                    logger.warning(f"{task_name} module not available: {e}")
+                except concurrent.futures.TimeoutError:
+                    logger.error(f"{task_name} timed out after 90s")
+                except Exception as e:
+                    logger.error(f"{task_name} failed: {e}")
 
     # Interleave products by source so no single vendor dominates early positions
     if len(all_products) > 1:

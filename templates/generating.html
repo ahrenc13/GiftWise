@@ -1,41 +1,97 @@
 {% extends "base.html" %}
 
-{% block title %}Generating Recommendations - Giftwise{% endblock %}
+{% block title %}Finding Gifts - Giftwise{% endblock %}
 
 {% block extra_css %}
-.container {
+        .container {
             text-align: center;
             max-width: 640px;
             width: 100%;
             padding: 32px 24px;
         }
 
-        .logo {
-            font-size: 3.5em;
-            margin-bottom: 16px;
-            animation: bounce 2s infinite;
+        /* ── Quote section ─────────────────────────────────────────────── */
+        .quote-wrap {
+            margin-bottom: 28px;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
         }
 
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-15px); }
+        .quote-text {
+            font-size: 1.15em;
+            font-style: italic;
+            line-height: 1.55;
+            opacity: 0;
+            max-width: 520px;
+            transition: opacity 0.7s ease;
         }
 
-        h1 { font-size: 1.8em; margin-bottom: 8px; font-weight: 700; }
+        .quote-text.visible { opacity: 1; }
+
+        .quote-author {
+            font-size: 0.8em;
+            opacity: 0;
+            margin-top: 8px;
+            letter-spacing: 0.3px;
+            transition: opacity 0.7s ease 0.15s;
+        }
+
+        .quote-author.visible { opacity: 0.6; }
+
+        .quote-dots {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            margin-top: 14px;
+        }
+
+        .quote-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.35);
+            transition: background 0.4s;
+        }
+
+        .quote-dot.active { background: rgba(255,255,255,0.9); }
+
+        /* ── Ring spinner ──────────────────────────────────────────────── */
+        .spinner-wrap {
+            margin-bottom: 18px;
+        }
+
+        .ring-spinner {
+            width: 52px;
+            height: 52px;
+            margin: 0 auto;
+            border-radius: 50%;
+            border: 4px solid rgba(255,255,255,0.18);
+            border-top-color: rgba(255,255,255,0.9);
+            animation: spin 0.85s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        h1 { font-size: 1.8em; margin: 0 0 6px; font-weight: 700; }
 
         .subtitle {
-            font-size: 1.1em;
-            opacity: 0.85;
-            margin-bottom: 28px;
+            font-size: 1.05em;
+            opacity: 0.8;
+            margin-bottom: 26px;
         }
 
-        /* Pipeline steps */
+        /* ── Pipeline steps ────────────────────────────────────────────── */
         .pipeline {
             background: rgba(255,255,255,0.1);
             backdrop-filter: blur(10px);
             border-radius: 16px;
-            padding: 24px;
-            margin-bottom: 24px;
+            padding: 22px 24px;
+            margin-bottom: 22px;
             text-align: left;
         }
 
@@ -43,13 +99,13 @@
             display: flex;
             align-items: center;
             gap: 14px;
-            padding: 12px 0;
-            opacity: 0.45;
+            padding: 11px 0;
+            opacity: 0.4;
             transition: opacity 0.4s ease;
         }
 
         .step.active { opacity: 1; }
-        .step.done { opacity: 0.75; }
+        .step.done   { opacity: 0.72; }
 
         .step-icon {
             width: 32px;
@@ -69,37 +125,23 @@
             animation: pulse-icon 1.5s infinite;
         }
 
-        .step.done .step-icon {
-            background: rgba(76, 175, 80, 0.6);
-        }
+        .step.done .step-icon { background: rgba(76,175,80,0.65); }
 
         @keyframes pulse-icon {
             0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.15); }
+            50%       { transform: scale(1.15); }
         }
 
-        .step-label {
-            font-size: 0.95em;
-            font-weight: 500;
-        }
+        .step-label  { font-size: 0.95em; font-weight: 500; }
+        .step-detail { font-size: 0.8em; opacity: 0.7; margin-top: 2px; }
 
-        .step-detail {
-            font-size: 0.8em;
-            opacity: 0.7;
-            margin-top: 2px;
-        }
-
-        /* Interest tags */
-        .interests-reveal {
-            margin-top: 20px;
-            display: none;
-        }
-
+        /* ── Interest tags ─────────────────────────────────────────────── */
+        .interests-reveal { margin-top: 18px; display: none; }
         .interests-reveal.visible { display: block; }
 
         .interests-reveal h4 {
-            font-size: 0.85em;
-            opacity: 0.7;
+            font-size: 0.8em;
+            opacity: 0.65;
             margin-bottom: 10px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -114,9 +156,9 @@
 
         .interest-tag {
             background: rgba(255,255,255,0.18);
-            padding: 6px 14px;
+            padding: 5px 13px;
             border-radius: 20px;
-            font-size: 0.85em;
+            font-size: 0.84em;
             opacity: 0;
             transform: translateY(10px) scale(0.9);
             animation: tagReveal 0.4s ease forwards;
@@ -126,12 +168,8 @@
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
 
-        /* Retailer search progress */
-        .retailers-progress {
-            margin-top: 16px;
-            display: none;
-        }
-
+        /* ── Retailer rows ─────────────────────────────────────────────── */
+        .retailers-progress { margin-top: 14px; display: none; }
         .retailers-progress.visible { display: block; }
 
         .retailer-row {
@@ -142,7 +180,7 @@
             margin: 4px 0;
             background: rgba(255,255,255,0.08);
             border-radius: 8px;
-            font-size: 0.88em;
+            font-size: 0.87em;
         }
 
         .retailer-name { font-weight: 500; }
@@ -151,492 +189,488 @@
             display: flex;
             align-items: center;
             gap: 6px;
-            font-size: 0.85em;
+            font-size: 0.84em;
             opacity: 0.8;
         }
 
-        .retailer-status .dot {
+        .dot {
             width: 8px;
             height: 8px;
             border-radius: 50%;
             display: inline-block;
         }
 
-        .dot.searching {
-            background: #ffd700;
-            animation: blink 1s infinite;
-        }
-
-        .dot.done { background: #4caf50; }
-        .dot.skipped { background: rgba(255,255,255,0.3); }
+        .dot.searching { background: #ffd700; animation: blink 0.9s infinite; }
+        .dot.done      { background: #4caf50; }
+        .dot.skipped   { background: rgba(255,255,255,0.25); }
 
         @keyframes blink {
             0%, 100% { opacity: 1; }
-            50% { opacity: 0.3; }
+            50%       { opacity: 0.25; }
         }
 
-        /* Product counter */
-        .product-counter {
-            display: none;
-            margin-top: 16px;
-            font-size: 1.3em;
-            font-weight: 700;
-        }
-
+        /* ── Product counter ───────────────────────────────────────────── */
+        .product-counter { display: none; margin-top: 14px; font-size: 1.2em; font-weight: 700; }
         .product-counter.visible { display: block; }
+        .product-counter .count { font-size: 1.5em; display: inline-block; min-width: 36px; }
 
-        .product-counter .count {
-            font-size: 1.6em;
-            display: inline-block;
-            min-width: 40px;
-        }
-
-        /* Progress bar */
+        /* ── Progress bar ──────────────────────────────────────────────── */
         .progress-bar-container {
             width: 100%;
-            height: 6px;
+            height: 5px;
             background: rgba(255,255,255,0.15);
             border-radius: 10px;
             overflow: hidden;
-            margin: 20px 0 12px;
+            margin: 20px 0 10px;
         }
 
         .progress-bar {
             height: 100%;
-            background: white;
+            background: rgba(255,255,255,0.9);
             border-radius: 10px;
-            transition: width 0.8s ease;
+            /* CSS transition drives smooth forward movement */
+            transition: width 1.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
             width: 0%;
         }
 
-        .progress-bar.indeterminate {
-            width: 100% !important;
-            background: linear-gradient(90deg,
-                rgba(255,255,255,0.2) 0%,
-                rgba(255,255,255,0.7) 50%,
-                rgba(255,255,255,0.2) 100%);
-            background-size: 200% 100%;
-            animation: shimmer 2s linear infinite;
-        }
-
-        @keyframes shimmer {
-            0% { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
-        }
-
-        /* Status and quotes */
+        /* ── Status / fun-fact ─────────────────────────────────────────── */
         .status-message {
-            font-size: 1em;
-            opacity: 0.85;
+            font-size: 0.97em;
+            opacity: 0.82;
             min-height: 1.4em;
-            transition: opacity 0.3s;
+            transition: opacity 0.35s;
         }
+
+        .warning-message { color: #ffd700; font-weight: 600; }
 
         .fun-fact {
-            font-size: 0.88em;
+            font-size: 0.85em;
             opacity: 0;
             font-style: italic;
-            margin-top: 14px;
-            min-height: 2.4em;
+            margin-top: 12px;
+            min-height: 2.2em;
             transition: opacity 0.5s ease;
-            line-height: 1.4;
+            line-height: 1.45;
         }
 
-        .fun-fact.visible { opacity: 0.6; }
-
-        .warning-message {
-            color: #ffd700;
-            font-weight: 600;
-        }
-
-        /* Gift-giving tips section */
-        .tip-card {
-            display: none;
-            background: rgba(255,255,255,0.08);
-            border-radius: 12px;
-            padding: 16px 20px;
-            margin-top: 20px;
-            text-align: left;
-            font-size: 0.88em;
-            line-height: 1.5;
-        }
-
-        .tip-card.visible { display: block; }
-
-        .tip-card .tip-label {
-            font-weight: 700;
-            font-size: 0.75em;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            opacity: 0.7;
-            margin-bottom: 6px;
-        }
+        .fun-fact.visible { opacity: 0.55; }
 {% endblock %}
 
 {% block content %}
 <div class="container">
-        <div class="logo">🎁</div>
-        <h1 id="mainTitle">Finding the Perfect Gifts...</h1>
-        <p class="subtitle" id="subtitle">This takes a few minutes, but it's worth the wait.</p>
 
-        <div class="pipeline">
-            <div class="step active" id="step-profile">
-                <div class="step-icon">1</div>
-                <div>
-                    <div class="step-label">Analyzing personality profile</div>
-                    <div class="step-detail" id="step-profile-detail">{% if recipient_type == 'myself' %}Mapping your interests, habits, and personal style...{% else %}Mapping their interests, habits, and personal style...{% endif %}</div>
-                </div>
-            </div>
-            <div class="step" id="step-search">
-                <div class="step-icon">2</div>
-                <div>
-                    <div class="step-label">Searching stores</div>
-                    <div class="step-detail" id="step-search-detail">Scanning stores for the best matches...</div>
-                </div>
-            </div>
-            <div class="step" id="step-curate">
-                <div class="step-icon">3</div>
-                <div>
-                    <div class="step-label">AI gift curation</div>
-                    <div class="step-detail" id="step-curate-detail">Picking the best matches...</div>
-                </div>
-            </div>
-            <div class="step" id="step-finish">
-                <div class="step-icon">4</div>
-                <div>
-                    <div class="step-label">Final touches</div>
-                    <div class="step-detail" id="step-finish-detail">Validating links and images...</div>
-                </div>
-            </div>
+    <!-- Rotating gift-research quotes -->
+    <div class="quote-wrap">
+        <p class="quote-text" id="quoteText"></p>
+        <p class="quote-author" id="quoteAuthor"></p>
+        <div class="quote-dots" id="quoteDots"></div>
+    </div>
 
-            <!-- Interest tags appear after profile analysis -->
-            <div class="interests-reveal" id="interestsReveal">
-                <h4>Interests Discovered</h4>
-                <div class="interest-tags" id="interestTags"></div>
+    <!-- Ring spinner + title -->
+    <div class="spinner-wrap">
+        <div class="ring-spinner" id="ringSpinner"></div>
+    </div>
+
+    <h1 id="mainTitle">Finding the Perfect Gifts…</h1>
+    <p class="subtitle" id="subtitle">{% if recipient_type == 'myself' %}This takes a couple of minutes. Worth it.{% else %}Give us a couple of minutes. We'll make it count.{% endif %}</p>
+
+    <!-- Pipeline -->
+    <div class="pipeline">
+        <div class="step active" id="step-profile">
+            <div class="step-icon">1</div>
+            <div>
+                <div class="step-label">Analyzing personality profile</div>
+                <div class="step-detail" id="step-profile-detail">{% if recipient_type == 'myself' %}Mapping your interests, habits, and personal style…{% else %}Mapping their interests, habits, and personal style…{% endif %}</div>
             </div>
-
-            <!-- Per-retailer search progress -->
-            <div class="retailers-progress" id="retailersProgress"></div>
-
-            <!-- Live product counter -->
-            <div class="product-counter" id="productCounter">
-                <span class="count" id="productCount">0</span> products found
+        </div>
+        <div class="step" id="step-search">
+            <div class="step-icon">2</div>
+            <div>
+                <div class="step-label">Searching stores</div>
+                <div class="step-detail" id="step-search-detail">Scanning stores simultaneously for the best matches…</div>
+            </div>
+        </div>
+        <div class="step" id="step-curate">
+            <div class="step-icon">3</div>
+            <div>
+                <div class="step-label">Handpicking gifts</div>
+                <div class="step-detail" id="step-curate-detail">Picking the best matches for this specific person…</div>
+            </div>
+        </div>
+        <div class="step" id="step-finish">
+            <div class="step-icon">4</div>
+            <div>
+                <div class="step-label">Final touches</div>
+                <div class="step-detail" id="step-finish-detail">Validating links and images…</div>
             </div>
         </div>
 
-        <div class="progress-bar-container">
-            <div class="progress-bar indeterminate" id="progressBar"></div>
+        <!-- Interest tags appear after profile analysis -->
+        <div class="interests-reveal" id="interestsReveal">
+            <h4>Interests Discovered</h4>
+            <div class="interest-tags" id="interestTags"></div>
         </div>
 
-        <p class="status-message" id="statusMessage">Getting started...</p>
-        <p class="fun-fact" id="funFact"></p>
+        <!-- Per-retailer search progress -->
+        <div class="retailers-progress" id="retailersProgress"></div>
 
-        <div class="tip-card" id="tipCard">
-            <div class="tip-label">Did you know?</div>
-            <div id="tipContent"></div>
+        <!-- Live product counter -->
+        <div class="product-counter" id="productCounter">
+            <span class="count" id="productCount">0</span> products found so far
         </div>
     </div>
 
-    <script>
-        (function() {
-            'use strict';
+    <!-- Progress bar — driven forward by actual pipeline stages, not just shimmer -->
+    <div class="progress-bar-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
 
-            const recipientType = '{{ recipient_type }}';
-            const pronoun = recipientType === 'someone_else' ? 'their' : 'your';
-            const they = recipientType === 'someone_else' ? 'they' : 'you';
+    <p class="status-message" id="statusMessage">Getting started…</p>
+    <p class="fun-fact" id="funFact"></p>
 
-            // Fun facts and tips that rotate during the wait
-            const funFacts = [
-                'The average person spends 15 hours shopping for holiday gifts. We do it in minutes.',
-                'Personalized gifts are 2x more likely to be kept and cherished.',
-                'The best gifts show you pay attention \u2014 that\'s exactly what we\'re doing right now.',
-                'Studies show experiences create stronger memories than material gifts.',
-                '68% of people say they\'d rather receive a thoughtful gift than an expensive one.',
-                'We\'re searching stores most people don\'t even know about.',
-                'Each recommendation is backed by real social media analysis \u2014 no generic suggestions.',
-                'Gift-giving activates the same brain regions as receiving gifts.',
-                'A well-chosen $20 gift beats a generic $100 one every time.',
-                'We analyze posting patterns, not just what they say \u2014 actions reveal interests.',
-            ];
+</div>
 
-            const tips = [
-                'Gifts that reference an inside joke or shared memory feel the most personal.',
-                'Experience gifts (concerts, classes, trips) create lasting memories.',
-                'Don\'t overthink price \u2014 the thought behind the gift matters most.',
-                'Wrapping matters: a beautifully wrapped small gift beats a big gift in a bag.',
-                'Add a handwritten note explaining why you chose it. That\'s the real gift.',
-            ];
+<script>
+    (function() {
+        'use strict';
 
-            // State
-            const state = {
-                lastStage: '',
-                interestsShown: false,
-                factIndex: Math.floor(Math.random() * funFacts.length),
-                tipIndex: Math.floor(Math.random() * tips.length),
-                tipShown: false,
-                startTime: Date.now(),
-                complete: false,
-            };
+        const recipientType = '{{ recipient_type }}';
 
-            const $ = id => document.getElementById(id);
+        // ── Gift-research quotes ──────────────────────────────────────────
+        const quotes = [
+            { text: "The manner of giving is worth more than the gift.", author: "— Pierre Corneille" },
+            { text: "A gift consists not in what is done or given, but in the intention of the giver.", author: "— Seneca" },
+            { text: "People who spend money on others report higher happiness than those who spend only on themselves.", author: "— Harvard Business School" },
+            { text: "The best gift shows someone you were paying attention.", author: "" },
+            { text: "We remember how a gift made us feel far longer than what it cost.", author: "— Psychology of Giving" },
+            { text: "Thoughtful gifts strengthen relationships more than expensive ones.", author: "— Journal of Consumer Research" },
+            { text: "Giving a gift activates the same reward centers in the brain as receiving one.", author: "— Neuroscience research" },
+            { text: "Gift-giving is one of the few behaviors found in every human culture on earth.", author: "— Anthropology Today" },
+            { text: "68% of people say they'd rather receive a thoughtful gift than an expensive one.", author: "— Gift-giving survey" },
+            { text: "The act of choosing a gift forces us to think carefully about who someone really is.", author: "" },
+        ];
 
-            function setStepState(stepId, newState) {
-                const el = $(stepId);
-                if (!el) return;
-                el.classList.remove('active', 'done');
-                if (newState) el.classList.add(newState);
-            }
+        // ── Minor facts for the bottom ticker ────────────────────────────
+        const funFacts = [
+            'We're searching stores most people never think to look.',
+            'Personalized gifts are 2× more likely to be kept and cherished.',
+            'Each recommendation is tied to real interests, not generic best-sellers.',
+            'We analyze posting patterns — actions reveal interests that words don't.',
+            'A well-chosen $20 gift beats a generic $100 one every time.',
+        ];
 
-            function fadeText(el, text) {
-                if (!el || el.textContent === text) return;
-                el.style.opacity = '0';
-                setTimeout(() => {
-                    el.textContent = text;
-                    el.style.opacity = '';
-                }, 300);
-            }
+        // ── Progress targets per pipeline stage ───────────────────────────
+        // The bar moves forward deterministically as stages arrive, plus a
+        // slow background drift so it never looks frozen.
+        const STAGE_TARGETS = {
+            starting:             4,
+            profile_analysis:    18,
+            profile_done:        30,
+            searching_retailers: 52,
+            filtering:           64,
+            curating:            80,
+            cleanup:             91,
+            images:              95,
+            complete:           100,
+        };
 
-            function showInterests(interests) {
-                if (state.interestsShown || !interests || interests.length === 0) return;
-                state.interestsShown = true;
-                const container = $('interestsReveal');
-                const tags = $('interestTags');
-                if (!container || !tags) return;
-                container.classList.add('visible');
-                interests.forEach((name, i) => {
-                    setTimeout(() => {
-                        const tag = document.createElement('span');
-                        tag.className = 'interest-tag';
-                        tag.textContent = name;
-                        tag.style.animationDelay = (i * 0.08) + 's';
-                        tags.appendChild(tag);
-                    }, i * 120);
+        // ── State ─────────────────────────────────────────────────────────
+        const state = {
+            lastStage:      '',
+            interestsShown: false,
+            factIndex:      Math.floor(Math.random() * funFacts.length),
+            quoteIndex:     Math.floor(Math.random() * quotes.length),
+            startTime:      Date.now(),
+            complete:       false,
+            progress:       0,   // current bar %
+        };
+
+        const $ = id => document.getElementById(id);
+
+        // ── Quote rotation ────────────────────────────────────────────────
+        const dots = $('quoteDots');
+        quotes.forEach((_, i) => {
+            const d = document.createElement('span');
+            d.className = 'quote-dot' + (i === state.quoteIndex ? ' active' : '');
+            dots.appendChild(d);
+        });
+
+        function showQuote(index) {
+            const qt = $('quoteText');
+            const qa = $('quoteAuthor');
+            qt.classList.remove('visible');
+            qa.classList.remove('visible');
+            setTimeout(() => {
+                qt.textContent = '\u201c' + quotes[index].text + '\u201d';
+                qa.textContent = quotes[index].author;
+                qt.classList.add('visible');
+                if (quotes[index].author) qa.classList.add('visible');
+                // Update dots
+                Array.from(dots.children).forEach((d, i) => {
+                    d.classList.toggle('active', i === index);
                 });
+            }, 350);
+        }
+
+        function rotateQuote() {
+            if (state.complete) return;
+            state.quoteIndex = (state.quoteIndex + 1) % quotes.length;
+            showQuote(state.quoteIndex);
+        }
+
+        // Show first quote right away
+        showQuote(state.quoteIndex);
+        setInterval(rotateQuote, 14000);
+
+        // ── Fun fact ticker ───────────────────────────────────────────────
+        function rotateFunFact() {
+            if (state.complete) return;
+            const el = $('funFact');
+            if (!el) return;
+            el.classList.remove('visible');
+            setTimeout(() => {
+                el.textContent = funFacts[state.factIndex % funFacts.length];
+                el.classList.add('visible');
+                state.factIndex++;
+            }, 400);
+        }
+
+        setTimeout(rotateFunFact, 4000);
+        setInterval(rotateFunFact, 11000);
+
+        // ── Progress bar ──────────────────────────────────────────────────
+        const bar = $('progressBar');
+
+        function setProgress(pct) {
+            if (pct <= state.progress) return;
+            state.progress = pct;
+            bar.style.width = pct + '%';
+        }
+
+        // Slow background drift — keeps bar moving even between poll responses
+        setInterval(() => {
+            if (!state.complete && state.progress < 88) {
+                setProgress(state.progress + 0.4);
             }
+        }, 1200);
 
-            function updateRetailers(retailers) {
-                const container = $('retailersProgress');
-                if (!container || !retailers || Object.keys(retailers).length === 0) return;
-                container.classList.add('visible');
+        // Kick bar off the zero line immediately
+        setTimeout(() => setProgress(3), 300);
 
-                // Build/update retailer rows
-                // Map internal retailer names to customer-friendly labels
-                const retailerDisplay = {
-                    'Etsy': { icon: '🛍️', label: 'Etsy' },
-                    'Awin': { icon: '🏷️', label: 'Specialty Brands' },
-                    'CJ': { icon: '🏷️', label: 'Specialty Brands' },
-                    'eBay': { icon: '📦', label: 'eBay' },
-                    'Amazon': { icon: '📱', label: 'Amazon' },
-                    'ShareASale': { icon: '🏪', label: 'Partner Stores' },
-                };
+        // ── Pipeline step helpers ─────────────────────────────────────────
+        function setStepState(stepId, newState) {
+            const el = $(stepId);
+            if (!el) return;
+            el.classList.remove('active', 'done');
+            if (newState) el.classList.add(newState);
+        }
 
-                // Merge retailers that share a display label before rendering
-                const merged = {};
-                for (const [name, info] of Object.entries(retailers)) {
-                    const display = retailerDisplay[name] || { icon: '🏬', label: name };
-                    const key = display.label;
-                    if (!merged[key]) {
-                        merged[key] = { icon: display.icon, label: display.label, status: info.status, count: info.count || 0 };
-                    } else {
-                        // Combine counts; if either is still searching, show searching
-                        merged[key].count += (info.count || 0);
-                        if (info.status === 'searching') merged[key].status = 'searching';
-                    }
-                }
+        function fadeText(el, text) {
+            if (!el || el.textContent === text) return;
+            el.style.opacity = '0';
+            setTimeout(() => { el.textContent = text; el.style.opacity = ''; }, 300);
+        }
 
-                let html = '';
-                for (const [label, info] of Object.entries(merged)) {
-                    // Skip done rows with zero results — no reason to show users an empty bucket
-                    if (info.status === 'done' && info.count === 0) continue;
-                    if (info.status === 'skipped') continue;
-
-                    let statusHtml = '';
-                    if (info.status === 'searching') {
-                        statusHtml = '<span class="dot searching"></span> Searching...';
-                    } else if (info.status === 'done') {
-                        statusHtml = '<span class="dot done"></span> ' + info.count + ' found';
-                    }
-                    html += '<div class="retailer-row">' +
-                            '<span class="retailer-name">' + info.icon + ' ' + info.label + '</span>' +
-                            '<span class="retailer-status">' + statusHtml + '</span>' +
-                            '</div>';
-                }
-                container.innerHTML = html;
-            }
-
-            function updateProductCount(count) {
-                const counter = $('productCounter');
-                const countEl = $('productCount');
-                if (!counter || !countEl || count <= 0) return;
-                counter.classList.add('visible');
-                countEl.textContent = count;
-            }
-
-            function rotateFunFact() {
-                if (state.complete) return;
-                const el = $('funFact');
-                if (!el) return;
-                el.classList.remove('visible');
+        // ── Interest tags ─────────────────────────────────────────────────
+        function showInterests(interests) {
+            if (state.interestsShown || !interests || !interests.length) return;
+            state.interestsShown = true;
+            const container = $('interestsReveal');
+            const tags      = $('interestTags');
+            if (!container || !tags) return;
+            container.classList.add('visible');
+            interests.forEach((name, i) => {
                 setTimeout(() => {
-                    el.textContent = funFacts[state.factIndex % funFacts.length];
-                    el.classList.add('visible');
-                    state.factIndex++;
-                }, 400);
+                    const tag = document.createElement('span');
+                    tag.className = 'interest-tag';
+                    tag.textContent = name;
+                    tag.style.animationDelay = (i * 0.08) + 's';
+                    tags.appendChild(tag);
+                }, i * 110);
+            });
+        }
+
+        // ── Retailer progress rows ────────────────────────────────────────
+        const retailerDisplay = {
+            'Etsy':         { icon: '🛍️', label: 'Etsy' },
+            'Awin':         { icon: '🏷️', label: 'Specialty Brands' },
+            'CJ Affiliate': { icon: '🏷️', label: 'Specialty Brands' },
+            'eBay':         { icon: '📦', label: 'eBay' },
+            'Amazon':       { icon: '📱', label: 'Amazon' },
+            'ShareASale':   { icon: '🏪', label: 'Partner Stores' },
+            'Skimlinks':    { icon: '🏬', label: 'Partner Stores' },
+        };
+
+        function updateRetailers(retailers) {
+            const container = $('retailersProgress');
+            if (!container || !retailers || !Object.keys(retailers).length) return;
+            container.classList.add('visible');
+
+            // Merge retailers sharing a display label
+            const merged = {};
+            for (const [name, info] of Object.entries(retailers)) {
+                const display = retailerDisplay[name] || { icon: '🏬', label: name };
+                const key = display.label;
+                if (!merged[key]) {
+                    merged[key] = { icon: display.icon, label: display.label, status: info.status, count: info.count || 0 };
+                } else {
+                    merged[key].count += (info.count || 0);
+                    if (info.status === 'searching') merged[key].status = 'searching';
+                }
             }
 
-            function showTip() {
-                if (state.tipShown) return;
-                const elapsed = (Date.now() - state.startTime) / 1000;
-                if (elapsed < 40) return;  // Show tip after 40 seconds
-                state.tipShown = true;
-                const card = $('tipCard');
-                const content = $('tipContent');
-                if (!card || !content) return;
-                content.textContent = tips[state.tipIndex % tips.length];
-                card.classList.add('visible');
+            let html = '';
+            for (const [, info] of Object.entries(merged)) {
+                if (info.status === 'done'    && info.count === 0) continue;
+                if (info.status === 'skipped')                      continue;
+                let statusHtml = '';
+                if (info.status === 'searching') {
+                    statusHtml = '<span class="dot searching"></span> Searching…';
+                } else if (info.status === 'done') {
+                    statusHtml = '<span class="dot done"></span> ' + info.count + ' found';
+                }
+                html += '<div class="retailer-row">' +
+                        '<span class="retailer-name">' + info.icon + ' ' + info.label + '</span>' +
+                        '<span class="retailer-status">' + statusHtml + '</span>' +
+                        '</div>';
+            }
+            container.innerHTML = html;
+        }
+
+        function updateProductCount(count) {
+            const counter = $('productCounter');
+            const countEl = $('productCount');
+            if (!counter || !countEl || count <= 0) return;
+            counter.classList.add('visible');
+            countEl.textContent = count;
+        }
+
+        // ── Main progress handler ─────────────────────────────────────────
+        function applyProgress(data) {
+            if (state.complete) return;
+            const stage = data.stage || 'starting';
+
+            // Advance bar to the target for this stage
+            const target = STAGE_TARGETS[stage];
+            if (target) setProgress(target);
+
+            // Pipeline visual state
+            if (stage === 'starting' || stage === 'profile_analysis') {
+                setStepState('step-profile', 'active');
+            } else if (stage === 'profile_done') {
+                setStepState('step-profile', 'done');
+                $('step-profile-detail').textContent = (data.interests || []).length + ' interests found';
+                showInterests(data.interests);
+            } else if (stage === 'searching_retailers') {
+                setStepState('step-profile', 'done');
+                setStepState('step-search', 'active');
+                showInterests(data.interests);
+            } else if (stage === 'filtering') {
+                setStepState('step-profile', 'done');
+                setStepState('step-search', 'done');
+                $('step-search-detail').textContent = (data.product_count || 0) + ' products found';
+            } else if (stage === 'curating') {
+                setStepState('step-profile', 'done');
+                setStepState('step-search', 'done');
+                setStepState('step-curate', 'active');
+            } else if (stage === 'cleanup' || stage === 'images') {
+                setStepState('step-profile', 'done');
+                setStepState('step-search', 'done');
+                setStepState('step-curate', 'done');
+                setStepState('step-finish', 'active');
+            } else if (stage === 'complete') {
+                setStepState('step-profile', 'done');
+                setStepState('step-search', 'done');
+                setStepState('step-curate', 'done');
+                setStepState('step-finish', 'done');
             }
 
-            function applyProgress(data) {
-                if (state.complete) return;
-                const stage = data.stage || 'starting';
+            if (data.retailers)     updateRetailers(data.retailers);
+            if (data.product_count > 0) updateProductCount(data.product_count);
+            if (data.stage_label)   fadeText($('statusMessage'), data.stage_label);
 
-                // Update pipeline steps based on stage
-                if (stage === 'starting' || stage === 'profile_analysis') {
-                    setStepState('step-profile', 'active');
-                } else if (stage === 'profile_done') {
-                    setStepState('step-profile', 'done');
-                    $('step-profile-detail').textContent = (data.interests || []).length + ' interests found';
-                    showInterests(data.interests);
-                } else if (stage === 'searching_retailers') {
-                    setStepState('step-profile', 'done');
-                    setStepState('step-search', 'active');
-                    showInterests(data.interests);
-                } else if (stage === 'filtering') {
-                    setStepState('step-profile', 'done');
-                    setStepState('step-search', 'done');
-                    $('step-search-detail').textContent = (data.product_count || 0) + ' products found';
-                } else if (stage === 'curating') {
-                    setStepState('step-profile', 'done');
-                    setStepState('step-search', 'done');
-                    setStepState('step-curate', 'active');
-                } else if (stage === 'cleanup' || stage === 'images') {
-                    setStepState('step-profile', 'done');
-                    setStepState('step-search', 'done');
-                    setStepState('step-curate', 'done');
-                    setStepState('step-finish', 'active');
-                } else if (stage === 'complete') {
-                    setStepState('step-profile', 'done');
-                    setStepState('step-search', 'done');
-                    setStepState('step-curate', 'done');
-                    setStepState('step-finish', 'done');
-                }
+            // Completion
+            if (data.complete) {
+                state.complete = true;
+                setProgress(100);
 
-                // Update retailers and product count
-                if (data.retailers) updateRetailers(data.retailers);
-                if (data.product_count > 0) updateProductCount(data.product_count);
+                // Stop the spinner
+                const spinner = $('ringSpinner');
+                if (spinner) spinner.style.animation = 'none';
 
-                // Update status message
-                if (data.stage_label) {
-                    fadeText($('statusMessage'), data.stage_label);
-                }
-
-                // Handle completion
-                if (data.complete) {
-                    state.complete = true;
-                    const bar = $('progressBar');
-                    if (bar) {
-                        bar.classList.remove('indeterminate');
-                        bar.style.width = '100%';
-                    }
-
-                    if (data.success) {
-                        fadeText($('mainTitle'), 'Your gifts are ready!');
-                        fadeText($('subtitle'), 'Redirecting...');
-                        setTimeout(() => {
-                            window.location.href = '/recommendations';
-                        }, 800);
-                    } else {
-                        const errorMsg = data.error || 'Something went wrong. Please try again.';
-                        alert(errorMsg);
-                        window.location.href = '/connect-platforms';
-                    }
-                }
-
-                // Show tip after enough time
-                showTip();
-            }
-
-            // Start generation and begin polling
-            async function startGeneration() {
-                try {
-                    const resp = await fetch('/api/generate-recommendations', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-                    const data = await resp.json();
-
-                    if (data.error) {
-                        alert(data.error);
-                        window.location.href = '/connect-platforms';
-                        return;
-                    }
-
-                    // Legacy fallback: if server returned success directly (not using background thread)
-                    if (data.success) {
-                        window.location.href = '/recommendations';
-                        return;
-                    }
-
-                    // Start polling for progress
-                    pollProgress();
-                } catch (err) {
-                    console.error('Failed to start generation:', err);
-                    alert('Error starting recommendation generation. Please try again.');
+                if (data.success) {
+                    fadeText($('mainTitle'), 'Your gifts are ready!');
+                    fadeText($('subtitle'), 'Heading there now…');
+                    setTimeout(() => { window.location.href = '/recommendations'; }, 800);
+                } else {
+                    const msg = data.error || 'Something went wrong. Please try again.';
+                    alert(msg);
                     window.location.href = '/connect-platforms';
                 }
+                return;
             }
 
-            async function pollProgress() {
-                if (state.complete) return;
-
-                try {
-                    const resp = await fetch('/api/generation-progress');
-                    if (resp.ok) {
-                        const data = await resp.json();
-                        applyProgress(data);
-                    }
-                } catch (err) {
-                    console.error('Progress poll error:', err);
+            // Long-wait warning (after 3 min)
+            const elapsed = (Date.now() - state.startTime) / 1000;
+            if (elapsed > 180) {
+                const msg = $('statusMessage');
+                if (msg && !msg.classList.contains('warning-message')) {
+                    msg.classList.add('warning-message');
+                    msg.textContent = 'Taking a bit longer than usual \u2014 almost there…';
                 }
+            }
+        }
 
-                // Check for timeout (5 minutes)
-                const elapsed = (Date.now() - state.startTime) / 1000;
-                if (elapsed > 300) {
-                    state.complete = true;
-                    alert('Request timed out. Please try again.');
+        // ── API calls ─────────────────────────────────────────────────────
+        async function startGeneration() {
+            try {
+                const resp = await fetch('/api/generate-recommendations', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                const data = await resp.json();
+
+                if (data.error) {
+                    alert(data.error);
                     window.location.href = '/connect-platforms';
                     return;
                 }
 
-                if (elapsed > 180) {
-                    const msg = $('statusMessage');
-                    if (msg && !msg.classList.contains('warning-message')) {
-                        msg.classList.add('warning-message');
-                        msg.textContent = 'This is taking longer than usual \u2014 hang in there...';
-                    }
+                if (data.success) {          // legacy: server returned sync result
+                    window.location.href = '/recommendations';
+                    return;
                 }
 
-                if (!state.complete) {
-                    setTimeout(pollProgress, 2000);
-                }
+                pollProgress();
+            } catch (err) {
+                console.error('Failed to start generation:', err);
+                alert('Error starting generation. Please try again.');
+                window.location.href = '/connect-platforms';
+            }
+        }
+
+        async function pollProgress() {
+            if (state.complete) return;
+
+            // Hard timeout at 5 min
+            if ((Date.now() - state.startTime) / 1000 > 300) {
+                state.complete = true;
+                alert('Request timed out. Please try again.');
+                window.location.href = '/connect-platforms';
+                return;
             }
 
-            // Rotate fun facts every 8 seconds
-            setInterval(rotateFunFact, 8000);
-            setTimeout(rotateFunFact, 3000);  // First fact after 3s
+            try {
+                const resp = await fetch('/api/generation-progress');
+                if (resp.ok) applyProgress(await resp.json());
+            } catch (err) {
+                console.error('Progress poll error:', err);
+            }
 
-            // Kick off on page load
-            window.addEventListener('load', startGeneration);
-        })();
-    </script>
+            if (!state.complete) setTimeout(pollProgress, 2000);
+        }
+
+        window.addEventListener('load', startGeneration);
+    })();
+</script>
 {% endblock %}

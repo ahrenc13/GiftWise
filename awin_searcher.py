@@ -66,6 +66,118 @@ def _decompress_if_gzipped(data):
 # to the replacement backfill. This cap is the upstream safety valve.
 AWIN_MAX_PRICE_USD = 200
 
+# Merchants approved in our Awin account whose product categories are never
+# appropriate for gift recommendations. Block at source so their feed products
+# never enter the inventory pool — even if they survive the price cap or pass
+# the interest-relevance gate on a coincidental keyword match.
+#
+# Yadea (store.yadea.com): electric scooters/e-bikes. Root cause of the $800
+#   scooter incident. feedEnabled=yes so they WILL appear without this block.
+#   365-day cookie and $24 EPC are irrelevant when the products aren't gifts.
+# POSIE AND PENN (posieandpenn.co.uk): bed frames. Amber payment status,
+#   exposure level 5, UK-only domain. Not gifts.
+_AWIN_BLOCKED_DOMAINS = {
+    "store.yadea.com",
+    "posieandpenn.co.uk",
+}
+
+# ---------------------------------------------------------------------------
+# Static product lists for approved Awin merchants with feedEnabled=no.
+# These merchants are in our account but don't publish a data feed, so the
+# dynamic search will never surface them. Hand-curated lists are the only way.
+#
+# Link format: use Awin deep links from the Awin dashboard (Publisher > Links
+# > Deep Link Generator). Format: https://www.awin1.com/cread.php?
+#   awinmid=<ADVERTISER_ID>&awinaffid=<YOUR_PUBLISHER_ID>&ued=<PRODUCT_URL>
+#
+# Commission notes (from Awin advertiser descriptions):
+#   VitaJuwel: check Awin dashboard (feedEnabled=no, advertiser ID 97077)
+#   VSGO:      15% commission (advertiser ID 120898)
+# ---------------------------------------------------------------------------
+
+# VitaJuwel (vitajuwel.us) — Gemstone-infused crystal water bottles and carafes.
+# Triggers: wellness, crystals, yoga, meditation, spiritual, self-care.
+# Advertiser ID: 97077. Cookie: 45 days. No product feed — static list only.
+_VITAJUWEL_ALL_PRODUCTS = [
+    {
+        "title": "VitaJuwel ViA Water Bottle — INDIAN SUMMER (Sunstone & Maifan Stone)",
+        "snippet": "Portable gemstone water bottle with hand-selected sunstone and maifan stone gems. BPA-free borosilicate glass, stainless steel cap. Carry the energy of crystals wherever you go.",
+        "price": "$130.00",
+        "source_domain": "vitajuwel.us",
+        "link": "https://www.vitajuwel.us/products/via-indian-summer",  # Replace with Awin deep link
+        "image_url": "",
+        "interest_match": "wellness crystals gemstone",
+    },
+    {
+        "title": "VitaJuwel ViA Water Bottle — WELLNESS (Amethyst, Rose Quartz & Clear Quartz)",
+        "snippet": "The bestselling VitaJuwel bottle. Trio of amethyst, rose quartz, and clear quartz suspended in a glass gem pod. Loved by yoga and meditation practitioners.",
+        "price": "$130.00",
+        "source_domain": "vitajuwel.us",
+        "link": "https://www.vitajuwel.us/products/via-wellness",  # Replace with Awin deep link
+        "image_url": "",
+        "interest_match": "yoga meditation crystals wellness",
+    },
+    {
+        "title": "VitaJuwel Era Water Carafe — WELLNESS (Amethyst, Rose Quartz & Clear Quartz)",
+        "snippet": "Elegant 1-liter glass carafe with removable gemstone vial. Perfect for the home altar, bedside table, or gifting to anyone obsessed with crystals and intentional living.",
+        "price": "$135.00",
+        "source_domain": "vitajuwel.us",
+        "link": "https://www.vitajuwel.us/products/era-wellness",  # Replace with Awin deep link
+        "image_url": "",
+        "interest_match": "crystals wellness spiritual self-care",
+    },
+]
+
+# VSGO (vsgotech.com) — Premium camera bags and accessories.
+# Triggers: photography, cameras, travel photography, content creation.
+# Advertiser ID: 120898. Cookie: 30 days. Commission: 15%. No product feed.
+_VSGO_ALL_PRODUCTS = [
+    {
+        "title": "VSGO Black Snipe Camera Backpack",
+        "snippet": "Award-winning camera backpack with ultra-light carrying system and patented camera compartment. Fits mirrorless and DSLR kits. Weatherproof exterior, laptop sleeve, tripod holder.",
+        "price": "$119.00",
+        "source_domain": "vsgotech.com",
+        "link": "https://vsgotech.com/collections/bags",  # Replace with Awin deep link to specific SKU
+        "image_url": "",
+        "interest_match": "photography cameras travel content creation",
+    },
+    {
+        "title": "VSGO Pocket Ranger Camera Sling Bag",
+        "snippet": "Compact sling bag designed for mirrorless shooters on the go. Fast-access side opening, padded dividers, weather-resistant. Great for street photography and travel.",
+        "price": "$79.00",
+        "source_domain": "vsgotech.com",
+        "link": "https://vsgotech.com/collections/bags",  # Replace with Awin deep link to specific SKU
+        "image_url": "",
+        "interest_match": "photography street photography travel cameras",
+    },
+]
+
+
+def _get_awin_static_products(profile):
+    """Return static Awin products relevant to the current profile's interests.
+
+    Called at the end of search_products_awin() to supplement dynamic feed
+    results for merchants with feedEnabled=no. Only injects products whose
+    interest_match overlaps with the profile's actual interests.
+    """
+    interests = [i.get("name", "").lower() for i in profile.get("interests", []) if isinstance(i, dict)]
+    interest_text = " ".join(interests)
+
+    results = []
+
+    # VitaJuwel — trigger on wellness/crystal/yoga/meditation/spiritual themes
+    vitajuwel_triggers = {"crystal", "crystals", "yoga", "wellness", "meditation", "spiritual", "gemstone", "self-care", "selfcare", "mindful", "mindfulness", "holistic", "reiki", "chakra"}
+    if any(t in interest_text for t in vitajuwel_triggers):
+        results.extend(_VITAJUWEL_ALL_PRODUCTS)
+
+    # VSGO — trigger on photography/camera themes
+    vsgo_triggers = {"photo", "photography", "camera", "cameras", "photographer", "canon", "nikon", "sony", "mirrorless", "dslr", "content creator", "content creation", "videograph"}
+    if any(t in interest_text for t in vsgo_triggers):
+        results.extend(_VSGO_ALL_PRODUCTS)
+
+    return results
+
+
 # In-memory cache: feed list and one feed's products. TTL 1 hour.
 _awin_feed_list_cache = {}
 _awin_feed_list_ts = 0
@@ -709,6 +821,13 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
             feeds_used.append(first_feed.get("advertiser_name", "Awin"))
             logger.info("Awin fallback: took first %s products from %s", len(all_products), first_feed.get("advertiser_name"))
 
+    # Block non-gift merchant domains before any other filtering.
+    before_block = len(all_products)
+    all_products = [p for p in all_products if p.get("source_domain", "") not in _AWIN_BLOCKED_DOMAINS]
+    if len(all_products) < before_block:
+        logger.info("Awin: blocked %d products from non-gift domains (%s)",
+                    before_block - len(all_products), ", ".join(_AWIN_BLOCKED_DOMAINS))
+
     # Price filter: Awin feeds are full product catalogs, not gift-curated lists.
     # Drop anything over AWIN_MAX_PRICE_USD before it reaches the inventory pool.
     def _parse_price(price_str):
@@ -724,6 +843,12 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
     ]
     if len(all_products) < before:
         logger.info("Awin: removed %d overpriced items (>$%d)", before - len(all_products), AWIN_MAX_PRICE_USD)
+
+    # Inject static products for approved merchants with feedEnabled=no.
+    static = _get_awin_static_products(profile)
+    if static:
+        all_products.extend(static)
+        logger.info("Awin: injected %d static products (no-feed merchants)", len(static))
 
     logger.info("Found %s Awin products from %s", len(all_products), ", ".join(feeds_used) or "Awin")
     return all_products[:target_count]

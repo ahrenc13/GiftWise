@@ -1,0 +1,34 @@
+# Git history — not needed in the image
+.git
+.gitignore
+
+# Python bytecode
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Dev/test artifacts
+*.egg-info
+.eggs
+dist
+build
+.pytest_cache
+.mypy_cache
+.ruff_cache
+
+# Local env files
+.env
+.env.*
+
+# Local data (Railway uses ephemeral storage; DB is rebuilt at runtime)
+data/*.db
+data/*.db-shm
+data/*.db-wal
+
+# Editor noise
+.vscode
+.idea
+*.swp
+*.swo

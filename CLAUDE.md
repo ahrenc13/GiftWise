@@ -219,7 +219,7 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 | Skimlinks | ⏳ Still pending (submitted 2/9 — past expected window, follow up) | ~48,500 merchants (blanket access) |
 | CJ Affiliate | ✅ Active. GraphQL search wired + 15+ static partners live. See partner rows below. | Subscription clubs, flowers, jewelry, fragrances, gaming, wellness, chocolates, artisan jewelry, charity shopping, coffee, soccer, refurb electronics, batteries, religious gifts, wine/gourmet baskets |
 | FlexOffers | ⏳ Application submitted 2/16, status unknown | 12,000+ advertisers, niche brands |
-| Awin | ✅ Account active. Feb 25: applied to ~35 Gifts & Flowers merchants (see tiers below). Still need to join: Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar. | Quilling Card, Twisted Lily, LoveIsARose, Limoges Jewelry, Anthemion Flowers, Field Company, CanvasChamp, Sugarwish, Name Stories, Maison Balzac, Formulary 55, Miss to Mrs Box, Enjoy The Wood, La Boîte, Alice Mushrooms, BroBasket, Scribble, Crown and Paw, Palais des Thés, Farmgirl Flowers, Matr Boomie, Cosmos Within, Pacific Resources Intl, Grill Masters Club, Sports Box Co., KOW Steaks, Jasper Hill Farm, Dylan's Candy Bar, Woven Woven, VitaJuwel, Big Night, DEMDACO, Kosterina, Outdoor Fellow, Swanky Badger |
+| Awin | ✅ Account active. 13 merchants confirmed approved (Feb 26). Dynamic feed search live for feed-enabled merchants. Static lists added for VitaJuwel and VSGO (no-feed). Yadea + POSIE AND PENN explicitly blocked. Still need to join: Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar. **TODO: replace placeholder URLs in `_VITAJUWEL_ALL_PRODUCTS` and `_VSGO_ALL_PRODUCTS` in `awin_searcher.py` with real Awin deep links from dashboard.** | **Confirmed live (Feb 26):** Crown and Paw (feed ✅, pet portraits, 60-day cookie), LoveIsARose (feed ✅, up to 10% commission, $250 AOV), Formulary 55 (feed ✅, 8% commission, $70 AOV), Dylan's Candy Bar (feed ✅, 14-day cookie), Matr Boomie (feed ✅, 60-day cookie), Maison Balzac (feed ✅), Promeed (feed ✅, silk bedding), Woven Woven (no feed), VitaJuwel (no feed, static list added), VSGO (no feed, 15% commission, static list added), Abracadabra NYC (no feed), **BLOCKED:** Yadea (e-scooters), POSIE AND PENN (beds, amber status) |
 | Impact | ⏳ Ticket open for wrong account type. STAT tag added to base.html (Feb 25). "Hi, Impact" domain verification phrase added to /about (Feb 25, branch `claude/review-claude-docs-kEdui` — merge to main to activate). Awaiting support response. | Target, Ulta, Kohl's, Gap, Home Depot, Adidas, Dyson |
 | Rakuten | Account active, need to apply to individual brands | Sephora, Nordstrom, Anthropologie, Free People, Coach |
 | Walmart Creator | Application submitted | Walmart |
@@ -243,6 +243,14 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 | TrinityRoad / Catholic Company (via CJ) | ✅ Wired — static products in `_TRINITYROAD_ALL_PRODUCTS` | **8% commission**, 30–45 day cookie. 6 sites incl. catholiccompany.com, rosary.com. Trigger: Catholic faith milestones (Confirmation, Communion, Baptism, Christmas). Deep-link enabled. ADV_CID: 2871603. |
 | zChocolat (via CJ) | ✅ Wired — static products in `_ZCHOCOLAT_ALL_PRODUCTS` | **20% commission** (highest of any partner), 45-day cookie, ~$120 AOV, $75–367 EPC. World-champion French chocolatier, ships to 244 countries. Trigger: chocolate, gourmet, luxury gifts. Deep-link enabled. ADV_CID: 1124214. |
 | Winebasket / BabyBasket / Capalbo's (via CJ) | ✅ Wired — static products in `_WINEBASKET_ALL_PRODUCTS` | **7% commission**, 15-day cookie, ~$110 AOV, $52–66 EPC. Wine baskets, baby gift baskets, gourmet food baskets. Trigger: wine, new baby, gourmet food, celebrations. Deep-link enabled. ADV_CID: 2387081. |
+| VitaJuwel (via Awin) | ✅ Wired — static products in `_VITAJUWEL_ALL_PRODUCTS` in `awin_searcher.py`. **TODO: replace placeholder URLs with Awin deep links.** | Commission: check Awin dashboard. 45-day cookie. Crystal gemstone water bottles/carafes ($130–$135). Trigger: wellness, crystals, yoga, meditation, spiritual, chakra. ADV ID: 97077. feedEnabled=no. |
+| VSGO (via Awin) | ✅ Wired — static products in `_VSGO_ALL_PRODUCTS` in `awin_searcher.py`. **TODO: replace placeholder URLs with Awin deep links.** | **15% commission**, 30-day cookie. Premium camera bags. Trigger: photography, cameras, content creation. ADV ID: 120898. feedEnabled=no. |
+| LoveIsARose (via Awin) | ✅ Live — feedEnabled, dynamic search will surface products automatically. | **Up to 10% commission**, 30-day cookie, **$250 AOV** (up to $25/sale — highest $ per sale in the stack after zChocolat). Gold/platinum/silver roses, personalized anniversary gifts. Trigger: romance, anniversaries, Valentine's Day, milestone gifts. ADV ID: 96879. |
+| Crown and Paw (via Awin) | ✅ Live — feedEnabled, dynamic search active. | Commission: check Awin dashboard. 60-day cookie. Custom pet portraits painted by real designers. Trigger: pets, dog owner, cat owner, pet lover. ADV ID: 57823. |
+| Formulary 55 (via Awin) | ✅ Live — feedEnabled, dynamic search active. | **8% commission**, 30-day cookie, $70 AOV. Luxury shea butter soaps, body crèmes, fragrances. Trigger: self-care, beauty, fragrance, spa, luxury. ADV ID: 86831. |
+| Dylan's Candy Bar (via Awin) | ✅ Live — feedEnabled, dynamic search active. | Commission: check Awin dashboard. **14-day cookie** (short — link freshness matters). 7,000+ confections, candy gifts. Trigger: candy, sweets, chocolate, sugar, pop culture. ADV ID: 61247. |
+| Matr Boomie (via Awin) | ✅ Live — feedEnabled, dynamic search active. | Commission: check Awin dashboard. 60-day cookie. Fair trade jewelry, home decor, unique gifts from Indian artisans. Trigger: fair trade, boho, artisan, India, global gifts. ADV ID: 96117. |
+| Maison Balzac (via Awin) | ✅ Live — feedEnabled, dynamic search active. | Commission: check Awin dashboard. 30-day cookie. Quirky French glassware, objects for the home. Trigger: home decor, kitchen, aesthetic, French, whimsical, entertaining. ADV ID: 100137. |
 
 **IMPORTANT:** ShareASale migrated to Awin in Oct 2025. All ShareASale merchants are now accessible through Awin.
 
@@ -1071,11 +1079,31 @@ Every product recommendation is an affiliate link opportunity. Revenue per click
 - **Fixed 400 errors on paginated eBay queries.** eBay Browse API requires `offset` to be a multiple of `limit`. The previous code used `random.choice([0,0,0,0,5])` with `limit` as low as 3, producing invalid pairs like `offset=5, limit=3`.
 - Fixed to `random.choice([0, 0, 0, 0, limit])` — offset is now always a valid multiple.
 
+### Awin inventory architecture audit (Feb 26)
+
+**Finding:** Awin products are fetched **live during every session** — they are NOT pre-populated into the SQLite catalog DB. This is the opposite of CJ, which is pre-populated by `catalog_sync.py`.
+
+**Root cause:** `catalog_sync.py` covers CJ only. `refresh_awin()` exists in `products/ingestion.py` but uses the session-style stream-and-match approach (15 interests × 20 products max = ~300 products), not a bulk catalog ingest.
+
+**How sessions actually work today:**
+1. `multi_retailer_searcher.py` queries the SQLite DB first (`database_first=True`)
+2. DB contains only CJ products (~3,627 as of Feb 26)
+3. If interests don't match CJ inventory, falls through to live Awin feed downloads (90s timeout, 4MB buffer per feed)
+4. Sessions that hit Awin live are slow and fragile
+
+**Persistent volume status:** Railway persistent volume IS set up (per prior session). `DATA_DIR=/data` env var points shelve data to the volume. `DATABASE_PATH` should point to `/data/products.db` (confirm in Railway dashboard → Variables). The SQLite DB survives redeploys — this is already working.
+
+**What still needs to be done:**
+- Wire Awin into `catalog_sync.py`: at startup/daily cron, download all joined advertiser feeds in full (using `_get_feed_list()` + `_download_feed_csv()`), bulk-upsert all rows into DB (not just 20 per interest). Sessions then hit the DB for Awin products instead of live feeds.
+- Set up a Railway cron service for daily refresh (currently no cron is configured in `railway.json` — the "nightly cron" in comments is aspirational). Railway supports a cron as a separate service in the same project.
+- `_matches_query()` tightening (Feb 25) means feed matching is more conservative — bulk ingest at cron time bypasses this per-session matching entirely, which is cleaner.
+
 ### Replacement relevance gate (Opus, Feb 25) — `post_curation_cleanup.py`, `awin_searcher.py`
 - **Root cause fix for $800 scooter incident.** Three layers:
   1. `awin_searcher.py` `_matches_query()`: Now requires 2 meaningful term matches when query has 3+ meaningful words. Previously 1 was enough, letting "home" alone match a scooter to "home renovation."
   2. `post_curation_cleanup.py` `_is_query_relevant_to_product()`: New price × interest-relevance gate. Replacements over `REPLACEMENT_PRICE_THRESHOLD` ($120) are rejected unless at least one meaningful word from `interest_match` appears in the product title.
   3. Combined with Sonnet's `AWIN_MAX_PRICE_USD = 200` upstream cap, this creates defense-in-depth: price cap catches the worst offenders at intake, matching threshold prevents weak matches, relevance gate catches anything that slips through to the replacement backfill.
+
 
 ## Recent Commit History (Last 20, as of Feb 23)
 
@@ -1124,19 +1152,35 @@ CJ is live with 15+ static partners. Now need to expand further:
 **Ready: TikTok Launch**
 App is in good shape. 3 workers, rate limiting, all recs shown free. Per CLAUDE.md paywall guidance — keep fully free until 15+ sessions/day.
 
-## What the User Wants Next (Updated Feb 25)
+## What the User Wants Next (Updated Feb 26)
 
-1. **Follow up on Skimlinks** — Past the 7-business-day window. Contact publisher support directly.
-2. **Awin — await approvals** — Applied Feb 25 to ~35 Gifts & Flowers merchants (see affiliate table). Still need to join: Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar. Auto-approvals expected 24-48h; manual 3-7 days.
-3. **Check FlexOffers status** — Applied Feb 16, status unknown
-4. **Fix Impact account** — Ticket open. STAT tag + "Hi, Impact" verification phrase live on branch `claude/review-claude-docs-kEdui`. **Merge that branch to main** to activate the verification. Once Impact confirms, remove the "Hi, Impact" phrase from `/about`.
-5. **Monitor quality** — admin dashboard at `/admin/stats?key=ADMIN_DASHBOARD_KEY`. Watch rec_run, affiliate click events.
-6. **TikTok launch** — App is launch-ready. User's kid has viral post (150k+ likes). Inventory much better now with CJ partners live.
-7. **Paywall timing** — monitor engagement via admin dashboard per the paywall thresholds above
-8. **Opus A/B test** — run same profile through Sonnet and Opus curation (now viable with better inventory)
-9. **Mother's Day (May 11)** — Guide built, start promoting in late March/early April
-10. **Apple Music** — Not feasible. No "Wrapped" equivalent for easy user export; OAuth approach already failed with Spotify. Recommend free-text "favorite artists/genres" field instead — works for all music platforms.
-10. **"Also on Amazon" dual-link (deferred)** — For products where we can cleanly verify an *identical* item on the vendor's own Amazon storefront (not just a similar product), surface a secondary "Also on Amazon →" link below the primary CTA. No routing by preference, no comparative framing — just a second link for Prime users. **Hard requirement:** must be the same SKU via the brand's Amazon storefront, not a look-alike. Build only after multi-retailer inventory is live and click data shows demand. See OPUS_AUDIT.md for implementation notes.
+1. **Awin advertiser prioritization** — User has 1000+ Awin advertisers to evaluate. Handle in a **fresh chat** (too many for mid-session context). Paste the advertiser list and ask Claude to tier them: (a) gift-relevant with product feeds → apply immediately, (b) gift-relevant no-feed → static list candidates, (c) skip. Key criteria: gift-relevance, commission rate, AOV, cookie duration, feed availability.
+
+2. **Wire Awin into catalog sync** — `catalog_sync.py` covers CJ only. Need to add an Awin bulk-ingest path: at startup/daily, call `_get_feed_list()` + `_download_feed_csv()` for each joined advertiser, bulk-upsert all rows into the SQLite DB. Sessions then hit the DB instead of downloading live feeds. See §"Awin inventory architecture audit" above for full context. Do this AFTER advertiser applications are approved and feeds are available.
+
+3. **Set up Railway cron** — No cron is currently configured in `railway.json`. Need a separate Railway cron service to run `python -m products.ingestion` daily. This keeps the catalog fresh independent of redeploys. Do alongside or after #2.
+
+4. **Follow up on Skimlinks** — Past the 7-business-day window (submitted Feb 9). Contact publisher support directly.
+
+5. **Awin — await Feb 25 approvals** — Applied to ~35 Gifts & Flowers merchants Feb 25. Auto-approvals 24-48h, manual 3-7 days. Still need to join: Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar.
+
+6. **Check FlexOffers status** — Applied Feb 16, status unknown.
+
+7. **Fix Impact account** — Ticket open. STAT tag + "Hi, Impact" verification phrase live on branch `claude/review-claude-docs-kEdui`. **Merge that branch to main** to activate. Once Impact confirms, remove the phrase from `/about`.
+
+8. **Monitor quality** — admin dashboard at `/admin/stats?key=ADMIN_DASHBOARD_KEY`. Watch rec_run, affiliate click events.
+
+9. **TikTok launch** — App is launch-ready. User's kid has viral post (150k+ likes). Keep fully free until 15+ sessions/day per paywall thresholds.
+
+10. **Paywall timing** — monitor engagement via admin dashboard per the paywall thresholds above.
+
+11. **Opus A/B test** — run same profile through Sonnet and Opus curation (now viable with better inventory).
+
+12. **Mother's Day (May 11)** — Guide built, start promoting in late March/early April.
+
+13. **Apple Music** — Not feasible. No "Wrapped" equivalent for easy user export; OAuth approach already failed with Spotify. Recommend free-text "favorite artists/genres" field instead.
+
+14. **"Also on Amazon" dual-link (deferred)** — For products where we can cleanly verify an *identical* item on the vendor's own Amazon storefront (not just a similar product), surface a secondary "Also on Amazon →" link below the primary CTA. **Hard requirement:** must be the same SKU via the brand's Amazon storefront. Build only after multi-retailer inventory is live and click data shows demand. See OPUS_AUDIT.md for implementation notes.
 
 **See `AFFILIATE_APPLICATIONS_TRACKER.md` for detailed affiliate network status.**
 **See `AWIN_APPLICATIONS_FEB25.md` for the full Feb 25 Awin application list — tiers, metrics (Awin index, EPC, conversion rate), reasoning, which merchants have product feeds, which were skipped and why, and what to do when approvals arrive.**

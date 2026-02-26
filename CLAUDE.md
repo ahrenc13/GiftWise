@@ -5,76 +5,6 @@
 Tasks flagged `# SONNET-FLAG:` in the codebase that require Opus to implement correctly.
 Each entry below includes the Opus prompt to copy-paste.
 
-<<<<<<< HEAD
-### [OPEN] Replacement backfill relevance gate — post_curation_cleanup.py
-
-**Problem discovered:** Feb 25 2026. An $800 Yadea electric scooter was recommended to a Taylor Swift / Chappell Roan fan. Root cause traced through three layers:
-
-1. **Awin feed matching is too broad.** `_matches_query()` requires only 1 meaningful term to match. Awin feeds are full product catalogs, so a scooter with "home" in its description matches the "home renovation" interest query.
-2. **Upstream partial fix already applied (Sonnet, Feb 25):** `AWIN_MAX_PRICE_USD = 200` cap in `awin_searcher.py` removes items over $200 before they reach the pool. This is a bandage.
-3. **Root cause still open:** The replacement backfill in `post_curation_cleanup.py` (lines ~603–619) awards `+3` to items from unrepresented sources. If Awin (or any future retailer) contributes catalog items that survive the price cap but are still interest-irrelevant, the source-diversity bonus will promote them above genuinely relevant Amazon/eBay items. The `_is_query_relevant_to_product()` guard only blocks surname/clan and holiday mismatches — it has no price × interest-relevance gate.
-
-**SONNET-FLAG location:** `post_curation_cleanup.py` lines ~603–619 (replacement scoring block).
-
-**Opus prompt:**
-
-```
-You are working on GiftWise (giftwise.fit), an AI gift recommendation Flask app.
-Read CLAUDE.md fully before touching any code — pay special attention to §"⚠️ Opus-Only Zones"
-and §"Intelligence Layer Architecture".
-
-## Task: Add price × interest-relevance gate to the replacement backfill
-
-File: post_curation_cleanup.py
-Function: cleanup_curated_gifts() → the "if len(cleaned) < rec_count" replacement block
-Helper to extend: _is_query_relevant_to_product(product)
-
-## Background
-When the curator (LLM) selects 14 gifts and post-curation rules remove some for brand/category/
-source-cap violations, the backfill pulls replacements from the remaining inventory pool.
-Replacements are scored for diversity (+3 for new source, +2 for new brand, +2 for new category).
-This is intentional and correct for maintaining output diversity.
-
-The problem: Awin product feeds are full retail catalogs, not gift-curated lists. A product like
-an $800 electric scooter can enter the pool via a coincidental keyword match (e.g. "home" in the
-scooter description matching the "home renovation" interest). The scooter then wins the replacement
-competition because it comes from an unrepresented source (yadea.com → +3 bonus).
-
-An upstream price cap (AWIN_MAX_PRICE_USD = 200 in awin_searcher.py) catches the worst cases,
-but a narrower failure mode remains: a $180 product from an Awin home-improvement retailer could
-still appear in a Taylor Swift fan's gift set as a replacement.
-
-## What to build
-Extend _is_query_relevant_to_product() with a combined price × interest-signal check:
-
-  - Parse the product's price field (string, may include "$" or currency prefix).
-  - Extract the interest_match field (e.g. "Taylor Swift fandom", "home renovation").
-  - Tokenize the interest_match into meaningful words (strip generic stopwords already
-    defined in _QUERY_STOPWORDS).
-  - Check how many of those words appear in the product title (case-insensitive).
-  - If price > REPLACEMENT_PRICE_THRESHOLD (suggest $120–150, tune if needed) AND
-    zero interest words appear in the title → return False (reject as replacement).
-
-## Constraints
-- Do NOT change the scoring weights (+3/+2/+1) in the replacement loop — those are
-  tuned for diversity and work correctly for on-interest products.
-- Do NOT add this check to the main cleanup loop (only to the replacement backfill
-  path, i.e. only called from within the "if len(cleaned) < rec_count" block).
-  Products the curator explicitly selected should never be second-guessed by this gate.
-- Keep _is_query_relevant_to_product() as a single function — just add the new check
-  as an additional elif/block inside it.
-- Add a clear log line when a product is rejected by this gate (include price and
-  interest_match for debuggability).
-- Do NOT touch: Rule 3 brand relaxation, Rule 4b title overlap threshold,
-  MAX_PER_SOURCE_PCT, or the deferred→replacement backfill scoring weights.
-
-## Acceptance test (manual)
-Run /demo?admin=true with a profile that has music + lifestyle interests and no
-vehicle/transport interests. Confirm no products from automotive/vehicle retailers
-appear in the final 10 recommendations. Check Railway logs for the new gate's
-log lines to confirm it's firing.
-```
-=======
 *No open tasks.*
 
 ### [DONE] Replacement backfill relevance gate — post_curation_cleanup.py
@@ -84,7 +14,6 @@ log lines to confirm it's firing.
 1. **Awin `_matches_query()` tightened** — now requires 2 meaningful term matches for queries with 3+ meaningful words. Short queries (1-2 terms like "hiking" or "Taylor Swift") still match on 1. (`awin_searcher.py`)
 2. **Upstream price cap** (Sonnet, Feb 25) — `AWIN_MAX_PRICE_USD = 200` in `awin_searcher.py`.
 3. **Price × interest-relevance gate** (Opus, Feb 25) — `_is_query_relevant_to_product()` now rejects replacements where price > `REPLACEMENT_PRICE_THRESHOLD` ($120) AND zero meaningful words from `interest_match` appear in the product title. SONNET-FLAG comment removed. (`post_curation_cleanup.py`)
->>>>>>> main
 
 ## Environment Notes
 - **Git is installed and working.** Do not prompt the user to install git, git for windows, or any other tooling. The repo is active with full commit history. Just use it.
@@ -411,11 +340,7 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 11. ~~Experience bookable vs DIY badges~~ — **FIXED Feb 23-24.** Badges on expanded (Feb 23) + compact cards (Feb 24). (`recommendations.html`)
 12. ~~Rec count subtitle~~ — **ALREADY FIXED** before audit. Template distinguishes "X gifts + Y experiences".
 
-<<<<<<< HEAD
-13. **Replacement backfill relevance gate** — OPEN (Opus). See §"Pending Opus Tasks" above for full prompt. `_is_query_relevant_to_product()` in `post_curation_cleanup.py` needs a price × interest-signal check so high-price off-interest items can't win the replacement competition via source-diversity bonus. **Partial upstream fix applied Feb 25:** `AWIN_MAX_PRICE_USD = 200` cap in `awin_searcher.py`.
-=======
 13. ~~Replacement backfill relevance gate~~ — **FIXED Feb 25 (Opus).** Three-layer fix: Awin `_matches_query` tightened to 2-term threshold, `AWIN_MAX_PRICE_USD=200` cap (Sonnet), price × interest-relevance gate in `_is_query_relevant_to_product()` with `REPLACEMENT_PRICE_THRESHOLD=$120` (Opus). (`post_curation_cleanup.py`, `awin_searcher.py`)
->>>>>>> main
 
 ### Meta-Principle for the Audit
 **Do NOT make piecemeal fixes.** Previous sessions added features without wiring them together — `sharing_section.html` was built but never included, `share_generator.py` and `referral_system.py` were imported but never created, `valentines_landing.html` existed with no route. Every change must be fully wired end-to-end: code → route → template → tested. If you build it, connect it.
@@ -1154,15 +1079,32 @@ Every product recommendation is an affiliate link opportunity. Revenue per click
 - **Fixed 400 errors on paginated eBay queries.** eBay Browse API requires `offset` to be a multiple of `limit`. The previous code used `random.choice([0,0,0,0,5])` with `limit` as low as 3, producing invalid pairs like `offset=5, limit=3`.
 - Fixed to `random.choice([0, 0, 0, 0, limit])` — offset is now always a valid multiple.
 
-<<<<<<< HEAD
-=======
+### Awin inventory architecture audit (Feb 26)
+
+**Finding:** Awin products are fetched **live during every session** — they are NOT pre-populated into the SQLite catalog DB. This is the opposite of CJ, which is pre-populated by `catalog_sync.py`.
+
+**Root cause:** `catalog_sync.py` covers CJ only. `refresh_awin()` exists in `products/ingestion.py` but uses the session-style stream-and-match approach (15 interests × 20 products max = ~300 products), not a bulk catalog ingest.
+
+**How sessions actually work today:**
+1. `multi_retailer_searcher.py` queries the SQLite DB first (`database_first=True`)
+2. DB contains only CJ products (~3,627 as of Feb 26)
+3. If interests don't match CJ inventory, falls through to live Awin feed downloads (90s timeout, 4MB buffer per feed)
+4. Sessions that hit Awin live are slow and fragile
+
+**Persistent volume status:** Railway persistent volume IS set up (per prior session). `DATA_DIR=/data` env var points shelve data to the volume. `DATABASE_PATH` should point to `/data/products.db` (confirm in Railway dashboard → Variables). The SQLite DB survives redeploys — this is already working.
+
+**What still needs to be done:**
+- Wire Awin into `catalog_sync.py`: at startup/daily cron, download all joined advertiser feeds in full (using `_get_feed_list()` + `_download_feed_csv()`), bulk-upsert all rows into DB (not just 20 per interest). Sessions then hit the DB for Awin products instead of live feeds.
+- Set up a Railway cron service for daily refresh (currently no cron is configured in `railway.json` — the "nightly cron" in comments is aspirational). Railway supports a cron as a separate service in the same project.
+- `_matches_query()` tightening (Feb 25) means feed matching is more conservative — bulk ingest at cron time bypasses this per-session matching entirely, which is cleaner.
+
 ### Replacement relevance gate (Opus, Feb 25) — `post_curation_cleanup.py`, `awin_searcher.py`
 - **Root cause fix for $800 scooter incident.** Three layers:
   1. `awin_searcher.py` `_matches_query()`: Now requires 2 meaningful term matches when query has 3+ meaningful words. Previously 1 was enough, letting "home" alone match a scooter to "home renovation."
   2. `post_curation_cleanup.py` `_is_query_relevant_to_product()`: New price × interest-relevance gate. Replacements over `REPLACEMENT_PRICE_THRESHOLD` ($120) are rejected unless at least one meaningful word from `interest_match` appears in the product title.
   3. Combined with Sonnet's `AWIN_MAX_PRICE_USD = 200` upstream cap, this creates defense-in-depth: price cap catches the worst offenders at intake, matching threshold prevents weak matches, relevance gate catches anything that slips through to the replacement backfill.
 
->>>>>>> main
+
 ## Recent Commit History (Last 20, as of Feb 23)
 
 ```
@@ -1210,19 +1152,35 @@ CJ is live with 15+ static partners. Now need to expand further:
 **Ready: TikTok Launch**
 App is in good shape. 3 workers, rate limiting, all recs shown free. Per CLAUDE.md paywall guidance — keep fully free until 15+ sessions/day.
 
-## What the User Wants Next (Updated Feb 25)
+## What the User Wants Next (Updated Feb 26)
 
-1. **Follow up on Skimlinks** — Past the 7-business-day window. Contact publisher support directly.
-2. **Awin — await approvals** — Applied Feb 25 to ~35 Gifts & Flowers merchants (see affiliate table). Still need to join: Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar. Auto-approvals expected 24-48h; manual 3-7 days.
-3. **Check FlexOffers status** — Applied Feb 16, status unknown
-4. **Fix Impact account** — Ticket open. STAT tag + "Hi, Impact" verification phrase live on branch `claude/review-claude-docs-kEdui`. **Merge that branch to main** to activate the verification. Once Impact confirms, remove the "Hi, Impact" phrase from `/about`.
-5. **Monitor quality** — admin dashboard at `/admin/stats?key=ADMIN_DASHBOARD_KEY`. Watch rec_run, affiliate click events.
-6. **TikTok launch** — App is launch-ready. User's kid has viral post (150k+ likes). Inventory much better now with CJ partners live.
-7. **Paywall timing** — monitor engagement via admin dashboard per the paywall thresholds above
-8. **Opus A/B test** — run same profile through Sonnet and Opus curation (now viable with better inventory)
-9. **Mother's Day (May 11)** — Guide built, start promoting in late March/early April
-10. **Apple Music** — Not feasible. No "Wrapped" equivalent for easy user export; OAuth approach already failed with Spotify. Recommend free-text "favorite artists/genres" field instead — works for all music platforms.
-10. **"Also on Amazon" dual-link (deferred)** — For products where we can cleanly verify an *identical* item on the vendor's own Amazon storefront (not just a similar product), surface a secondary "Also on Amazon →" link below the primary CTA. No routing by preference, no comparative framing — just a second link for Prime users. **Hard requirement:** must be the same SKU via the brand's Amazon storefront, not a look-alike. Build only after multi-retailer inventory is live and click data shows demand. See OPUS_AUDIT.md for implementation notes.
+1. **Awin advertiser prioritization** — User has 1000+ Awin advertisers to evaluate. Handle in a **fresh chat** (too many for mid-session context). Paste the advertiser list and ask Claude to tier them: (a) gift-relevant with product feeds → apply immediately, (b) gift-relevant no-feed → static list candidates, (c) skip. Key criteria: gift-relevance, commission rate, AOV, cookie duration, feed availability.
+
+2. **Wire Awin into catalog sync** — `catalog_sync.py` covers CJ only. Need to add an Awin bulk-ingest path: at startup/daily, call `_get_feed_list()` + `_download_feed_csv()` for each joined advertiser, bulk-upsert all rows into the SQLite DB. Sessions then hit the DB instead of downloading live feeds. See §"Awin inventory architecture audit" above for full context. Do this AFTER advertiser applications are approved and feeds are available.
+
+3. **Set up Railway cron** — No cron is currently configured in `railway.json`. Need a separate Railway cron service to run `python -m products.ingestion` daily. This keeps the catalog fresh independent of redeploys. Do alongside or after #2.
+
+4. **Follow up on Skimlinks** — Past the 7-business-day window (submitted Feb 9). Contact publisher support directly.
+
+5. **Awin — await Feb 25 approvals** — Applied to ~35 Gifts & Flowers merchants Feb 25. Auto-approvals 24-48h, manual 3-7 days. Still need to join: Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar.
+
+6. **Check FlexOffers status** — Applied Feb 16, status unknown.
+
+7. **Fix Impact account** — Ticket open. STAT tag + "Hi, Impact" verification phrase live on branch `claude/review-claude-docs-kEdui`. **Merge that branch to main** to activate. Once Impact confirms, remove the phrase from `/about`.
+
+8. **Monitor quality** — admin dashboard at `/admin/stats?key=ADMIN_DASHBOARD_KEY`. Watch rec_run, affiliate click events.
+
+9. **TikTok launch** — App is launch-ready. User's kid has viral post (150k+ likes). Keep fully free until 15+ sessions/day per paywall thresholds.
+
+10. **Paywall timing** — monitor engagement via admin dashboard per the paywall thresholds above.
+
+11. **Opus A/B test** — run same profile through Sonnet and Opus curation (now viable with better inventory).
+
+12. **Mother's Day (May 11)** — Guide built, start promoting in late March/early April.
+
+13. **Apple Music** — Not feasible. No "Wrapped" equivalent for easy user export; OAuth approach already failed with Spotify. Recommend free-text "favorite artists/genres" field instead.
+
+14. **"Also on Amazon" dual-link (deferred)** — For products where we can cleanly verify an *identical* item on the vendor's own Amazon storefront (not just a similar product), surface a secondary "Also on Amazon →" link below the primary CTA. **Hard requirement:** must be the same SKU via the brand's Amazon storefront. Build only after multi-retailer inventory is live and click data shows demand. See OPUS_AUDIT.md for implementation notes.
 
 **See `AFFILIATE_APPLICATIONS_TRACKER.md` for detailed affiliate network status.**
 **See `AWIN_APPLICATIONS_FEB25.md` for the full Feb 25 Awin application list — tiers, metrics (Awin index, EPC, conversion rate), reasoning, which merchants have product feeds, which were skipped and why, and what to do when approvals arrive.**

@@ -327,6 +327,13 @@ def ensure_catalog_schema():
         except sqlite3.OperationalError:
             pass  # Column already exists
 
+        # Add Awin advertiser_id column
+        try:
+            cur.execute("ALTER TABLE products ADD COLUMN awin_advertiser_id TEXT")
+            logger.debug("Added awin_advertiser_id column to products table")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
+
         # Catalog sync log: one row per term, updated each sync run
         cur.execute("""
             CREATE TABLE IF NOT EXISTS catalog_sync_log (
@@ -687,7 +694,7 @@ def get_cached_products_for_interest(
             FROM products
             WHERE in_stock = 1
               AND removed_at IS NULL
-              AND cj_advertiser_id != ''
+              AND (cj_advertiser_id != '' OR awin_advertiser_id IS NOT NULL)
               AND (
                     interest_tags LIKE ?
                     OR title       LIKE ?
@@ -710,6 +717,59 @@ def get_cached_products_for_interest(
 
     except Exception as e:
         logger.error(f"Cache lookup failed for '{interest}': {e}")
+        return []
+
+
+def get_cached_awin_products_for_interest(
+    interest: str,
+    min_gift_score: float = 0.35,
+    limit: int = 30,
+) -> List[Dict]:
+    """
+    Return cached Awin-only products for an interest term.
+
+    Called by awin_searcher.py to check whether the nightly sync has
+    already populated the DB for this interest. If it has, live feed
+    downloads can be skipped entirely.
+
+    Args:
+        interest:       Interest/search term to look up
+        min_gift_score: Filter out products below this threshold (default 0.35)
+        limit:          Max products to return (default 30)
+    """
+    try:
+        conn = sqlite3.connect(_DB_PATH)
+        conn.row_factory = sqlite3.Row
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT *
+            FROM products
+            WHERE in_stock = 1
+              AND removed_at IS NULL
+              AND awin_advertiser_id IS NOT NULL
+              AND awin_advertiser_id != ''
+              AND (
+                    interest_tags LIKE ?
+                    OR title       LIKE ?
+                    OR description LIKE ?
+              )
+              AND (gift_score IS NULL OR gift_score >= ?)
+            ORDER BY gift_score DESC, popularity_score DESC
+            LIMIT ?
+        """, (
+            f'%"{interest.lower()}"%',
+            f'%{interest}%',
+            f'%{interest}%',
+            min_gift_score,
+            limit,
+        ))
+        rows = [dict(r) for r in cur.fetchall()]
+        conn.close()
+
+        return [_db_row_to_giftwise_format(r, interest) for r in rows]
+
+    except Exception as e:
+        logger.error(f"Awin cache lookup failed for '{interest}': {e}")
         return []
 
 
@@ -753,6 +813,372 @@ def _upsert_catalog_product(product: Dict, gift_score: float,
         gift_score,
         product.get('cj_advertiser_id', ''),
     ))
+
+
+# ---------------------------------------------------------------------------
+# AWIN CATALOG SYNC
+# Downloads Awin feed CSVs for all joined advertisers, scores products,
+# tags with matching catalog interest terms, and upserts to the products table.
+# Architecture mirrors the CJ sync above but uses Awin's CSV-based feed API
+# instead of CJ's GraphQL endpoint.
+# ---------------------------------------------------------------------------
+
+# Awin credentials
+AWIN_API_KEY = os.environ.get('AWIN_DATA_FEED_API_KEY', '')
+
+# Same price cap as awin_searcher.py — full product catalogs include non-gift items
+AWIN_SYNC_MAX_PRICE_USD = 200
+
+# Max rows to read per feed. Awin feeds can be huge; cap to keep sync time sane.
+AWIN_MAX_ROWS_PER_FEED = 5000
+
+# Buffer per feed download (8 MB covers ~5000 rows comfortably)
+AWIN_BUFFER_BYTES = 8 * 1024 * 1024
+
+# Domains hard-blocked from Awin (mirrors _AWIN_BLOCKED_DOMAINS in awin_searcher.py)
+_AWIN_SYNC_BLOCKED_ADVERTISER_NAMES = {"yadea", "posie and penn"}
+
+# Flat list of all catalog terms for interest tagging
+_ALL_CATALOG_TERMS: List[str] = [t for (t, _p, _c) in ALL_SYNC_TERMS]
+
+
+def _awin_row_to_catalog_product(row: Dict, advertiser_name: str, advertiser_id: str) -> Optional[Dict]:
+    """Convert one Awin CSV feed row into a catalog product dict for storage."""
+    def ci(row, *keys):
+        for k in keys:
+            v = row.get(k)
+            if v:
+                return v.strip() if isinstance(v, str) else v
+        row_lower = {k.lower().strip(): v for k, v in row.items()}
+        for k in keys:
+            v = row_lower.get(k.lower().strip())
+            if v:
+                return v.strip() if isinstance(v, str) else v
+        return ""
+
+    title = ci(row, "product_name", "product name", "title", "product_title",
+               "name", "Product Name", "Title")
+    link  = ci(row, "aw_deep_link", "merchant_deep_link", "deep_link", "link",
+               "aw_product_url", "product_url", "URL")
+    image = ci(row, "merchant_image_url", "aw_image_url", "aw_thumb_url",
+               "image_url", "image_link", "Image URL", "Merchant Image URL")
+    price_str = ci(row, "search_price", "store_price", "price", "Price",
+                   "rrp_price", "display_price")
+    desc  = ci(row, "product_short_description", "description", "Description",
+               "product_description", "Product Description")
+    brand = ci(row, "brand_name", "brand", "Brand Name", "Brand")
+    pid   = ci(row, "aw_product_id", "merchant_product_id", "product_id", "Product ID")
+
+    if not title or not link:
+        return None
+
+    try:
+        price_val = float(re.sub(r'[^\d.]', '', str(price_str))) if price_str else 0.0
+    except (ValueError, TypeError):
+        price_val = 0.0
+
+    if not pid:
+        pid = str(hash(title + link))[:16]
+
+    return {
+        'product_id':        pid,
+        'retailer':          advertiser_name or 'Awin',
+        'title':             title[:200],
+        'description':       (desc or '')[:500],
+        'price':             price_val,
+        'currency':          'USD',
+        'image_url':         image or '',
+        'affiliate_link':    link,
+        'brand':             brand or '',
+        'awin_advertiser_id': str(advertiser_id),
+    }
+
+
+def _tag_awin_product_with_interests(title: str, description: str,
+                                      term_list: List[str]) -> List[str]:
+    """
+    Return all catalog terms whose primary words appear in this product's text.
+    Used at sync time to pre-tag Awin products for fast DB lookup by interest.
+    We use the first meaningful word of each term (broad match), which is the
+    right tradeoff for pre-tagging: we'd rather over-tag than miss a match.
+    """
+    text = (title + ' ' + description).lower()
+    generic = {"and", "the", "or", "with", "gift", "accessories",
+               "lover", "fan", "from", "for", "set", "kit"}
+    matching = []
+    for term in term_list:
+        words = [w.lower() for w in term.split()
+                 if len(w) > 2 and w.lower() not in generic]
+        if words and any(w in text for w in words):
+            matching.append(term.lower())
+    return matching
+
+
+def _upsert_awin_catalog_product(product: Dict, gift_score: float,
+                                  interest_tags: List[str], conn: sqlite3.Connection):
+    """Upsert one Awin product into the products table."""
+    cur = conn.cursor()
+    now = datetime.now().isoformat()
+    cur.execute("""
+        INSERT INTO products (
+            product_id, retailer, title, description, price, currency,
+            image_url, affiliate_link, brand, interest_tags,
+            in_stock, last_checked, last_updated,
+            gift_score, awin_advertiser_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
+        ON CONFLICT(product_id, retailer) DO UPDATE SET
+            title            = excluded.title,
+            description      = excluded.description,
+            price            = excluded.price,
+            image_url        = excluded.image_url,
+            affiliate_link   = excluded.affiliate_link,
+            in_stock         = 1,
+            last_checked     = excluded.last_checked,
+            last_updated     = excluded.last_updated,
+            gift_score       = excluded.gift_score,
+            interest_tags    = excluded.interest_tags,
+            awin_advertiser_id = excluded.awin_advertiser_id
+    """, (
+        product['product_id'], product['retailer'],
+        product['title'], product['description'],
+        product['price'], product['currency'],
+        product['image_url'], product['affiliate_link'], product['brand'],
+        json.dumps(interest_tags),
+        now, now,
+        gift_score, product['awin_advertiser_id'],
+    ))
+
+
+def _download_awin_feed(feed_url: str, buffer_bytes: int = AWIN_BUFFER_BYTES) -> Optional[bytes]:
+    """Download an Awin feed CSV; returns raw bytes or None on failure."""
+    import gzip as _gzip, zlib as _zlib
+    try:
+        r = requests.get(feed_url, timeout=90, stream=True)
+        r.raise_for_status()
+    except requests.RequestException as e:
+        logger.warning("Awin feed download failed (%s): %s", feed_url[:60], e)
+        return None
+
+    r.raw.decode_content = True
+    try:
+        chunks = []
+        total = 0
+        for chunk in r.iter_content(chunk_size=64 * 1024):
+            chunks.append(chunk)
+            total += len(chunk)
+            if total >= buffer_bytes:
+                break
+        r.close()
+        data = b"".join(chunks)
+    except Exception as e:
+        logger.warning("Awin feed read error: %s", e)
+        try:
+            r.close()
+        except Exception:
+            pass
+        return None
+
+    if not data:
+        return None
+
+    # Awin feeds often gzip without Content-Encoding header
+    if data[:2] == b'\x1f\x8b':
+        try:
+            data = _gzip.decompress(data)
+        except Exception:
+            try:
+                data = _zlib.decompress(data, _zlib.MAX_WBITS | 16)
+            except Exception:
+                pass  # Return as-is; CSV parser will handle the error
+
+    return data
+
+
+def sync_awin_feeds(dry_run: bool = False) -> Dict:
+    """
+    Download all joined Awin feeds, score and tag products, upsert to SQLite.
+
+    Called by run_catalog_sync() at the end of each sync run.
+    Products are tagged with all matching catalog interest terms so the
+    DB cache lookup (get_cached_awin_products_for_interest) can serve
+    them without any live feed download.
+
+    Returns stats dict: feeds_synced, total_found, total_stored, total_skipped.
+    """
+    import csv as _csv
+    import io as _io
+
+    empty_stats = {'feeds_synced': 0, 'total_found': 0,
+                   'total_stored': 0, 'total_skipped': 0}
+
+    if not AWIN_API_KEY:
+        logger.info("Awin sync skipped — AWIN_DATA_FEED_API_KEY not set")
+        return empty_stats
+
+    # Fetch the Awin feed list
+    try:
+        resp = requests.get(
+            f"https://productdata.awin.com/datafeed/list/apikey/{AWIN_API_KEY}",
+            timeout=30,
+        )
+        resp.raise_for_status()
+        feed_list_text = resp.text
+    except Exception as e:
+        logger.warning("Awin feed list request failed: %s", e)
+        return {**empty_stats, 'error': str(e)}
+
+    # Parse feed list CSV — filter to joined feeds only
+    _active_statuses = {"joined", "active", "approved", "yes", "1", "true"}
+    _adult_keywords  = {"pleasure", "erotic", "lingerie", "adult", "sex", "fetish"}
+    feeds = []
+    try:
+        reader = _csv.DictReader(_io.StringIO(feed_list_text))
+        for row in reader:
+            ci = {k.lower().strip(): v for k, v in row.items()}
+            url_val    = (ci.get("url") or "").strip()
+            advertiser = (ci.get("advertiser name") or ci.get("advertiser_name") or "").strip()
+            adv_id     = (ci.get("advertiser id") or ci.get("advertiser_id") or "").strip()
+            status     = (ci.get("membership status") or ci.get("membership_status")
+                          or ci.get("joined") or ci.get("status") or "").strip()
+            feed_name  = (ci.get("feed name") or ci.get("feed_name") or "").strip()
+
+            if not url_val or status.lower() not in _active_statuses:
+                continue
+            text_check = (advertiser + ' ' + feed_name).lower()
+            if any(k in text_check for k in _adult_keywords):
+                continue
+            if advertiser.lower() in _AWIN_SYNC_BLOCKED_ADVERTISER_NAMES:
+                continue
+            feeds.append({'url': url_val, 'advertiser': advertiser,
+                          'advertiser_id': adv_id})
+    except Exception as e:
+        logger.warning("Awin feed list parse failed: %s", e)
+        return {**empty_stats, 'error': str(e)}
+
+    # Deduplicate by advertiser name (keep first/best feed per advertiser)
+    seen_adv = set()
+    unique_feeds = []
+    for f in feeds:
+        key = f['advertiser'].lower()
+        if key not in seen_adv:
+            seen_adv.add(key)
+            unique_feeds.append(f)
+
+    logger.info("=" * 60)
+    logger.info("AWIN CATALOG SYNC — %d joined feeds", len(unique_feeds))
+    logger.info("=" * 60)
+
+    total_found = total_stored = total_skipped = 0
+
+    for idx, feed_info in enumerate(unique_feeds, 1):
+        advertiser = feed_info['advertiser']
+        adv_id     = feed_info['advertiser_id']
+        feed_url   = feed_info['url']
+
+        logger.info("[%d/%d] %s", idx, len(unique_feeds), advertiser)
+
+        data = _download_awin_feed(feed_url)
+        if not data:
+            logger.warning("  %s: download failed — skipping", advertiser)
+            continue
+
+        try:
+            text_data = data.decode("utf-8", errors="replace")
+            reader    = _csv.DictReader(_io.StringIO(text_data, newline=""))
+        except Exception as e:
+            logger.warning("  %s: CSV parse error — %s", advertiser, e)
+            continue
+
+        feed_found = feed_stored = feed_skipped = 0
+        conn = None
+
+        if not dry_run:
+            try:
+                conn = sqlite3.connect(_DB_PATH, timeout=15)
+            except Exception as e:
+                logger.error("  %s: DB connect failed — %s", advertiser, e)
+                continue
+
+        try:
+            for i, row in enumerate(reader):
+                if i >= AWIN_MAX_ROWS_PER_FEED:
+                    break
+
+                product = _awin_row_to_catalog_product(row, advertiser, adv_id)
+                if not product:
+                    feed_skipped += 1
+                    continue
+
+                # Price cap
+                if product['price'] > AWIN_SYNC_MAX_PRICE_USD and product['price'] > 0:
+                    feed_skipped += 1
+                    continue
+
+                feed_found += 1
+
+                # Tag with matching catalog interest terms
+                tags = _tag_awin_product_with_interests(
+                    product['title'], product['description'], _ALL_CATALOG_TERMS
+                )
+                if not tags:
+                    feed_skipped += 1
+                    continue
+
+                # Score
+                gift_score = score_product_gift_suitability({
+                    'title':       product['title'],
+                    'description': product['description'],
+                    'image_url':   product['image_url'],
+                    'brand':       product['brand'],
+                    'price':       product['price'],
+                })
+
+                if gift_score < MIN_SCORE_TO_STORE:
+                    feed_skipped += 1
+                    continue
+
+                if not dry_run and conn:
+                    try:
+                        with conn:
+                            _upsert_awin_catalog_product(product, gift_score, tags, conn)
+                        feed_stored += 1
+                    except Exception as e:
+                        logger.debug("  upsert failed (%s): %s",
+                                     product.get('title', '?')[:40], e)
+                        feed_skipped += 1
+                else:
+                    feed_stored += 1  # dry_run count
+
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:
+                    pass
+
+        logger.info("  %s: %d found → %d stored, %d skipped",
+                    advertiser, feed_found, feed_stored, feed_skipped)
+
+        total_found   += feed_found
+        total_stored  += feed_stored
+        total_skipped += feed_skipped
+
+        time.sleep(0.5)  # polite delay between feeds
+
+    logger.info("=" * 60)
+    logger.info("AWIN SYNC COMPLETE")
+    logger.info("  Feeds synced:    %d", len(unique_feeds))
+    logger.info("  Products found:  %d", total_found)
+    logger.info("  Products stored: %d", total_stored)
+    logger.info("  Skipped:         %d", total_skipped)
+    logger.info("=" * 60)
+
+    return {
+        'feeds_synced':  len(unique_feeds),
+        'total_found':   total_found,
+        'total_stored':  total_stored,
+        'total_skipped': total_skipped,
+    }
 
 
 def sync_term(
@@ -921,6 +1347,9 @@ def run_catalog_sync(
         total_stored  += s['stored']
         total_skipped += s['skipped']
 
+    # Run Awin feed sync
+    awin_stats = sync_awin_feeds(dry_run=dry_run)
+
     # Mark products not refreshed in STALE_PRODUCT_DAYS as removed
     stale_count = 0
     if not dry_run:
@@ -935,7 +1364,8 @@ def run_catalog_sync(
                     SET removed_at = ?
                     WHERE last_checked < ?
                       AND removed_at IS NULL
-                      AND retailer LIKE '%CJ%'
+                      AND (retailer LIKE '%CJ%'
+                           OR awin_advertiser_id IS NOT NULL)
                 """, (datetime.now().isoformat(), cutoff))
                 stale_count = cur.rowcount
         except Exception as e:
@@ -945,24 +1375,28 @@ def run_catalog_sync(
                 conn.close()
 
     summary = {
-        'mode':          mode,
-        'dry_run':       dry_run,
-        'terms_synced':  len(sync_list),
-        'total_found':   total_found,
-        'total_stored':  total_stored,
-        'total_skipped': total_skipped,
-        'stale_purged':  stale_count,
-        'started_at':    datetime.now().isoformat(),
-        'term_stats':    term_stats,
+        'mode':               mode,
+        'dry_run':            dry_run,
+        'terms_synced':       len(sync_list),
+        'total_found':        total_found,
+        'total_stored':       total_stored,
+        'total_skipped':      total_skipped,
+        'stale_purged':       stale_count,
+        'awin_feeds_synced':  awin_stats.get('feeds_synced', 0),
+        'awin_stored':        awin_stats.get('total_stored', 0),
+        'started_at':         datetime.now().isoformat(),
+        'term_stats':         term_stats,
     }
 
     logger.info("=" * 60)
     logger.info("SYNC COMPLETE")
-    logger.info(f"  Terms synced:    {len(sync_list)}")
-    logger.info(f"  Products found:  {total_found}")
-    logger.info(f"  Products stored: {total_stored}")
-    logger.info(f"  Skipped (low Q): {total_skipped}")
-    logger.info(f"  Stale purged:    {stale_count}")
+    logger.info(f"  CJ terms synced:   {len(sync_list)}")
+    logger.info(f"  CJ products found: {total_found}")
+    logger.info(f"  CJ stored:         {total_stored}")
+    logger.info(f"  CJ skipped:        {total_skipped}")
+    logger.info(f"  Awin feeds synced: {awin_stats.get('feeds_synced', 0)}")
+    logger.info(f"  Awin stored:       {awin_stats.get('total_stored', 0)}")
+    logger.info(f"  Stale purged:      {stale_count}")
     logger.info("=" * 60)
 
     return summary
@@ -986,6 +1420,14 @@ def get_catalog_stats() -> Dict:
             WHERE cj_advertiser_id != '' AND removed_at IS NULL AND in_stock = 1
         """)
         total_cj = cur.fetchone()[0]
+
+        # Total Awin catalog products
+        cur.execute("""
+            SELECT COUNT(*) FROM products
+            WHERE awin_advertiser_id IS NOT NULL AND awin_advertiser_id != ''
+              AND removed_at IS NULL AND in_stock = 1
+        """)
+        total_awin = cur.fetchone()[0]
 
         # TikTok Shop specifically
         cur.execute("""
@@ -1030,8 +1472,9 @@ def get_catalog_stats() -> Dict:
         conn.close()
 
         return {
-            'total_cj_products':  total_cj,
-            'total_tikshop':      total_tikshop,
+            'total_cj_products':   total_cj,
+            'total_awin_products': total_awin,
+            'total_tikshop':       total_tikshop,
             'fresh_terms':        fresh_terms,
             'top_terms':          top_terms,
             'last_sync':          last_sync,

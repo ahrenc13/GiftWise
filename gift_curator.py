@@ -143,12 +143,12 @@ These are refined search terms from deep profile analysis - products matching th
                 if do_buy or dont_buy:
                     line = f"  {name}:"
                     if do_buy:
-                        line += f" BUY [{', '.join(do_buy)}]"
+                        line += f" SEEK [{', '.join(do_buy)}]"
                     if dont_buy:
-                        line += f" AVOID [{', '.join(dont_buy)}]"
+                        line += f" SKIP [{', '.join(dont_buy)}]"
                     interest_intel.append(line)
             if interest_intel:
-                parts.append("🎁 PER-INTEREST GUIDANCE:\n" + chr(10).join(interest_intel))
+                parts.append("🎁 PER-INTEREST GIFT STRATEGY (same category can appear in both SEEK and SKIP — the difference is specificity and quality, not the category itself):\n" + chr(10).join(interest_intel))
 
         if parts:
             enrichment_section = "\n\n" + "\n\n".join(parts) + "\n"

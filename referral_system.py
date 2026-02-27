@@ -12,8 +12,9 @@ import os
 import shelve
 from datetime import datetime, timedelta
 
-REFERRAL_DB_PATH = 'data/referrals.db'
-os.makedirs('data', exist_ok=True)
+_DATA_DIR = os.environ.get('DATA_DIR', 'data')
+os.makedirs(_DATA_DIR, exist_ok=True)
+REFERRAL_DB_PATH = os.path.join(_DATA_DIR, 'referrals.db')
 
 
 def generate_referral_code(user_email):

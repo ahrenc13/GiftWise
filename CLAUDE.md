@@ -5,7 +5,29 @@
 Tasks flagged `# SONNET-FLAG:` in the codebase that require Opus to implement correctly.
 Each entry below includes the Opus prompt to copy-paste.
 
-*No open tasks.*
+### [OPEN] Load Testing & Architectural Stress Audit
+
+**Opus prompt:**
+
+> You are auditing GiftWise (a Flask/Gunicorn app on Railway.app) for architectural weaknesses that will cause failures or data loss under concurrent traffic. Traffic is coming — we don't know how much. Do not assume 150k TikTok views translates to X sessions; treat it as an unknown burst of real concurrent users.
+>
+> Read the full codebase — especially `giftwise_app.py`, `storage_service.py`, `site_stats.py`, `share_manager.py`, `database.py`, `recommendation_service.py`, and the Gunicorn config in `railway.json`. Then answer these questions precisely:
+>
+> 1. **Shelve concurrency.** `storage_service.py`, `site_stats.py`, and `share_manager.py` use Python shelve. Gunicorn runs 3 synchronous workers. Are there write races? Can shelve corrupt under concurrent writes from multiple workers? What is the actual failure mode?
+>
+> 2. **Worker exhaustion.** Claude API calls take 10–25 seconds each; there are 2 per session. With 3 Gunicorn sync workers and a burst of, say, 10 concurrent users, what happens to the 7th user? Is there a queue? Does it 502? What is the real concurrency ceiling, and what should we do about it (more workers, gevent, async, queue)?
+>
+> 3. **SQLite contention.** `database.py` uses SQLite. Under concurrent writes (click tracking, catalog sync), what breaks? Is WAL mode enabled? What's the failure mode?
+>
+> 4. **Rate limiting race.** Per-IP rate limiting is shelve-backed. With 3 workers, can two concurrent requests from the same IP both pass the rate limit check before either writes the block? Walk through the exact race condition if it exists.
+>
+> 5. **Railway ephemeral filesystem.** Shelve files, SQLite DB, and any other local state live on Railway's ephemeral filesystem. What exactly is lost on redeploy? How often does Railway redeploy (including auto-deploys from `main`)? What is the user-visible impact?
+>
+> 6. **Catalog sync conflict.** `catalog_sync.py` is triggered nightly by an external cron hitting `/admin/sync-catalog`. If a user session is mid-pipeline when sync runs, is there a conflict? Can sync corrupt the session cache?
+>
+> For each issue: rate it (Critical / High / Medium), describe the exact failure mode, and recommend the minimal fix that doesn't require a full infrastructure migration. Where Railway Postgres or Redis would be the right answer, say so clearly and estimate migration effort.
+>
+> After the audit, implement the Critical and High fixes. Add `# SONNET-FLAG:` comments for anything you defer. Update CLAUDE.md with findings.
 
 ### [DONE] Replacement backfill relevance gate — post_curation_cleanup.py
 
@@ -156,7 +178,7 @@ Flip this priority when: monthly affiliate revenue is steady but clearly lower t
 ## What This Is
 AI-powered gift recommendation app. Flask pipeline: scrape social media → Claude analyzes profile → enrich with static data → search retailers → Claude curates gifts → programmatic cleanup → display.
 
-**Current State (TL;DR):** App is live and polished. CJ Affiliate is now the primary inventory driver with 15+ wired static partners. Amazon + eBay active. **Skimlinks is DEFUNCT — service shut down, do not reference as a pending unlock.** Awin: applied to ~35 new Gifts & Flowers merchants Feb 25, awaiting approvals. Impact.com: account reset + site manually verified by their team, but got an instant auto-rejection (system bug — likely VPN/verification glitch). Second ticket filed. Per-IP rate limiting active. 3 Gunicorn workers. TikTok launch-ready. 10 gift guides + 4 blog posts live for SEO.
+**Current State (TL;DR):** App is live and polished. CJ Affiliate is now the primary inventory driver with 15+ wired static partners. Amazon + eBay active. **Skimlinks is DEFUNCT — service shut down, do not reference as a pending unlock.** Awin: applied to ~35 new Gifts & Flowers merchants Feb 25, awaiting approvals. Impact.com: account reset + site manually verified by their team, but got an instant auto-rejection (system bug — likely VPN/verification glitch). Second ticket filed. Per-IP rate limiting active. 3 Gunicorn workers. Nightly catalog sync live (cron-job.org hits `/admin/sync-catalog` nightly). 10 gift guides + 4 blog posts live for SEO. Focus now: load testing, architectural stress testing, and deployment hardening before traffic arrives.
 
 ## Current State (Feb 25, 2026)
 
@@ -1132,8 +1154,13 @@ CJ is live with 15+ static partners. Now need to expand further:
 - AI/algorithm language removed, warm "we" voice throughout
 - Watch admin dashboard for CTR and affiliate click patterns
 
-**Ready: TikTok Launch**
-App is in good shape. 3 workers, rate limiting, all recs shown free. Per CLAUDE.md paywall guidance — keep fully free until 15+ sessions/day.
+**Active Priority: Load Testing & Architectural Hardening**
+Traffic will come. The question is whether the architecture holds. Known pressure points to investigate:
+- Shelve (storage_service.py, site_stats.py, share_manager.py) — not safe under concurrent writes with multiple Gunicorn workers
+- Gunicorn worker count (currently 3) — synchronous workers block on Claude API calls (10-25s each); a burst of 10 concurrent sessions could exhaust the pool
+- SQLite (database.py) — write contention under concurrent load
+- Rate limiting (per-IP, shelve-backed) — race condition risk with 3 workers
+- Railway ephemeral filesystem — shelve data lost on every redeploy; not visible until it happens to a real user
 
 ## What the User Wants Next (Updated Feb 25)
 
@@ -1142,7 +1169,7 @@ App is in good shape. 3 workers, rate limiting, all recs shown free. Per CLAUDE.
 3. **Check FlexOffers status** — Applied Feb 16, status unknown
 4. **Fix Impact account** — Ticket open. STAT tag + "Hi, Impact" verification phrase live on branch `claude/review-claude-docs-kEdui`. **Merge that branch to main** to activate the verification. Once Impact confirms, remove the "Hi, Impact" phrase from `/about`.
 5. **Monitor quality** — admin dashboard at `/admin/stats?key=ADMIN_DASHBOARD_KEY`. Watch rec_run, affiliate click events.
-6. **TikTok launch** — App is launch-ready. User's kid has viral post (150k+ likes). Inventory much better now with CJ partners live.
+6. **Load test & harden** — Opus audit of architectural pressure points before real traffic hits (shelve concurrency, Gunicorn worker exhaustion, SQLite write contention, ephemeral filesystem risk). See Opus prompt in this file.
 7. **Paywall timing** — monitor engagement via admin dashboard per the paywall thresholds above
 8. **Opus A/B test** — run same profile through Sonnet and Opus curation (now viable with better inventory)
 9. **Mother's Day (May 11)** — Guide built, start promoting in late March/early April

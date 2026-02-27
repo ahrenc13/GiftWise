@@ -574,44 +574,23 @@ def get_progress(task_id):
 # ============================================================================
 # GENERATION PROGRESS TRACKING (real-time pipeline stages for waiting page)
 # ============================================================================
-_generation_progress = {}
-_generation_progress_lock = threading.Lock()
+# State is stored in SQLite via progress_store so any Gunicorn worker can
+# read progress written by any other worker. The previous in-memory dict
+# caused the generating page to freeze: Worker A wrote status, Worker B
+# polled and saw an empty dict, frontend showed "Getting started..." forever.
+import progress_store
 
 def _set_gen_progress(user_id, **kwargs):
-    """Update generation progress for a user. Thread-safe."""
-    with _generation_progress_lock:
-        if user_id not in _generation_progress:
-            _generation_progress[user_id] = {
-                'stage': 'starting',
-                'stage_label': 'Getting started...',
-                'interests': [],
-                'retailers': {},
-                'product_count': 0,
-                'complete': False,
-                'success': False,
-                'error': None,
-                'started_at': datetime.now().isoformat(),
-            }
-        _generation_progress[user_id].update(kwargs)
+    """Update generation progress for a user. Cross-process safe via SQLite."""
+    progress_store.set_progress(user_id, **kwargs)
 
 def _get_gen_progress(user_id):
-    """Get generation progress for a user. Thread-safe."""
-    with _generation_progress_lock:
-        return dict(_generation_progress.get(user_id, {
-            'stage': 'unknown',
-            'stage_label': 'Preparing...',
-            'interests': [],
-            'retailers': {},
-            'product_count': 0,
-            'complete': False,
-            'success': False,
-            'error': None,
-        }))
+    """Get generation progress for a user. Readable from any worker."""
+    return progress_store.get_progress(user_id)
 
 def _clear_gen_progress(user_id):
     """Remove generation progress for a user."""
-    with _generation_progress_lock:
-        _generation_progress.pop(user_id, None)
+    progress_store.clear_progress(user_id)
 
 # ============================================================================
 # DATABASE HELPERS - REFACTORED TO USE REPOSITORY PATTERN
@@ -3240,9 +3219,9 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
             logger.info("USING NEW RECOMMENDATION ARCHITECTURE (background thread)")
             logger.info("=" * 60)
 
-            # Initialize progress tracker
+            # Initialize progress tracker (state stored in SQLite via progress_store)
             from progress_service import ProgressTracker
-            progress_tracker = ProgressTracker(_generation_progress)
+            progress_tracker = ProgressTracker()
 
             # Initialize recommendation service
             from recommendation_service import RecommendationService
@@ -3297,7 +3276,7 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
         # Expected errors (profile validation, no products, etc.)
         logger.warning(f"Generation validation error: {e}")
         from progress_service import ProgressTracker
-        progress_tracker = ProgressTracker(_generation_progress)
+        progress_tracker = ProgressTracker()
         progress_tracker.set_progress(
             user_id,
             complete=True,
@@ -3309,7 +3288,7 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
         # Unexpected errors
         logger.error(f"Error in generation thread: {e}", exc_info=True)
         from progress_service import ProgressTracker
-        progress_tracker = ProgressTracker(_generation_progress)
+        progress_tracker = ProgressTracker()
         progress_tracker.set_progress(
             user_id,
             complete=True,

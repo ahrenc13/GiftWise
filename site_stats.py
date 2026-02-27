@@ -1,6 +1,8 @@
 """
 SITE STATS - Lightweight event counter for admin dashboard.
-Uses shelve for persistence (same pattern as share_manager.py).
+
+Migrated from shelve to SQLite (WAL mode) with atomic upsert so concurrent
+writes from multiple Gunicorn workers don't corrupt counter state.
 
 Tracks: signups, recommendation runs, shares created, share views,
 page hits (guides), errors, product clicks, demo mode usage.
@@ -10,28 +12,44 @@ Date: February 2026
 """
 
 import os
-import shelve
-import threading
+import sqlite3
 from datetime import datetime, timedelta
 
 _DATA_DIR = os.environ.get('DATA_DIR', 'data')
-STATS_DB_PATH = os.path.join(_DATA_DIR, 'site_stats.db')
+_DB_PATH = os.path.join(_DATA_DIR, 'stats.db')
 os.makedirs(_DATA_DIR, exist_ok=True)
 
-_lock = threading.Lock()
+
+def _connect() -> sqlite3.Connection:
+    """Open a WAL-mode SQLite connection and ensure tables exist."""
+    conn = sqlite3.connect(_DB_PATH, timeout=10)
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS counters (
+            key   TEXT PRIMARY KEY,
+            count INTEGER NOT NULL DEFAULT 0
+        )
+    """)
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS scalars (
+            key   TEXT PRIMARY KEY,
+            value INTEGER NOT NULL DEFAULT 0
+        )
+    """)
+    return conn
 
 
-def _today():
+def _today() -> str:
     return datetime.now().strftime('%Y-%m-%d')
 
 
-def _this_week_keys():
+def _this_week_keys() -> list:
     """Return date-string keys for the last 7 days (inclusive of today)."""
     today = datetime.now().date()
     return [(today - timedelta(days=i)).strftime('%Y-%m-%d') for i in range(7)]
 
 
-def track_event(event_name):
+def track_event(event_name: str) -> None:
     """
     Increment a counter for an event on today's date.
 
@@ -39,47 +57,53 @@ def track_event(event_name):
                 'guide_hit', 'product_click', 'error', 'demo_mode'
     """
     key = f"{_today()}:{event_name}"
-    with _lock:
-        db = shelve.open(STATS_DB_PATH, writeback=True)
-        try:
-            db[key] = db.get(key, 0) + 1
-            db.sync()
-        finally:
-            db.close()
+    conn = _connect()
+    try:
+        conn.execute(
+            "INSERT INTO counters (key, count) VALUES (?, 1) "
+            "ON CONFLICT(key) DO UPDATE SET count = count + 1",
+            (key,)
+        )
+        conn.commit()
+    finally:
+        conn.close()
 
 
-def get_and_increment_position():
+def get_and_increment_position() -> int:
     """
     Get and increment global position counter for viral growth tracking.
     Returns the position number (e.g., 2847 means "You're pick #2,847").
-
-    This is used for social currency - showing users they're early adopters.
     """
     key = 'global:position_counter'
-    with _lock:
-        db = shelve.open(STATS_DB_PATH, writeback=True)
-        try:
-            current = db.get(key, 0)
-            new_position = current + 1
-            db[key] = new_position
-            db.sync()
-            return new_position
-        finally:
-            db.close()
+    conn = _connect()
+    try:
+        conn.execute(
+            "INSERT INTO scalars (key, value) VALUES (?, 1) "
+            "ON CONFLICT(key) DO UPDATE SET value = value + 1",
+            (key,)
+        )
+        conn.commit()
+        row = conn.execute("SELECT value FROM scalars WHERE key=?", (key,)).fetchone()
+        return row[0] if row else 1
+    finally:
+        conn.close()
 
 
-def get_count(event_name, date_str=None):
+def get_count(event_name: str, date_str: str = None) -> int:
     """Get count for a specific event on a specific date (default: today)."""
     date_str = date_str or _today()
     key = f"{date_str}:{event_name}"
-    db = shelve.open(STATS_DB_PATH)
+    conn = _connect()
     try:
-        return db.get(key, 0)
+        row = conn.execute(
+            "SELECT count FROM counters WHERE key=?", (key,)
+        ).fetchone()
+        return row[0] if row else 0
     finally:
-        db.close()
+        conn.close()
 
 
-def get_dashboard_data():
+def get_dashboard_data() -> dict:
     """
     Return a summary dict for the admin dashboard.
 
@@ -96,21 +120,26 @@ def get_dashboard_data():
     today_str = _today()
     week_keys = _this_week_keys()
 
-    db = shelve.open(STATS_DB_PATH)
+    conn = _connect()
     try:
-        today_counts = {}
-        week_counts = {}
-        daily = []
+        # Load all relevant keys in one query for efficiency
+        all_keys = [f"{d}:{ev}" for d in week_keys for ev in events]
+        placeholders = ','.join('?' * len(all_keys))
+        rows = conn.execute(
+            f"SELECT key, count FROM counters WHERE key IN ({placeholders})",
+            all_keys
+        ).fetchall()
+        counts = {row[0]: row[1] for row in rows}
 
-        for ev in events:
-            today_counts[ev] = db.get(f"{today_str}:{ev}", 0)
-            week_counts[ev] = sum(db.get(f"{d}:{ev}", 0) for d in week_keys)
-
-        for d in week_keys:
-            row = {'date': d}
-            for ev in events:
-                row[ev] = db.get(f"{d}:{ev}", 0)
-            daily.append(row)
+        today_counts = {ev: counts.get(f"{today_str}:{ev}", 0) for ev in events}
+        week_counts = {
+            ev: sum(counts.get(f"{d}:{ev}", 0) for d in week_keys)
+            for ev in events
+        }
+        daily = [
+            {'date': d, **{ev: counts.get(f"{d}:{ev}", 0) for ev in events}}
+            for d in week_keys
+        ]
 
         return {
             'today': today_counts,
@@ -119,4 +148,4 @@ def get_dashboard_data():
             'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         }
     finally:
-        db.close()
+        conn.close()

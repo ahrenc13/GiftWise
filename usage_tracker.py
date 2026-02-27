@@ -11,8 +11,9 @@ import json
 import os
 
 # Create data directory if it doesn't exist (for Railway/local)
-os.makedirs('data', exist_ok=True)
-USAGE_DB_PATH = 'data/usage.db'
+_DATA_DIR = os.environ.get('DATA_DIR', 'data')
+os.makedirs(_DATA_DIR, exist_ok=True)
+USAGE_DB_PATH = os.path.join(_DATA_DIR, 'usage.db')
 
 # API Limits (update based on your plan)
 API_LIMITS = {
@@ -30,7 +31,7 @@ API_LIMITS = {
 
 def get_usage_db():
     """Get or create usage database"""
-    os.makedirs('data', exist_ok=True)
+    os.makedirs(_DATA_DIR, exist_ok=True)
     return shelve.open(USAGE_DB_PATH, writeback=True)
 
 def get_date_key(date=None):

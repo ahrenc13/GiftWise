@@ -368,54 +368,52 @@ class StorageService:
 # Factory Functions for Common Databases
 # =============================================================================
 
+_DATA_DIR = os.environ.get('DATA_DIR', '/home/user/GiftWise/data')
+
+
 def get_share_storage() -> StorageService:
     """
     Get storage for share links.
-
-    Database: /home/user/GiftWise/data/shared_recommendations.db
+    Path controlled by DATA_DIR env var (default: /home/user/GiftWise/data).
     Used by: share_manager.py
     """
-    return StorageService('/home/user/GiftWise/data/shared_recommendations.db')
+    return StorageService(os.path.join(_DATA_DIR, 'shared_recommendations.db'))
 
 
 def get_referral_storage() -> StorageService:
     """
     Get storage for referral codes.
-
-    Database: /home/user/GiftWise/data/referral_codes.db
+    Path controlled by DATA_DIR env var (default: /home/user/GiftWise/data).
     Used by: referral_system.py
     """
-    return StorageService('/home/user/GiftWise/data/referral_codes.db')
+    return StorageService(os.path.join(_DATA_DIR, 'referral_codes.db'))
 
 
 def get_stats_storage() -> StorageService:
     """
     Get storage for site stats.
-
-    Database: /home/user/GiftWise/data/site_stats.db
+    Path controlled by DATA_DIR env var (default: /home/user/GiftWise/data).
     Used by: site_stats.py
     """
-    return StorageService('/home/user/GiftWise/data/site_stats.db')
+    return StorageService(os.path.join(_DATA_DIR, 'site_stats.db'))
 
 
 def get_progress_storage() -> StorageService:
     """
     Get storage for generation progress.
-
-    Database: /home/user/GiftWise/data/generation_progress.db
+    Path controlled by DATA_DIR env var (default: /home/user/GiftWise/data).
     Used by: progress_service.py
     """
-    return StorageService('/home/user/GiftWise/data/generation_progress.db')
+    return StorageService(os.path.join(_DATA_DIR, 'generation_progress.db'))
 
 
 def get_user_storage() -> StorageService:
     """
     Get storage for user data.
-
-    Database: /home/user/GiftWise/data/users.db
+    Path controlled by DATA_DIR env var (default: /home/user/GiftWise/data).
     Used by: repositories/user_repository.py
     """
-    return StorageService('/home/user/GiftWise/data/users.db')
+    return StorageService(os.path.join(_DATA_DIR, 'users.db'))
 
 
 # =============================================================================

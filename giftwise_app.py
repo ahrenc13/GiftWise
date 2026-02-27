@@ -226,6 +226,14 @@ except ImportError:
     def get_catalog_stats(): return {}
     def run_catalog_sync(**kw): return {}
 
+try:
+    from awin_catalog_sync import get_awin_catalog_stats, run_awin_sync
+    AWIN_CATALOG_SYNC_AVAILABLE = True
+except ImportError:
+    AWIN_CATALOG_SYNC_AVAILABLE = False
+    def get_awin_catalog_stats(): return {}
+    def run_awin_sync(**kw): return {}
+
 # Enhanced modules (FIXED VERSIONS)
 try:
     from link_validation import process_recommendation_links, get_reliable_link
@@ -4109,6 +4117,7 @@ def admin_stats():
 
     data = get_dashboard_data()
     data['catalog'] = get_catalog_stats()
+    data['awin_catalog'] = get_awin_catalog_stats()
     return render_template('admin_stats.html', data=data)
 
 
@@ -4236,6 +4245,55 @@ def admin_sync_catalog():
         'message': (
             f"Catalog sync ({mode}) running in background. "
             f"Check logs or GET /admin/sync-catalog?key={key}&stats=1 for results."
+        ),
+    }), 202, {'Content-Type': 'application/json'}
+
+
+_awin_sync_lock = _threading.Lock()
+
+
+@app.route('/admin/sync-awin', methods=['GET', 'POST'])
+def admin_sync_awin():
+    """
+    Trigger an Awin catalog sync from the admin dashboard.
+
+    GET ?key=KEY           — runs sync in background, returns immediately
+    GET ?key=KEY&stats=1   — returns current Awin catalog stats as JSON
+    Returns 409 if a sync is already running.
+    """
+    import json as _json
+
+    key = request.args.get('key', '')
+    if not ADMIN_KEY or key != ADMIN_KEY:
+        return {'error': 'Unauthorized'}, 403
+
+    if not AWIN_CATALOG_SYNC_AVAILABLE:
+        return {'error': 'awin_catalog_sync module not available'}, 500
+
+    if request.args.get('stats'):
+        return _json.dumps(get_awin_catalog_stats()), 200, {'Content-Type': 'application/json'}
+
+    dry_run = request.args.get('dry_run', '').lower() in ('1', 'true', 'yes')
+
+    if not _awin_sync_lock.acquire(blocking=False):
+        return _json.dumps({'error': 'Awin sync already running'}), 409, \
+               {'Content-Type': 'application/json'}
+
+    def _run():
+        try:
+            run_awin_sync(dry_run=dry_run)
+        except Exception as e:
+            logger.error("Admin Awin sync failed: %s", e, exc_info=True)
+        finally:
+            _awin_sync_lock.release()
+
+    _threading.Thread(target=_run, daemon=False).start()
+
+    return _json.dumps({
+        'status': 'started',
+        'message': (
+            f"Awin catalog sync running in background. "
+            f"Check logs or GET /admin/sync-awin?key={key}&stats=1 for results."
         ),
     }), 202, {'Content-Type': 'application/json'}
 

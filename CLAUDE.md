@@ -130,7 +130,7 @@ Admin dashboard: /admin/stats?key=YOUR_KEY
 
 ### Before You Ever Flip a Paywall
 
-1. **Inventory must be good first.** Paywalling thin results (Amazon + eBay only, ~30 products) is a conversion disaster. Wait until Skimlinks/Awin/CJ are live.
+1. **Inventory must be good first.** Paywalling thin results is a conversion disaster. Wait until Awin/CJ/FlexOffers inventory is robust.
 2. **TikTok moment:** If the kid posts and traffic spikes, do NOT paywall during that window. Let people run it free, collect emails, build the waitlist. Monetize the warm audience later.
 3. **First paywall should be soft:** Require account creation (free, just email), not payment. This gives you email addresses, lets you track users, and creates a "you're in" feeling without friction.
 4. **Rate limiting before paywalling:** 1 run per IP per day stops abuse while keeping the product free. Implement this before any payment requirement.
@@ -156,7 +156,7 @@ Flip this priority when: monthly affiliate revenue is steady but clearly lower t
 ## What This Is
 AI-powered gift recommendation app. Flask pipeline: scrape social media → Claude analyzes profile → enrich with static data → search retailers → Claude curates gifts → programmatic cleanup → display.
 
-**Current State (TL;DR):** App is live and polished. CJ Affiliate is now the primary inventory driver with 15+ wired static partners. Amazon + eBay active. Skimlinks pending (submitted 2/9, still waiting as of 2/25). Awin: applied to ~35 new Gifts & Flowers merchants Feb 25, awaiting approvals. Impact.com: STAT tag + domain verification phrase added, awaiting support resolution. Per-IP rate limiting active. 3 Gunicorn workers. TikTok launch-ready. 10 gift guides + 4 blog posts live for SEO.
+**Current State (TL;DR):** App is live and polished. CJ Affiliate is now the primary inventory driver with 15+ wired static partners. Amazon + eBay active. **Skimlinks is DEFUNCT — service shut down, do not reference as a pending unlock.** Awin: applied to ~35 new Gifts & Flowers merchants Feb 25, awaiting approvals. Impact.com: account reset + site manually verified by their team, but got an instant auto-rejection (system bug — likely VPN/verification glitch). Second ticket filed. Per-IP rate limiting active. 3 Gunicorn workers. TikTok launch-ready. 10 gift guides + 4 blog posts live for SEO.
 
 ## Current State (Feb 25, 2026)
 
@@ -200,13 +200,13 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 - **Per-IP rate limiting:** 1 run/day per IP (active, shown on `rate_limited.html` template)
 - **OneSignal push notifications:** Opt-in, activated via `ONESIGNAL_APP_ID` Railway env var. Service worker at `/OneSignalSDKWorker.js`.
 - **Privacy, terms, affiliate disclosure** in footer
-- **Skimlinks JS snippet** in all templates (publisher ID: 298548X178612)
+- **Skimlinks JS snippet** in all templates (publisher ID: 298548X178612) — **DEAD CODE. Skimlinks shut down. Remove from templates when convenient.**
 
 ### What's NOT working / pending
 - **Etsy:** 403 on all queries — awaiting developer credentials approval (still pending as of Feb 23)
 - **Awin:** Code works but 0 joined advertisers — returns [] immediately. Need to join at https://www.awin.com/us/search/advertiser-directory (priority: Etsy, UGG, Lululemon, Portland Leather)
-- **Skimlinks:** Code complete, awaiting publisher approval (submitted Feb 9, still pending as of Feb 23 — well past expected 7-business-day window)
-- **Impact.com:** User accidentally signed up as brand instead of publisher. Ticket submitted, no response yet.
+- **Skimlinks:** ❌ DEFUNCT. Service shut down. `skimlinks_searcher.py` is dead code. Remove Skimlinks JS snippet from templates. Do NOT treat as a pending unlock ever again.
+- **Impact.com:** Account type was reset and site manually verified by their support team. Then got an instant auto-rejection — almost certainly a VPN-detection or verification-system bug, not a real editorial rejection. Second ticket filed Feb 27. Hopeful for resolution. Once in: Target, Ulta, Home Depot, Dyson, Adidas, Kohl's, Gap.
 - **Rakuten:** Signed up, need to apply to individual brands
 - **Walmart Creator:** Application submitted
 - **FlexOffers:** Application submitted 2/16, approval status unknown
@@ -216,10 +216,10 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 
 | Network | Status | Brands Covered |
 |---------|--------|---------------|
-| Skimlinks | ⏳ Still pending (submitted 2/9 — past expected window, follow up) | ~48,500 merchants (blanket access) |
+| Skimlinks | ❌ DEFUNCT — service shut down. Dead code in repo. | N/A |
 | CJ Affiliate | ✅ Active. GraphQL search wired + 15+ static partners live. See partner rows below. | Subscription clubs, flowers, jewelry, fragrances, gaming, wellness, chocolates, artisan jewelry, charity shopping, coffee, soccer, refurb electronics, batteries, religious gifts, wine/gourmet baskets |
 | FlexOffers | ⏳ Application submitted 2/16, status unknown | 12,000+ advertisers, niche brands |
-| Awin | ✅ Account active. Feb 25: applied to ~35 Gifts & Flowers merchants (see tiers below). Still need to join: Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar. | Quilling Card, Twisted Lily, LoveIsARose, Limoges Jewelry, Anthemion Flowers, Field Company, CanvasChamp, Sugarwish, Name Stories, Maison Balzac, Formulary 55, Miss to Mrs Box, Enjoy The Wood, La Boîte, Alice Mushrooms, BroBasket, Scribble, Crown and Paw, Palais des Thés, Farmgirl Flowers, Matr Boomie, Cosmos Within, Pacific Resources Intl, Grill Masters Club, Sports Box Co., KOW Steaks, Jasper Hill Farm, Dylan's Candy Bar, Woven Woven, VitaJuwel, Big Night, DEMDACO, Kosterina, Outdoor Fellow, Swanky Badger |
+| Awin | ✅ Account active. 13 merchants confirmed approved (Feb 26). Dynamic feed search live for feed-enabled merchants. Static lists added for VitaJuwel and VSGO (no-feed). Yadea + POSIE AND PENN explicitly blocked. Still need to join: Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar. **TODO: replace placeholder URLs in `_VITAJUWEL_ALL_PRODUCTS` and `_VSGO_ALL_PRODUCTS` in `awin_searcher.py` with real Awin deep links from dashboard.** | **Confirmed live (Feb 26):** Crown and Paw (feed ✅, pet portraits, 60-day cookie), LoveIsARose (feed ✅, up to 10% commission, $250 AOV), Formulary 55 (feed ✅, 8% commission, $70 AOV), Dylan's Candy Bar (feed ✅, 14-day cookie), Matr Boomie (feed ✅, 60-day cookie), Maison Balzac (feed ✅), Promeed (feed ✅, silk bedding), Woven Woven (no feed), VitaJuwel (no feed, static list added), VSGO (no feed, 15% commission, static list added), Abracadabra NYC (no feed), **BLOCKED:** Yadea (e-scooters), POSIE AND PENN (beds, amber status) |
 | Impact | ⏳ Ticket open for wrong account type. STAT tag added to base.html (Feb 25). "Hi, Impact" domain verification phrase added to /about (Feb 25, branch `claude/review-claude-docs-kEdui` — merge to main to activate). Awaiting support response. | Target, Ulta, Kohl's, Gap, Home Depot, Adidas, Dyson |
 | Rakuten | Account active, need to apply to individual brands | Sephora, Nordstrom, Anthropologie, Free People, Coach |
 | Walmart Creator | Application submitted | Walmart |
@@ -243,6 +243,14 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 | TrinityRoad / Catholic Company (via CJ) | ✅ Wired — static products in `_TRINITYROAD_ALL_PRODUCTS` | **8% commission**, 30–45 day cookie. 6 sites incl. catholiccompany.com, rosary.com. Trigger: Catholic faith milestones (Confirmation, Communion, Baptism, Christmas). Deep-link enabled. ADV_CID: 2871603. |
 | zChocolat (via CJ) | ✅ Wired — static products in `_ZCHOCOLAT_ALL_PRODUCTS` | **20% commission** (highest of any partner), 45-day cookie, ~$120 AOV, $75–367 EPC. World-champion French chocolatier, ships to 244 countries. Trigger: chocolate, gourmet, luxury gifts. Deep-link enabled. ADV_CID: 1124214. |
 | Winebasket / BabyBasket / Capalbo's (via CJ) | ✅ Wired — static products in `_WINEBASKET_ALL_PRODUCTS` | **7% commission**, 15-day cookie, ~$110 AOV, $52–66 EPC. Wine baskets, baby gift baskets, gourmet food baskets. Trigger: wine, new baby, gourmet food, celebrations. Deep-link enabled. ADV_CID: 2387081. |
+| VitaJuwel (via Awin) | ✅ Wired — static products in `_VITAJUWEL_ALL_PRODUCTS` in `awin_searcher.py`. **TODO: replace placeholder URLs with Awin deep links.** | Commission: check Awin dashboard. 45-day cookie. Crystal gemstone water bottles/carafes ($130–$135). Trigger: wellness, crystals, yoga, meditation, spiritual, chakra. ADV ID: 97077. feedEnabled=no. |
+| VSGO (via Awin) | ✅ Wired — static products in `_VSGO_ALL_PRODUCTS` in `awin_searcher.py`. **TODO: replace placeholder URLs with Awin deep links.** | **15% commission**, 30-day cookie. Premium camera bags. Trigger: photography, cameras, content creation. ADV ID: 120898. feedEnabled=no. |
+| LoveIsARose (via Awin) | ✅ Live — feedEnabled, dynamic search will surface products automatically. | **Up to 10% commission**, 30-day cookie, **$250 AOV** (up to $25/sale — highest $ per sale in the stack after zChocolat). Gold/platinum/silver roses, personalized anniversary gifts. Trigger: romance, anniversaries, Valentine's Day, milestone gifts. ADV ID: 96879. |
+| Crown and Paw (via Awin) | ✅ Live — feedEnabled, dynamic search active. | Commission: check Awin dashboard. 60-day cookie. Custom pet portraits painted by real designers. Trigger: pets, dog owner, cat owner, pet lover. ADV ID: 57823. |
+| Formulary 55 (via Awin) | ✅ Live — feedEnabled, dynamic search active. | **8% commission**, 30-day cookie, $70 AOV. Luxury shea butter soaps, body crèmes, fragrances. Trigger: self-care, beauty, fragrance, spa, luxury. ADV ID: 86831. |
+| Dylan's Candy Bar (via Awin) | ✅ Live — feedEnabled, dynamic search active. | Commission: check Awin dashboard. **14-day cookie** (short — link freshness matters). 7,000+ confections, candy gifts. Trigger: candy, sweets, chocolate, sugar, pop culture. ADV ID: 61247. |
+| Matr Boomie (via Awin) | ✅ Live — feedEnabled, dynamic search active. | Commission: check Awin dashboard. 60-day cookie. Fair trade jewelry, home decor, unique gifts from Indian artisans. Trigger: fair trade, boho, artisan, India, global gifts. ADV ID: 96117. |
+| Maison Balzac (via Awin) | ✅ Live — feedEnabled, dynamic search active. | Commission: check Awin dashboard. 30-day cookie. Quirky French glassware, objects for the home. Trigger: home decor, kitchen, aesthetic, French, whimsical, entertaining. ADV ID: 100137. |
 
 **IMPORTANT:** ShareASale migrated to Awin in Oct 2025. All ShareASale merchants are now accessible through Awin.
 
@@ -346,10 +354,11 @@ AI-powered gift recommendation app. Flask pipeline: scrape social media → Clau
 - `post_curation_cleanup.py` — Programmatic enforcement of diversity rules (brand, category, interest, source). 23 category patterns.
 - `interest_ontology.py` — Pre-LLM thematic enrichment: maps interests to attribute clusters, clusters into themes, infers gift philosophy, generates adjacency hints. Zero API cost. Feeds curator prompt.
 - `enrichment_engine.py` — Static intelligence layer (do_buy/dont_buy per interest, demographics, trending)
-- `multi_retailer_searcher.py` — Orchestrates all retailer searches, merges inventory pool. Order: Etsy → Awin → CJ → eBay → Skimlinks → Amazon
+- `multi_retailer_searcher.py` — Orchestrates all retailer searches, merges inventory pool. Order: Etsy → Awin → CJ → eBay → Amazon. (Skimlinks removed from order — service defunct.)
 - `rapidapi_amazon_searcher.py` — Amazon search + shared query cleaning functions (`_clean_interest_for_search`, `_categorize_interest`, `_QUERY_SUFFIXES`)
 - `ebay_searcher.py` — eBay search with EPN campaign params on all links
-- `etsy_searcher.py`, `awin_searcher.py`, `skimlinks_searcher.py`, `cj_searcher.py` — Per-retailer search modules
+- `etsy_searcher.py`, `awin_searcher.py`, `cj_searcher.py` — Per-retailer search modules
+- `skimlinks_searcher.py` — **DEAD CODE. Skimlinks shut down. Do not wire or reference.**
 - `cj_searcher.py` — CJ Affiliate: GraphQL product search + 15+ static partner product lists. All `_*_ALL_PRODUCTS` lists live here.
 - `catalog_sync.py` — CJ product catalog pre-scorer and session cache for discovered CJ products
 - `spotify_parser.py` — Spotify Wrapped text parser (text-only; OAuth was removed)
@@ -481,7 +490,7 @@ The files below contain in-code `⚠️ OPUS-ONLY ZONE` markers. These protect t
 - **Don't make piecemeal fixes.** Think holistically. Read `OPUS_AUDIT.md` before adding new features.
 - **Don't add code filters for taste problems.** "Boring practical items" should be handled by curator prompt, not by `BoringPracticalFilter`. If the curator is making bad judgment calls, fix the prompt.
 - **Don't build campaign-specific code.** Valentine's Day taught this lesson — had to delete 884 lines of promo-specific code. Build generic infrastructure (sharing, referrals, urgency) that works for any campaign.
-- **Don't assume affiliate networks will approve quickly.** Skimlinks submitted Feb 9, still waiting Feb 16. Plan for 7+ business days.
+- **Don't assume affiliate networks will approve quickly.** Plan for 7+ business days on any application. Skimlinks is defunct — do not reference it.
 - **Don't optimize for Amazon.** Amazon has lowest commission (1-4%). Prioritize Etsy (4%), Awin (5%), eBay (3%) for revenue.
 
 ### Current Status of Retailer Integrations
@@ -490,7 +499,7 @@ The files below contain in-code `⚠️ OPUS-ONLY ZONE` markers. These protect t
 - CJ Affiliate (GraphQL): Active — searches product feeds for joined advertisers, skips non-joined. 15+ static partner lists as fallback/supplement.
 - Etsy (v3 API): Awaiting developer credentials (all queries return 403)
 - Awin (Data Feed API): Code working, but gated — returns [] until advertisers are joined
-- Skimlinks (Product Key API v2): Code complete, awaiting publisher approval (submitted 2/9, still pending 2/23)
+- Skimlinks: ❌ DEFUNCT. Dead code in repo (`skimlinks_searcher.py`). Remove JS snippet from templates.
 - ShareASale: Migrated to Awin (Oct 2025). Legacy code still present but not active.
 
 ### Editorial Content (for Affiliate Network Approval)
@@ -1025,11 +1034,13 @@ echo "✅ Basic tests passed"
 
 **AvantLink:** REI, Patagonia
 
-**In-house/Other:** Walmart (own program + Walmart Creator), Zara (Captiv8 only), Bath & Body Works (CPX Advertising), Victoria's Secret (Skimlinks/DCMnetwork)
+**In-house/Other:** Walmart (own program — rejected Feb 27, reapply with traffic; Walmart Creator also applied), Zara (Captiv8 only), Bath & Body Works (CPX Advertising), Victoria's Secret (DCMnetwork)
 
 **No affiliate program:** Brandy Melville, Aritzia, IKEA (no US program), Gymshark (closed — invite-only athletes now)
 
-**Too niche for major networks (Skimlinks best shot):** Garage, Pink Palm Puff, Dandy Worldwide, Custom Collective, Comfrt, Way of Wade
+**Too niche for major networks (FlexOffers best shot):** Garage, Pink Palm Puff, Dandy Worldwide, Custom Collective, Comfrt, Way of Wade
+
+**Not on Awin (contrary to ShareASale migration assumption):** Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar — find these on CJ or FlexOffers instead.
 
 ## Business Model & Revenue Architecture
 
@@ -1039,7 +1050,7 @@ echo "✅ Basic tests passed"
 Every product recommendation is an affiliate link opportunity. Revenue per click varies by source:
 - Amazon Associates: 1-4% commission (lowest, but highest conversion)
 - Etsy Affiliates (via Awin): ~4-5% commission
-- Skimlinks merchants: varies, but 25% cut to Skimlinks
+- ~~Skimlinks~~ (defunct — service shut down)
 - Awin merchants: 5-10% depending on advertiser
 - eBay Partner Network: 1-4%
 
@@ -1109,8 +1120,8 @@ Key themes: CJ fully wired (GraphQL + 15 static partners), launch hardening (3 w
 **Immediate Priority: Unlock More Inventory**
 CJ is live with 15+ static partners. Now need to expand further:
 
-1. **Skimlinks** (highest remaining impact) — Blanket access to ~48,500 merchants. Submitted Feb 9, still pending Feb 23. Follow up directly.
-2. **Awin** (high impact) — Account active. Need to join former ShareASale merchants: Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar.
+1. ~~Skimlinks~~ — **DEFUNCT. Stop referencing this.**
+2. **Awin** (high impact) — Account active. Applied to ~35 Gifts & Flowers merchants Feb 25. NOTE: Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar are NOT on Awin — search for them on CJ/FlexOffers/direct instead.
 3. **FlexOffers** (high impact) — Applied Feb 16. Status unknown — check dashboard.
 4. **Impact.com** (fix account type) — Accidentally signed up as brand not publisher. Ticket open, no response.
 5. **Rakuten** — Account active, need to apply to individual brands (Sephora, Nordstrom, etc.)
@@ -1126,7 +1137,7 @@ App is in good shape. 3 workers, rate limiting, all recs shown free. Per CLAUDE.
 
 ## What the User Wants Next (Updated Feb 25)
 
-1. **Follow up on Skimlinks** — Past the 7-business-day window. Contact publisher support directly.
+1. ~~Skimlinks~~ — **Defunct. Removed from roadmap.**
 2. **Awin — await approvals** — Applied Feb 25 to ~35 Gifts & Flowers merchants (see affiliate table). Still need to join: Uncommon Goods, Personalization Mall, Things Remembered, Oriental Trading, HomeWetBar. Auto-approvals expected 24-48h; manual 3-7 days.
 3. **Check FlexOffers status** — Applied Feb 16, status unknown
 4. **Fix Impact account** — Ticket open. STAT tag + "Hi, Impact" verification phrase live on branch `claude/review-claude-docs-kEdui`. **Merge that branch to main** to activate the verification. Once Impact confirms, remove the "Hi, Impact" phrase from `/about`.

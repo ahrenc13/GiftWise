@@ -25,7 +25,7 @@ GIFT_INTELLIGENCE = {
         'dont_buy': [
             'Basic basketballs (they watch, don\'t play)',
             'Gym equipment or training gear',
-            'Generic sports posters',
+            'Mass-produced dorm-style sports posters (curated vintage team prints are fine)',
             'Cheap team merchandise',
             'Basketball shoes (unless they play)'
         ],
@@ -128,7 +128,7 @@ GIFT_INTELLIGENCE = {
         ],
         'dont_buy': [
             'Games without knowing their library',
-            'Generic gamer merchandise',
+            'Generic "gamer" novelty items like mugs and posters (game-specific collectibles are fine)',
             'Cheap controllers',
             'Energy drinks or snacks',
             'Consoles (too expensive, they probably have it)'
@@ -197,7 +197,7 @@ GIFT_INTELLIGENCE = {
             'Library-scented candles'
         ],
         'dont_buy': [
-            'Books without knowing their taste',
+            'Random books chosen without knowing their preferred genre or authors',
             'Generic bookmarks',
             'Cheap reading lights',
             'Book-themed clothing',
@@ -268,7 +268,7 @@ GIFT_INTELLIGENCE = {
         ],
         'dont_buy': [
             'CDs (unless they collect)',
-            'Generic music merchandise',
+            'Mass-produced band tees, keychains, and impulse-buy merch (artist-specific collectibles are fine)',
             'Cheap speakers',
             'Instrument upgrades (too personal)',
             'Music lessons without asking'

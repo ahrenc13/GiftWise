@@ -230,10 +230,18 @@ def search_products_multi_retailer(
     # Run all retailer searches in parallel. Total wall-clock time = slowest single
     # retailer rather than the sum of all retailers. Each is independently isolated:
     # a timeout or exception in one does not affect the others.
+    #
+    # IMPORTANT: Do NOT use `with ThreadPoolExecutor(...)` here. Python's context
+    # manager calls shutdown(wait=True) on __exit__, which blocks until ALL threads
+    # finish — even after as_completed(timeout=90) fires. Awin downloads up to 12
+    # product-feed CSVs sequentially, each with a 90s HTTP timeout, so one slow Awin
+    # run can block here for 10+ minutes despite the 90s timeout. We call
+    # shutdown(wait=False) ourselves so hung threads are abandoned immediately.
     if retailer_tasks:
         logger.info(f"Launching {len(retailer_tasks)} retailer searches in parallel")
-        with concurrent.futures.ThreadPoolExecutor(max_workers=len(retailer_tasks)) as executor:
-            futures = {executor.submit(task): task.__name__ for task in retailer_tasks}
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=len(retailer_tasks))
+        futures = {executor.submit(task): task.__name__ for task in retailer_tasks}
+        try:
             for future in concurrent.futures.as_completed(futures, timeout=90):
                 task_name = futures[future]
                 try:
@@ -242,10 +250,13 @@ def search_products_multi_retailer(
                     logger.info(f"Got {len(products)} products from {retailer_name}")
                 except ImportError as e:
                     logger.warning(f"{task_name} module not available: {e}")
-                except concurrent.futures.TimeoutError:
-                    logger.error(f"{task_name} timed out after 90s")
                 except Exception as e:
                     logger.error(f"{task_name} failed: {e}")
+        except concurrent.futures.TimeoutError:
+            pending = [name for f, name in futures.items() if not f.done()]
+            logger.error(f"Retailer search timeout after 90s — abandoning slow threads: {pending}. Proceeding with partial results.")
+        finally:
+            executor.shutdown(wait=False)  # Never block on slow/hung retailer threads
 
     # Interleave products by source so no single vendor dominates early positions
     if len(all_products) > 1:

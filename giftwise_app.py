@@ -3213,8 +3213,13 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
     This is a thin wrapper that delegates to the RecommendationService for all
     pipeline logic, maintaining only progress tracking and final storage.
     """
+    # Log BEFORE the try block — if this appears but nothing after, the crash is
+    # inside app.app_context() or the very first import inside the try.
+    logger.info("[THREAD] Generation thread alive for user %s", user_id[:8] if user_id else "?")
     try:
+        logger.info("[THREAD] Entering app context...")
         with app.app_context():
+            logger.info("[THREAD] App context acquired — starting pipeline")
             logger.info("=" * 60)
             logger.info("USING NEW RECOMMENDATION ARCHITECTURE (background thread)")
             logger.info("=" * 60)

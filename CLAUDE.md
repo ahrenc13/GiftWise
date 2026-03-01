@@ -1,5 +1,49 @@
 # GiftWise — Project Intelligence
 
+## 🚨 ACTIVE BUG: Generation Thread Silent Crash (Mar 1 2026)
+
+**Status:** Unresolved. Branch `claude/csv-review-strategy-cXl8a` has a PR open to main — merge it first, it helps but may not fully fix this.
+
+**Symptom:** User sees "Getting started…" on the generating page, it spins forever, no new Railway log entries appear after profile analysis completes.
+
+**What's confirmed:**
+- Profile analysis completes fine (`/review-profile` route works, profile cached)
+- User approves profile → `/api/generate-recommendations` POST succeeds (browser gets `{started: true}`)
+- `_set_gen_progress` runs (browser poll sees `stage='starting'` / "Getting started…")
+- Background thread is launched via `threading.Thread(...).start()`
+- **But: zero log output from the thread.** Not even the `logger.info("=" * 60)` at the top of the try block.
+
+**What was ruled out:**
+- Not a retailer API timeout (those happen inside the thread, which never logs)
+- Not a product source misconfiguration (retailer keys are set, would return 503 before thread start)
+- Not a `NEW_RECOMMENDATION_FLOW = False` issue (profile review page works, which requires this flag)
+- Not a session loss (user sees "Getting started" which means the poll and progress_store work)
+- Not a Gunicorn worker exhaustion (all 3 workers free after scraping/profile phase)
+
+**Root cause candidates (in priority order for next session):**
+1. **`with app.app_context():` silently blocks or raises a BaseException** (not caught by `except Exception`). Diagnostic log lines were added *before* the try block and inside the try-before-app-context — check if `[THREAD] Generation thread alive` appears but `[THREAD] App context acquired` does not.
+2. **Cross-worker in-memory progress dict** — `_generation_progress` on main is per-process. Thread runs in Worker A, polls hit Workers B/C, browser never sees `complete=True`. PR on this branch fixes this with SQLite-backed `progress_store.py`. This explains the 5-min spin but NOT the missing logs.
+3. **Thread silently killed** — daemon threads die if the Gunicorn worker process is restarted (e.g., after a previous crash). Check Railway deploy logs for worker restarts.
+
+**Diagnostic added in this session:**
+```python
+# In _run_generation_thread (giftwise_app.py):
+logger.info("[THREAD] Generation thread alive for user %s", user_id[:8])
+try:
+    logger.info("[THREAD] Entering app context...")
+    with app.app_context():
+        logger.info("[THREAD] App context acquired — starting pipeline")
+```
+After deploying the PR + these logs, run a test and look for these three `[THREAD]` lines in Railway logs. Which one is last visible tells you exactly where it dies.
+
+**PR to merge:** `claude/csv-review-strategy-cXl8a` → `main`. Includes:
+- SQLite progress store (cross-worker fix)
+- 90s retailer thread timeout
+- Awin catalog sync
+- Parallel retailer search
+
+---
+
 ## Pending Opus Tasks
 
 Tasks flagged `# SONNET-FLAG:` in the codebase that require Opus to implement correctly.

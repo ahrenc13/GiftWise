@@ -21,7 +21,7 @@ Each entry below includes the Opus prompt to copy-paste.
 >
 > 4. **Rate limiting race.** Per-IP rate limiting is shelve-backed. With 3 workers, can two concurrent requests from the same IP both pass the rate limit check before either writes the block? Walk through the exact race condition if it exists.
 >
-> 5. **Railway ephemeral filesystem.** Shelve files, SQLite DB, and any other local state live on Railway's ephemeral filesystem. What exactly is lost on redeploy? How often does Railway redeploy (including auto-deploys from `main`)? What is the user-visible impact?
+> 5. ~~**Railway ephemeral filesystem.**~~ **NOT APPLICABLE — Railway Pro with 50GB permanent volume. Data is not lost on redeploy or restart. Skip this audit item.**
 >
 > 6. **Catalog sync conflict.** `catalog_sync.py` is triggered nightly by an external cron hitting `/admin/sync-catalog`. If a user session is mid-pipeline when sync runs, is there a conflict? Can sync corrupt the session cache?
 >
@@ -50,7 +50,7 @@ Each entry below includes the Opus prompt to copy-paste.
 - **Start command:** `gunicorn giftwise_app:app --bind 0.0.0.0:$PORT --workers 3 --timeout 600 --graceful-timeout 120 --worker-class sync --log-level info`
 - **Environment variables:** Set in Railway dashboard → Settings → Variables (see RAILWAY_DEBUG_GUIDE.md for required vars)
 - **Logs:** Railway dashboard → Deployments → View Logs (or `railway logs` via CLI)
-- **Database:** Uses shelve (ephemeral filesystem) — consider migrating to Railway Postgres for persistence across deploys
+- **Storage:** Railway Pro plan with a **50GB permanent volume** mounted on the service. SQLite DB, shelve files, and all local state persist across deploys and container restarts. **Do NOT suggest ephemeral filesystem as a cause of data loss — it is not ephemeral.**
 
 ## How to Test Changes Before Going Live (Beginner Guide)
 
@@ -1160,7 +1160,7 @@ Traffic will come. The question is whether the architecture holds. Known pressur
 - Gunicorn worker count (currently 3) — synchronous workers block on Claude API calls (10-25s each); a burst of 10 concurrent sessions could exhaust the pool
 - SQLite (database.py) — write contention under concurrent load
 - Rate limiting (per-IP, shelve-backed) — race condition risk with 3 workers
-- Railway ephemeral filesystem — shelve data lost on every redeploy; not visible until it happens to a real user
+- ~~Railway ephemeral filesystem~~ — **NOT an issue. 50GB permanent volume on Railway Pro. Data persists across deploys and restarts.**
 
 ## What the User Wants Next (Updated Feb 25)
 
@@ -1169,7 +1169,7 @@ Traffic will come. The question is whether the architecture holds. Known pressur
 3. **Check FlexOffers status** — Applied Feb 16, status unknown
 4. **Fix Impact account** — Ticket open. STAT tag + "Hi, Impact" verification phrase live on branch `claude/review-claude-docs-kEdui`. **Merge that branch to main** to activate the verification. Once Impact confirms, remove the "Hi, Impact" phrase from `/about`.
 5. **Monitor quality** — admin dashboard at `/admin/stats?key=ADMIN_DASHBOARD_KEY`. Watch rec_run, affiliate click events.
-6. **Load test & harden** — Opus audit of architectural pressure points before real traffic hits (shelve concurrency, Gunicorn worker exhaustion, SQLite write contention, ephemeral filesystem risk). See Opus prompt in this file.
+6. **Load test & harden** — Opus audit of architectural pressure points before real traffic hits (shelve concurrency, Gunicorn worker exhaustion, SQLite write contention). See Opus prompt in this file. Note: ephemeral filesystem is NOT a concern — Railway Pro with 50GB permanent volume.
 7. **Paywall timing** — monitor engagement via admin dashboard per the paywall thresholds above
 8. **Opus A/B test** — run same profile through Sonnet and Opus curation (now viable with better inventory)
 9. **Mother's Day (May 11)** — Guide built, start promoting in late March/early April

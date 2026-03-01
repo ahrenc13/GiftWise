@@ -312,18 +312,33 @@ _scrape_threads = []
 _max_concurrent_scrapers = int(os.environ.get('MAX_CONCURRENT_SCRAPERS', '8'))
 _scrape_semaphore = threading.Semaphore(_max_concurrent_scrapers)
 
+# Generation threads: background recommendation pipeline threads. Non-daemon so they
+# survive Gunicorn graceful shutdown (worker waits for them before exiting).
+_generation_threads = []
+_generation_threads_lock = threading.Lock()
+
 def _graceful_shutdown(signum, frame):
-    """On SIGTERM, wait for active scrape threads (max 90s total) before exiting."""
+    """On SIGTERM, wait for active scrape and generation threads (max 110s) before exiting."""
     sig = getattr(signal, 'SIGTERM', None)
     if signum != sig:
         return
     logger.info("SIGTERM received, waiting for scrape threads to finish (max 90s)...")
-    deadline = time.time() + 90
+    deadline = time.time() + 110  # 110s leaves buffer under Railway's graceful-timeout of 120s
     for t in list(_scrape_threads):
         remaining = max(0, deadline - time.time())
         if remaining <= 0:
             break
         t.join(timeout=remaining)
+    with _generation_threads_lock:
+        active_gen = list(_generation_threads)
+    if active_gen:
+        logger.info("SIGTERM: waiting for %d active generation thread(s)...", len(active_gen))
+        for t in active_gen:
+            remaining = max(0, deadline - time.time())
+            if remaining <= 0:
+                logger.warning("SIGTERM: graceful shutdown deadline reached, %d generation thread(s) still running", len(active_gen))
+                break
+            t.join(timeout=remaining)
     logger.info("Exiting after graceful shutdown")
     sys.exit(0)
 
@@ -3216,10 +3231,17 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
     # Log BEFORE the try block — if this appears but nothing after, the crash is
     # inside app.app_context() or the very first import inside the try.
     logger.info("[THREAD] Generation thread alive for user %s", user_id[:8] if user_id else "?")
+    # Force-flush logging handlers: Railway captures stderr which may be block-buffered
+    for h in logging.root.handlers:
+        h.flush()
     try:
         logger.info("[THREAD] Entering app context...")
+        for h in logging.root.handlers:
+            h.flush()
         with app.app_context():
             logger.info("[THREAD] App context acquired — starting pipeline")
+            for h in logging.root.handlers:
+                h.flush()
             logger.info("=" * 60)
             logger.info("USING NEW RECOMMENDATION ARCHITECTURE (background thread)")
             logger.info("=" * 60)
@@ -3276,7 +3298,6 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                 success=True
             )
 
-
     except ValueError as e:
         # Expected errors (profile validation, no products, etc.)
         logger.warning(f"Generation validation error: {e}")
@@ -3300,6 +3321,28 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
             success=False,
             error='An unexpected error occurred. Please try again.'
         )
+
+    except BaseException as e:
+        # SystemExit, MemoryError, KeyboardInterrupt, or other fatal errors.
+        # These are NOT caught by `except Exception` — this block makes them visible.
+        logger.critical("[THREAD] FATAL crash (BaseException) for user %s: %s: %s",
+                        user_id[:8] if user_id else "?", type(e).__name__, e, exc_info=True)
+        try:
+            _set_gen_progress(user_id, complete=True, success=False,
+                              error='A system error occurred. Please try again.')
+        except Exception:
+            pass
+        raise  # Re-raise so Python logs the unhandled exception in the thread
+
+    finally:
+        # Always remove this thread from the tracked list so graceful shutdown
+        # doesn't wait on a thread that has already finished.
+        with _generation_threads_lock:
+            try:
+                _generation_threads.remove(threading.current_thread())
+            except ValueError:
+                pass
+        logger.info("[THREAD] Generation thread exiting for user %s", user_id[:8] if user_id else "?")
 
 
 @app.route('/api/generate-recommendations', methods=['POST'])
@@ -3364,9 +3407,13 @@ def api_generate_recommendations():
         args=(user_id, user, platforms, recipient_type, relationship,
               approved_profile, enriched_profile, enhanced_search_terms,
               quality_filters, recipient_age, recipient_gender),
-        daemon=True
+        daemon=False,  # Non-daemon: Gunicorn worker waits for this thread during graceful shutdown
+        name=f"generation-{user_id[:8]}"
     )
+    with _generation_threads_lock:
+        _generation_threads.append(thread)
     thread.start()
+    logger.info("[GEN] Background generation thread started for user %s", user_id[:8])
 
     return jsonify({'started': True})
 

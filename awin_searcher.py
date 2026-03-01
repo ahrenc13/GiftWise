@@ -604,6 +604,9 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
     """
     Search Awin product feeds by profile interests and intelligence-layer search terms.
 
+    Checks the SQLite catalog cache first (populated by catalog_sync.py nightly Awin sync).
+    Falls back to live feed downloads only if the cache doesn't have enough coverage.
+
     Uses feed list + multiple feed CSVs (cached) for full breadth. Prefers Joined advertisers.
     If enhanced_search_terms (from enrichment) are provided, also matches products against those.
     Returns list of product dicts in our standard format.
@@ -613,7 +616,32 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
         return []
 
     api_key = data_feed_api_key.strip()
-    logger.info("Searching Awin feeds for %s products (full breadth)", target_count)
+
+    # --- Cache-first: check SQLite catalog before downloading any feeds ---
+    try:
+        from catalog_sync import get_cached_awin_products_for_interest
+        interests = profile.get("interests", [])
+        cached_products = []
+        seen_ids = set()
+        for interest in interests:
+            name = interest.get("name", "")
+            if not name or interest.get("is_work", False):
+                continue
+            for p in get_cached_awin_products_for_interest(name, limit=20):
+                pid = p.get("product_id", "")
+                if pid and pid not in seen_ids:
+                    seen_ids.add(pid)
+                    cached_products.append(p)
+        if len(cached_products) >= target_count // 2:
+            static = _get_awin_static_products(profile)
+            result = (cached_products + static)[:target_count]
+            logger.info("Awin: returning %d products from catalog cache (skipping live download)",
+                        len(result))
+            return result
+    except Exception as e:
+        logger.debug("Awin cache check failed, falling back to live: %s", e)
+
+    logger.info("Searching Awin feeds for %s products (live)", target_count)
 
     interests = profile.get("interests", [])
     enhanced = list(enhanced_search_terms or [])

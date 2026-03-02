@@ -3351,17 +3351,22 @@ def api_generate_recommendations():
     Start recommendation generation in a background thread.
     Client polls /api/generation-progress for real-time updates.
     """
+    logger.info("[ROUTE] /api/generate-recommendations called")
+
     user = get_session_user()
     if not user:
+        logger.warning("[ROUTE] No session user — returning 401")
         return jsonify({'success': False, 'error': 'Not logged in'}), 401
 
     if not ANTHROPIC_API_KEY or not claude_client:
+        logger.warning("[ROUTE] Claude not configured — returning 503")
         return jsonify({
             'success': False,
             'error': 'AI service not configured. Please contact support.'
         }), 503
 
     if not NEW_RECOMMENDATION_FLOW:
+        logger.warning("[ROUTE] NEW_RECOMMENDATION_FLOW=False — returning 503")
         return jsonify({
             'success': False,
             'error': 'New recommendation system not fully configured.'
@@ -3382,7 +3387,10 @@ def api_generate_recommendations():
         os.environ.get('SHAREASALE_API_SECRET', '').strip(),
     ])
     has_amazon = bool(os.environ.get('RAPIDAPI_KEY', '').strip())
+    logger.info("[ROUTE] sources — etsy=%s awin=%s ebay=%s amazon=%s user=%s",
+                has_etsy, has_awin, has_ebay, has_amazon, user_id[:8])
     if not (has_etsy or has_awin or has_ebay or has_shareasale or has_amazon):
+        logger.warning("[ROUTE] No product sources configured — returning 503")
         return jsonify({
             'success': False,
             'error': "We're having trouble loading gift ideas right now. Please try again in a few minutes."

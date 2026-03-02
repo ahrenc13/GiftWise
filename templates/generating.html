@@ -670,7 +670,11 @@
             if (!state.complete) setTimeout(pollProgress, 2000);
         }
 
-        window.addEventListener('load', startGeneration);
+        // Call immediately — the IIFE runs as an inline script (synchronous), so all
+        // DOM elements above it are already available. Critically, this fires BEFORE
+        // any deferred scripts (OneSignal SDK) load and register their service worker,
+        // so the fetch() in startGeneration() reaches Flask without SW interception.
+        startGeneration();
     })();
 </script>
 {% endblock %}

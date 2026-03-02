@@ -1393,8 +1393,12 @@ def debug_awin():
 # ============================================================================
 
 @app.route('/OneSignalSDKWorker.js')
+@app.route('/OneSignalSDK.sw.js')
 def onesignal_worker():
-    """Serve OneSignal service worker at root (required by OneSignal for push notifications)"""
+    """Serve OneSignal service worker at root (required by OneSignal for push notifications).
+    Also handles /OneSignalSDK.sw.js — the v16 SDK default path that browsers cache and
+    try to update. Serving our passthrough-first SW at both paths ensures cached SWs
+    get updated with the fixed version that doesn't intercept same-origin Flask requests."""
     from flask import send_from_directory
     return send_from_directory('static', 'OneSignalSDKWorker.js',
                                mimetype='application/javascript')

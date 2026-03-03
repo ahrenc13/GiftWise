@@ -333,8 +333,8 @@
 <script>
     (function() {
         'use strict';
-
-        const recipientType = '{{ recipient_type }}';
+        console.log('[GiftWise] Generating page script running');
+        const recipientType = {{ recipient_type | tojson }};
 
         // ── Gift-research quotes ──────────────────────────────────────────
         const quotes = [
@@ -624,6 +624,7 @@
         // ── API calls ─────────────────────────────────────────────────────
         async function startGeneration() {
             try {
+                console.log('[GiftWise] Sending POST to /api/generate-recommendations');
                 const resp = await fetch('/api/generate-recommendations', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' }

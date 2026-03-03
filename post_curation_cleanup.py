@@ -38,6 +38,33 @@ from collections import defaultdict
 _MARKETPLACE_NAMES = {'tiktok shop', 'cj affiliate', 'cj', 'shareasale', 'unknown'}
 
 
+def _build_replacement_why_perfect(product):
+    """Build a why_perfect for replacement/backfill products.
+
+    The generic "rounds out the gift set" template signals to users that
+    the recommendation is filler. This version uses the product title,
+    interest match, and snippet to construct something that at least names
+    the product and connects it to the person's interest.
+    """
+    interest = product.get('interest_match', '')
+    title = (product.get('title') or '').strip()
+    snippet = (product.get('snippet') or '').strip()
+
+    # Truncate overly long marketplace titles
+    title_words = title.split()
+    title_short = ' '.join(title_words[:8]).lower() if len(title_words) > 8 else title.lower()
+
+    if interest and snippet:
+        snippet_clean = snippet[:100].rstrip('.').strip()
+        return (f"Picked for their {interest} side — {snippet_clean.lower()}. "
+                f"Something they'd want but probably wouldn't grab for themselves.")
+    elif interest:
+        return (f"A solid find for their {interest} passion — {title_short} "
+                f"that hits the mark.")
+    else:
+        return f"A thoughtful pick — {title_short} that adds something personal to the set."
+
+
 def _display_retailer(source_domain, brand=None):
     """Return a display-friendly retailer label.
 
@@ -672,7 +699,7 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
             replacement = {
                 'name': clean_title(p.get('title', 'Gift')),
                 'description': p.get('snippet', ''),
-                'why_perfect': f"A strong match for their {p.get('interest_match', 'top')} interest — rounds out the gift set with something they'll actually use.",
+                'why_perfect': _build_replacement_why_perfect(p),
                 'price': p.get('price', 'Price unknown'),
                 'where_to_buy': _display_retailer(p.get('source_domain'), p.get('brand')),
                 'product_url': link,

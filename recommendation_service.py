@@ -439,6 +439,10 @@ class RecommendationService:
         product_gifts = curated.get('product_gifts', [])
         experience_gifts = curated.get('experience_gifts', [])
 
+        # Opus fix: hallucination grounding validation (Mar 3 2026)
+        # Log when curator selections don't match inventory, so we can measure hallucination rate
+        self._validate_inventory_grounding(product_gifts, products_for_curator)
+
         # Track recommended products for learning
         self._track_recommendations(product_gifts)
 
@@ -473,6 +477,74 @@ class RecommendationService:
             logger.error(f"Pre-filtering failed: {e}, sending all products to curator")
 
         return products
+
+    def _validate_inventory_grounding(self, product_gifts: List[Dict], inventory: List[Dict]):
+        """Validate that curator selections reference real inventory items.
+
+        Opus fix: hallucination grounding (Mar 3 2026).
+        Logs warnings for any product gift whose inventory_id or product_url
+        doesn't match the actual inventory pool. This lets us measure whether
+        the hallucination rate drops to zero after the prompt grounding fix.
+        """
+        if not product_gifts or not inventory:
+            return
+
+        # Build lookup: item number → URL (1-indexed, matching format_products)
+        idx_to_url = {}
+        url_set = set()
+        for i, p in enumerate(inventory, 1):
+            link = (p.get('link') or '').strip()
+            if link:
+                idx_to_url[i] = link
+                url_set.add(link)
+                url_set.add(link.rstrip('/'))
+
+        total = len(product_gifts)
+        hallucinated = 0
+        id_missing = 0
+
+        for gift in product_gifts:
+            name = gift.get('name', '<unnamed>')[:60]
+            inv_id = gift.get('inventory_id')
+            url = (gift.get('product_url') or '').strip()
+            url_norm = url.rstrip('/')
+
+            # Check 1: Does the URL exist in inventory at all?
+            url_in_inventory = url in url_set or url_norm in url_set
+
+            # Check 2: Does inventory_id exist and map to the correct URL?
+            id_valid = False
+            if inv_id is not None:
+                try:
+                    inv_id_int = int(inv_id)
+                    expected_url = idx_to_url.get(inv_id_int, '')
+                    id_valid = (expected_url == url or expected_url == url_norm
+                                or expected_url.rstrip('/') == url_norm)
+                except (ValueError, TypeError):
+                    pass
+
+            if not url_in_inventory:
+                hallucinated += 1
+                logger.warning(
+                    f"HALLUCINATION_CHECK: Product NOT in inventory (hallucinated): "
+                    f"name='{name}', inventory_id={inv_id}, url={url[:80]}"
+                )
+            elif inv_id is None:
+                id_missing += 1
+                logger.info(
+                    f"HALLUCINATION_CHECK: Missing inventory_id (URL is valid): name='{name}'"
+                )
+            elif not id_valid:
+                logger.warning(
+                    f"HALLUCINATION_CHECK: inventory_id mismatch (id={inv_id} doesn't match URL): "
+                    f"name='{name}', url={url[:80]}"
+                )
+
+        grounded = total - hallucinated
+        logger.info(
+            f"HALLUCINATION_CHECK: {grounded}/{total} grounded, "
+            f"{hallucinated} hallucinated, {id_missing} missing inventory_id"
+        )
 
     def _track_recommendations(self, product_gifts: List[Dict]):
         """Track recommended products for learning loop."""

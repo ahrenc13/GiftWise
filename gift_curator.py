@@ -203,8 +203,9 @@ SPECIFIC VENUES/PLACES:
 {format_venues(profile.get('specific_venues', []))}
 """
     
-    # Format products for prompt
-    products_summary = f"━━━ PRODUCT INVENTORY ({len(products)} items) — ONLY PICK FROM THIS LIST ━━━\n\n" + format_products(products) + "\n\n━━━ END OF INVENTORY — every product_url must come from above ━━━"
+    # Opus fix: hallucination grounding (Mar 3 2026)
+    # Format products for prompt — numbered items serve as inventory_id anchors
+    products_summary = f"━━━ PRODUCT INVENTORY ({len(products)} items) — ONLY PICK FROM THIS LIST ━━━\n\n" + format_products(products) + "\n\n━━━ END OF INVENTORY — every product gift must reference an item number above ━━━"
     
     # Pronoun guidance: "your/you" when recipient is user themselves, "their/they" when buying for someone else
     pronoun_possessive = "your" if recipient_type == 'myself' else "their"
@@ -257,11 +258,12 @@ Return JSON:
 {{
   "product_gifts": [
     {{
+      "inventory_id": <item number from the inventory list above (1-{len(products)})>,
       "name": "SHORT human-friendly name (e.g. 'Taylor Swift Eras Tour Poster' NOT 'Taylor Swift The Eras Tour Official Merch Concert Poster Wall Art Home Decor 24x36 Unframed')",
       "description": "what it is",
       "why_perfect": "DETAILED explanation citing SPECIFIC profile evidence (e.g., 'Based on {pronoun_possessive} 47 Taylor Swift TikToks and visits to Eras Tour watch parties, this captures {pronoun_possessive} Swiftie obsession' not just 'perfect for someone who loves Taylor Swift')",
       "where_to_buy": "domain",
-      "product_url": "exact URL from list",
+      "product_url": "exact URL from the item's URL field above",
       "confidence_level": "safe_bet|adventurous",
       "gift_type": "physical",
       "interest_match": "interest name"
@@ -288,7 +290,7 @@ Return JSON:
 CRITICAL REQUIREMENTS:
 
 PRODUCT GIFTS:
-- Product gifts MUST be selected FROM THE INVENTORY ABOVE ONLY. Every product gift must be one of the {len(products)} listed products (use exact URLs from that line). Never invent or reference a product not in the inventory.
+- INVENTORY GROUNDING: You MUST select from the numbered inventory list above. For each pick, set `inventory_id` to the item number (1-{len(products)}) and copy the URL from that item's URL field. If you cannot point to a specific item number, you are hallucinating a product that does not exist — pick a different item that IS in the list.
 - "name" field: Write a SHORT, clean, human-friendly title (3-8 words). Strip model numbers, SEO spam, size specs, and keyword stuffing from marketplace titles. Examples:
   * "DEWALT 20V MAX Cordless Drill/Driver Kit, 1/2-Inch (DCD771C2)" → "DeWalt Cordless Drill Kit"
   * "Breville BES870XL Barista Express Espresso Machine, Brushed Stainless Steel" → "Breville Barista Express Espresso Machine"
@@ -372,13 +374,13 @@ DIVERSITY & EVIDENCE:
 - NOVELTY: Prioritize unique, surprising, and thoughtful gifts over obvious/generic ones. A creative niche product is better than a mass-market default.
 - Each recommendation must have SPECIFIC evidence from the profile (not generic "they'll love this")
 - Total: {rec_count} product gifts + 3 experience gifts (we will filter to keep 2-3)
-- Every product gift product_url MUST be an exact copy of a URL from the INVENTORY list above - no invented products, no search pages.
+- Every product gift MUST reference a real inventory item by number. Copy the URL exactly from that item — no invented products, no search pages.
 
 BEFORE RETURNING YOUR JSON — SELF-CHECK (do this mentally for every product gift):
-1. Find this product's URL in the INVENTORY list above. Scroll back and locate it.
-2. If you cannot find the exact URL in the INVENTORY, you MUST replace this pick with a product that IS listed.
-3. Products not in the inventory list DO NOT EXIST in our system and will be silently dropped, wasting a recommendation slot.
-Common failure mode: you think of the "ideal" product for an interest (e.g., a specific brand nail polish, a specific artist t-shirt) and write a plausible URL — but that product is NOT in the inventory. Always verify against the numbered list above before including it.
+1. Verify inventory_id: does item #{{"inventory_id"}} in the list above exist? Does its URL match your product_url?
+2. If the inventory_id is out of range or the URL doesn't match, REPLACE this pick with an actual inventory item.
+3. Hallucinated products (not in the list) are silently dropped, wasting a recommendation slot.
+Common failure mode: reasoning toward the "ideal" gift first, then inventing a product. Instead, BROWSE the inventory list and select FROM it — don't imagine the perfect product and try to find it.
 
 {relationship_context}
 

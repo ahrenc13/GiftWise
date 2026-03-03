@@ -759,6 +759,20 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
             if len(w) > 2:
                 interest_keywords.add(w.lower())
 
+    # Pet semantic expansion: if the profile mentions any pet breed or animal,
+    # add generic pet terms so pet-focused advertisers (e.g. "Crown and Paw")
+    # score higher than generic fashion retailers that just happen to share a
+    # keyword like 'fashion' with a 'vintage fashion' interest.
+    _PET_SIGNALS = {
+        'pug', 'dog', 'cat', 'puppy', 'kitten', 'labrador', 'retriever',
+        'bulldog', 'poodle', 'dachshund', 'husky', 'corgi', 'beagle',
+        'golden', 'terrier', 'spaniel', 'shepherd', 'feline', 'canine',
+        'rabbit', 'bunny', 'hamster', 'parrot', 'bird', 'reptile',
+        'pet owner', 'pet lover', 'pet care',
+    }
+    if interest_keywords & _PET_SIGNALS:
+        interest_keywords.update({'pet', 'pets', 'paw', 'animal'})
+
     def _feed_score(feed_info):
         score = 0
         text = " ".join([

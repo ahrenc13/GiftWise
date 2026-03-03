@@ -1107,7 +1107,9 @@ def get_silverrushstyle_products_for_profile(profile):
                 score += 2
             elif any(key in n or n in key for n in interest_names):
                 score += 1
-        if score > 0:
+        # Require at least one exact match (score >= 2) — substring-only hits like
+        # 'fashion' inside 'vintage fashion' are not specific enough for fine jewelry.
+        if score >= 2:
             scored.append((score, p))
 
     if not scored:
@@ -1244,7 +1246,9 @@ def get_fragranceshop_products_for_profile(profile):
                 score += 2
             elif any(key in n or n in key for n in interest_names):
                 score += 1
-        if score > 0:
+        # Require at least one exact match (score >= 2) — 'fashion' as substring of
+        # 'vintage fashion' is not a signal that someone wants perfume.
+        if score >= 2:
             scored.append((score, p))
 
     if not scored:
@@ -1546,7 +1550,9 @@ _TFL_ALL_PRODUCTS = [
 
 _TFL_TRIGGER_INTERESTS = {
     'technology', 'tech', 'gadgets', 'electronics', 'computers', 'computing',
-    'laptops', 'coding', 'programming', 'software', 'hardware', 'it',
+    'laptops', 'coding', 'programming', 'software', 'hardware',
+    # 'it' removed — 2-letter string matches as substring inside 'productivity',
+    # 'literature', etc., causing false triggers on unrelated profiles.
     'home office', 'remote work', 'work from home', 'streaming',
     'content creation', 'youtube', 'twitch', 'podcasting',
     'gaming', 'video games', 'pc gaming', 'esports',
@@ -1592,7 +1598,10 @@ def get_techforless_products_for_profile(profile):
     if not matched:
         for name in interest_names:
             for trigger in _TFL_TRIGGER_INTERESTS:
-                if trigger in name or name in trigger:
+                # Require trigger to be at least 4 chars before substring matching —
+                # short strings like 'mac' can still false-match, but 2-3 char ones
+                # like 'it' would embed in unrelated words ('productivity', 'literature').
+                if len(trigger) >= 4 and (trigger in name or name in trigger):
                     matched.add(name)
                     break
 

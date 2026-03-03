@@ -439,9 +439,18 @@ class RecommendationService:
         product_gifts = curated.get('product_gifts', [])
         experience_gifts = curated.get('experience_gifts', [])
 
-        # Opus fix: hallucination grounding validation (Mar 3 2026)
-        # Log when curator selections don't match inventory, so we can measure hallucination rate
-        self._validate_inventory_grounding(product_gifts, products_for_curator)
+        # Opus fix: hallucination grounding (Mar 3 2026)
+        # Resolve curator selections by inventory_id → real product URL.
+        # The curator returns a 1-indexed item number which is far more reliable than
+        # a copied URL. When the URL is wrong but the id is valid, fix the URL.
+        product_gifts = self._ground_curator_selections(product_gifts, products_for_curator)
+
+        # Fallback: if curator returned nothing usable, build minimal set from inventory
+        if not product_gifts:
+            logger.warning("Curator returned zero grounded products — building fallback from inventory")
+            product_gifts = self._build_fallback_selections(
+                products_for_curator, profile_for_backend, product_rec_count
+            )
 
         # Track recommended products for learning
         self._track_recommendations(product_gifts)
@@ -478,73 +487,217 @@ class RecommendationService:
 
         return products
 
-    def _validate_inventory_grounding(self, product_gifts: List[Dict], inventory: List[Dict]):
-        """Validate that curator selections reference real inventory items.
+    def _ground_curator_selections(self, product_gifts: List[Dict], inventory: List[Dict]) -> List[Dict]:
+        """Resolve curator selections to real inventory products using inventory_id.
 
-        Opus fix: hallucination grounding (Mar 3 2026).
-        Logs warnings for any product gift whose inventory_id or product_url
-        doesn't match the actual inventory pool. This lets us measure whether
-        the hallucination rate drops to zero after the prompt grounding fix.
+        The curator returns inventory_id (1-indexed item number from the numbered
+        list it was shown) and product_url. The id is reliable — it's just a small
+        integer. The URL may be hallucinated, truncated, or corrupted.
+
+        Resolution order:
+        1. inventory_id → real product (most reliable)
+        2. product_url direct match (if URL is correct)
+        3. Fuzzy title match (last resort)
+        4. Drop (true hallucination — product doesn't exist)
+
+        Returns the product_gifts list with corrected URLs.
         """
         if not product_gifts or not inventory:
-            return
+            return product_gifts
 
-        # Build lookup: item number → URL (1-indexed, matching format_products)
-        idx_to_url = {}
-        url_set = set()
+        # Build lookups: 1-indexed item number → product, and URL set
+        idx_to_product = {}
+        url_to_product = {}
         for i, p in enumerate(inventory, 1):
             link = (p.get('link') or '').strip()
             if link:
-                idx_to_url[i] = link
-                url_set.add(link)
-                url_set.add(link.rstrip('/'))
+                idx_to_product[i] = p
+                url_to_product[link] = p
+                url_to_product[link.rstrip('/')] = p
 
-        total = len(product_gifts)
-        hallucinated = 0
-        id_missing = 0
+        grounded = []
+        stats = {'id_resolved': 0, 'url_matched': 0, 'title_matched': 0, 'hallucinated': 0}
 
         for gift in product_gifts:
-            name = gift.get('name', '<unnamed>')[:60]
             inv_id = gift.get('inventory_id')
             url = (gift.get('product_url') or '').strip()
             url_norm = url.rstrip('/')
+            name = gift.get('name', '<unnamed>')[:60]
+            resolved_product = None
 
-            # Check 1: Does the URL exist in inventory at all?
-            url_in_inventory = url in url_set or url_norm in url_set
-
-            # Check 2: Does inventory_id exist and map to the correct URL?
-            id_valid = False
+            # Strategy 1: Resolve by inventory_id (most reliable — it's just a number)
             if inv_id is not None:
                 try:
                     inv_id_int = int(inv_id)
-                    expected_url = idx_to_url.get(inv_id_int, '')
-                    id_valid = (expected_url == url or expected_url == url_norm
-                                or expected_url.rstrip('/') == url_norm)
+                    if inv_id_int in idx_to_product:
+                        resolved_product = idx_to_product[inv_id_int]
+                        real_url = (resolved_product.get('link') or '').strip()
+                        if real_url and url != real_url and url_norm != real_url.rstrip('/'):
+                            logger.info(
+                                f"GROUNDING: Corrected URL via inventory_id={inv_id_int}: "
+                                f"'{name}' — curator URL didn't match, using real URL"
+                            )
+                            stats['id_resolved'] += 1
+                        else:
+                            stats['url_matched'] += 1
                 except (ValueError, TypeError):
                     pass
 
-            if not url_in_inventory:
-                hallucinated += 1
+            # Strategy 2: URL already matches inventory (no correction needed)
+            if not resolved_product:
+                if url in url_to_product:
+                    resolved_product = url_to_product[url]
+                    stats['url_matched'] += 1
+                elif url_norm in url_to_product:
+                    resolved_product = url_to_product[url_norm]
+                    stats['url_matched'] += 1
+
+            # Strategy 3: Fuzzy title match (last resort for total hallucinations)
+            if not resolved_product:
+                resolved_product = self._fuzzy_match_product(name, inventory)
+                if resolved_product:
+                    stats['title_matched'] += 1
+                    logger.info(f"GROUNDING: Matched by title similarity: '{name}'")
+
+            if resolved_product:
+                # Fix the gift dict with real inventory data
+                real_url = (resolved_product.get('link') or '').strip()
+                gift['product_url'] = real_url
+                # Carry over inventory metadata for downstream steps
+                if not gift.get('image_url'):
+                    gift['image_url'] = (resolved_product.get('image') or
+                                         resolved_product.get('thumbnail') or '')
+                grounded.append(gift)
+            else:
+                stats['hallucinated'] += 1
                 logger.warning(
-                    f"HALLUCINATION_CHECK: Product NOT in inventory (hallucinated): "
-                    f"name='{name}', inventory_id={inv_id}, url={url[:80]}"
-                )
-            elif inv_id is None:
-                id_missing += 1
-                logger.info(
-                    f"HALLUCINATION_CHECK: Missing inventory_id (URL is valid): name='{name}'"
-                )
-            elif not id_valid:
-                logger.warning(
-                    f"HALLUCINATION_CHECK: inventory_id mismatch (id={inv_id} doesn't match URL): "
-                    f"name='{name}', url={url[:80]}"
+                    f"GROUNDING: Hallucinated (no match found): "
+                    f"'{name}', inventory_id={inv_id}, url={url[:80]}"
                 )
 
-        grounded = total - hallucinated
+        total = len(product_gifts)
         logger.info(
-            f"HALLUCINATION_CHECK: {grounded}/{total} grounded, "
-            f"{hallucinated} hallucinated, {id_missing} missing inventory_id"
+            f"GROUNDING: {len(grounded)}/{total} resolved — "
+            f"id_resolved={stats['id_resolved']}, url_matched={stats['url_matched']}, "
+            f"title_matched={stats['title_matched']}, hallucinated={stats['hallucinated']}"
         )
+
+        return grounded
+
+    def _fuzzy_match_product(self, curator_name: str, inventory: List[Dict]) -> Optional[Dict]:
+        """Try to find a product in inventory by title word overlap.
+
+        Last-resort matching when both inventory_id and URL failed. Requires
+        at least 3 overlapping content words and 50% overlap ratio.
+        """
+        if not curator_name or not inventory:
+            return None
+
+        stop = {'the', 'a', 'an', 'and', 'or', 'for', 'of', 'in', 'to', 'with',
+                'by', 'on', 'at', 'from', 'is', 'it', 'this', 'that', '-', '—', '|'}
+        curator_words = set(curator_name.lower().split()) - stop
+
+        if len(curator_words) < 2:
+            return None
+
+        best_score = 0
+        best_product = None
+
+        for p in inventory:
+            title = (p.get('title') or '').lower()
+            title_words = set(title.split()) - stop
+            if not title_words:
+                continue
+
+            overlap = len(curator_words & title_words)
+            # Require at least 3 word overlap and 50% of curator's title words
+            if overlap >= 3 and overlap / len(curator_words) >= 0.5:
+                if overlap > best_score:
+                    best_score = overlap
+                    best_product = p
+
+        return best_product
+
+    def _build_fallback_selections(self, inventory: List[Dict], profile: Dict,
+                                   count: int = 10) -> List[Dict]:
+        """Build minimal product_gifts from top inventory when curator fails entirely.
+
+        This is a last resort — picks diverse products from inventory and constructs
+        gift dicts that will pass through cleanup and formatting.
+        """
+        if not inventory:
+            return []
+
+        # Score products by interest diversity
+        interest_seen = {}
+        source_seen = {}
+        selected = []
+
+        for p in inventory:
+            if len(selected) >= count + 4:  # Extra buffer for cleanup to trim
+                break
+
+            interest = (p.get('interest_match') or 'general').lower()
+            source = (p.get('source_domain') or 'unknown').lower()
+            link = (p.get('link') or '').strip()
+
+            if not link:
+                continue
+            if interest_seen.get(interest, 0) >= 2:
+                continue
+            if source_seen.get(source, 0) >= 4:
+                continue
+
+            interest_seen[interest] = interest_seen.get(interest, 0) + 1
+            source_seen[source] = source_seen.get(source, 0) + 1
+
+            title = p.get('title', 'Gift')
+            snippet = (p.get('snippet') or '')[:80]
+
+            selected.append({
+                'name': title,
+                'description': snippet,
+                'why_perfect': self._build_backfill_why_perfect(p),
+                'where_to_buy': p.get('source_domain', 'Online'),
+                'product_url': link,
+                'image_url': p.get('image') or p.get('thumbnail') or '',
+                'confidence_level': 'safe_bet',
+                'gift_type': 'physical',
+                'interest_match': p.get('interest_match', ''),
+            })
+
+        logger.info(f"FALLBACK: Built {len(selected)} product selections from inventory")
+        return selected
+
+    @staticmethod
+    def _build_backfill_why_perfect(product: Dict) -> str:
+        """Build a why_perfect for backfill/fallback products that isn't generic filler.
+
+        Uses the product title, interest match, and snippet to construct something
+        that at least names the product and connects it to the interest.
+        """
+        interest = product.get('interest_match', '')
+        title = (product.get('title') or 'this').strip()
+        snippet = (product.get('snippet') or '').strip()
+
+        # Clean the title for use in a sentence
+        # Truncate overly long marketplace titles
+        title_words = title.split()
+        if len(title_words) > 8:
+            title_short = ' '.join(title_words[:8])
+        else:
+            title_short = title
+
+        if interest and snippet:
+            # Best case: we have interest AND description
+            snippet_clean = snippet[:100].rstrip('.').strip()
+            return (f"Picked for their {interest} side — {snippet_clean.lower()}. "
+                    f"Something they'd actually want but probably wouldn't grab for themselves.")
+        elif interest:
+            return (f"A solid find for their {interest} passion — {title_short.lower()} "
+                    f"that hits the mark.")
+        else:
+            return f"A thoughtful pick — {title_short.lower()} that adds something personal to the set."
 
     def _track_recommendations(self, product_gifts: List[Dict]):
         """Track recommended products for learning loop."""

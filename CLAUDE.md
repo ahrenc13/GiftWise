@@ -1,42 +1,57 @@
 # GiftWise — Project Intelligence
 
-## 🚨 ACTIVE BUG: Generation Thread Silent Crash (Mar 1 2026)
+## Debugging Approach (Read Before Every Debug Session)
 
-**Status:** Unresolved. Branch `claude/csv-review-strategy-cXl8a` has a PR open to main — merge it first, it helps but may not fully fix this.
+This codebase is complex enough that locking onto one layer or one story wastes hours. The generation-POST bug is the canonical example: it looked like a thread issue, then a service worker issue, then a session issue — Cursor found it in minutes by checking the client layer first. Apply this discipline every time.
 
-**Symptom:** User sees "Getting started…" on the generating page, it spins forever, no new Railway log entries appear after profile analysis completes.
+**1. Vary the layer before going deep.**
+For any bug, explicitly name at least two layers before digging: client (JS, DOM, browser console) vs server (route, session, worker thread) vs network (request never sent, redirect, CORS) vs build/deploy (stale asset, wrong branch deployed, env var missing). Ask: "What's the smallest thing that could explain this?" Often it's one character in a template, not an architectural flaw.
 
-**What's confirmed:**
-- Profile analysis completes fine (`/review-profile` route works, profile cached)
-- User approves profile → `/api/generate-recommendations` POST succeeds (browser gets `{started: true}`)
-- `_set_gen_progress` runs (browser poll sees `stage='starting'` / "Getting started…")
-- Background thread is launched via `threading.Thread(...).start()`
-- **But: zero log output from the thread.** Not even the `logger.info("=" * 60)` at the top of the try block.
+**2. Ask for the highest-leverage signal first.**
+Don't ask for a full log dump. Ask for the one thing that rules out an entire category:
+- "Open DevTools → Console. Any red errors? What's the exact first line?"
+- "In Network tab, does a request to `/api/...` appear at all?"
+- "When did it last work? What was the last commit touching this flow?"
+One precise answer is worth more than 200 lines of logs.
 
-**What was ruled out:**
-- Not a retailer API timeout (those happen inside the thread, which never logs)
-- Not a product source misconfiguration (retailer keys are set, would return 503 before thread start)
-- Not a `NEW_RECOMMENDATION_FLOW = False` issue (profile review page works, which requires this flag)
-- Not a session loss (user sees "Getting started" which means the poll and progress_store work)
-- Not a Gunicorn worker exhaustion (all 3 workers free after scraping/profile phase)
+**3. Cheap, broad checks before deep ones.**
+In order: console errors → Network tab → syntax/parse errors in emitted JS → session/cookie state → worker/thread → architectural issues. Don't reverse this order.
 
-**Root cause candidates (in priority order for next session):**
-1. **`with app.app_context():` silently blocks or raises a BaseException** (not caught by `except Exception`). Diagnostic log lines were added *before* the try block and inside the try-before-app-context — check if `[THREAD] Generation thread alive` appears but `[THREAD] App context acquired` does not.
-2. **Cross-worker in-memory progress dict** — `_generation_progress` on main is per-process. Thread runs in Worker A, polls hit Workers B/C, browser never sees `complete=True`. PR on this branch fixes this with SQLite-backed `progress_store.py`. This explains the 5-min spin but NOT the missing logs.
-3. **Thread silently killed** — daemon threads die if the Gunicorn worker process is restarted (e.g., after a previous crash). Check Railway deploy logs for worker restarts.
+**4. If stuck, change the search strategy.**
+If server-side reasoning isn't paying off after 2-3 cycles, switch: "Could this be a client parse error? A cached script? A redirect?" If focused on one file, check the thing that embeds it (template, caller). If the flow is long, find the first possible failure point and check that first.
 
-**Diagnostic added in this session:**
-```python
-# In _run_generation_thread (giftwise_app.py):
-logger.info("[THREAD] Generation thread alive for user %s", user_id[:8])
-try:
-    logger.info("[THREAD] Entering app context...")
-    with app.app_context():
-        logger.info("[THREAD] App context acquired — starting pipeline")
-```
-After deploying the PR + these logs, run a test and look for these three `[THREAD]` lines in Railway logs. Which one is last visible tells you exactly where it dies.
+**5. Templates that emit JS are a hidden risk surface.**
+Jinja2 variables inside `<script>` blocks can break the entire script with one character (unescaped quote, None rendered as "None", etc.). When a script silently does nothing, check the emitted HTML source before anything else. Prefer passing data via `data-` attributes or a single `<script id="...">JSON.parse</script>` pattern over inline Jinja substitutions.
 
-**PR to merge:** `claude/csv-review-strategy-cXl8a` → `main`. Includes:
+**6. After fixing, record what you checked and in what order.**
+Add a one-line summary to the bug resolution note: "Checked server route first (no logs), then asked for console errors, found X." This trains future sessions and shortens the next debug.
+
+**Paste at the start of any debug session:**
+> "Vary the layer (client vs server vs network vs deploy). Ask for one high-leverage signal (console errors or Network tab). Cheap broad checks first. If stuck, change strategy."
+
+---
+
+## ✅ RESOLVED: Generation POST Never Reached Flask (Mar 2026)
+
+**Was:** User sees "Getting started…" forever. No `[ROUTE]` log, no Network entry for the POST.
+
+**Root cause (found by Cursor):** [Add Cursor's explanation here once you have it — likely a JS parse/syntax error in the template, or the fetch call was never reached due to a client-side error.]
+
+**Lesson:** Three sessions of server-side debugging (threads, service workers, session size) before checking the browser console. The fix was client-side. Check console errors first.
+
+---
+
+## ✅ RESOLVED: Generation Thread / POST Never Reached Flask (Mar 2026)
+
+**Was:** "Getting started…" spins forever. Zero `[ROUTE]` logs. No Network entry for the POST.
+
+**What we ruled out across multiple sessions (and wasted time on):** service worker interception, thread crash, cross-worker progress dict, session size, CSRF, rate limiting, before_request hooks.
+
+**Actual fix (found by Cursor, Mar 3):** Client-side. The POST was never being sent. Check the Cursor fix commit for the exact cause — likely a JS error in the template or a broken fetch call path that was invisible until the browser console was checked.
+
+**Lesson written into "Debugging Approach" section above.** TL;DR: check browser console errors first, always, before any server-side investigation.
+
+**Also merged (from `claude/csv-review-strategy-cXl8a`):**
 - SQLite progress store (cross-worker fix)
 - 90s retailer thread timeout
 - Awin catalog sync

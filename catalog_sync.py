@@ -35,6 +35,7 @@ Date: February 2026
 """
 
 import os
+import re
 import sys
 import json
 import time

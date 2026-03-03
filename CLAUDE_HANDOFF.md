@@ -125,6 +125,8 @@ Other: `ANTHROPIC_API_KEY` (profile + curator). Optional: `GOOGLE_CSE_API_KEY`, 
 - **Awin:** Stream still fails in production (“I/O operation on closed file”). Non-stream fallback helps when it yields 0; if fallback also fails (e.g. auth, HTML error page), use `/debug/awin-test` output to fix.
 - **Etsy:** 403 until API approval; no code change until then.
 - **Unified criteria (future):** See `UNIFIED_CRITERIA_DESIGN.md`. Goal: one “gift criteria” spec from profile → pass to all APIs → curator evaluates across sources. Current behavior: large merged pool, no forced vendor mix in output.
+- **Generating page POST:** If the "Finding the Perfect Gifts" screen sticks on step 1 and the route log for `/api/generate-recommendations` never appears, check the browser console for `[GiftWise] Generating page script running` and `Sending POST to /api/generate-recommendations`. Template now uses `recipient_type | tojson` to avoid JS syntax errors. If the session cookie exceeds ~4KB, the POST may reach the server with no session (route log would show "No session user").
+- **Catalog sync mid-day:** `Catalog sync started: mode=full` is logged only when `GET /admin/sync-catalog?key=...&mode=full` is called. The 3am cron typically uses default `mode=refresh`. A full sync at another time means something (manual admin or another cron) requested `mode=full`. Startup sync uses `mode=refresh` only when the catalog is empty.
 
 ---
 

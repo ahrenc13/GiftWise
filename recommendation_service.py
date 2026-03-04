@@ -502,7 +502,8 @@ class RecommendationService:
         # Product cleanup (brand dedup, category dedup, interest spread)
         if self.cleanup_curated_gifts:
             try:
-                product_gifts = self.cleanup_curated_gifts(product_gifts, products, rec_count=product_rec_count)
+                interest_names = [i.get('name', '').lower() for i in profile.get('interests', []) if i.get('name')]
+                product_gifts = self.cleanup_curated_gifts(product_gifts, products, rec_count=product_rec_count, profile_interests=interest_names)
                 logger.info(f"After post-curation cleanup: {len(product_gifts)} products")
             except Exception as e:
                 logger.error(f"Post-curation cleanup failed (using raw curator output): {e}")

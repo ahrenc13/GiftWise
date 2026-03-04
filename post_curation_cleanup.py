@@ -485,7 +485,7 @@ def _is_near_duplicate_title(norm_title, used_titles_set):
 # Main cleanup function
 # ---------------------------------------------------------------------------
 
-def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
+def cleanup_curated_gifts(product_gifts, inventory, rec_count=10, profile_interests=None):
     """
     Programmatic post-curation cleanup. Enforces hard rules that prompts can't guarantee.
 
@@ -610,6 +610,15 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
         needed = rec_count - len(cleaned)
         logger.info(f"Need {needed} replacements from inventory pool")
 
+        # Build word set from profile interests for relevance gating.
+        # Only words longer than 2 chars — filters out 'of', 'in', 'a', etc.
+        profile_interest_words = set()
+        if profile_interests:
+            for name in profile_interests:
+                profile_interest_words.update(
+                    w.lower() for w in name.lower().split() if len(w) > 2
+                )
+
         # Score remaining inventory by whether they bring diversity
         candidates = []
         for p in (inventory or []):
@@ -631,6 +640,17 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10):
             # when the search query was a full artist/person name (e.g. "JD McPherson" → "McPherson T-Shirt")
             if not _is_query_relevant_to_product(p):
                 continue
+            # Skip replacements whose interest has zero overlap with the actual profile.
+            # The database cache spans multiple sessions — a candy product cached from a
+            # "sweets lover" profile should never replace a deferred jewelry item for a
+            # miniature-crafting / vintage-fashion profile. We check word-level overlap
+            # (e.g. interest_match='sweets' vs profile_interests=['miniature crafting',
+            # 'vintage fashion', 'pug']). Empty interest_match passes through (can't judge).
+            p_interest = (p.get('interest_match') or '').lower()
+            if profile_interest_words and p_interest:
+                interest_words = [w for w in p_interest.split() if len(w) > 2]
+                if interest_words and not any(w in profile_interest_words for w in interest_words):
+                    continue
             # Prefer products that bring new brands, categories, and source diversity
             score = 0
             if brand and brand not in used_brands:

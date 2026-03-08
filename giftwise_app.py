@@ -2326,6 +2326,7 @@ def start_scraping():
                         platforms['instagram']['connected_at'] = datetime.now().isoformat()
                     else:
                         platforms['instagram']['status'] = 'error'
+                        platforms['instagram']['error'] = 'private_or_empty'
                         logger.warning("Instagram scrape returned no data — marking as error")
                     save_user(user_id, {'platforms': platforms})
             finally:
@@ -2356,6 +2357,7 @@ def start_scraping():
                         platforms['tiktok']['connected_at'] = datetime.now().isoformat()
                     else:
                         platforms['tiktok']['status'] = 'error'
+                        platforms['tiktok']['error'] = 'private_or_empty'
                         logger.warning("TikTok scrape returned no data — marking as error")
                     save_user(user_id, {'platforms': platforms})
             finally:
@@ -3817,9 +3819,28 @@ def check_scraping_status():
         # If ALL failed, return error
         if completed_count == 0:
             logger.error(f"All {total_platforms} platform(s) failed to scrape")
+
+            # Check if any platform failed with no data — likely a private account
+            private_platforms = []
+            for pname in ('instagram', 'tiktok'):
+                p = platforms.get(pname, {})
+                if p.get('status') in ('error', 'failed') and p.get('error') == 'private_or_empty':
+                    private_platforms.append(pname.capitalize())
+
+            if private_platforms:
+                platform_names = ' and '.join(private_platforms)
+                error_msg = (
+                    f"{platform_names} makes this a little tough for us to tell, but the account "
+                    "you're trying to use is probably set to private. If that's the case, "
+                    "we can't use it to build a gift profile (boo). Ask them to temporarily "
+                    "set it to public, or try a different account!"
+                )
+            else:
+                error_msg = 'All platforms failed to scrape. Please check your usernames and try again.'
+
             return jsonify({
                 'complete': False,
-                'error': 'All platforms failed to scrape. Please check your usernames and try again.',
+                'error': error_msg,
                 'statuses': platform_statuses
             })
         # If some succeeded, proceed with what we have

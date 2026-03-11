@@ -255,7 +255,8 @@ def scrape_tiktok_apify(username, max_videos=50, task_id=None, progress_callback
         actor_id=actor_id,
         input_params={
             'profiles': [username],
-            'resultsPerPage': max_videos
+            'resultsPerPage': max_videos,
+            'profileSections': ['videos', 'reposts'],
         },
         max_wait=120,
         task_id=task_id,

@@ -27,7 +27,7 @@ GraphQL product search integrated. Filters non-joined advertisers. 15+ static pa
 | Winebasket / BabyBasket | 7% | wine, new baby, gourmet | ~$110 AOV |
 
 ### Awin — Expanding
-Account active. 13 merchants confirmed (Feb 26). Dynamic feed search live for feed-enabled merchants.
+Account active. 20 merchants confirmed (Mar 2026). Dynamic feed search live for feed-enabled merchants.
 
 **Feed-enabled (dynamic search active):**
 - Crown and Paw (pet portraits, 60-day cookie)
@@ -37,13 +37,22 @@ Account active. 13 merchants confirmed (Feb 26). Dynamic feed search live for fe
 - Matr Boomie (fair trade, 60-day cookie)
 - Maison Balzac (French glassware)
 - Promeed (silk bedding)
+- Prosto Concept (hand-crafted baby pillows, organic, 50% CVR, 4.06 EPC — excellent)
+- King Koil (air mattresses, 30-day cookie, feed+reporting)
+- Nextrition Pet (premium pet nutrition, 11.6% CVR, 100% approval)
+- Ravin Crossbows (hunting/outdoor, 5% commission, 100% approval, feed enabled)
 
 **No feed (static lists in `awin_searcher.py`):**
 - VitaJuwel (crystal water bottles, ~$130) — TODO: replace placeholder URLs with real Awin deep links
 - VSGO (15%, camera bags) — TODO: replace placeholder URLs with real Awin deep links
 - Woven Woven
+- Gourmet Gift Basket Store (gift baskets, 60-day cookie, green payment — perfect gift category)
+- Goldia.com (fine jewelry, 7.5% commission, $160 AOV, 95K products, 100% approval, green payment)
+- OUTFITR (adventure/camping gear, 10% commission, 30-day cookie)
 
 **Blocked:** Yadea (e-scooters), POSIE AND PENN (beds, amber status)
+
+**Declined invitations (Mar 2026):** Canadian Insulin (pharma), Oedro (auto parts), PURTY BODY (too niche for gifts)
 
 **~35 more applications pending** from Feb 25. See `AWIN_APPLICATIONS_FEB25.md` for full list with tiers, EPC, conversion rates.
 

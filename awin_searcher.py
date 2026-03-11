@@ -153,6 +153,102 @@ _VSGO_ALL_PRODUCTS = [
 ]
 
 
+# Gourmet Gift Basket Store (gourmetgiftbasketstore.com) — Curated gourmet gift baskets.
+# Triggers: food, gourmet, chocolate, cheese, snacks, gift basket, hostess, housewarming.
+# Advertiser ID: 33247. Cookie: 60 days. No product feed.
+# NOTE: Canada-based but ships to US with low delivery rates.
+_GOURMET_GIFT_BASKET_ALL_PRODUCTS = [
+    {
+        "title": "Golden Greeting — Lavishing Celebration Gift Basket",
+        "snippet": "Premium celebration gift basket with gourmet chocolates, artisan crackers, fine cheese, and elegant presentation. Perfect for birthdays, congratulations, or milestone events.",
+        "price": "$248.95",
+        "source_domain": "gourmetgiftbasketstore.com",
+        "link": "https://www.gourmetgiftbasketstore.com/product-category/gift-baskets/gift-baskets-to-canada/best-sellers-gift-baskets/",  # Replace with Awin deep link
+        "image_url": "",
+        "interest_match": "gourmet food chocolate gift celebration",
+    },
+    {
+        "title": "Gourmet Chocolate & Snacks Gift Basket",
+        "snippet": "Curated selection of premium chocolates, gourmet snacks, and artisan treats. Beautifully packaged for any occasion — birthdays, thank you, or just because.",
+        "price": "$99.95",
+        "source_domain": "gourmetgiftbasketstore.com",
+        "link": "https://www.gourmetgiftbasketstore.com/product-category/gift-baskets/gift-baskets-to-canada/best-sellers-gift-baskets/",  # Replace with Awin deep link
+        "image_url": "",
+        "interest_match": "chocolate snacks food gourmet treats",
+    },
+    {
+        "title": "Spa & Relaxation Gift Basket",
+        "snippet": "Pampering spa gift basket with luxurious bath products, scented candles, and self-care essentials. Ideal for birthdays, holidays, or anyone who deserves a treat.",
+        "price": "$89.95",
+        "source_domain": "gourmetgiftbasketstore.com",
+        "link": "https://www.gourmetgiftbasketstore.com/vs/gift-baskets/luxury-gift-baskets/",  # Replace with Awin deep link
+        "image_url": "",
+        "interest_match": "spa relaxation self-care wellness pampering",
+    },
+]
+
+# Goldia.com (goldia.com) — Fine jewelry, 95K products.
+# Triggers: jewelry, necklace, ring, bracelet, earrings, gold, silver, diamond, pendant, gift.
+# Advertiser ID: 64508. Cookie: 30 days. Commission: 7.5%. No product feed.
+# $160 average order value. 100% approval rate. Green payment status.
+_GOLDIA_ALL_PRODUCTS = [
+    {
+        "title": "14K Gold Diamond Pendant Necklace",
+        "snippet": "Classic 14K gold pendant necklace with genuine diamond accent. Timeless elegance for any occasion — birthday, anniversary, or holiday gifting.",
+        "price": "$149.00",
+        "source_domain": "goldia.com",
+        "link": "https://www.goldia.com",  # Replace with Awin deep link to specific SKU
+        "image_url": "",
+        "interest_match": "jewelry necklace gold diamond elegant",
+    },
+    {
+        "title": "Sterling Silver Charm Bracelet",
+        "snippet": "Beautiful sterling silver bracelet perfect for stacking or wearing solo. A thoughtful gift for someone who loves minimalist, everyday jewelry.",
+        "price": "$89.00",
+        "source_domain": "goldia.com",
+        "link": "https://www.goldia.com",  # Replace with Awin deep link to specific SKU
+        "image_url": "",
+        "interest_match": "jewelry bracelet silver charm accessories",
+    },
+    {
+        "title": "Gold Hoop Earrings — 14K Yellow Gold",
+        "snippet": "Classic 14K yellow gold hoop earrings. Lightweight, versatile, and perfect for everyday wear or gifting to jewelry lovers.",
+        "price": "$120.00",
+        "source_domain": "goldia.com",
+        "link": "https://www.goldia.com",  # Replace with Awin deep link to specific SKU
+        "image_url": "",
+        "interest_match": "jewelry earrings gold hoops fashion accessories",
+    },
+]
+
+# OUTFITR (outfitrer.com) — Bike racks, cargo carriers, outdoor vehicle gear.
+# NOTE: Awin description says "adventure backpacks and camping gear" but actual
+# products are bike racks, cargo carriers, and trailer accessories. Still useful
+# for cycling/outdoor/road trip enthusiasts.
+# Triggers: cycling, biking, road trip, RV, camping, outdoor, adventure.
+# Advertiser ID: 117613. Cookie: 30 days. Commission: 10%. No product feed.
+_OUTFITR_ALL_PRODUCTS = [
+    {
+        "title": "OUTFITR 2-Bike Hitch Bike Rack — Foldable Platform Style",
+        "snippet": "Foldable platform-style bike rack for 2 bikes. 200 lbs capacity, fits 2\" receiver. Works with cars, trucks, SUVs, RVs. Anti-wobble design with free shipping.",
+        "price": "$159.99",
+        "source_domain": "outfitrer.com",
+        "link": "https://outfitrer.com/products/foldable-2-bike-hitch-rack-platform-style-2-receiver-200-lbs-capacity",  # Replace with Awin deep link
+        "image_url": "",
+        "interest_match": "cycling biking outdoor adventure road trip",
+    },
+    {
+        "title": "OUTFITR 2-Bike Hitch E-Bike Rack — EZ-Fold Electric Bike Carrier",
+        "snippet": "Heavy-duty e-bike rack with EZ-fold design. 200 lbs capacity for electric bikes. Fits 2\" receiver on cars, trucks, SUVs, and RVs.",
+        "price": "$189.99",
+        "source_domain": "outfitrer.com",
+        "link": "https://outfitrer.com/products/2-bike-hitch-e-bike-rack-ez-fold-electric-bike-carrier-200-lbs-capacity-fits-2-receiver",  # Replace with Awin deep link
+        "image_url": "",
+        "interest_match": "cycling e-bike electric bike outdoor adventure",
+    },
+]
+
+
 def _get_awin_static_products(profile):
     """Return static Awin products relevant to the current profile's interests.
 
@@ -174,6 +270,21 @@ def _get_awin_static_products(profile):
     vsgo_triggers = {"photo", "photography", "camera", "cameras", "photographer", "canon", "nikon", "sony", "mirrorless", "dslr", "content creator", "content creation", "videograph"}
     if any(t in interest_text for t in vsgo_triggers):
         results.extend(_VSGO_ALL_PRODUCTS)
+
+    # Gourmet Gift Basket Store — trigger on food/gourmet/chocolate/hostess themes
+    gourmet_triggers = {"food", "foodie", "gourmet", "chocolate", "cheese", "snack", "baking", "cooking", "chef", "brunch", "hostess", "housewarming", "wine", "charcuterie", "treats", "gift basket", "spa", "relaxation", "self-care", "pampering"}
+    if any(t in interest_text for t in gourmet_triggers):
+        results.extend(_GOURMET_GIFT_BASKET_ALL_PRODUCTS)
+
+    # Goldia — trigger on jewelry/fashion accessories themes
+    goldia_triggers = {"jewelry", "jewellery", "necklace", "bracelet", "earring", "earrings", "ring", "gold", "silver", "diamond", "pendant", "charm", "accessories", "fashion", "elegant", "luxury", "bling", "gems", "gemstone"}
+    if any(t in interest_text for t in goldia_triggers):
+        results.extend(_GOLDIA_ALL_PRODUCTS)
+
+    # OUTFITR — trigger on cycling/biking/outdoor vehicle themes
+    outfitr_triggers = {"cycling", "biking", "bike", "bicycle", "cyclist", "road trip", "rv", "camping", "e-bike", "ebike", "mountain bike", "trail"}
+    if any(t in interest_text for t in outfitr_triggers):
+        results.extend(_OUTFITR_ALL_PRODUCTS)
 
     return results
 

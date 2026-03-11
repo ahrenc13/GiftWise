@@ -304,6 +304,9 @@ def extract_all_tiktok_signals(tt_data):
     # Analyze videos
     for video in videos:
         description = video.get('description', '').lower()
+        subtitles = video.get('subtitles', '').lower()
+        # Combine caption + spoken content for richer signal extraction
+        full_text = f"{description} {subtitles}".strip() if subtitles else description
         hashtags = video.get('hashtags', [])
         music = video.get('music', '')
         likes = video.get('likes', 0)
@@ -313,16 +316,16 @@ def extract_all_tiktok_signals(tt_data):
         # Hashtags
         signals['hashtags'].update([tag.lower() for tag in hashtags])
 
-        # Brand mentions from description and hashtags
+        # Brand mentions from description, subtitles, and hashtags
         for brand in _KNOWN_BRANDS:
-            if brand in description:
+            if brand in full_text:
                 signals['brand_mentions'][brand] += 1
         for tag in hashtags:
             tag_lower = tag.lower().replace('_', ' ')
             if tag_lower in _KNOWN_BRANDS:
                 signals['brand_mentions'][tag_lower] += 1
-        # @mentions in TikTok descriptions
-        tt_mentions = re.findall(r'@(\w+)', description)
+        # @mentions in TikTok descriptions and subtitles
+        tt_mentions = re.findall(r'@(\w+)', full_text)
         for m in tt_mentions:
             m_lower = m.lower()
             if m_lower not in _NON_BRAND_HANDLES and len(m_lower) > 2:
@@ -333,6 +336,7 @@ def extract_all_tiktok_signals(tt_data):
                     signals['brand_mentions'][m_lower] += 1
 
         # "Want language" extraction — explicit purchase-intent signals
+        # Search both caption and spoken content (subtitles)
         want_patterns = [
             r'i need (?:this|that|one)',
             r'someone (?:get|buy) me',
@@ -342,9 +346,9 @@ def extract_all_tiktok_signals(tt_data):
             r'adding (?:this|that) to',
         ]
         for pattern in want_patterns:
-            if re.search(pattern, description):
+            if re.search(pattern, full_text):
                 signals['want_signals'].append({
-                    'text': description[:200],
+                    'text': full_text[:200],
                     'hashtags': hashtags,
                     'source': 'tiktok_video'
                 })
@@ -358,7 +362,7 @@ def extract_all_tiktok_signals(tt_data):
         total_engagement = likes + comments + shares
         if total_engagement > 1000:
             signals['trending_topics'].extend(hashtags)
-            signals['current_interests'].append(description[:100])
+            signals['current_interests'].append(full_text[:150])
     
     # Analyze reposts (aspirational content — what they WANT)
     for repost in reposts:

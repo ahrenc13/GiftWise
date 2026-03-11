@@ -256,7 +256,10 @@ def scrape_tiktok_apify(username, max_videos=50, task_id=None, progress_callback
         input_params={
             'profiles': [username],
             'resultsPerPage': max_videos,
-            'profileSections': ['videos', 'reposts'],
+            'profileScrapeSections': ['videos', 'reposts'],
+            'profileSorting': 'popular',
+            'oldestPostDateUnified': '4 weeks',
+            'downloadSubtitlesOptions': 'TRANSCRIBE_ALL_VIDEOS',
         },
         max_wait=120,
         task_id=task_id,

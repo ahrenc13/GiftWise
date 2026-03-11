@@ -1224,37 +1224,77 @@ def scrape_pinterest_profile(username, max_pins=100, task_id=None):
 
 def parse_tiktok_data(data, username):
     """
-    Parse TikTok data with repost analysis
+    Parse TikTok data with repost analysis.
+
+    Handles both flattened dot-notation keys from Apify dataset API
+    (e.g., 'musicMeta.musicName') and nested dict format.
     """
+    import re as _re
+
     videos = []
     reposts = []
     original_creators = []
     hashtags_all = []
     music_all = []
-    
+
+    def _get(item, flat_key, nested_keys=None, default=''):
+        """Try flattened key first, then nested path."""
+        val = item.get(flat_key)
+        if val is not None:
+            return val
+        if nested_keys:
+            obj = item
+            for k in nested_keys:
+                if isinstance(obj, dict):
+                    obj = obj.get(k)
+                else:
+                    return default
+            return obj if obj is not None else default
+        return default
+
+    username_lower = username.lower().lstrip('@')
+
     for item in data:
+        text = item.get('text', '')
+
+        # Extract hashtags from text (Apify flattened format has no hashtags list)
+        hashtags_list = item.get('hashtags', None)
+        if isinstance(hashtags_list, list) and hashtags_list:
+            # Nested format: list of dicts with 'name' key
+            parsed_hashtags = [tag.get('name', '') if isinstance(tag, dict) else str(tag) for tag in hashtags_list]
+        else:
+            # Flattened format: extract from text with regex
+            parsed_hashtags = _re.findall(r'#(\w+)', text)
+
         video_info = {
-            'description': item.get('text', ''),
+            'description': text,
             'likes': item.get('diggCount', 0),
             'comments': item.get('commentCount', 0),
             'shares': item.get('shareCount', 0),
             'plays': item.get('playCount', 0),
-            'timestamp': item.get('createTime', ''),
+            'timestamp': item.get('createTimeISO', '') or item.get('createTime', ''),
             'url': item.get('webVideoUrl', ''),
-            'hashtags': [tag.get('name', '') for tag in item.get('hashtags', [])],
-            'music': item.get('musicMeta', {}).get('musicName', ''),
-            'music_artist': item.get('musicMeta', {}).get('musicAuthor', '') or item.get('musicMeta', {}).get('musicArtist', '')
+            'hashtags': parsed_hashtags,
+            'music': _get(item, 'musicMeta.musicName', ['musicMeta', 'musicName']),
+            'music_artist': (
+                _get(item, 'musicMeta.musicAuthor', ['musicMeta', 'musicAuthor']) or
+                _get(item, 'musicMeta.musicArtist', ['musicMeta', 'musicArtist'])
+            ),
+            'duration': _get(item, 'videoMeta.duration', ['videoMeta', 'duration'], default=0),
         }
-        
-        # Check if this is a repost (diversificationId indicates repost)
-        is_repost = item.get('diversificationId') is not None
-        
+
+        # Repost detection: author differs from scraped username
+        author_name = _get(item, 'authorMeta.name', ['authorMeta', 'name'], default='')
+        is_repost = (
+            item.get('diversificationId') is not None or
+            (author_name and author_name.lower() != username_lower)
+        )
+
         if is_repost:
-            # This is a repost - track original creator
-            original_author = item.get('authorMeta', {}).get('name', 'unknown')
+            original_author = author_name or 'unknown'
             reposts.append(video_info)
             original_creators.append(original_author)
-        
+
         videos.append(video_info)
         hashtags_all.extend(video_info['hashtags'])
         if video_info['music']:
@@ -2326,6 +2366,7 @@ def start_scraping():
                         platforms['instagram']['connected_at'] = datetime.now().isoformat()
                     else:
                         platforms['instagram']['status'] = 'error'
+                        platforms['instagram']['error'] = 'private_or_empty'
                         logger.warning("Instagram scrape returned no data — marking as error")
                     save_user(user_id, {'platforms': platforms})
             finally:
@@ -2356,6 +2397,7 @@ def start_scraping():
                         platforms['tiktok']['connected_at'] = datetime.now().isoformat()
                     else:
                         platforms['tiktok']['status'] = 'error'
+                        platforms['tiktok']['error'] = 'private_or_empty'
                         logger.warning("TikTok scrape returned no data — marking as error")
                     save_user(user_id, {'platforms': platforms})
             finally:
@@ -3817,9 +3859,28 @@ def check_scraping_status():
         # If ALL failed, return error
         if completed_count == 0:
             logger.error(f"All {total_platforms} platform(s) failed to scrape")
+
+            # Check if any platform failed with no data — likely a private account
+            private_platforms = []
+            for pname in ('instagram', 'tiktok'):
+                p = platforms.get(pname, {})
+                if p.get('status') in ('error', 'failed') and p.get('error') == 'private_or_empty':
+                    private_platforms.append(pname.capitalize())
+
+            if private_platforms:
+                platform_names = ' and '.join(private_platforms)
+                error_msg = (
+                    f"{platform_names} makes this a little tough for us to tell, but the account "
+                    "you're trying to use is probably set to private. If that's the case, "
+                    "we can't use it to build a gift profile (boo). Ask them to temporarily "
+                    "set it to public, or try a different account!"
+                )
+            else:
+                error_msg = 'All platforms failed to scrape. Please check your usernames and try again.'
+
             return jsonify({
                 'complete': False,
-                'error': 'All platforms failed to scrape. Please check your usernames and try again.',
+                'error': error_msg,
                 'statuses': platform_statuses
             })
         # If some succeeded, proceed with what we have

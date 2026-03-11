@@ -257,10 +257,8 @@ def scrape_tiktok_apify(username, max_videos=50, task_id=None, progress_callback
             'profiles': [username],
             'resultsPerPage': max_videos,
             'profileScrapeSections': ['videos', 'reposts'],
-            'profileSorting': 'popular',
+            'profileSorting': 'latest',
             'oldestPostDateUnified': '4 weeks',
-            # NOTE: downloadSubtitlesOptions tested but actor 0FXVyOXXEmdGcV88a
-            # doesn't return subtitle data in output. Revisit if switching actors.
         },
         max_wait=120,
         task_id=task_id,

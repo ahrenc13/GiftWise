@@ -1,8 +1,12 @@
 # GiftWise — Project Intelligence
 
+**When the user asks you to debug something:** Read the "Debugging Approach" section below first. Follow it (vary the layer, ask for high-leverage signals, cheap checks before deep ones) before spending time on server-side theories.
+
+---
+
 ## Debugging Approach (Read Before Every Debug Session)
 
-This codebase is complex enough that locking onto one layer or one story wastes hours. The generation-POST bug is the canonical example: it looked like a thread issue, then a service worker issue, then a session issue — Cursor found it in minutes by checking the client layer first. Apply this discipline every time.
+This codebase is complex enough that locking onto one layer or one story wastes hours. The generation-POST bug is the canonical example: it looked like a thread issue, then a service worker issue, then a session issue — the actual cause was a single apostrophe in a template. Apply this discipline every time.
 
 **1. Vary the layer before going deep.**
 For any bug, explicitly name at least two layers before digging: client (JS, DOM, browser console) vs server (route, session, worker thread) vs network (request never sent, redirect, CORS) vs build/deploy (stale asset, wrong branch deployed, env var missing). Ask: "What's the smallest thing that could explain this?" Often it's one character in a template, not an architectural flaw.
@@ -21,7 +25,7 @@ In order: console errors → Network tab → syntax/parse errors in emitted JS �
 If server-side reasoning isn't paying off after 2-3 cycles, switch: "Could this be a client parse error? A cached script? A redirect?" If focused on one file, check the thing that embeds it (template, caller). If the flow is long, find the first possible failure point and check that first.
 
 **5. Templates that emit JS are a hidden risk surface.**
-Jinja2 variables inside `<script>` blocks can break the entire script with one character (unescaped quote, None rendered as "None", etc.). When a script silently does nothing, check the emitted HTML source before anything else. Prefer passing data via `data-` attributes or a single `<script id="...">JSON.parse</script>` pattern over inline Jinja substitutions.
+Jinja2 variables inside `<script>` blocks can break the entire script with one character (unescaped quote, None rendered as "None", etc.). **Single-quoted strings that contain apostrophes** (e.g. `'We're'`, `'don't'`, `'it's'`) are a common cause: the apostrophe ends the string early, the rest of the word is parsed as an identifier, and you get "Unexpected identifier 're'" (or similar). The whole script then fails to parse and never runs — so no fetch, no POST, no logs. When a script silently does nothing, ask for the **first line in the browser Console** (F12 → Console). If you see a syntax error, search the template for single-quoted strings with apostrophes and fix by using double quotes or escaping. Prefer passing data via `data-` attributes or a single `<script id="...">JSON.parse</script>` pattern over inline Jinja substitutions.
 
 **6. After fixing, record what you checked and in what order.**
 Add a one-line summary to the bug resolution note: "Checked server route first (no logs), then asked for console errors, found X." This trains future sessions and shortens the next debug.
@@ -33,29 +37,15 @@ Add a one-line summary to the bug resolution note: "Checked server route first (
 
 ## ✅ RESOLVED: Generation POST Never Reached Flask (Mar 2026)
 
-**Was:** User sees "Getting started…" forever. No `[ROUTE]` log, no Network entry for the POST.
+**Symptom:** "Finding the Perfect Gifts…" / "Getting started…" spins forever. No `[ROUTE] /api/generate-recommendations` in server logs. No POST in Network tab.
 
-**Root cause (found by Cursor):** [Add Cursor's explanation here once you have it — likely a JS parse/syntax error in the template, or the fetch call was never reached due to a client-side error.]
+**Root cause:** A **JavaScript syntax error** in `templates/generating.html`. The `funFacts` array used single-quoted strings. One string was `'We're searching stores most people never think to look.'` — the apostrophe in **We're** ended the string after `We`, so the parser saw the next token as the identifier **re** → **Uncaught SyntaxError: Unexpected identifier 're'**. The entire script block failed to parse, so nothing ran: no `startGeneration()`, no `fetch()`, no POST.
 
-**Lesson:** Three sessions of server-side debugging (threads, service workers, session size) before checking the browser console. The fix was client-side. Check console errors first.
+**Fix:** Use double quotes for those strings (e.g. `"We're searching..."`, `"words don't."`) so apostrophes don't break parsing.
 
----
+**Lesson:** Multiple sessions focused on server-side (threads, service workers, session size, redirects). The fix was client-side. **Always ask for the browser Console (F12 → Console) and the first error line** before investing in server-side theories. Single-quoted strings containing apostrophes in templates that emit JS are a recurring pitfall — search for them when you see "Unexpected identifier" or a script that "does nothing."
 
-## ✅ RESOLVED: Generation Thread / POST Never Reached Flask (Mar 2026)
-
-**Was:** "Getting started…" spins forever. Zero `[ROUTE]` logs. No Network entry for the POST.
-
-**What we ruled out across multiple sessions (and wasted time on):** service worker interception, thread crash, cross-worker progress dict, session size, CSRF, rate limiting, before_request hooks.
-
-**Actual fix (found by Cursor, Mar 3):** Client-side. The POST was never being sent. Check the Cursor fix commit for the exact cause — likely a JS error in the template or a broken fetch call path that was invisible until the browser console was checked.
-
-**Lesson written into "Debugging Approach" section above.** TL;DR: check browser console errors first, always, before any server-side investigation.
-
-**Also merged (from `claude/csv-review-strategy-cXl8a`):**
-- SQLite progress store (cross-worker fix)
-- 90s retailer thread timeout
-- Awin catalog sync
-- Parallel retailer search
+**Also merged (from earlier sessions):** SQLite progress store (cross-worker), 90s retailer thread timeout, Awin catalog sync, parallel retailer search. The generating page now uses `recipient_type | tojson` for safe JS and console logs (`[GiftWise] Generating page script running` / `Sending POST to /api/generate-recommendations`) for future debugging.
 
 ---
 

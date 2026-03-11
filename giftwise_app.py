@@ -1281,7 +1281,6 @@ def parse_tiktok_data(data, username):
                 _get(item, 'musicMeta.musicArtist', ['musicMeta', 'musicArtist'])
             ),
             'duration': _get(item, 'videoMeta.duration', ['videoMeta', 'duration'], default=0),
-            'subtitles': item.get('subtitles', '') or item.get('transcription', ''),
         }
 
         # Repost detection: author differs from scraped username

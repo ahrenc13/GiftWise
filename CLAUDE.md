@@ -1,4 +1,239 @@
-# GiftWise
+# GiftWise — Project Intelligence
+
+**When the user asks you to debug something:** Read the "Debugging Approach" section below first. Follow it (vary the layer, ask for high-leverage signals, cheap checks before deep ones) before spending time on server-side theories.
+
+---
+
+## Debugging Approach (Read Before Every Debug Session)
+
+This codebase is complex enough that locking onto one layer or one story wastes hours. The generation-POST bug is the canonical example: it looked like a thread issue, then a service worker issue, then a session issue — the actual cause was a single apostrophe in a template. Apply this discipline every time.
+
+**1. Vary the layer before going deep.**
+For any bug, explicitly name at least two layers before digging: client (JS, DOM, browser console) vs server (route, session, worker thread) vs network (request never sent, redirect, CORS) vs build/deploy (stale asset, wrong branch deployed, env var missing). Ask: "What's the smallest thing that could explain this?" Often it's one character in a template, not an architectural flaw.
+
+**2. Ask for the highest-leverage signal first.**
+Don't ask for a full log dump. Ask for the one thing that rules out an entire category:
+- "Open DevTools → Console. Any red errors? What's the exact first line?"
+- "In Network tab, does a request to `/api/...` appear at all?"
+- "When did it last work? What was the last commit touching this flow?"
+One precise answer is worth more than 200 lines of logs.
+
+**3. Cheap, broad checks before deep ones.**
+In order: console errors → Network tab → syntax/parse errors in emitted JS → session/cookie state → worker/thread → architectural issues. Don't reverse this order.
+
+**4. If stuck, change the search strategy.**
+If server-side reasoning isn't paying off after 2-3 cycles, switch: "Could this be a client parse error? A cached script? A redirect?" If focused on one file, check the thing that embeds it (template, caller). If the flow is long, find the first possible failure point and check that first.
+
+**5. Templates that emit JS are a hidden risk surface.**
+Jinja2 variables inside `<script>` blocks can break the entire script with one character (unescaped quote, None rendered as "None", etc.). **Single-quoted strings that contain apostrophes** (e.g. `'We're'`, `'don't'`, `'it's'`) are a common cause: the apostrophe ends the string early, the rest of the word is parsed as an identifier, and you get "Unexpected identifier 're'" (or similar). The whole script then fails to parse and never runs — so no fetch, no POST, no logs. When a script silently does nothing, ask for the **first line in the browser Console** (F12 → Console). If you see a syntax error, search the template for single-quoted strings with apostrophes and fix by using double quotes or escaping. Prefer passing data via `data-` attributes or a single `<script id="...">JSON.parse</script>` pattern over inline Jinja substitutions.
+
+**6. After fixing, record what you checked and in what order.**
+Add a one-line summary to the bug resolution note: "Checked server route first (no logs), then asked for console errors, found X." This trains future sessions and shortens the next debug.
+
+**Paste at the start of any debug session:**
+> "Vary the layer (client vs server vs network vs deploy). Ask for one high-leverage signal (console errors or Network tab). Cheap broad checks first. If stuck, change strategy."
+
+---
+
+## ✅ RESOLVED: Generation POST Never Reached Flask (Mar 2026)
+
+**Symptom:** "Finding the Perfect Gifts…" / "Getting started…" spins forever. No `[ROUTE] /api/generate-recommendations` in server logs. No POST in Network tab.
+
+**Root cause:** A **JavaScript syntax error** in `templates/generating.html`. The `funFacts` array used single-quoted strings. One string was `'We're searching stores most people never think to look.'` — the apostrophe in **We're** ended the string after `We`, so the parser saw the next token as the identifier **re** → **Uncaught SyntaxError: Unexpected identifier 're'**. The entire script block failed to parse, so nothing ran: no `startGeneration()`, no `fetch()`, no POST.
+
+**Fix:** Use double quotes for those strings (e.g. `"We're searching..."`, `"words don't."`) so apostrophes don't break parsing.
+
+**Lesson:** Multiple sessions focused on server-side (threads, service workers, session size, redirects). The fix was client-side. **Always ask for the browser Console (F12 → Console) and the first error line** before investing in server-side theories. Single-quoted strings containing apostrophes in templates that emit JS are a recurring pitfall — search for them when you see "Unexpected identifier" or a script that "does nothing."
+
+**Also merged (from earlier sessions):** SQLite progress store (cross-worker), 90s retailer thread timeout, Awin catalog sync, parallel retailer search. The generating page now uses `recipient_type | tojson` for safe JS and console logs (`[GiftWise] Generating page script running` / `Sending POST to /api/generate-recommendations`) for future debugging.
+
+---
+
+## Pending Opus Tasks
+
+Tasks flagged `# SONNET-FLAG:` in the codebase that require Opus to implement correctly.
+Each entry below includes the Opus prompt to copy-paste.
+
+### [OPEN] Load Testing & Architectural Stress Audit
+
+**Opus prompt:**
+
+> You are auditing GiftWise (a Flask/Gunicorn app on Railway.app) for architectural weaknesses that will cause failures or data loss under concurrent traffic. Traffic is coming — we don't know how much. Do not assume 150k TikTok views translates to X sessions; treat it as an unknown burst of real concurrent users.
+>
+> Read the full codebase — especially `giftwise_app.py`, `storage_service.py`, `site_stats.py`, `share_manager.py`, `database.py`, `recommendation_service.py`, and the Gunicorn config in `railway.json`. Then answer these questions precisely:
+>
+> 1. **Shelve concurrency.** `storage_service.py`, `site_stats.py`, and `share_manager.py` use Python shelve. Gunicorn runs 3 synchronous workers. Are there write races? Can shelve corrupt under concurrent writes from multiple workers? What is the actual failure mode?
+>
+> 2. **Worker exhaustion.** Claude API calls take 10–25 seconds each; there are 2 per session. With 3 Gunicorn sync workers and a burst of, say, 10 concurrent users, what happens to the 7th user? Is there a queue? Does it 502? What is the real concurrency ceiling, and what should we do about it (more workers, gevent, async, queue)?
+>
+> 3. **SQLite contention.** `database.py` uses SQLite. Under concurrent writes (click tracking, catalog sync), what breaks? Is WAL mode enabled? What's the failure mode?
+>
+> 4. **Rate limiting race.** Per-IP rate limiting is shelve-backed. With 3 workers, can two concurrent requests from the same IP both pass the rate limit check before either writes the block? Walk through the exact race condition if it exists.
+>
+> 5. ~~**Railway ephemeral filesystem.**~~ **NOT APPLICABLE — Railway Pro with 50GB permanent volume. Data is not lost on redeploy or restart. Skip this audit item.**
+>
+> 6. **Catalog sync conflict.** `catalog_sync.py` is triggered nightly by an external cron hitting `/admin/sync-catalog`. If a user session is mid-pipeline when sync runs, is there a conflict? Can sync corrupt the session cache?
+>
+> For each issue: rate it (Critical / High / Medium), describe the exact failure mode, and recommend the minimal fix that doesn't require a full infrastructure migration. Where Railway Postgres or Redis would be the right answer, say so clearly and estimate migration effort.
+>
+> After the audit, implement the Critical and High fixes. Add `# SONNET-FLAG:` comments for anything you defer. Update CLAUDE.md with findings.
+
+### [DONE] Replacement backfill relevance gate — post_curation_cleanup.py
+
+**Fixed Feb 25 2026 (Opus).** Three-layer fix for the $800 scooter incident:
+
+1. **Awin `_matches_query()` tightened** — now requires 2 meaningful term matches for queries with 3+ meaningful words. Short queries (1-2 terms like "hiking" or "Taylor Swift") still match on 1. (`awin_searcher.py`)
+2. **Upstream price cap** (Sonnet, Feb 25) — `AWIN_MAX_PRICE_USD = 200` in `awin_searcher.py`.
+3. **Price × interest-relevance gate** (Opus, Feb 25) — `_is_query_relevant_to_product()` now rejects replacements where price > `REPLACEMENT_PRICE_THRESHOLD` ($120) AND zero meaningful words from `interest_match` appear in the product title. SONNET-FLAG comment removed. (`post_curation_cleanup.py`)
+
+## Environment Notes
+- **Git is installed and working.** Do not prompt the user to install git, git for windows, or any other tooling. The repo is active with full commit history. Just use it.
+- **Python/Flask app.** Run with `python giftwise_app.py` or via deployment. No special build step.
+- **Branch:** Check `git branch` before making changes. **Merges to `main` must happen via GitHub PR** — Railway watches `main` for auto-deploy.
+- **Domain:** giftwise.fit (NOT giftwise.me, NOT giftwise.app, NOT giftwise.com)
+
+## Deployment (Railway.app)
+- **Platform:** Railway.app (NOT Render, NOT Heroku)
+- **Auto-deploy branch:** `main` (pushes to `main` trigger automatic deployment)
+- **Config file:** `railway.json` (Nixpacks builder, Gunicorn start command)
+- **Start command:** `gunicorn giftwise_app:app --bind 0.0.0.0:$PORT --workers 3 --timeout 600 --graceful-timeout 120 --worker-class sync --log-level info`
+- **Environment variables:** Set in Railway dashboard → Settings → Variables (see RAILWAY_DEBUG_GUIDE.md for required vars)
+- **Logs:** Railway dashboard → Deployments → View Logs (or `railway logs` via CLI)
+- **Storage:** Railway Pro plan with a **50GB permanent volume** mounted on the service. SQLite DB, shelve files, and all local state persist across deploys and container restarts. **Do NOT suggest ephemeral filesystem as a cause of data loss — it is not ephemeral.**
+- **Model env vars:** `CLAUDE_PROFILE_MODEL` (default Sonnet), `CLAUDE_CURATOR_MODEL` (default Sonnet, set to Opus to test quality)
+- **Admin dashboard:** `/admin/stats?key=ADMIN_DASHBOARD_KEY`
+
+**Testing locally:**
+```bash
+python giftwise_app.py
+# http://localhost:5000/demo          — fake data
+# http://localhost:5000/demo?admin=true — real pipeline with @chadahren
+```
+
+## How to Test Changes Before Going Live (Beginner Guide)
+
+The golden rule: **main branch = production = real users see it.** Every other branch is safe to experiment on.
+
+### The Safe Workflow (Do This Every Time)
+
+```
+1. Claude makes changes on a feature branch (e.g. claude/fix-something)
+2. Push to that branch — only affects GitHub, NOT production
+3. Test it:
+   - Option A (best): Run locally on your machine → python giftwise_app.py → open http://localhost:5000
+   - Option B (easy): In Railway dashboard → your project → click "New Deployment" → deploy from branch
+     This creates a separate live URL (like abc-branch.up.railway.app) — real internet, not production
+   - Option C (risky, only for tiny safe changes): Merge directly to main
+4. If it looks good → create a GitHub Pull Request from the feature branch → merge to main
+5. Railway sees main changed → auto-deploys to giftwise.fit
+```
+
+### What Can Break vs. What's Safe
+
+**Safe to merge without local testing:**
+- Text/copy changes in templates
+- Adding a new guide or blog post page
+- Adjusting a prompt in gift_curator.py or profile_analyzer.py
+- Adding a new static affiliate product (Peet's, illy, etc.)
+- Changing log messages
+
+**Always test locally or in Railway preview first:**
+- Any change to giftwise_app.py routes
+- Any change to search/curation pipeline
+- New imports or new Python files
+- Changes to database.py or storage_service.py
+- Anything involving API keys or environment variables
+
+### How to Run Locally (One-Time Setup)
+
+```bash
+# In the GiftWise folder:
+python giftwise_app.py
+
+# Then open browser to:
+http://localhost:5000/demo          # Test without real social data
+http://localhost:5000/demo?admin=true   # Test with real pipeline (@chadahren)
+```
+
+Your local machine uses a .env file (or exported shell variables) for API keys. Railway uses its own Variables dashboard. They're separate — changing one doesn't affect the other.
+
+### How to Test in Railway Without Touching Production
+
+1. Go to railway.app → your GiftWise project
+2. Click your service → "Deployments" tab
+3. Click "Deploy" → choose "Deploy from branch" → pick your feature branch
+4. Railway gives you a temporary URL for that deploy
+5. Test it at that URL
+6. If good: merge your branch to main on GitHub → production updates automatically
+
+### The Nuclear Option (If Something Breaks on Production)
+
+In Railway → Deployments → find the last working deployment → click "Redeploy". This rolls back to the previous version in about 60 seconds. No code changes needed.
+
+---
+
+## Paywall Decision Framework
+
+**Current status (Feb 2026): Paywall is NOT enforced. All users get full free access.**
+
+### The Economics
+
+- Claude API cost per session: ~$0.10 (Sonnet, both profile + curator calls)
+- Affiliate revenue per session: ~$0.00–$0.05 (most visitors don't buy; commissions only on purchases)
+- Railway hosting: ~$5–20/month (fixed, doesn't scale with sessions)
+
+**Implication:** You are currently subsidizing every user's session. That's intentional — you need traffic before you can monetize.
+
+### Paywall Trigger Thresholds
+
+These are the specific signals to watch in the Railway logs and admin dashboard (`/admin/stats?key=ADMIN_DASHBOARD_KEY`):
+
+| Threshold | Meaning | Action |
+|-----------|---------|--------|
+| **< 5 sessions/day avg** | Growth phase — API cost ~$15/mo, negligible | Keep fully free. Do not restrict anything. |
+| **5–15 sessions/day** | Early traction | Add 1 run/day rate limiting per IP. Still free. Watch whether affiliate clicks are growing. |
+| **15–30 sessions/day sustained** | Real traffic | Calculate: (sessions × $0.10) vs affiliate revenue in Railway affiliate click logs. If cost >> revenue for 2+ weeks, add account requirement. |
+| **30+ sessions/day AND affiliate revenue not catching up** | Paywall decision point | Soft paywall: require free account creation (just email) to run the full pipeline. No charge yet. |
+| **Paying users exist** | Only then | Hard paywall with Stripe. A paywall with zero paying customers is just a conversion-killer. |
+
+### How to Check Your Session Count
+
+```
+Railway dashboard → your project → Metrics tab
+→ Look at "Requests" over the past 7 days
+→ Divide by 7 = avg sessions/day
+
+OR:
+Admin dashboard: /admin/stats?key=YOUR_KEY
+→ "rec_run" events = sessions that ran the full pipeline
+```
+
+### Before You Ever Flip a Paywall
+
+1. **Inventory must be good first.** Paywalling thin results is a conversion disaster. Wait until Awin/CJ/FlexOffers inventory is robust.
+2. **TikTok moment:** If the kid posts and traffic spikes, do NOT paywall during that window. Let people run it free, collect emails, build the waitlist. Monetize the warm audience later.
+3. **First paywall should be soft:** Require account creation (free, just email), not payment. This gives you email addresses, lets you track users, and creates a "you're in" feeling without friction.
+4. **Rate limiting before paywalling:** 1 run per IP per day stops abuse while keeping the product free. Implement this before any payment requirement.
+
+### What the Subscription Tiers Are (Not Yet Enforced)
+
+The code has tier infrastructure built (see `giftwise_app.py` lines ~634+). Planned tiers:
+- **Free:** Full access, 1 run/day rate limit
+- **Pro ($4.99–$7.99/month):** Multiple profiles, monthly refresh, shareable profile links
+- **Gift Emergency ($2.99 one-time):** 10 recs, no account needed — impulse buyer capture
+
+These are NOT enforced yet. The Stripe integration (`/subscribe` route) exists but isn't wired to gatekeeping. Do not wire the paywall until inventory and traffic thresholds above are met.
+
+### North Star: Affiliate vs. Subscription Priority
+
+Right now affiliate revenue is the right focus because:
+1. It requires no payment friction — users just click links
+2. Every approved affiliate network multiplies revenue without code changes
+3. Subscription requires enough volume to justify the conversion funnel overhead
+
+Flip this priority when: monthly affiliate revenue is steady but clearly lower than what a 5% subscription conversion rate would generate at your traffic level.
+
+---
 
 ## What This Is
 
@@ -100,39 +335,6 @@ Files marked `⚠️ OPUS-ONLY ZONE` in code. Non-Opus sessions: add a `# SONNET
 - Build features that only work for one retailer.
 - Add code filters for taste problems. If curator makes bad judgment calls, fix the prompt.
 - Build campaign-specific code.
-
-## Environment & Deployment
-
-- **Platform:** Railway.app (NOT Render, NOT Heroku)
-- **Auto-deploy:** Pushes to `main` trigger deployment. **Merges to main must happen via GitHub PR.**
-- **Storage:** Railway Pro, 50GB permanent volume. Data persists across deploys. NOT ephemeral.
-- **Workers:** 3 Gunicorn sync workers, 600s timeout
-- **Config:** `railway.json` (Nixpacks builder)
-- **Start:** `gunicorn giftwise_app:app --bind 0.0.0.0:$PORT --workers 3 --timeout 600 --graceful-timeout 120 --worker-class sync --log-level info`
-- **Domain:** giftwise.fit
-- **Git is installed and working.** Do not prompt to install tooling.
-
-**Model env vars:**
-- `CLAUDE_PROFILE_MODEL` — default Sonnet
-- `CLAUDE_CURATOR_MODEL` — default Sonnet (set to Opus to test quality)
-
-**Testing locally:**
-```bash
-python giftwise_app.py
-# http://localhost:5000/demo          — fake data
-# http://localhost:5000/demo?admin=true — real pipeline with @chadahren
-```
-
-**Admin dashboard:** `/admin/stats?key=ADMIN_DASHBOARD_KEY`
-
-## Debugging Approach
-
-> Vary the layer (client vs server vs network vs deploy). Ask for one high-leverage signal (console errors or Network tab). Cheap broad checks first. If stuck, change strategy.
-
-1. Name at least two layers before digging deep.
-2. Console errors → Network tab → emitted JS → session state → workers → architecture.
-3. Templates that emit JS are a hidden risk surface (Jinja2 inside `<script>` blocks).
-4. After fixing, record what you checked and in what order.
 
 ## Current Priorities (Updated Mar 2026)
 

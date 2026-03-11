@@ -169,4 +169,10 @@ Don't load these every session. Read only when the task requires it.
 | `docs/ARCHITECTURE.md` | Deep technical work, load testing, the Opus audit prompt |
 | `docs/TESTING.md` | Running tests, pre-deploy verification |
 | `docs/BUSINESS_STRATEGY.md` | Paywall decisions, revenue model, subscription tiers |
-| `OPUS_AUDIT.md` | Quality review, checking audit item status |
+| `docs/OPUS_AUDIT.md` | Quality review, checking audit item status |
+| `docs/AFFILIATE_APPLICATIONS_TRACKER.md` | Checking application status across all networks |
+| `docs/AWIN_APPLICATIONS_FEB25.md` | Awin application details, tiers, EPC, what to do when approvals arrive |
+| `docs/AFFILIATE_NETWORK_RESEARCH.md` | Brand-to-network mapping (~70 brands) |
+| `docs/RAILWAY_DEBUG_GUIDE.md` | Railway deployment debugging |
+
+62 older session artifacts (handoffs, setup guides, session summaries) are in `docs/archive/`. These are historical — don't load them unless investigating how a past decision was made.

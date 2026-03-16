@@ -35,6 +35,13 @@
         .footer p { opacity: 0.8; margin: 8px 0; }
         .footer a { color: white; opacity: 0.8; }
         @media (max-width: 768px) { h1 { font-size: 1.8em; } }
+        .tool-callout { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 16px 22px; margin: 20px 0 30px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .tool-callout-text { flex: 1; font-size: 0.95em; color: #374151; line-height: 1.5; }
+        .tool-callout-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 9px 20px; border-radius: 20px; text-decoration: none; font-weight: 600; font-size: 0.9em; white-space: nowrap; display: inline-block; }
+        .tool-callout-btn:hover { opacity: 0.9; text-decoration: none; }
+        .mid-cta { background: #fafafa; border: 1px solid #e5e7eb; border-left: 4px solid #667eea; border-radius: 0 8px 8px 0; padding: 18px 22px; margin: 35px 0; }
+        .mid-cta p { margin: 0; color: #374151; font-size: 0.95em; line-height: 1.6; }
+        .mid-cta a { color: #667eea; font-weight: 600; }
 {% endblock %}
 
 {% block content %}
@@ -52,6 +59,13 @@
 
         <div class="disclosure">
             <strong>Affiliate disclosure:</strong> Some links in this article are affiliate links. If you make a purchase, we may earn a small commission at no cost to you.
+        </div>
+
+        <div class="tool-callout">
+            <div class="tool-callout-text">
+                <strong>Skip the guesswork entirely.</strong> GiftWise reads their Instagram or TikTok and uses AI to find gifts matched to their actual interests — in under a minute.
+            </div>
+            <a href="/demo" class="tool-callout-btn">Try GiftWise free →</a>
         </div>
 
         <h2>Why "Someone Who Has Everything" Is Actually Good News</h2>
@@ -83,6 +97,10 @@
         <div class="tip-box">
             <h3>💡 Pro Tip: The Replacement Strategy</h3>
             <p>Notice something they use daily that's looking worn? A ratty throw blanket. An old wallet. A stained coffee mug. Replace it with a much nicer version. They'll use it every day and think of you.</p>
+        </div>
+
+        <div class="mid-cta">
+            <p>People who "have everything" still post about what they love, want, and obsess over. <a href="/demo"><strong>GiftWise reads their Instagram or TikTok</strong></a> to find what they'd never buy themselves but would absolutely love.</p>
         </div>
 
         <h2>Strategy #2: Experiences Over Objects</h2>
@@ -155,7 +173,7 @@
         <div class="cta-box">
             <h2>Stop Guessing. Start Knowing.</h2>
             <p>Give us their Instagram and we'll show you exactly what to get them — based on what they're posting, saving, and loving right now.</p>
-            <a href="/signup">Try Giftwise Free</a>
+            <a href="/demo">Try Giftwise Free</a>
         </div>
 
         <h2>Final Thoughts</h2>

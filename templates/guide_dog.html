@@ -36,6 +36,13 @@
         .footer p { opacity: 0.8; margin: 8px 0; }
         .footer a { color: white; opacity: 0.8; }
         @media (max-width: 768px) { h1 { font-size: 1.8em; } }
+        .tool-callout { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 16px 22px; margin: 20px 0 30px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .tool-callout-text { flex: 1; font-size: 0.95em; color: #374151; line-height: 1.5; }
+        .tool-callout-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 9px 20px; border-radius: 20px; text-decoration: none; font-weight: 600; font-size: 0.9em; white-space: nowrap; display: inline-block; }
+        .tool-callout-btn:hover { opacity: 0.9; text-decoration: none; }
+        .mid-cta { background: #fafafa; border: 1px solid #e5e7eb; border-left: 4px solid #667eea; border-radius: 0 8px 8px 0; padding: 18px 22px; margin: 35px 0; }
+        .mid-cta p { margin: 0; color: #374151; font-size: 0.95em; line-height: 1.6; }
+        .mid-cta a { color: #667eea; font-weight: 600; }
 {% endblock %}
 
 {% block content %}
@@ -53,6 +60,13 @@
 
         <div class="disclosure">
             <strong>Affiliate disclosure:</strong> Some links below are affiliate links. If you make a purchase, we may earn a small commission at no cost to you. We only feature products we'd genuinely recommend.
+        </div>
+
+        <div class="tool-callout">
+            <div class="tool-callout-text">
+                <strong>These are great general picks.</strong> GiftWise goes further — paste their Instagram or TikTok handle and AI finds gifts matched to <em>their actual personality</em>, not a category guess.
+            </div>
+            <a href="/demo" class="tool-callout-btn">Try it free →</a>
         </div>
 
         <h2>The Sentimental Picks</h2>
@@ -99,6 +113,10 @@
             </div>
             <p>The Patagonia of dog gear. Padded chest and belly, two leash attachment points, reflective trim. Ruffwear is what active dog owners upgrade to after their first cheap Amazon harness breaks on a hike. Available in tons of colors.</p>
             <a href="https://www.amazon.com/s?k=Ruffwear+Front+Range+Harness" class="product-link" target="_blank" rel="nofollow">Shop on Amazon &rarr;</a>
+        </div>
+
+        <div class="mid-cta">
+            <p>Dog people post about their dog constantly — which means GiftWise already knows exactly what kind of dog parent they are. <a href="/demo"><strong>Try it</strong></a> and see what the AI finds.</p>
         </div>
 
         <div class="product-pick">
@@ -182,7 +200,7 @@
         <div class="cta-box">
             <h2>We Can Tell Which Dog Breed They Post About Most</h2>
             <p>We look at their Instagram and TikTok to see exactly how they spend time with their dog — adventure hiker or couch snuggler, new puppy parent or seasoned rescuer — and match gifts accordingly.</p>
-            <a href="/signup">Get Personalized Recommendations &rarr;</a>
+            <a href="/demo">Get Personalized Recommendations &rarr;</a>
         </div>
     </div>
 {% endblock %}

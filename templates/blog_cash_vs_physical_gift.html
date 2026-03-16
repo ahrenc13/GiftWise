@@ -37,6 +37,13 @@
         .footer p { opacity: 0.8; margin: 8px 0; }
         .footer a { color: white; opacity: 0.8; }
         @media (max-width: 768px) { h1 { font-size: 1.8em; } }
+        .tool-callout { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 16px 22px; margin: 20px 0 30px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .tool-callout-text { flex: 1; font-size: 0.95em; color: #374151; line-height: 1.5; }
+        .tool-callout-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 9px 20px; border-radius: 20px; text-decoration: none; font-weight: 600; font-size: 0.9em; white-space: nowrap; display: inline-block; }
+        .tool-callout-btn:hover { opacity: 0.9; text-decoration: none; }
+        .mid-cta { background: #fafafa; border: 1px solid #e5e7eb; border-left: 4px solid #667eea; border-radius: 0 8px 8px 0; padding: 18px 22px; margin: 35px 0; }
+        .mid-cta p { margin: 0; color: #374151; font-size: 0.95em; line-height: 1.6; }
+        .mid-cta a { color: #667eea; font-weight: 600; }
 {% endblock %}
 
 {% block content %}
@@ -52,6 +59,13 @@
             "Is it tacky to give cash?" is one of the most Googled gift questions. The answer: it depends. Cash is perfect for weddings but weird for your coworker's birthday. It's expected for graduations but feels impersonal for Mother's Day. Here's when to give cash, when to give a physical gift, and when to split the difference.
         </p>
 
+        <div class="tool-callout">
+            <div class="tool-callout-text">
+                <strong>Skip the guesswork entirely.</strong> GiftWise reads their Instagram or TikTok and uses AI to find gifts matched to their actual interests — in under a minute.
+            </div>
+            <a href="/demo" class="tool-callout-btn">Try GiftWise free →</a>
+        </div>
+
         <h2>The General Rule</h2>
 
         <p><strong>Cash is appropriate when the recipient has a specific financial goal or milestone.</strong> Weddings (starting a home), graduations (student loans), new babies (everything is expensive), housewarming (they need furniture).</p>
@@ -66,6 +80,10 @@
         <div class="verdict">
             <h3>✅ Verdict: Cash is Perfect</h3>
             <p>Pro tip: Use a nice card and write a personal note. The cash is practical, the note is thoughtful.</p>
+        </div>
+
+        <div class="mid-cta">
+            <p>When you know them well, physical gifts win. <a href="/demo"><strong>GiftWise</strong></a> analyzes their Instagram or TikTok to find physical gifts matched to their actual interests — no guessing required.</p>
         </div>
 
         <h3>Graduations</h3>
@@ -155,7 +173,7 @@
         <div class="cta-box">
             <h2>Skip the Cash vs Gift Debate</h2>
             <p>Give us their social media. We'll find the perfect physical gift based on what they're actually interested in — no guessing required.</p>
-            <a href="/signup">Get AI-Powered Gift Ideas</a>
+            <a href="/demo">Get AI-Powered Gift Ideas</a>
         </div>
 
         <h2>Final Verdict</h2>

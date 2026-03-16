@@ -36,6 +36,13 @@
         .footer p { opacity: 0.8; margin: 8px 0; }
         .footer a { color: white; opacity: 0.8; }
         @media (max-width: 768px) { h1 { font-size: 1.8em; } }
+        .tool-callout { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 16px 22px; margin: 20px 0 30px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .tool-callout-text { flex: 1; font-size: 0.95em; color: #374151; line-height: 1.5; }
+        .tool-callout-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 9px 20px; border-radius: 20px; text-decoration: none; font-weight: 600; font-size: 0.9em; white-space: nowrap; display: inline-block; }
+        .tool-callout-btn:hover { opacity: 0.9; text-decoration: none; }
+        .mid-cta { background: #fafafa; border: 1px solid #e5e7eb; border-left: 4px solid #667eea; border-radius: 0 8px 8px 0; padding: 18px 22px; margin: 35px 0; }
+        .mid-cta p { margin: 0; color: #374151; font-size: 0.95em; line-height: 1.6; }
+        .mid-cta a { color: #667eea; font-weight: 600; }
 {% endblock %}
 
 {% block content %}
@@ -53,6 +60,13 @@
 
         <div class="disclosure">
             <strong>Affiliate disclosure:</strong> Some links below are affiliate links. If you make a purchase, we may earn a small commission at no cost to you. We only feature products we'd genuinely recommend.
+        </div>
+
+        <div class="tool-callout">
+            <div class="tool-callout-text">
+                <strong>These are great general picks.</strong> GiftWise goes further — paste their Instagram or TikTok handle and AI finds gifts matched to <em>their actual personality</em>, not a category guess.
+            </div>
+            <a href="/demo" class="tool-callout-btn">Try it free →</a>
         </div>
 
         <h2>In-Flight Essentials</h2>
@@ -99,6 +113,10 @@
             </div>
             <p>The suitcase that launched a direct-to-consumer revolution. Built-in compression pad, 360-degree wheels, and a polycarbonate shell that takes a beating. The "Bigger Carry-On" fits the maximum overhead bin dimensions for most airlines.</p>
             <a href="https://www.awaytravel.com/suitcases/bigger-carry-on" class="product-link" target="_blank" rel="nofollow">Shop at Away &rarr;</a>
+        </div>
+
+        <div class="mid-cta">
+            <p>The best travel gift depends on how they actually travel. <a href="/demo"><strong>GiftWise reads their Instagram and TikTok</strong></a> to find out — budget backpacker or luxury traveler, beach person or city explorer.</p>
         </div>
 
         <div class="product-pick">
@@ -206,7 +224,7 @@
         <div class="cta-box">
             <h2>Their Travel Posts Tell Us Everything</h2>
             <p>Beach person or city explorer? Budget backpacker or luxury traveler? Giftwise reads their Instagram and TikTok to find travel gifts matched to how they actually travel.</p>
-            <a href="/signup">Get Personalized Recommendations &rarr;</a>
+            <a href="/demo">Get Personalized Recommendations &rarr;</a>
         </div>
     </div>
 {% endblock %}

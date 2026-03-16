@@ -135,6 +135,21 @@
         .back-link:hover {
             text-decoration: underline;
         }
+        .tool-callout { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 16px 22px; margin: 20px 0 30px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .tool-callout-text { flex: 1; font-size: 0.95em; color: #374151; line-height: 1.5; }
+        .tool-callout-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 9px 20px; border-radius: 20px; text-decoration: none; font-weight: 600; font-size: 0.9em; white-space: nowrap; display: inline-block; }
+        .tool-callout-btn:hover { opacity: 0.9; text-decoration: none; }
+        .tip-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 25px; margin: 20px 0; }
+        .tip-card h3 { margin-top: 0; color: #1f2937; font-size: 1.1em; }
+        .tip-card p { margin-bottom: 0; color: #4b5563; font-size: 0.95em; line-height: 1.6; }
+        .search-cta { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; border-radius: 12px; padding: 28px; text-align: center; margin: 40px 0; }
+        .search-cta h3 { color: white; margin-top: 0; font-size: 1.2em; }
+        .search-cta p { color: rgba(255,255,255,0.9); margin-bottom: 18px; font-size: 0.95em; }
+        .search-cta a { background: white; color: #ea580c; padding: 10px 24px; border-radius: 20px; text-decoration: none; font-weight: 700; display: inline-block; }
+        .cta-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 16px; padding: 35px; text-align: center; margin: 40px 0; }
+        .cta-box h2 { color: white; margin-top: 0; margin-bottom: 12px; }
+        .cta-box p { color: rgba(255,255,255,0.9); margin-bottom: 20px; }
+        .cta-box a { background: white; color: #667eea; padding: 12px 30px; border-radius: 25px; text-decoration: none; font-weight: 600; display: inline-block; }
 {% endblock %}
 
 {% block content %}
@@ -147,155 +162,50 @@
         </div>
 
         <div class="guide-intro">
-            <p>The best homes tell a story—and Etsy's artisan community helps write it. From custom family name signs to hand-painted ceramics, these aren't cookie-cutter HomeGoods finds. They're pieces crafted by real people with real skill, many offering personalization options that transform a beautiful object into something deeply meaningful.</p>
+            <p>The best homes tell a story — and Etsy's artisan community helps write it. From custom family name signs to hand-painted ceramics, these aren't cookie-cutter HomeGoods finds. They're pieces crafted by real people with real skill, many offering personalization options that transform a beautiful object into something deeply meaningful.</p>
 
-            <p>Whether you're shopping for a housewarming gift, newlywed couple, or someone who just loves making their space feel like home, these handmade décor pieces bring warmth, personality, and a sense of "you won't find this anywhere else." Here are our favorite finds from Etsy's most talented home décor artisans.</p>
+            <p>Whether you're shopping for a housewarming gift, newlywed couple, or someone who just loves making their space feel like home, Etsy's handmade décor delivers warmth and personality you won't find anywhere else.</p>
         </div>
 
-        <div class="product-grid">
-            <!-- Product 1 -->
-            <div class="product-card">
-                <div class="product-image">[Add product image URL]</div>
-                <div class="product-info">
-                    <h3>Custom Family Name Sign</h3>
-                    <div class="product-shop">By [Shop Name]</div>
-                    <p class="product-description">Rustic wooden sign with your family name and established date. Hand-painted and distressed for vintage charm. Perfect for entryway or living room.</p>
-                    <div class="product-price">$68</div>
-                    <a href="[ETSY AFFILIATE LINK]" class="product-link" target="_blank">View on Etsy</a>
-                </div>
+        <div class="tool-callout">
+            <div class="tool-callout-text">
+                <strong>Want home decor gifts matched to their actual aesthetic?</strong> GiftWise reads their Instagram or TikTok — if they post their space, we can find gifts that fit how they actually decorate.
             </div>
+            <a href="/demo" class="tool-callout-btn">Try GiftWise free →</a>
+        </div>
 
-            <!-- Product 2 -->
-            <div class="product-card">
-                <div class="product-image">[Add product image URL]</div>
-                <div class="product-info">
-                    <h3>Hand-Woven Throw Pillow</h3>
-                    <div class="product-shop">By [Shop Name]</div>
-                    <p class="product-description">Boho-style pillow cover with geometric pattern. 100% cotton, hand-woven on traditional loom. Choose from 6 color combinations.</p>
-                    <div class="product-price">$42</div>
-                    <a href="[ETSY AFFILIATE LINK]" class="product-link" target="_blank">View on Etsy</a>
-                </div>
-            </div>
+        <h2 style="font-size:1.6em; margin-top:40px; color:#1f2937;">How to Find the Right Etsy Home Decor Gift</h2>
 
-            <!-- Product 3 -->
-            <div class="product-card">
-                <div class="product-image">[Add product image URL]</div>
-                <div class="product-info">
-                    <h3>Personalized Doormat</h3>
-                    <div class="product-shop">By [Shop Name]</div>
-                    <p class="product-description">Welcome mat customized with family name or message. Durable coir fiber, fade-resistant ink. Makes guests feel instantly welcome.</p>
-                    <div class="product-price">$54</div>
-                    <a href="[ETSY AFFILIATE LINK]" class="product-link" target="_blank">View on Etsy</a>
-                </div>
-            </div>
+        <div class="tip-card">
+            <h3>1. Lead with personalization</h3>
+            <p>The most memorable Etsy home decor gifts are personalized. Custom family name signs, engraved cutting boards, monogrammed blankets — these transform a nice object into something they'll keep forever. Search Etsy for "personalized [item]" and filter by reviews and star ratings.</p>
+        </div>
 
-            <!-- Product 4 -->
-            <div class="product-card">
-                <div class="product-image">[Add product image URL]</div>
-                <div class="product-info">
-                    <h3>Macramé Wall Hanging</h3>
-                    <div class="product-shop">By [Shop Name]</div>
-                    <p class="product-description">Large statement piece, hand-knotted in soft cotton rope. Adds texture and bohemian vibes. Available in natural or dyed options.</p>
-                    <div class="product-price">$78</div>
-                    <a href="[ETSY AFFILIATE LINK]" class="product-link" target="_blank">View on Etsy</a>
-                </div>
-            </div>
+        <div class="tip-card">
+            <h3>2. Match their aesthetic, not yours</h3>
+            <p>Etsy has everything from ultra-minimalist to maximalist cottagecore. Look at how they actually decorate before you search. Neutral linen and natural wood for the minimalist. Macramé and rattan for the boho person. Bold color and pattern for the maximalist. Buying a rustic farmhouse sign for someone with a sleek modern apartment is a common miss.</p>
+        </div>
 
-            <!-- Product 5 -->
-            <div class="product-card">
-                <div class="product-image">[Add product image URL]</div>
-                <div class="product-info">
-                    <h3>Custom Map Print</h3>
-                    <div class="product-shop">By [Shop Name]</div>
-                    <p class="product-description">Personalized map of your special location—first date, wedding venue, hometown. Modern design, museum-quality print.</p>
-                    <div class="product-price">$45</div>
-                    <a href="[ETSY AFFILIATE LINK]" class="product-link" target="_blank">View on Etsy</a>
-                </div>
-            </div>
+        <div class="tip-card">
+            <h3>3. Best categories for Etsy home decor gifts</h3>
+            <p><strong>Always strong:</strong> Custom map prints (their city, first date location, hometown), hand-thrown ceramic vases, woven wall hangings, personalized doormats, engraved wooden items.<br><br><strong>Great for new homeowners:</strong> Custom family name signs, address plaques, housewarming candle sets.<br><br><strong>Best under $50:</strong> Ceramic coasters, hand-dyed table runners, small wall art prints, linen napkin sets.</p>
+        </div>
 
-            <!-- Product 6 -->
-            <div class="product-card">
-                <div class="product-image">[Add product image URL]</div>
-                <div class="product-info">
-                    <h3>Ceramic Vase Set</h3>
-                    <div class="product-shop">By [Shop Name]</div>
-                    <p class="product-description">Three hand-thrown vases in coordinating glazes. Each piece is unique. Perfect for mantel, dining table, or shelf styling.</p>
-                    <div class="product-price">$62</div>
-                    <a href="[ETSY AFFILIATE LINK]" class="product-link" target="_blank">View on Etsy</a>
-                </div>
-            </div>
+        <div class="tip-card">
+            <h3>4. Order early for personalized items</h3>
+            <p>Most custom items take 3–10 business days to produce before shipping. Check the shop's "Processing time" before ordering — especially around holidays. When in doubt, message the seller directly; most Etsy artisans are responsive and will tell you if they can hit your deadline.</p>
+        </div>
 
-            <!-- Product 7 -->
-            <div class="product-card">
-                <div class="product-image">[Add product image URL]</div>
-                <div class="product-info">
-                    <h3>Personalized Cutting Board</h3>
-                    <div class="product-shop">By [Shop Name]</div>
-                    <p class="product-description">Engraved hardwood board with family name or monogram. Functional art for kitchen. Choose from walnut, maple, or cherry wood.</p>
-                    <div class="product-price">$58</div>
-                    <a href="[ETSY AFFILIATE LINK]" class="product-link" target="_blank">View on Etsy</a>
-                </div>
-            </div>
+        <div class="search-cta">
+            <h3>Shop Etsy Home Decor</h3>
+            <p>Browse Etsy's full selection of handmade and personalized home decor gifts.</p>
+            <a href="https://www.etsy.com/search?q=personalized+home+decor+gift" target="_blank" rel="nofollow">Browse on Etsy →</a>
+        </div>
 
-            <!-- Product 8 -->
-            <div class="product-card">
-                <div class="product-image">[Add product image URL]</div>
-                <div class="product-info">
-                    <h3>Hand-Painted Tile Coasters</h3>
-                    <div class="product-shop">By [Shop Name]</div>
-                    <p class="product-description">Set of 4 Portuguese-style ceramic coasters. Each hand-painted with traditional motifs. Cork backing protects surfaces.</p>
-                    <div class="product-price">$36</div>
-                    <a href="[ETSY AFFILIATE LINK]" class="product-link" target="_blank">View on Etsy</a>
-                </div>
-            </div>
-
-            <!-- Product 9 -->
-            <div class="product-card">
-                <div class="product-image">[Add product image URL]</div>
-                <div class="product-info">
-                    <h3>Woven Wall Basket Set</h3>
-                    <div class="product-shop">By [Shop Name]</div>
-                    <p class="product-description">Three handwoven African baskets for wall display. Fair trade, supports women artisans. Natural fibers in geometric patterns.</p>
-                    <div class="product-price">$72</div>
-                    <a href="[ETSY AFFILIATE LINK]" class="product-link" target="_blank">View on Etsy</a>
-                </div>
-            </div>
-
-            <!-- Product 10 -->
-            <div class="product-card">
-                <div class="product-image">[Add product image URL]</div>
-                <div class="product-info">
-                    <h3>Monogrammed Throw Blanket</h3>
-                    <div class="product-shop">By [Shop Name]</div>
-                    <p class="product-description">Soft cotton blanket embroidered with initials. Available in 12 colors. Perfect for couch, bed, or gifting.</p>
-                    <div class="product-price">$64</div>
-                    <a href="[ETSY AFFILIATE LINK]" class="product-link" target="_blank">View on Etsy</a>
-                </div>
-            </div>
-
-            <!-- Product 11 -->
-            <div class="product-card">
-                <div class="product-image">[Add product image URL]</div>
-                <div class="product-info">
-                    <h3>Floating Shelf with Hooks</h3>
-                    <div class="product-shop">By [Shop Name]</div>
-                    <p class="product-description">Rustic wood shelf with iron hooks. Perfect for entryway organization. Customizable wood stain and hook count.</p>
-                    <div class="product-price">$56</div>
-                    <a href="[ETSY AFFILIATE LINK]" class="product-link" target="_blank">View on Etsy</a>
-                </div>
-            </div>
-
-            <!-- Product 12 -->
-            <div class="product-card">
-                <div class="product-image">[Add product image URL]</div>
-                <div class="product-info">
-                    <h3>Hand-Dyed Table Runner</h3>
-                    <div class="product-shop">By [Shop Name]</div>
-                    <p class="product-description">Linen table runner with tie-dye or shibori pattern. Each one unique. Elevates any dining table instantly.</p>
-                    <div class="product-price">$48</div>
-                    <a href="[ETSY AFFILIATE LINK]" class="product-link" target="_blank">View on Etsy</a>
-                </div>
-            </div>
+        <div class="cta-box">
+            <h2>Know Their Instagram? We Can Find the Perfect Fit.</h2>
+            <p>Etsy has thousands of home decor options — too many to browse. GiftWise reads their social posts to understand their actual aesthetic and finds gifts from multiple sources (including Etsy) that match their specific style.</p>
+            <a href="/demo">Get Personalized Recommendations →</a>
         </div>
 
         <div class="why-etsy">

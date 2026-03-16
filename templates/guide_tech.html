@@ -36,6 +36,13 @@
         .footer p { opacity: 0.8; margin: 8px 0; }
         .footer a { color: white; opacity: 0.8; }
         @media (max-width: 768px) { h1 { font-size: 1.8em; } }
+        .tool-callout { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 16px 22px; margin: 20px 0 30px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .tool-callout-text { flex: 1; font-size: 0.95em; color: #374151; line-height: 1.5; }
+        .tool-callout-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 9px 20px; border-radius: 20px; text-decoration: none; font-weight: 600; font-size: 0.9em; white-space: nowrap; display: inline-block; }
+        .tool-callout-btn:hover { opacity: 0.9; text-decoration: none; }
+        .mid-cta { background: #fafafa; border: 1px solid #e5e7eb; border-left: 4px solid #667eea; border-radius: 0 8px 8px 0; padding: 18px 22px; margin: 35px 0; }
+        .mid-cta p { margin: 0; color: #374151; font-size: 0.95em; line-height: 1.6; }
+        .mid-cta a { color: #667eea; font-weight: 600; }
 {% endblock %}
 
 {% block content %}
@@ -53,6 +60,13 @@
 
         <div class="disclosure">
             <strong>Affiliate disclosure:</strong> Some links below are affiliate links. If you make a purchase, we may earn a small commission at no cost to you. We only feature products we'd genuinely recommend.
+        </div>
+
+        <div class="tool-callout">
+            <div class="tool-callout-text">
+                <strong>These are great general picks.</strong> GiftWise goes further — paste their Instagram or TikTok handle and AI finds gifts matched to <em>their actual personality</em>, not a category guess.
+            </div>
+            <a href="/demo" class="tool-callout-btn">Try it free →</a>
         </div>
 
         <h2>Desk and Workspace</h2>
@@ -99,6 +113,10 @@
             </div>
             <p>The best noise-canceling over-ear headphones. Period. 30-hour battery, multipoint connection (phone + laptop simultaneously), and the ANC is so good it makes open offices bearable. If they work from home or fly often, these are life-changing.</p>
             <a href="https://www.amazon.com/s?k=Sony+WH-1000XM5" class="product-link" target="_blank" rel="nofollow">Shop on Amazon &rarr;</a>
+        </div>
+
+        <div class="mid-cta">
+            <p>Not sure which of these fits their specific setup? <a href="/demo"><strong>Try GiftWise</strong></a> — paste their Instagram or TikTok and get recommendations matched to their actual tech ecosystem.</p>
         </div>
 
         <div class="product-pick">
@@ -196,7 +214,7 @@
         <div class="cta-box">
             <h2>Their Tech Stack Is All Over Their Feed</h2>
             <p>Giftwise spots the details — are they Apple or Android? PC gamer or console? Smart home maximalist or minimalist? We find gifts that fit their specific ecosystem.</p>
-            <a href="/signup">Get Personalized Recommendations &rarr;</a>
+            <a href="/demo">Get Personalized Recommendations &rarr;</a>
         </div>
     </div>
 {% endblock %}

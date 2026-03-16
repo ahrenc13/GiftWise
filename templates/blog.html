@@ -22,10 +22,16 @@
         .blog-card p { color: #6b7280; font-size: 0.95em; margin-bottom: 15px; line-height: 1.7; }
         .blog-meta { font-size: 0.85em; color: #9ca3af; }
         .blog-tag { display: inline-block; background: #f3f4f6; color: #667eea; padding: 4px 12px; border-radius: 12px; font-size: 0.8em; margin-right: 8px; margin-top: 10px; }
+        .tool-banner { background: linear-gradient(135deg, #1f2937 0%, #374151 100%); color: white; padding: 28px 20px; text-align: center; }
+        .tool-banner-inner { max-width: 800px; margin: 0 auto; }
+        .tool-banner h2 { font-size: 1.4em; margin: 0 0 10px; color: white; }
+        .tool-banner p { font-size: 1em; opacity: 0.85; margin: 0 0 18px; }
+        .tool-banner-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 11px 28px; border-radius: 25px; text-decoration: none; font-weight: 600; font-size: 0.95em; display: inline-block; }
+        .tool-banner-btn:hover { opacity: 0.9; }
         .footer { background: #1f2937; color: white; padding: 40px 20px; text-align: center; margin-top: 60px; }
         .footer p { opacity: 0.8; margin: 8px 0; }
         .footer a { color: white; opacity: 0.8; text-decoration: none; }
-        @media (max-width: 768px) { .hero-sm h1 { font-size: 1.8em; } }
+        @media (max-width: 768px) { .hero-sm h1 { font-size: 1.8em; } .tool-banner h2 { font-size: 1.2em; } }
 {% endblock %}
 
 {% block content %}
@@ -34,6 +40,14 @@
     <div class="hero-sm">
         <h1>The Giftwise Blog</h1>
         <p>Thoughtful advice on gift giving, shopping strategies, and making every present count.</p>
+    </div>
+
+    <div class="tool-banner">
+        <div class="tool-banner-inner">
+            <h2>GiftWise isn't a gift blog — it's an AI gift engine.</h2>
+            <p>Paste someone's Instagram or TikTok handle. Our AI reads their posts, spots their interests, and finds gifts matched to their actual personality — not a generic category.</p>
+            <a href="/demo" class="tool-banner-btn">Try GiftWise free — no account needed →</a>
+        </div>
     </div>
 
     <div class="container">

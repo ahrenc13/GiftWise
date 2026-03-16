@@ -25,10 +25,14 @@
         .guide-img.travel { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
         .guide-img.pet { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); }
         .guide-img.tech { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .guide-
+        .guide-body { padding: 20px; }
         .guide-body h2 { font-size: 1.3em; margin-bottom: 10px; color: #1f2937; }
         .guide-body p { color: #6b7280; font-size: 0.95em; margin-bottom: 15px; }
         .guide-meta { font-size: 0.85em; color: #9ca3af; }
+        .tool-callout { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 18px 22px; margin: 0 0 30px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; max-width: 1200px; margin: 10px auto 0; }
+        .tool-callout-text { flex: 1; font-size: 0.95em; color: #374151; }
+        .tool-callout-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 9px 20px; border-radius: 20px; text-decoration: none; font-weight: 600; font-size: 0.9em; white-space: nowrap; display: inline-block; }
+        .tool-callout-btn:hover { opacity: 0.9; text-decoration: none; }
         .cta-section { text-align: center; padding: 60px 20px; background: #f9fafb; margin-top: 60px; }
         .cta-section h2 { font-size: 2em; margin-bottom: 15px; color: #1f2937; }
         .cta-section p { font-size: 1.1em; color: #6b7280; margin-bottom: 25px; }
@@ -45,11 +49,18 @@
 
     <div class="hero-sm">
         <h1>Gift Guides</h1>
-        <p>Expert-curated gift recommendations for every personality and occasion. Built around what people genuinely love.</p>
+        <p>Curated picks for every type of person — plus an AI tool that goes further and finds gifts matched to <em>their specific</em> personality.</p>
     </div>
 
     <div class="affiliate-disclosure">
         <strong>Disclosure:</strong> Some links in our gift guides are affiliate links. If you click through and make a purchase, we may earn a small commission at no extra cost to you. This helps us keep Giftwise free. We only recommend products we genuinely believe make great gifts.
+    </div>
+
+    <div class="tool-callout">
+        <div class="tool-callout-text">
+            <strong>These guides are great starting points.</strong> But GiftWise can go further — paste their Instagram or TikTok handle and our AI reads their actual posts to find gifts matched to <em>their specific personality</em>. No guessing required.
+        </div>
+        <a href="/demo" class="tool-callout-btn">Try it free →</a>
     </div>
 
     <div class="container">
@@ -147,8 +158,8 @@
     </div>
 
     <div class="cta-section">
-        <h2>Want Gifts Tailored to a Specific Person?</h2>
-        <p>We look at what they actually post, save, and love — then find gifts matched to their specific taste.</p>
-        <a href="/signup" class="cta-button">Try Giftwise Free</a>
+        <h2>Stop Guessing. Start Knowing.</h2>
+        <p>Paste their Instagram or TikTok handle. Our AI reads their posts, identifies their interests and aesthetic, and finds gifts matched to who they actually are — not what category they fit into.</p>
+        <a href="/demo" class="cta-button">Try GiftWise Free — No Account Needed</a>
     </div>
 {% endblock %}

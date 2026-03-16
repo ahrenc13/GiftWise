@@ -38,6 +38,13 @@
         .footer p { opacity: 0.8; margin: 8px 0; }
         .footer a { color: white; opacity: 0.8; }
         @media (max-width: 768px) { h1 { font-size: 1.8em; } .product-meta { flex-direction: column; gap: 5px; } }
+        .tool-callout { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 16px 22px; margin: 20px 0 30px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .tool-callout-text { flex: 1; font-size: 0.95em; color: #374151; line-height: 1.5; }
+        .tool-callout-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 9px 20px; border-radius: 20px; text-decoration: none; font-weight: 600; font-size: 0.9em; white-space: nowrap; display: inline-block; }
+        .tool-callout-btn:hover { opacity: 0.9; text-decoration: none; }
+        .mid-cta { background: #fafafa; border: 1px solid #e5e7eb; border-left: 4px solid #667eea; border-radius: 0 8px 8px 0; padding: 18px 22px; margin: 35px 0; }
+        .mid-cta p { margin: 0; color: #374151; font-size: 0.95em; line-height: 1.6; }
+        .mid-cta a { color: #667eea; font-weight: 600; }
 {% endblock %}
 
 {% block content %}
@@ -55,6 +62,13 @@
 
         <div class="disclosure">
             <strong>Affiliate disclosure:</strong> Some links below are affiliate links. If you make a purchase, we may earn a small commission at no cost to you. We only feature products we'd genuinely recommend.
+        </div>
+
+        <div class="tool-callout">
+            <div class="tool-callout-text">
+                <strong>These are great general picks.</strong> GiftWise goes further — paste their Instagram or TikTok handle and AI finds gifts matched to <em>their actual personality</em>, not a category guess.
+            </div>
+            <a href="/demo" class="tool-callout-btn">Try it free →</a>
         </div>
 
         <h2>Tech That Makes Life Easier</h2>
@@ -101,6 +115,10 @@
             </div>
             <p>A grown-up version of the friendship bracelets you made as kids. 18k gold vermeil beads on an adjustable cord — looks expensive, feels sentimental. Pairs beautifully with a watch or worn solo. The kind of gift that makes her think of you every time she puts it on.</p>
             <a href="https://www.nordstrom.com/s/monica-vinader-linear-friendship-bracelet/6677896" class="product-link" target="_blank" rel="nofollow">Shop at Nordstrom &rarr;</a>
+        </div>
+
+        <div class="mid-cta">
+            <p>Every mom is different. <a href="/demo"><strong>GiftWise reads her Instagram</strong></a> to find gifts matched to her actual interests — not what "moms" generically like.</p>
         </div>
 
         <hr class="section-divider">
@@ -181,7 +199,7 @@
                 <span class="product-price">$120/year</span>
                 <span class="product-source">MasterClass</span>
             </div>
-            <p>180+ classes taught by actual experts — Gordon Ramsay on cooking, Anna Wintour on leadership, Simone Biles on mental health. If she's always wanted to learn something new but never has time for a formal class, this lets her learn at her own pace. Way better than another物理 gift.</p>
+            <p>180+ classes taught by actual experts — Gordon Ramsay on cooking, Anna Wintour on leadership, Simone Biles on mental health. If she's always wanted to learn something new but never has time for a formal class, this lets her learn at her own pace. Far more useful than another forgettable gift.</p>
             <a href="https://www.masterclass.com/" class="product-link" target="_blank" rel="nofollow">Shop at MasterClass &rarr;</a>
         </div>
 
@@ -198,7 +216,7 @@
         <div class="cta-box">
             <h2>Know Her Instagram? We Can Do Better.</h2>
             <p>These are great general picks. But we look at someone's actual social media to find gifts matched to their specific interests, favorite brands, and current obsessions.</p>
-            <a href="/signup">Get Personalized Recommendations &rarr;</a>
+            <a href="/demo">Get Personalized Recommendations &rarr;</a>
         </div>
     </div>
 {% endblock %}

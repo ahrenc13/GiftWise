@@ -36,6 +36,13 @@
         .footer p { opacity: 0.8; margin: 8px 0; }
         .footer a { color: white; opacity: 0.8; }
         @media (max-width: 768px) { h1 { font-size: 1.8em; } }
+        .tool-callout { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 16px 22px; margin: 20px 0 30px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .tool-callout-text { flex: 1; font-size: 0.95em; color: #374151; line-height: 1.5; }
+        .tool-callout-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 9px 20px; border-radius: 20px; text-decoration: none; font-weight: 600; font-size: 0.9em; white-space: nowrap; display: inline-block; }
+        .tool-callout-btn:hover { opacity: 0.9; text-decoration: none; }
+        .mid-cta { background: #fafafa; border: 1px solid #e5e7eb; border-left: 4px solid #667eea; border-radius: 0 8px 8px 0; padding: 18px 22px; margin: 35px 0; }
+        .mid-cta p { margin: 0; color: #374151; font-size: 0.95em; line-height: 1.6; }
+        .mid-cta a { color: #667eea; font-weight: 600; }
 {% endblock %}
 
 {% block content %}
@@ -50,6 +57,13 @@
         <p class="article-intro">
             You forgot. It happens. The birthday party is tonight, the anniversary is tomorrow, or you just realized you need a hostess gift in two hours. Here's how to pull off a thoughtful-looking gift when you have zero time — no gas station flowers required.
         </p>
+
+        <div class="tool-callout">
+            <div class="tool-callout-text">
+                <strong>Skip the guesswork entirely.</strong> GiftWise reads their Instagram or TikTok and uses AI to find gifts matched to their actual interests — in under a minute.
+            </div>
+            <a href="/demo" class="tool-callout-btn">Try GiftWise free →</a>
+        </div>
 
         <h2>The Golden Rules of Last-Minute Gifting</h2>
 
@@ -78,6 +92,10 @@
         <div class="strategy-box">
             <h3>✅ The Move: Pair It With Something Tangible</h3>
             <p>Print the eGift card confirmation, put it in a nice card with a handwritten note, and pair it with something small you can grab locally (flowers, chocolate, a candle). Suddenly it's not a "lazy digital gift" — it's a complete package.</p>
+        </div>
+
+        <div class="mid-cta">
+            <p>Next time, don't scramble. <a href="/demo"><strong>GiftWise</strong></a> analyzes their Instagram or TikTok and finds personalized gift ideas in under a minute — so you're ready weeks before you need it.</p>
         </div>
 
         <h3>Subscriptions That Start Immediately</h3>
@@ -177,7 +195,7 @@
         <div class="cta-box">
             <h2>Never Scramble Again</h2>
             <p>Next time, let AI do the work. Give us their Instagram or TikTok and we'll tell you exactly what to get them — weeks before you need it.</p>
-            <a href="/signup">Get Personalized Gift Ideas</a>
+            <a href="/demo">Try GiftWise Free →</a>
         </div>
 
         <h2>Final Checklist: Last-Minute Gift Saves</h2>

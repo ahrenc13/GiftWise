@@ -141,6 +141,21 @@
         .back-link:hover {
             text-decoration: underline;
         }
+        .tool-callout { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 16px 22px; margin: 20px 0 30px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .tool-callout-text { flex: 1; font-size: 0.95em; color: #374151; line-height: 1.5; }
+        .tool-callout-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 9px 20px; border-radius: 20px; text-decoration: none; font-weight: 600; font-size: 0.9em; white-space: nowrap; display: inline-block; }
+        .tool-callout-btn:hover { opacity: 0.9; text-decoration: none; }
+        .tip-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 12px; padding: 25px; margin: 20px 0; }
+        .tip-card h3 { margin-top: 0; color: #1f2937; font-size: 1.1em; }
+        .tip-card p { margin-bottom: 0; color: #4b5563; font-size: 0.95em; line-height: 1.6; }
+        .search-cta { background: linear-gradient(135deg, #f97316 0%, #ea580c 100%); color: white; border-radius: 12px; padding: 28px; text-align: center; margin: 40px 0; }
+        .search-cta h3 { color: white; margin-top: 0; font-size: 1.2em; }
+        .search-cta p { color: rgba(255,255,255,0.9); margin-bottom: 18px; font-size: 0.95em; }
+        .search-cta a { background: white; color: #ea580c; padding: 10px 24px; border-radius: 20px; text-decoration: none; font-weight: 700; display: inline-block; }
+        .cta-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 16px; padding: 35px; text-align: center; margin: 40px 0; }
+        .cta-box h2 { color: white; margin-top: 0; margin-bottom: 12px; }
+        .cta-box p { color: rgba(255,255,255,0.9); margin-bottom: 20px; }
+        .cta-box a { background: white; color: #667eea; padding: 12px 30px; border-radius: 25px; text-decoration: none; font-weight: 600; display: inline-block; }
 {% endblock %}
 
 {% block content %}
@@ -153,12 +168,58 @@
         </div>
 
         <div class="guide-intro">
-            <p>Great gifts don't need to break the bank—they just need to feel personal. Etsy's community of artisans proves this every day, creating handmade treasures that cost less than a dinner out but mean infinitely more.</p>
+            <p>Great gifts don't need to break the bank — they just need to feel personal. Etsy's community of artisans proves this every day, creating handmade treasures that cost less than a dinner out but mean infinitely more.</p>
 
-            <p>We've curated 25 standout gifts under $50, organized by category. These aren't generic Amazon bestsellers; they're unique, handcrafted pieces from small businesses. Whether you're shopping for a friend, family member, or coworker, you'll find something memorable that won't stretch your budget.</p>
+            <p>These aren't generic Amazon bestsellers. They're unique, handcrafted pieces from small businesses. Whether you're shopping for a friend, family member, or coworker, you'll find something memorable that won't stretch your budget.</p>
         </div>
 
-        <div class="category-section">
+        <div class="tool-callout">
+            <div class="tool-callout-text">
+                <strong>Under $50 and matched to who they actually are.</strong> GiftWise reads their Instagram or TikTok and finds gifts across multiple sources — including Etsy — that fit their specific personality and budget.
+            </div>
+            <a href="/demo" class="tool-callout-btn">Try GiftWise free →</a>
+        </div>
+
+        <h2 style="font-size:1.6em; margin-top:40px; color:#1f2937;">The Best Etsy Gift Categories Under $50</h2>
+
+        <div class="tip-card">
+            <h3>For the Homebody ($15–$48)</h3>
+            <p>Hand-poured soy candles, ceramic coasters, linen napkin sets, beeswax wrap sets, knit face scrubbies. These feel indulgent without being frivolous. Best searches: "hand-poured soy candle," "handmade ceramic coasters," "linen gift set."</p>
+        </div>
+
+        <div class="tip-card">
+            <h3>For the Foodie ($18–$48)</h3>
+            <p>Small-batch hot sauce sets, infused olive oil, artisan spice blends, custom recipe cutting boards, handmade pottery mugs. Consumables are perfect because they get used and enjoyed rather than cluttering a shelf. Best searches: "artisan hot sauce gift," "gourmet spice set," "handmade pottery mug."</p>
+        </div>
+
+        <div class="tip-card">
+            <h3>For the Person Who Loves Personal Touches ($20–$50)</h3>
+            <p>Custom name or initial jewelry, personalized keychains, engraved bookmarks, custom illustration portraits, hand-stamped spoons. These feel expensive because of the personalization, not the price. Best search: "personalized gift under 50."</p>
+        </div>
+
+        <div class="tip-card">
+            <h3>For the Plant Person ($15–$45)</h3>
+            <p>Handmade ceramic planters, macramé plant hangers, terracotta pots with custom stamps, seed paper greeting cards. Check that the planter has a drainage hole before buying. Best searches: "handmade ceramic planter," "macramé plant hanger."</p>
+        </div>
+
+        <div class="tip-card">
+            <h3>For the Book Lover ($12–$45)</h3>
+            <p>Hand-stamped leather bookmarks, custom book embossers, illustrated bookplates, reading journal, hand-painted bookends. These pair beautifully with a book as a complete gift. Best searches: "personalized leather bookmark," "book embosser gift."</p>
+        </div>
+
+        <div class="search-cta">
+            <h3>Shop Etsy Under $50</h3>
+            <p>Browse thousands of handmade gifts under $50 from independent artisans.</p>
+            <a href="https://www.etsy.com/search?q=handmade+gift+under+50&min_price=1&max_price=50" target="_blank" rel="nofollow">Browse on Etsy →</a>
+        </div>
+
+        <div class="cta-box">
+            <h2>Budget + Personalized = GiftWise</h2>
+            <p>Tell us their handle and your budget. Our AI finds gifts matched to their actual personality — from Etsy, Amazon, and a dozen other sources — so you're not just guessing what a person "like them" might want.</p>
+            <a href="/demo">Get Personalized Recommendations →</a>
+        </div>
+
+        <div class="category-section" style="display:none;">
             <h2>For the Homebody</h2>
             <div class="product-grid">
                 <!-- Product 1 -->

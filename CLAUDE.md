@@ -338,12 +338,79 @@ Files marked `⚠️ OPUS-ONLY ZONE` in code. Non-Opus sessions: add a `# SONNET
 
 ## Current Priorities (Updated Mar 2026)
 
-1. **Awin approvals** — ~35 applications from Feb 25 pending. Check dashboard for new approvals.
-2. **FlexOffers** — Applied Feb 16, status unknown. Check dashboard.
-3. **Impact.com** — Account type issue, second ticket filed. STAT tag + verification phrase on branch `claude/review-claude-docs-kEdui` (merge to main to activate).
-4. **Load test & harden** — Shelve concurrency, Gunicorn worker exhaustion, SQLite write contention under concurrent load. See Opus prompt in `docs/ARCHITECTURE.md`.
-5. **Monitor quality** — Admin dashboard, watch rec_run and affiliate click events.
-6. **TikTok launch content** — Video in progress (CapCut).
+1. **Guide → tool conversion funnel** — Guides get significantly more traffic than the main tool (guide_hit >> rec_run in admin stats). Fix the funnel: add above-fold and mid-page CTAs, fix the 3 incomplete Etsy guides, add CTA to blog index. See "Content & SEO: Guide/Blog Strategy" section below.
+2. **TikTok launch content** — "The Birthday" reel in progress (Midjourney + CapCut). Frames 4-5 done, Frames 1-3 (character emoting) still need generation. See "TikTok Reel Production" section below.
+3. **Awin approvals** — ~35 applications from Feb 25 pending. Check dashboard for new approvals.
+4. **FlexOffers** — Applied Feb 16, status unknown. Check dashboard.
+5. **Impact.com** — Account type issue, second ticket filed. STAT tag + verification phrase on branch `claude/review-claude-docs-kEdui` (merge to main to activate).
+6. **Load test & harden** — Shelve concurrency, Gunicorn worker exhaustion, SQLite write contention under concurrent load. See Opus prompt in `docs/ARCHITECTURE.md`.
+7. **Monitor quality** — Admin dashboard, watch rec_run and affiliate click events.
+
+---
+
+## Content & SEO: Guide/Blog Strategy
+
+**Key insight (Mar 2026):** Admin dashboard shows `guide_hit` significantly outpacing `rec_run`. Users land on guides via search but don't convert to the main tool. This is the highest-leverage growth fix available.
+
+### Current CTA Problems
+
+| Issue | Details |
+|-------|---------|
+| **Bottom-only CTAs** | All guide/blog CTAs are at the very end of the page. Users who bounce mid-read never see them. |
+| **3 Etsy guides incomplete** | `guide_etsy_home_decor.html`, `guide_etsy_jewelry.html`, `guide_etsy_under_50.html` have placeholder content (`[Add product image URL]`, `[ETSY AFFILIATE LINK]`) and NO CTA to the main tool. |
+| **Blog index has no CTA** | `/blog` page is pure navigation — no mention of the tool at all. |
+| **All CTAs → /signup** | No option to go directly to `/demo` for a frictionless try. Users must create an account first. |
+| **No per-guide tracking** | All guides and blog posts aggregate into one `guide_hit` counter. Can't see which guide drives traffic. |
+
+### What to Fix (in priority order)
+
+1. **Add above-fold CTA** to every guide — a subtle banner or inline callout near the top: "Want gifts personalized to a specific person? Try GiftWise free →" linking to `/demo` (not `/signup`).
+2. **Add mid-page CTA** after 3-4 product recommendations in each guide — contextual, like "These are great general picks. For gifts matched to *their* actual interests, try GiftWise →"
+3. **Fix or remove the 3 incomplete Etsy guides** — they're live pages with broken placeholder content. Either populate them or take them down.
+4. **Add CTA to blog index** (`/blog`) and guide index (`/guides`) — both need a prominent tool callout.
+5. **Add per-slug tracking** — change `track_event('guide_hit')` to `track_event('guide_hit:beauty')` (or add a second event) so you can see which content drives traffic.
+6. **Add `guide_to_tool` funnel event** — track when someone navigates from a guide/blog to the main tool entry point.
+
+### Keeping Guides Fresh
+
+Current guides are static HTML with hardcoded products. They'll go stale. Options:
+- **Manual refresh (quarterly):** Review each guide, swap out discontinued/seasonal products, update affiliate links. Low effort, low frequency.
+- **Semi-automated:** Build a script that queries the same retailer APIs (CJ, Awin, eBay) for each guide's category and outputs updated product cards. Human reviews and pastes into template.
+- **Dynamic guide sections:** Replace some hardcoded products with a server-side call that pulls top-rated products from the catalog DB for that category. Keep editorial intro/outro static.
+
+Start with manual refresh — the 3 Etsy guides need it immediately since they're broken. Consider semi-automated once there are 15+ guides.
+
+---
+
+## TikTok Reel Production
+
+### Video 3: "The Birthday" (In Progress — Mar 2026)
+
+**Concept:** 5-frame Midjourney sequence + end card in Canva, assembled in CapCut. Story: woman panics about birthday gift → bad ideas → discovers GiftWise → sees results → group chat celebration.
+
+**Style:** Photorealistic for phone-screen frames (4-5), editorial illustration (Anna Bond / Rifle Paper Co style) for character frames (1-3). Palette: cream, sage green, dusty coral, dark navy.
+
+**Frame status:**
+
+| Frame | Shot | Status | Notes |
+|-------|------|--------|-------|
+| 1 | Group chat panic — woman slumped on couch, phone glow | Not started | This is the `--sref` source image. Use `--no anime, cartoon, manga, 3d render, photorealistic, big eyes, exaggerated features, chibi, pixar`. Name "Anna Bond for Rifle Paper Co" for stronger style anchor. |
+| 2 | Drowning in bad ideas — hunched forward, hand on forehead | Not started | Use `--sref IMAGE_URL` (not `--cref`; v7 doesn't support `--cw`). Completely different body position from F1. Crossed-out generic gifts (candle, gift card, socks) floating above. |
+| 3 | Lightbulb moment — sitting upright on edge of couch, big smile | Not started | Brightest frame. "Eyebrows raised high and mouth open in a surprised smile." Room feels brighter than F1-F2. |
+| 4 | Results screen — close-up hands holding phone | Done | Photorealistic. Went with "extreme close-up" approach — phone fills frame, sage sweater cuff at wrist, scrollable gift cards with coral heart icons. |
+| 5 | Group chat payoff — macro close-up of phone chat | Done | Photorealistic. "Macro close-up, phone filling 90% of frame." Chat bubbles in coral pink and soft blue, celebration emojis, confetti bursting from screen. |
+| 6 | End card | Not started | Make in Canva: cream #FFF8F0 bg, "GiftWise" in Playfair Display Bold navy, tagline in Montserrat, "giftwise.fit", coral gift box icon. |
+
+**Key Midjourney lessons learned:**
+- `--cref` with `--cw 100` locks face too tight — no emotional range. Use `--sref` (style reference) instead in v7, which keeps palette/linework but allows expression changes.
+- Adjective-only emotion changes ("stressed" vs "curious") are too subtle. Use **dramatic body position changes** (slumped → hunched → upright) and **lighting/mood shifts** (dim → defeat → bright).
+- Midjourney goes anime/cartoon easily. Counter with: "Anna Bond for Rifle Paper Co" (name the artist), "gouache texture, flat color, visible brushstrokes", long `--no` list, `--stylize 200` or lower.
+- Phone-screen frames work better photorealistic — it reads as "real app" which sells the product. Mixing styles across frames is fine since each is on screen 1-2 seconds in CapCut.
+- Don't use product names on screen (Midjourney can't render readable text). Use "horizontal lines representing text" and visual shapes (rounded cards, thumbnails, heart icons).
+
+**Next steps:** Generate Frames 1-3 character illustrations. Frame 1 is the anchor — get her face/style right, then use that as `--sref` for 2-3. Frame 6 end card is quick Canva work. Then assemble all 6 in CapCut with transitions and audio.
+
+---
 
 ## Retailer Status
 

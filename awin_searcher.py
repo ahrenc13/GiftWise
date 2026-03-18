@@ -856,9 +856,9 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
     candidates = joined
 
     # Prefer English-language feeds and gift-relevant verticals
-    _gift_verticals = {"retail", "gifts", "home & garden", "sports & outdoors", "clothing & accessories",
-                       "food & drink", "health & beauty", "entertainment", "travel", "toys & games",
-                       "arts & crafts", "books", "music", "pets", "jewelry"}
+    _gift_verticals = {"retail", "gifts", "home & garden", "sports & outdoors", "sports equipment",
+                       "clothing & accessories", "food & drink", "health & beauty", "entertainment",
+                       "travel", "toys & games", "arts & crafts", "books", "music", "pets", "jewelry"}
 
     # Score each feed for selection (higher = better)
     interest_keywords = set()

@@ -842,6 +842,7 @@ class RecommendationService:
                 'image': image_url,
                 'gift_type': 'physical',
                 'confidence_level': gift.get('confidence_level', 'safe_bet'),
+                'is_splurge': gift.get('is_splurge', False),
                 'interest_match': gift.get('interest_match', ''),
                 'is_direct_link': True,
                 'link_source': 'serpapi_search'

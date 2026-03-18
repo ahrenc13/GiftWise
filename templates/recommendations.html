@@ -253,6 +253,32 @@ input[type="range"] {
     color: #92400e;
 }
 
+.badge.splurge {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    font-size: 0.8em;
+}
+
+.splurge-label {
+    display: none;
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75em;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    z-index: 2;
+    box-shadow: 0 2px 6px rgba(217, 119, 6, 0.3);
+}
+
+.recommendation-card[data-splurge="true"] .splurge-label {
+    display: block;
+}
+
 .badge.physical {
     background: #dbeafe;
     color: #1e40af;
@@ -665,15 +691,17 @@ input[type="range"] {
         <!-- Recommendations Grid -->
         <div class="recommendations-grid" id="recommendations-grid">
             {% for rec in recommendations %}
-            <div class="recommendation-card" 
+            <div class="recommendation-card"
                  data-price="{{ rec.price_range }}"
                  data-type="{{ rec.gift_type }}"
                  data-confidence="{{ rec.confidence_level }}"
+                 data-splurge="{{ 'true' if rec.is_splurge else 'false' }}"
                  onclick="toggleCard(this)">
                 <button class="card-close-btn" onclick="event.stopPropagation(); closeCard();" aria-label="Close">&times;</button>
                 <!-- Compact View -->
                 <div class="rec-compact-view">
-                    <div class="rec-image-container">
+                    <div class="rec-image-container" style="position: relative;">
+                        <span class="splurge-label">SPLURGE PICK</span>
                         {% if rec.image_url %}
                         <img src="{{ rec.image_url }}"
                              alt="{{ rec.name }}"
@@ -740,6 +768,9 @@ input[type="range"] {
                         <div class="rec-number">{{ loop.index }}</div>
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <div class="rec-badges">
+                                {% if rec.is_splurge %}
+                                <span class="badge splurge">Splurge Pick</span>
+                                {% endif %}
                                 <span class="badge {{ rec.confidence_level|replace('_', '-') }}">
                                     {{ 'Safe Bet' if rec.confidence_level == 'safe_bet' else 'Adventurous' }}
                                 </span>

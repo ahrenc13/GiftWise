@@ -69,6 +69,11 @@ def search_products_multi_retailer(
 
     all_products = []
 
+    # Defined here so it's always bound even if the DB block below raises an exception.
+    # (Python treats any variable assigned anywhere in a function as local throughout —
+    # referencing it before assignment raises UnboundLocalError even inside a try/except.)
+    per_vendor_target = min(target_count, MAX_INVENTORY_SIZE // 5)  # so 5 vendors don't exceed MAX
+
     # 0. Query database FIRST (added Feb 2026 for cost reduction)
     try:
         import config
@@ -110,10 +115,6 @@ def search_products_multi_retailer(
         logger.info("Database module not available, proceeding with live APIs only")
     except Exception as e:
         logger.error(f"Database query failed: {e}, proceeding with live APIs")
-
-    # Request target_count from each vendor and merge into one large pool (no per-vendor cap).
-    # Curator will pick the best N; if they're all from one vendor, that's fine.
-    per_vendor_target = min(target_count, MAX_INVENTORY_SIZE // 5)  # so 5 vendors don't exceed MAX
 
     # _notify is called from worker threads — keep it lightweight and exception-safe.
     def _notify(retailer, count=None, searching=False, done=False, skipped=False):

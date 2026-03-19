@@ -82,6 +82,40 @@ _AWIN_BLOCKED_DOMAINS = {
     "posieandpenn.co.uk",
 }
 
+
+def _awin_deep_link(awinmid, product_url):
+    """Wrap a merchant product URL in an Awin cread.php tracking link.
+
+    Falls back to the bare merchant URL if AWIN_PUBLISHER_ID is not set.
+    This ensures static partner products are always tracked through Awin
+    when the publisher ID is available.
+    """
+    from urllib.parse import quote
+    try:
+        import config
+        publisher_id = getattr(config, 'AWIN_PUBLISHER_ID', '')
+        if not publisher_id:
+            return product_url
+    except ImportError:
+        return product_url
+    return (
+        f"https://www.awin1.com/cread.php"
+        f"?awinmid={awinmid}&awinaffid={publisher_id}"
+        f"&ued={quote(product_url, safe='')}"
+    )
+
+
+# Awin merchant/advertiser IDs for all static-list partners.
+# Used to build tracked cread.php links at query time.
+_AWIN_STATIC_MERCHANT_IDS = {
+    "vitajuwel.us": 97077,
+    "vsgotech.com": 120898,
+    "gourmetgiftbasketstore.com": 33247,
+    "goldia.com": 64508,
+    "outfitrer.com": 117613,
+}
+
+
 # ---------------------------------------------------------------------------
 # Static product lists for approved Awin merchants with feedEnabled=no.
 # These merchants are in our account but don't publish a data feed, so the
@@ -198,7 +232,7 @@ _GOLDIA_ALL_PRODUCTS = [
         "snippet": "Classic 14K gold pendant necklace with genuine diamond accent. Timeless elegance for any occasion — birthday, anniversary, or holiday gifting.",
         "price": "$149.00",
         "source_domain": "goldia.com",
-        "link": "https://www.goldia.com",  # Replace with Awin deep link to specific SKU
+        "link": "https://www.goldia.com/search?q=14k+gold+diamond+pendant+necklace",
         "image_url": "",
         "interest_match": "jewelry necklace gold diamond elegant",
     },
@@ -207,7 +241,7 @@ _GOLDIA_ALL_PRODUCTS = [
         "snippet": "Beautiful sterling silver bracelet perfect for stacking or wearing solo. A thoughtful gift for someone who loves minimalist, everyday jewelry.",
         "price": "$89.00",
         "source_domain": "goldia.com",
-        "link": "https://www.goldia.com",  # Replace with Awin deep link to specific SKU
+        "link": "https://www.goldia.com/search?q=sterling+silver+charm+bracelet",
         "image_url": "",
         "interest_match": "jewelry bracelet silver charm accessories",
     },
@@ -216,7 +250,7 @@ _GOLDIA_ALL_PRODUCTS = [
         "snippet": "Classic 14K yellow gold hoop earrings. Lightweight, versatile, and perfect for everyday wear or gifting to jewelry lovers.",
         "price": "$120.00",
         "source_domain": "goldia.com",
-        "link": "https://www.goldia.com",  # Replace with Awin deep link to specific SKU
+        "link": "https://www.goldia.com/search?q=14k+yellow+gold+hoop+earrings",
         "image_url": "",
         "interest_match": "jewelry earrings gold hoops fashion accessories",
     },
@@ -287,7 +321,20 @@ def _get_awin_static_products(profile):
     if any(t in interest_text for t in outfitr_triggers):
         results.extend(_OUTFITR_ALL_PRODUCTS)
 
-    return results
+    # Apply Awin tracking to all static products so clicks are attributed.
+    # We copy each dict (never mutate module-level constants) and replace the
+    # link with a cread.php tracking URL keyed to the merchant's advertiser ID.
+    tracked = []
+    for product in results:
+        domain = product.get("source_domain", "")
+        merchant_id = _AWIN_STATIC_MERCHANT_IDS.get(domain)
+        raw_link = product.get("link", "")
+        if merchant_id and raw_link:
+            product = dict(product)
+            product["link"] = _awin_deep_link(merchant_id, raw_link)
+        tracked.append(product)
+
+    return tracked
 
 
 # In-memory cache: feed list and one feed's products. TTL 1 hour.

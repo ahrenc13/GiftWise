@@ -336,6 +336,25 @@ Files marked `⚠️ OPUS-ONLY ZONE` in code. Non-Opus sessions: add a `# SONNET
 - Add code filters for taste problems. If curator makes bad judgment calls, fix the prompt.
 - Build campaign-specific code.
 
+## eBay Source Starvation Fix (Mar 19, 2026)
+
+**Problem:** eBay dominated recommendation results (~60%+ of final recs), crowding out CJ and Awin advertisers. This was NOT just test profiles — it was structural.
+
+**Root causes identified:**
+1. **Database-first shortcut** (`multi_retailer_searcher.py:102`) skipped live API calls once the cache had enough products, regardless of source diversity. eBay floods the cache → Awin/CJ feeds never queried again.
+2. **60% source cap** (`post_curation_cleanup.py:544`) allowed one source to fill 6/10 final slots.
+3. **Awin matching is stricter than eBay** (by design, to avoid bad matches), so eBay returns more products per query and dominates the pool.
+
+**Fixes applied:**
+1. **Database diversity gate** — DB cache only skips live APIs if results have 3+ sources AND no single source > 50%. Otherwise, caps DB products per source to `per_vendor_target` and proceeds with live API calls to diversify.
+2. **Source cap tightened** — `MAX_PER_SOURCE_PCT` lowered from 0.6 (60%) to 0.4 (40%). Max 4/10 from one source instead of 6/10.
+
+**Files changed:** `multi_retailer_searcher.py`, `post_curation_cleanup.py`
+
+**Monitor after deploy:** Check `Product source breakdown:` in logs to verify Awin/CJ products appear more often. If Awin matching is still too strict for certain interest profiles, consider relaxing the 2-term threshold in `awin_searcher.py:710`.
+
+---
+
 ## Production Log Review (Mar 18-19, 2026)
 
 **Overall health: Good.** Startup clean, catalog sync completing daily (~2 min), recommendation pipeline working end-to-end. A real user session successfully generated 13 recommendations with 76% real image rate.

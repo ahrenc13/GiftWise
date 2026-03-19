@@ -375,33 +375,79 @@ def _is_query_relevant_to_product(product):
 # Category detection
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# MECE PRODUCT FORM TAXONOMY
+#
+# Mutually exclusive, collectively exhaustive. The test for each category:
+# "Would two of these in the same result set feel redundant to the recipient?"
+#
+# Organized into form classes for documentation, but the dedup engine uses
+# the flat category key. Order matters: first match wins, so more specific
+# patterns (e.g. 'journal') must come before broader ones (e.g. 'book').
+#
+# Form classes (for reference, not used in code):
+#   WEARABLE:    t-shirt, hoodie, hat, jewelry, watch, socks, bag, wallet
+#   DECORATIVE:  poster, candle, blanket, pillow, ornament, figurine, plant
+#   DRINKWARE:   mug, bottle, glass
+#   MEDIA:       book, journal, vinyl, game, puzzle
+#   EQUIPMENT:   headphones, speaker, adapter, kitchen
+#   NOVELTY:     keychain, sticker, magnet, coaster, phone-case
+#   CRAFT:       kit
+#   OTHER:       hook (catch-all for misc hardware)
+# ---------------------------------------------------------------------------
 CATEGORY_PATTERNS = {
-    'candle': r'\bcandle[s]?\b',
-    'mug': r'\b(?:mug|cup|tumbler)[s]?\b',
-    't-shirt': r'\b(?:t-?shirt|tee|tshirt)[s]?\b',
-    'poster': r'\b(?:poster|wall art|print|art print)[s]?\b',
-    'book': r'\b(?:book|novel|guide|cookbook|planner)[s]?\b',
-    'jewelry': r'\b(?:necklace|bracelet|earring|ring|pendant|charm)[s]?\b',
-    'hat': r'\b(?:hat|cap|beanie)[s]?\b',
-    'blanket': r'\b(?:blanket|throw|quilt)[s]?\b',
-    'puzzle': r'\b(?:puzzle|jigsaw)[s]?\b',
-    'game': r'\b(?:board game|card game|game set)\b',
+    # --- WEARABLE ---
+    't-shirt': r'\b(?:t-?shirt|tee|tshirt|graphic tee)[s]?\b',
+    'hoodie': r'\b(?:hoodie|sweatshirt|pullover|crewneck)[s]?\b',
+    'hat': r'\b(?:hat|cap|beanie|snapback|trucker hat)[s]?\b',
+    'jewelry': r'\b(?:necklace|bracelet|earring|ring|pendant|charm|anklet|brooch)[s]?\b',
+    'watch': r'\b(?:watch|smartwatch|wristwatch)(?:es)?\b',
     'socks': r'\b(?:socks|sock set)\b',
-    'bag': r'\b(?:bag|tote|backpack|purse|clutch|toiletry)[s]?\b',
+    'bag': r'\b(?:bag|tote|backpack|purse|clutch|toiletry|duffel|messenger bag|crossbody)[s]?\b',
+    'wallet': r'\b(?:wallet|card holder|money clip)\b',
+
+    # --- DECORATIVE ---
+    'poster': r'\b(?:poster|wall art|print|art print)[s]?\b',
+    'candle': r'\bcandle[s]?\b',
+    'blanket': r'\b(?:blanket|throw|quilt|afghan)[s]?\b',
+    'pillow': r'\b(?:pillow|cushion)[s]?\b',
+    'ornament': r'\b(?:ornament|decoration)[s]?\b',
+    'figurine': r'\b(?:figurine|figure|statue|bust|bobblehead|funko)[s]?\b',
+    'plant': r'\b(?:plant|planter|succulent|terrarium|herb garden)[s]?\b',
+
+    # --- DRINKWARE (split: mug ≠ bottle ≠ glass) ---
+    'mug': r'\b(?:mug|coffee cup|tea cup)[s]?\b',
+    'bottle': r'\b(?:water bottle|thermos|tumbler|flask|hydro)[s]?\b',
+    'glass': r'\b(?:glass|glasses|pint glass|wine glass|glassware|whiskey glass|rocks glass)\b',
+
+    # --- MEDIA (journal split from book; vinyl standalone) ---
+    'journal': r'\b(?:journal|diary|planner|notebook|bullet journal)[s]?\b',
+    'book': r'\b(?:book|novel|cookbook|memoir|biography|graphic novel)[s]?\b',
+    'vinyl': r'\b(?:vinyl|vinyl record|LP|record album)[s]?\b',
+    'game': r'\b(?:board game|card game|game set|tabletop game)\b',
+    'puzzle': r'\b(?:puzzle|jigsaw)[s]?\b',
+
+    # --- EQUIPMENT ---
+    'headphones': r'\b(?:headphone|earbuds?|earbud|in-ear|over-ear|wireless buds?)[s]?\b',
+    'speaker': r'\b(?:speaker|bluetooth speaker|portable speaker|soundbar)[s]?\b',
+    'adapter': r'\b(?:adapter|converter|plug|charger)[s]?\b',
+    'kitchen': r'\b(?:kitchen utensil|cooking set|utensil set|chef set|wooden spoon set|spatula set|apron set|cookware set|grilling set)\b',
+
+    # --- NOVELTY / SMALL ITEMS ---
     'keychain': r'\b(?:keychain|key chain|key ring)[s]?\b',
     'sticker': r'\b(?:sticker|decal)[s]?\b',
-    'ornament': r'\b(?:ornament|decoration)[s]?\b',
-    'pillow': r'\b(?:pillow|cushion)[s]?\b',
-    'coaster': r'\b(?:coaster)[s]?\b',
     'magnet': r'\b(?:magnet|fridge magnet)[s]?\b',
-    'phone case': r'\b(?:phone case|iphone case|case for)\b',
-    'wallet': r'\b(?:wallet|card holder)\b',
-    'adapter': r'\b(?:adapter|converter|plug|charger)[s]?\b',
-    'kit': r'\b(?:essentials kit|starter kit|travel kit|care kit)\b',
-    'glass': r'\b(?:glass|glasses|pint glass|wine glass|glassware)\b',
+    'coaster': r'\b(?:coaster)[s]?\b',
+    'phone-case': r'\b(?:phone case|iphone case|case for)\b',
+
+    # --- CRAFT ---
+    'kit': r'\b(?:essentials kit|starter kit|travel kit|care kit|making kit|craft kit|diy kit)\b',
+
+    # --- SUBSCRIPTION ---
+    'subscription': r'\b(?:subscription|of the month|monthly club|membership box)[s]?\b',
+
+    # --- OTHER ---
     'hook': r'\b(?:hook[s]?|hanger[s]?|door hook)\b',
-    # Kitchen/cooking items — catches duplicate novelty cooking sets (e.g. two horror utensil sets)
-    'kitchen': r'\b(?:kitchen utensil|cooking set|utensil set|chef set|wooden spoon set|spatula set|apron set|cookware set|grilling set)\b',
 }
 
 

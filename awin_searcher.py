@@ -59,12 +59,13 @@ def _decompress_if_gzipped(data):
     return data
 
 
-# Max price for Awin products. Awin feeds include full product catalogs (not curated gift
-# lists), so high-ticket items like $800 scooters can sneak through on coincidental keyword
-# matches. Products over this threshold are dropped before entering the inventory pool.
-# Opus-tracked: a deeper fix in post_curation_cleanup.py will add an interest-relevance gate
-# to the replacement backfill. This cap is the upstream safety valve.
-AWIN_MAX_PRICE_USD = 200
+# Max price for Awin products. Raised from $200 to $1500 (Mar 2026) to allow
+# splurge-worthy items (premium gear, high-end equipment from partner advertisers)
+# into the inventory pool. The splurge slot and interest-relevance gate in
+# post_curation_cleanup.py handle quality filtering; this cap prevents absurd outliers.
+# The $800 scooter incident is now handled by the interest-relevance gate + blocked
+# domains list, not by a crude price cap.
+AWIN_MAX_PRICE_USD = 1500
 
 # Merchants approved in our Awin account whose product categories are never
 # appropriate for gift recommendations. Block at source so their feed products

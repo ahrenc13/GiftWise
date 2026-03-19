@@ -88,6 +88,12 @@ PRICE_SWEET_MAX = 250.0
 PRICE_ACCEPTABLE_MIN = 8.0
 PRICE_ACCEPTABLE_MAX = 400.0
 
+# Splurge tier: premium items that are the nicest version of something
+# the recipient loves, or an extravagant experience product. These bypass
+# the normal price penalty and get flagged for the splurge slot.
+SPLURGE_PRICE_MIN = 200.0
+SPLURGE_PRICE_MAX = 1500.0
+
 # Minimum gift_score to store in DB (skip obvious junk)
 MIN_SCORE_TO_STORE = 0.15
 
@@ -442,6 +448,11 @@ def score_product_gift_suitability(product: Dict) -> float:
 
     if PRICE_SWEET_MIN <= price <= PRICE_SWEET_MAX:
         score += 0.12
+    elif SPLURGE_PRICE_MIN <= price <= SPLURGE_PRICE_MAX:
+        # Splurge-tier items: don't penalize, give moderate boost.
+        # These are premium versions of real gifts (e-bikes, high-end gear).
+        # The splurge slot selection logic picks from these separately.
+        score += 0.08
     elif PRICE_ACCEPTABLE_MIN <= price <= PRICE_ACCEPTABLE_MAX:
         score += 0.06
 
@@ -471,8 +482,10 @@ def score_product_gift_suitability(product: Dict) -> float:
     if 0 < price < PRICE_ACCEPTABLE_MIN:
         score -= 0.15  # Likely junk
 
-    if price > PRICE_ACCEPTABLE_MAX:
-        score -= 0.08  # Outside most gift budgets
+    if price > SPLURGE_PRICE_MAX:
+        score -= 0.15  # Above even splurge range — likely not a gift
+    elif price > PRICE_ACCEPTABLE_MAX and price < SPLURGE_PRICE_MIN:
+        score -= 0.08  # Awkward middle: too expensive for regular, too cheap for splurge
 
     return round(max(0.0, min(1.0, score)), 3)
 
@@ -776,23 +789,27 @@ def get_cached_awin_products_for_interest(
 
 def _upsert_catalog_product(product: Dict, gift_score: float,
                              interest_tags: List[str], conn: sqlite3.Connection):
-    """Upsert one product into the products table with gift_score and tags."""
+    """Upsert one product into the products table with gift_score, tags, and category."""
+    from post_curation_cleanup import detect_category
+
     cur = conn.cursor()
     now = datetime.now().isoformat()
+    category = detect_category(product.get('title', ''), product.get('description', ''))
 
     cur.execute("""
         INSERT INTO products (
             product_id, retailer, title, description, price, currency,
-            image_url, affiliate_link, brand, interest_tags,
+            image_url, affiliate_link, brand, category, interest_tags,
             in_stock, last_checked, last_updated,
             gift_score, cj_advertiser_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
         ON CONFLICT(product_id, retailer) DO UPDATE SET
             title           = excluded.title,
             description     = excluded.description,
             price           = excluded.price,
             image_url       = excluded.image_url,
             affiliate_link  = excluded.affiliate_link,
+            category        = excluded.category,
             in_stock        = 1,
             last_checked    = excluded.last_checked,
             last_updated    = excluded.last_updated,
@@ -808,6 +825,7 @@ def _upsert_catalog_product(product: Dict, gift_score: float,
         product.get('image_url', ''),
         product.get('affiliate_link', ''),
         product.get('brand', ''),
+        category,
         json.dumps(interest_tags),
         now,
         now,
@@ -827,8 +845,11 @@ def _upsert_catalog_product(product: Dict, gift_score: float,
 # Awin credentials
 AWIN_API_KEY = os.environ.get('AWIN_DATA_FEED_API_KEY', '')
 
-# Same price cap as awin_searcher.py — full product catalogs include non-gift items
-AWIN_SYNC_MAX_PRICE_USD = 200
+# Awin sync price cap — raised from $200 to $1500 (Mar 2026) to allow
+# splurge-worthy items (premium e-bikes, high-end kitchen gear, etc.)
+# into the DB. The gift_score function and splurge tier logic handle
+# quality filtering; the cap just prevents absurd outliers.
+AWIN_SYNC_MAX_PRICE_USD = 1500
 
 # Max rows to read per feed. Awin feeds can be huge; cap to keep sync time sane.
 AWIN_MAX_ROWS_PER_FEED = 5000
@@ -917,22 +938,27 @@ def _tag_awin_product_with_interests(title: str, description: str,
 
 def _upsert_awin_catalog_product(product: Dict, gift_score: float,
                                   interest_tags: List[str], conn: sqlite3.Connection):
-    """Upsert one Awin product into the products table."""
+    """Upsert one Awin product into the products table with category."""
+    from post_curation_cleanup import detect_category
+
     cur = conn.cursor()
     now = datetime.now().isoformat()
+    category = detect_category(product.get('title', ''), product.get('description', ''))
+
     cur.execute("""
         INSERT INTO products (
             product_id, retailer, title, description, price, currency,
-            image_url, affiliate_link, brand, interest_tags,
+            image_url, affiliate_link, brand, category, interest_tags,
             in_stock, last_checked, last_updated,
             gift_score, awin_advertiser_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
         ON CONFLICT(product_id, retailer) DO UPDATE SET
             title            = excluded.title,
             description      = excluded.description,
             price            = excluded.price,
             image_url        = excluded.image_url,
             affiliate_link   = excluded.affiliate_link,
+            category         = excluded.category,
             in_stock         = 1,
             last_checked     = excluded.last_checked,
             last_updated     = excluded.last_updated,
@@ -944,6 +970,7 @@ def _upsert_awin_catalog_product(product: Dict, gift_score: float,
         product['title'], product['description'],
         product['price'], product['currency'],
         product['image_url'], product['affiliate_link'], product['brand'],
+        category,
         json.dumps(interest_tags),
         now, now,
         gift_score, product['awin_advertiser_id'],

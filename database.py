@@ -385,7 +385,36 @@ def search_products_diverse(interests: List[str], limit: int = 100,
     }
 
 
-def get_products_by_retailer(retailer: str, limit: int = 100) -> List[Dict]:
+def search_products_by_title(keywords: List[str], limit: int = 10) -> List[Dict]:
+    """
+    Search products by title keywords. Used for matching experience materials
+    against the full CJ/Awin catalog when the interest-fetched inventory pool
+    doesn't contain a match.
+
+    Requires at least 2 keyword matches (or 1 if only 1 keyword provided).
+    Returns products sorted by gift_score.
+    """
+    if not keywords:
+        return []
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        # Each keyword must appear in the title (AND logic within, scored by overlap)
+        # Use LIKE for each keyword, require at least min_match
+        conditions = " AND ".join([f"LOWER(title) LIKE ?" for _ in keywords])
+        params = [f'%{kw.lower()}%' for kw in keywords]
+
+        cursor.execute(f"""
+            SELECT * FROM products
+            WHERE in_stock = 1
+              AND removed_at IS NULL
+              AND ({conditions})
+            ORDER BY gift_score DESC
+            LIMIT ?
+        """, params + [limit])
+
+        return [dict(row) for row in cursor.fetchall()]
     """Get all products from a specific retailer"""
     with get_db_connection() as conn:
         cursor = conn.cursor()

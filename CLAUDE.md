@@ -417,7 +417,13 @@ Files marked `⚠️ OPUS-ONLY ZONE` in code. Non-Opus sessions: add a `# SONNET
 #### Experience Provider Monetization
 **Critical finding:** ZERO experience providers in `experience_providers.py` are approved affiliate partners. Every link (Ticketmaster, Cozymeal, Viator, etc.) is an unmonetized utility link.
 
-**Path forward:**
+**Experience materials monetization (Phase 1 — DONE):**
+- `_backfill_materials_links()` in `giftwise_app.py` now has a DB catalog search fallback
+- When a material (e.g. "Bluetooth speaker" for a listening party) doesn't match the interest-fetched inventory, it searches the full CJ/Awin catalog via `search_products_by_title()` before falling back to Amazon search links
+- This means experience materials are now matched against monetized inventory first
+- New function `search_products_by_title()` in `database.py` does keyword-based title search against the product catalog
+
+**Booking link monetization (NOT YET — requires affiliate approvals):**
 - Check CJ/Awin dashboards for bookable experience advertisers (cooking classes, spa services, adventure activities)
 - Viator is owned by Expedia — likely available through an Expedia affiliate program
 - Airbnb has an affiliate program (check Rakuten/Impact)

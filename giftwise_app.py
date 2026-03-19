@@ -3142,6 +3142,7 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
         # Score every candidate product by word overlap with item name
         best = None
         best_score = 0
+        is_non_purchasable = False
         if item_name and products:
             # Use _MATERIAL_STOPWORDS (only noise) so context words like "portable" are preserved
             item_words = {w for w in re.split(r'\W+', item_name.lower()) if len(w) >= 2 and w not in _MATERIAL_STOPWORDS}
@@ -3175,6 +3176,34 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
                 if score >= min_overlap and score > best_score:
                     best = p
                     best_score = score
+
+        # If no match in the interest-fetched inventory, search the full CJ/Awin
+        # catalog DB. This catches materials like "Bluetooth speaker" that weren't
+        # in the user's interest search but ARE in our monetized inventory.
+        if not best and item_name and not is_non_purchasable:
+            try:
+                from database import search_products_by_title
+                # Extract meaningful keywords from the material name
+                mat_keywords = [w for w in re.split(r'\W+', item_name.lower())
+                                if len(w) >= 3 and w not in _MATERIAL_STOPWORDS]
+                if len(mat_keywords) >= 2:
+                    db_matches = search_products_by_title(mat_keywords[:4], limit=5)
+                    for db_p in db_matches:
+                        db_link = (db_p.get('affiliate_link') or db_p.get('link', '')).strip()
+                        if db_link and not is_bad_product_url_fn(db_link):
+                            # Convert DB row format to match inventory format
+                            best = {
+                                'title': db_p.get('title', ''),
+                                'link': db_link,
+                                'source_domain': db_p.get('retailer', 'online'),
+                                'brand': db_p.get('brand', ''),
+                                'thumbnail': db_p.get('image_url', ''),
+                                'image_url': db_p.get('image_url', ''),
+                            }
+                            logger.info(f"MATERIALS: DB catalog match for '{item_name[:40]}' → '{best['title'][:50]}'")
+                            break
+            except Exception as e:
+                logger.debug(f"MATERIALS: DB search failed for '{item_name[:40]}': {e}")
 
         if best:
             matched_link = (best.get('link') or '').strip()

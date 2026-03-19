@@ -98,10 +98,44 @@ def search_products_multi_retailer(
 
                     logger.info(f"Got {len(all_products)} products from database cache")
 
-                    # If we have enough from database, skip live APIs
+                    # Only skip live APIs if we have enough products AND source diversity.
+                    # Without this check, once eBay floods the cache, Awin/CJ feeds are
+                    # never queried again — starving the advertisers we've been accumulating.
+                    MIN_SOURCES_TO_SKIP_LIVE = 3
+                    MAX_SINGLE_SOURCE_PCT = 0.50  # No source > 50% of cached results
                     if len(all_products) >= target_count:
-                        logger.info(f"Database provided enough products ({len(all_products)} >= {target_count}), skipping live API calls")
-                        return all_products[:MAX_INVENTORY_SIZE]
+                        db_source_counts = defaultdict(int)
+                        for p in all_products:
+                            db_source_counts[p.get("source_domain", "unknown")] += 1
+                        num_sources = len(db_source_counts)
+                        top_source_pct = max(db_source_counts.values()) / len(all_products) if all_products else 1.0
+                        top_source_name = max(db_source_counts, key=db_source_counts.get) if db_source_counts else "unknown"
+
+                        if num_sources >= MIN_SOURCES_TO_SKIP_LIVE and top_source_pct <= MAX_SINGLE_SOURCE_PCT:
+                            logger.info(
+                                f"Database provided enough diverse products ({len(all_products)} >= {target_count}, "
+                                f"{num_sources} sources, top source '{top_source_name}' at {top_source_pct:.0%}), "
+                                f"skipping live API calls"
+                            )
+                            return all_products[:MAX_INVENTORY_SIZE]
+                        else:
+                            # Cap DB products per source so they don't crowd out live API results.
+                            # Keep at most per_vendor_target from any single source in the DB seed.
+                            capped = []
+                            cap_source_counts = defaultdict(int)
+                            for p in all_products:
+                                src = p.get("source_domain", "unknown")
+                                if cap_source_counts[src] < per_vendor_target:
+                                    capped.append(p)
+                                    cap_source_counts[src] += 1
+                            trimmed = len(all_products) - len(capped)
+                            all_products = capped
+                            logger.info(
+                                f"Database has {len(capped)+trimmed} products but insufficient diversity "
+                                f"({num_sources} sources, top source '{top_source_name}' at {top_source_pct:.0%}). "
+                                f"Capped DB seed to {len(capped)} (trimmed {trimmed} from overrepresented sources). "
+                                f"Proceeding with live API calls to diversify."
+                            )
                 else:
                     logger.info("No products found in database for these interests")
             else:

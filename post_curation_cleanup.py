@@ -541,7 +541,7 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10, profile_intere
     used_categories = set()
     interest_counts = {}
     source_counts = defaultdict(int)
-    MAX_PER_SOURCE_PCT = 0.6  # No more than 60% from one source
+    MAX_PER_SOURCE_PCT = 0.4  # No more than 40% from one source (was 60%; tightened to surface Awin/CJ advertisers)
 
     cleaned = []
     deferred = []  # Products that violated rules (might be used as replacements if needed)

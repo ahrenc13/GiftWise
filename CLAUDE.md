@@ -78,6 +78,46 @@ Each entry below includes the Opus prompt to copy-paste.
 >
 > After the audit, implement the Critical and High fixes. Add `# SONNET-FLAG:` comments for anything you defer. Update CLAUDE.md with findings.
 
+### [OPEN] Catalog-First Architecture: Interest Inventory Expansion & Source Separation
+
+**Context:** Production logs show eBay dominating recommendation results (~60%+) despite accumulating ~40k products across CJ and Awin via daily catalog sync. Root cause analysis (Mar 19, 2026) found structural issues: the database-first shortcut let eBay flood the cache, live Awin/CJ calls duplicated work the nightly sync already does, and 252 generic sync terms ("yoga mat", "coffee") aren't granular enough to cover specific user interests — so live eBay calls fill the gap.
+
+A source cap fix (60% → 40%) and diversity gate on the DB shortcut were applied as immediate patches. This Opus task is the architectural fix.
+
+**Opus prompt:**
+
+> You are restructuring GiftWise's product inventory architecture. The goal: CJ and Awin products come from the nightly catalog sync ONLY (never live API calls during sessions). eBay and Amazon are live-only fallbacks for interests the catalog can't cover. The ~40k product catalog should be the primary source for recommendations, not a cache that gets bypassed.
+>
+> This is a two-phase task: (1) expand the interest inventory so the catalog covers most user interests without live calls, (2) refactor the search pipeline to enforce the catalog-first/live-fallback split.
+>
+> **Phase 1: Interest Inventory Expansion (Opus-only zone)**
+>
+> Read `interest_ontology.py`, `catalog_sync.py` (especially `INTEREST_CATEGORIES` — currently 252 terms across 12 categories), `awin_catalog_sync.py`, and `search_query_utils.py`. Then:
+>
+> 1. **Mine the interest ontology for granular sync terms.** `interest_ontology.py` has rich interest → subinterest → attribute mappings. Extract every specific interest, subinterest, and gift-relevant attribute and generate sync terms from them. Example: the ontology knows "Taylor Swift" is a music interest — generate sync terms like "Taylor Swift poster", "Taylor Swift merch", "Swiftie gift". Do this systematically for every interest in the ontology.
+>
+> 2. **Expand from 252 to 500-800+ terms.** Organize by the existing 12 categories plus any new ones needed. Every term should be a plausible gift search query, not a bare noun. Prioritize terms that map to actual Awin/CJ advertiser inventory (read `docs/AFFILIATE_STATUS.md` for which merchants are joined). Mark priority-1 (nightly refresh) vs priority-2 (weekly full sync).
+>
+> 3. **Add multi-label tagging for CJ products.** Awin products already get multi-label interest tags via `product_tagger.py`. CJ products only get a single tag (the search term used to find them). Design and implement multi-label tagging for CJ products so they surface for multiple relevant interests, not just the one term that found them.
+>
+> 4. **Cross-reference with real user sessions.** Check Railway logs or any session data for interests that users actually searched for but the catalog had no coverage for. These are the highest-value terms to add.
+>
+> **Phase 2: Source Separation (safe for any session after Phase 1)**
+>
+> 5. **Refactor `multi_retailer_searcher.py`:** CJ and Awin should ONLY come from database queries (using interest_tags matching). Remove their live API call paths from session-time code. eBay and Amazon remain live-only — and stop writing their results back to the products DB (this is what caused eBay to flood the cache).
+>
+> 6. **Improve the DB query for session-time product retrieval.** Current query (`database.search_products_by_interests`) uses simple LIKE matching on `interest_tags`. With richer multi-label tags, this needs to be smarter — score by number of matching interests, prefer higher `gift_score`, ensure source diversity in results.
+>
+> 7. **Update the source diversity cap.** With CJ/Awin as catalog-only and eBay/Amazon as live-only, the `MAX_PER_SOURCE_PCT` in `post_curation_cleanup.py` (currently 0.4) may need retuning. Consider separate caps: e.g., max 30% from any single retailer, but catalog sources (CJ+Awin combined) can be up to 60%.
+>
+> 8. **Preserve the interleaving.** Products from DB (CJ/Awin) and live APIs (eBay/Amazon) must still be interleaved by source before the curator sees them (no positional bias).
+>
+> **Constraints:**
+> - Do NOT touch the curator prompt (`gift_curator.py`) or profile analyzer (`profile_analyzer.py`) — those are separate Opus zones.
+> - Do NOT remove or weaken the Awin `_matches_query()` 2-term threshold (it prevents the $800 scooter problem).
+> - The nightly refresh (40 terms, ~20 min) must stay fast. If expanding to 800 terms, the refresh subset should still be ~40-60 high-priority terms. Full sync can take longer.
+> - Update CLAUDE.md with the new term count, architecture summary, and any SONNET-FLAG items deferred.
+
 ### [DONE] Replacement backfill relevance gate — post_curation_cleanup.py
 
 **Fixed Feb 25 2026 (Opus).** Three-layer fix for the $800 scooter incident:
@@ -336,6 +376,42 @@ Files marked `⚠️ OPUS-ONLY ZONE` in code. Non-Opus sessions: add a `# SONNET
 - Add code filters for taste problems. If curator makes bad judgment calls, fix the prompt.
 - Build campaign-specific code.
 
+## eBay Source Starvation Fix (Mar 19, 2026)
+
+**Problem:** eBay dominated recommendation results (~60%+ of final recs), crowding out CJ and Awin advertisers. This was NOT just test profiles — it was structural.
+
+**Root causes identified:**
+1. **Database-first shortcut** (`multi_retailer_searcher.py:102`) skipped live API calls once the cache had enough products, regardless of source diversity. eBay floods the cache → Awin/CJ feeds never queried again.
+2. **60% source cap** (`post_curation_cleanup.py:544`) allowed one source to fill 6/10 final slots.
+3. **Awin matching is stricter than eBay** (by design, to avoid bad matches), so eBay returns more products per query and dominates the pool.
+
+**Fixes applied:**
+1. **Database diversity gate** — DB cache only skips live APIs if results have 3+ sources AND no single source > 50%. Otherwise, caps DB products per source to `per_vendor_target` and proceeds with live API calls to diversify.
+2. **Source cap tightened** — `MAX_PER_SOURCE_PCT` lowered from 0.6 (60%) to 0.4 (40%). Max 4/10 from one source instead of 6/10.
+
+**Files changed:** `multi_retailer_searcher.py`, `post_curation_cleanup.py`
+
+**Monitor after deploy:** Check `Product source breakdown:` in logs to verify Awin/CJ products appear more often.
+
+**Architectural follow-up:** These fixes are stopgaps. The real fix is the Catalog-First Architecture task (see Pending Opus Tasks): expand sync terms from 252 to 500-800+, make CJ/Awin catalog-only (no live calls), make eBay/Amazon live-only (no DB write-back). This eliminates the cache pollution loop entirely.
+
+---
+
+## Production Log Review (Mar 18-19, 2026)
+
+**Overall health: Good.** Startup clean, catalog sync completing daily (~2 min), recommendation pipeline working end-to-end. A real user session successfully generated 13 recommendations with 76% real image rate.
+
+**Observations:**
+- **Etsy API returns 403 Forbidden** on all search queries. Known/expected — Etsy has rejected dev credentials multiple times. Etsy searches are wasted API calls until credentials are approved.
+- **Duplicate in-flight Claude API calls** — two concurrent profile analysis requests for the same profile hash (`3c6142ae`) because the caching layer doesn't prevent in-flight duplicates. Not critical at current volume, but will waste API spend under load. Consider adding an in-flight lock (e.g., a dict of pending profile hashes) so the second request waits for the first to finish and uses its cached result.
+- **Railway severity mislabeling** — Gunicorn logs to stderr, so Railway tags all INFO-level logs as "error" severity in the dashboard. This is cosmetic; filter by message content, not severity badge.
+- **405 Method Not Allowed** (one-off, Mar 17) — likely a bot or misconfigured client hitting a route with wrong HTTP method. No action needed unless it recurs.
+- **Stripe not configured** — expected at current stage (paywall not enforced).
+- **Catalog sync healthy** — CJ: ~3,995 products across 40 search terms. Awin: ~7,743 products across 26 joined feeds.
+- **Claude model in use:** `claude-sonnet-4-20250514` for both profile analysis and curation.
+
+---
+
 ## Current Priorities (Updated Mar 2026)
 
 1. **Guide → tool conversion funnel** — Guides get significantly more traffic than the main tool (guide_hit >> rec_run in admin stats). Fix the funnel: add above-fold and mid-page CTAs, fix the 3 incomplete Etsy guides, add CTA to blog index. See "Content & SEO: Guide/Blog Strategy" section below.
@@ -420,7 +496,7 @@ Start with manual refresh — the 3 Etsy guides need it immediately since they'r
 | eBay (Browse API + EPN) | Active |
 | CJ Affiliate (GraphQL + 15 static partners) | Active |
 | Awin (13 confirmed merchants, ~35 pending) | Active, expanding |
-| Etsy (v3 API) | Blocked — awaiting dev credentials |
+| Etsy (v3 API) | Blocked — dev credentials rejected multiple times, API returns 403 on all queries |
 | Skimlinks | DEFUNCT — dead code, remove when convenient |
 | Impact.com | Blocked — account type issue |
 | FlexOffers | Applied, status unknown |

@@ -424,6 +424,106 @@ Files marked `⚠️ OPUS-ONLY ZONE` in code. Non-Opus sessions: add a `# SONNET
 
 ---
 
+## 14-Item Output Architecture (Mar 2026)
+
+**Status: Phase 1 DONE (infrastructure). Phase 2 TODO (curator prompt + template UI).**
+
+### Output Format
+
+| Tier | Count | Source | Price Range | Visual |
+|------|-------|--------|-------------|--------|
+| **Regular gifts** | 10 | DB (CJ/Awin) + eBay for niche gaps | $15–250 | Standard tile |
+| **Splurge** | 1 | DB (higher price tier) or premium experience | $200–1500 | Visually differentiated tile |
+| **Experiences** | 3 | Curator-generated + booking provider links | Varies | Experience tile |
+
+**Total: 14 items displayed.** Splurge can be either a premium physical gift OR an extravagant experience — curator decides based on what's strongest for the profile.
+
+### What Changed (Phase 1 — Implemented)
+
+1. **MECE Product Form Taxonomy** (`post_curation_cleanup.py`)
+   - Expanded from 25 to 37 categories organized into form classes (Wearable, Decorative, Drinkware, Media, Equipment, Novelty, Craft, Subscription)
+   - Split `mug` → `mug` + `bottle` (tumbler is not a mug)
+   - Split `book` → `book` + `journal` (planner is not a novel)
+   - Added: `hoodie`, `watch`, `figurine`, `plant`, `vinyl`, `headphones`, `speaker`, `subscription`, `phone-case`
+   - MECE principle: no product fits two categories; every giftable product maps to a form or falls to uncategorized
+
+2. **DB Write-Back Removed** (`multi_retailer_searcher.py`)
+   - Live eBay/Amazon results no longer written back to the products DB
+   - DB now contains ONLY nightly-synced CJ/Awin inventory from `catalog_sync.py`
+   - Prevents marketplace pollution, stale listings, and affiliate tracking gaps
+
+3. **Category Populated at Sync Time** (`catalog_sync.py`)
+   - Both CJ and Awin upsert functions now call `detect_category()` and write to the `category` column
+   - Enables form-diverse DB queries via window functions
+
+4. **Price Tiers Restructured**
+   - `AWIN_MAX_PRICE_USD`: raised from $200 → $1500 (both sync and live)
+   - `AWIN_SYNC_MAX_PRICE_USD`: raised from $200 → $1500
+   - Added `SPLURGE_PRICE_MIN = 200`, `SPLURGE_PRICE_MAX = 1500` in `catalog_sync.py`
+   - `gift_score` no longer penalizes splurge-tier items — gives moderate +0.08 boost
+   - Items > $1500 get strong penalty (-0.15)
+   - `REPLACEMENT_PRICE_THRESHOLD` ($120) unchanged for regular slot backfill
+
+5. **Form-Diverse DB Query** (`database.py`)
+   - New `search_products_diverse()` function uses `ROW_NUMBER() OVER (PARTITION BY category)`
+   - Returns at most `max_per_category` products per form (default 4)
+   - Separates splurge candidates ($200-$1500) from regular pool
+   - Returns `per_interest_counts` dict for eBay gap detection
+
+### What Needs Building (Phase 2 — TODO)
+
+#### Curator Prompt Changes (`gift_curator.py`)
+- Change `rec_count` from 10 → 11 (10 regular + 1 splurge)
+- Add splurge slot instructions: "Pick 1 SPLURGE item — the nicest version of something they love or an extravagant experience. Price $200-$1500. This should feel like a 'if money were no object' pick."
+- Splurge price ceiling should be informed by profile `price_signals` and `budget_category`
+- Wire the splurge candidates from `search_products_diverse()` into the inventory shown to the curator
+- Keep 3 experiences unchanged
+
+#### Template UI (`templates/recommendations.html`)
+- Visually differentiate the splurge tile (larger? different border? "Splurge Pick" badge?)
+- Position: after the 10 regular gifts, before the 3 experiences
+- The splurge tile should feel aspirational, not garish
+
+#### eBay Niche-Only Scoping (`multi_retailer_searcher.py`)
+- Use `per_interest_counts` from `search_products_diverse()` to identify interests with weak DB coverage
+- Run eBay ONLY for 2-3 interests with few/zero CJ/Awin matches
+- Cap eBay contribution at ~5-8 items
+- Do NOT write eBay results to DB
+
+#### Experience Provider Monetization
+**Critical finding:** ZERO experience providers in `experience_providers.py` are approved affiliate partners. Every link (Ticketmaster, Cozymeal, Viator, etc.) is an unmonetized utility link.
+
+**Experience materials monetization (Phase 1 — DONE):**
+- `_backfill_materials_links()` in `giftwise_app.py` now has a DB catalog search fallback
+- When a material (e.g. "Bluetooth speaker" for a listening party) doesn't match the interest-fetched inventory, it searches the full CJ/Awin catalog via `search_products_by_title()` before falling back to Amazon search links
+- This means experience materials are now matched against monetized inventory first
+- New function `search_products_by_title()` in `database.py` does keyword-based title search against the product catalog
+
+**Booking link monetization (NOT YET — requires affiliate approvals):**
+- Check CJ/Awin dashboards for bookable experience advertisers (cooking classes, spa services, adventure activities)
+- Viator is owned by Expedia — likely available through an Expedia affiliate program
+- Airbnb has an affiliate program (check Rakuten/Impact)
+- Sur La Table is in CJ but not yet approved — pursue
+- ClassPass, Masterclass — check availability in affiliate networks
+- Until real partners are wired in, experience links remain utility/service links
+- DO NOT invent affiliate links or wire aspirational partners — that's hallucination
+
+### Splurge Slot: Profile-Informed Price Ceiling
+
+The profile analyzer already outputs `price_signals.estimated_range` and `price_signals.budget_category`. Use these to set the splurge ceiling:
+
+| Budget Category | Splurge Ceiling | Rationale |
+|----------------|-----------------|-----------|
+| budget | $300 | Student/budget profiles — a $1500 item would feel absurd |
+| moderate | $500 | Middle-income — stretch but not shocking |
+| premium | $1000 | Shows luxury signals — high-end is appropriate |
+| luxury | $1500 | Clearly affluent profile — full range |
+| unknown | $500 | Default to moderate when signals are weak |
+
+The curator prompt should include this ceiling. The `gift_score` function doesn't need to know — it scores all splurge-tier items equally; the curator makes the taste judgment.
+
+---
+
 ## Content & SEO: Guide/Blog Strategy
 
 **Key insight (Mar 2026):** Admin dashboard shows `guide_hit` significantly outpacing `rec_run`. Users land on guides via search but don't convert to the main tool. This is the highest-leverage growth fix available.

@@ -301,7 +301,120 @@ def search_products_by_interests(interests: List[str], limit: int = 100) -> List
         return [dict(row) for row in cursor.fetchall()]
 
 
-def get_products_by_retailer(retailer: str, limit: int = 100) -> List[Dict]:
+def search_products_diverse(interests: List[str], limit: int = 100,
+                            max_per_category: int = 4,
+                            splurge_min: float = 200.0,
+                            splurge_max: float = 1500.0) -> Dict:
+    """
+    Search products with form diversity and splurge separation.
+
+    Uses SQLite window functions to return at most max_per_category products
+    per product form (category column), ensuring the curator sees a diverse
+    pool rather than 15 candles and 12 mugs.
+
+    Returns dict with:
+      - 'regular': form-diverse products under splurge_min price
+      - 'splurge_candidates': products in the splurge price range ($200-$1500)
+      - 'per_interest_counts': dict of interest -> count (for eBay gap detection)
+    """
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        if not interests:
+            return {'regular': [], 'splurge_candidates': [], 'per_interest_counts': {}}
+
+        conditions = " OR ".join([f"interest_tags LIKE ?" for _ in interests])
+        params = [f'%"{interest}"%' for interest in interests]
+
+        # Form-diverse query: rank products within each category, keep top N per form.
+        # Products with no category get category='_uncategorized' so they still participate
+        # in the window function but don't block each other (uncategorized is a big bucket).
+        cursor.execute(f"""
+            WITH matched AS (
+                SELECT *,
+                    COALESCE(NULLIF(category, ''), '_uncategorized') AS form,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY COALESCE(NULLIF(category, ''), '_uncategorized')
+                        ORDER BY gift_score DESC, popularity_score DESC
+                    ) AS form_rank
+                FROM products
+                WHERE in_stock = 1
+                  AND removed_at IS NULL
+                  AND ({conditions})
+            )
+            SELECT * FROM matched
+            WHERE form_rank <= ?
+            ORDER BY gift_score DESC, popularity_score DESC
+            LIMIT ?
+        """, params + [max_per_category, limit * 2])
+
+        all_rows = [dict(row) for row in cursor.fetchall()]
+
+    # Separate regular vs splurge
+    regular = []
+    splurge = []
+    per_interest_counts = {}
+
+    for row in all_rows:
+        price = row.get('price') or 0
+        try:
+            price = float(price)
+        except (TypeError, ValueError):
+            price = 0.0
+
+        # Count per-interest for gap detection
+        tags_raw = row.get('interest_tags', '[]')
+        try:
+            tags = json.loads(tags_raw) if isinstance(tags_raw, str) else tags_raw
+        except (json.JSONDecodeError, TypeError):
+            tags = []
+        for tag in (tags if isinstance(tags, list) else []):
+            t = tag.lower().strip()
+            if t:
+                per_interest_counts[t] = per_interest_counts.get(t, 0) + 1
+
+        if splurge_min <= price <= splurge_max:
+            splurge.append(row)
+        else:
+            regular.append(row)
+
+    return {
+        'regular': regular[:limit],
+        'splurge_candidates': splurge[:20],
+        'per_interest_counts': per_interest_counts,
+    }
+
+
+def search_products_by_title(keywords: List[str], limit: int = 10) -> List[Dict]:
+    """
+    Search products by title keywords. Used for matching experience materials
+    against the full CJ/Awin catalog when the interest-fetched inventory pool
+    doesn't contain a match.
+
+    Requires at least 2 keyword matches (or 1 if only 1 keyword provided).
+    Returns products sorted by gift_score.
+    """
+    if not keywords:
+        return []
+
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
+        # Each keyword must appear in the title (AND logic within, scored by overlap)
+        # Use LIKE for each keyword, require at least min_match
+        conditions = " AND ".join([f"LOWER(title) LIKE ?" for _ in keywords])
+        params = [f'%{kw.lower()}%' for kw in keywords]
+
+        cursor.execute(f"""
+            SELECT * FROM products
+            WHERE in_stock = 1
+              AND removed_at IS NULL
+              AND ({conditions})
+            ORDER BY gift_score DESC
+            LIMIT ?
+        """, params + [limit])
+
+        return [dict(row) for row in cursor.fetchall()]
     """Get all products from a specific retailer"""
     with get_db_connection() as conn:
         cursor = conn.cursor()

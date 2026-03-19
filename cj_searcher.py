@@ -1006,6 +1006,138 @@ def get_russellstover_products_for_profile(profile):
 
 
 # ---------------------------------------------------------------------------
+# GHIRARDELLI CHOCOLATE — Static curated products (approved CJ partner, Mar 2026)
+# Advertiser ID (ADV_CID): 2692680
+# Evergreen Link ID 15733738 — deep-link enabled, $76.96 3-mo EPC / $88.65 7-day EPC
+#   Base: https://www.dpbolvw.net/click-101660899-15733738
+# Pick & Mix Text Link ID 16950958 — $26.63 3-mo EPC
+# Commission: Check CJ dashboard (Gourmet category)
+# T&C: Standard CJ terms. Banner links only (no product feed).
+# ---------------------------------------------------------------------------
+
+_GHIRARDELLI_EVERGREEN_BASE = "https://www.dpbolvw.net/click-101660899-15733738"
+
+
+def _ghirardelli_deep_link(path):
+    """Build a CJ deep link to a specific ghirardelli.com page."""
+    destination = f"https://www.ghirardelli.com{path}"
+    return f"{_GHIRARDELLI_EVERGREEN_BASE}?url={urllib.parse.quote(destination, safe='')}"
+
+
+_GHIRARDELLI_ALL_PRODUCTS = [
+    {
+        # Pick & Mix text link 16950958 — highest-converting product link ($26.63 EPC)
+        'title': "Ghirardelli Pick & Mix — Build Your Own Chocolate Squares Box",
+        'link': 'https://www.dpbolvw.net/click-101660899-16950958',
+        'snippet': (
+            "Choose from dozens of Ghirardelli's signature chocolate squares — dark, milk, "
+            "caramel, sea salt, peppermint, and limited-edition flavors. Build a personalized "
+            "box of San Francisco's finest chocolate. Ships free on orders $75+."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'ghirardelli.com',
+        'price': 'From $1.00/square',
+        'product_id': 'ghirardelli-pick-mix',
+        'search_query': 'chocolate gift box',
+        'interest_match': 'chocolate',
+        'interest_matches': {'chocolate', 'sweets', 'candy', 'confectionery', 'dessert', 'personalization', 'gourmet food', 'foodie', 'baking'},
+        'priority': 2,
+        'brand': 'Ghirardelli',
+        'advertiser_id': 'ghirardelli-cj',
+    },
+    {
+        # Evergreen link 15733738 — deep-link to gift shop ($76.96 / $88.65 EPC)
+        'title': "Ghirardelli Chocolate Gift Boxes & Baskets",
+        'link': _ghirardelli_deep_link('/collections/gift-shop'),
+        'snippet': (
+            "Premium chocolate gift boxes from Ghirardelli — San Francisco's iconic chocolatier "
+            "since 1852. Beautifully packaged assortments of squares, bars, and truffles. "
+            "Perfect for birthdays, holidays, and thank-you gifts."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'ghirardelli.com',
+        'price': 'From $15.00',
+        'product_id': 'ghirardelli-gift-shop',
+        'search_query': 'gourmet chocolate gift',
+        'interest_match': 'chocolate',
+        'interest_matches': {'chocolate', 'sweets', 'candy', 'confectionery', 'dessert', 'gourmet food', 'foodie', 'baking', 'entertaining'},
+        'priority': 2,
+        'brand': 'Ghirardelli',
+        'advertiser_id': 'ghirardelli-cj',
+    },
+    {
+        # Deep-link to baking collection — for baking enthusiasts
+        'title': "Ghirardelli Baking Chocolates & Cocoa",
+        'link': _ghirardelli_deep_link('/collections/baking'),
+        'snippet': (
+            "Premium baking chocolate, cocoa powder, and chocolate chips from Ghirardelli. "
+            "The secret ingredient in serious home bakers' kitchens — intense flavor from "
+            "bean-to-bar craftsmanship since 1852."
+        ),
+        'image': '',
+        'thumbnail': '',
+        'image_url': '',
+        'source_domain': 'ghirardelli.com',
+        'price': 'From $5.00',
+        'product_id': 'ghirardelli-baking',
+        'search_query': 'baking chocolate gift',
+        'interest_match': 'baking',
+        'interest_matches': {'baking', 'cooking', 'chocolate', 'dessert', 'gourmet food', 'foodie', 'chef'},
+        'priority': 3,
+        'brand': 'Ghirardelli',
+        'advertiser_id': 'ghirardelli-cj',
+    },
+]
+
+_GHIRARDELLI_TRIGGER_INTERESTS = {
+    'chocolate', 'dark chocolate', 'milk chocolate', 'sweets', 'candy',
+    'confectionery', 'dessert', 'baking', 'gourmet food', 'foodie',
+    'cooking', 'chef', 'entertaining',
+}
+
+
+def get_ghirardelli_products_for_profile(profile):
+    """
+    Return Ghirardelli products when the profile has chocolate/baking/gourmet interests.
+
+    Static list using direct CJ click URLs. ADV_CID: 2692680.
+    Evergreen link $76.96/$88.65 EPC — strong performer.
+
+    Ghirardelli is the "premium American chocolate" tier — between Russell Stover
+    (mass-market boxed) and zChocolat (ultra-luxury French). Pick & Mix is the
+    standout product for gifting (personalized, fun, accessible price point).
+
+    Returns at most 2 products. Pick & Mix preferred for personalization profiles;
+    baking collection surfaces when baking/cooking interests are strong.
+    """
+    interests = profile.get('interests', [])
+    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
+
+    scored = []
+    for p in _GHIRARDELLI_ALL_PRODUCTS:
+        score = 0
+        for key in p.get('interest_matches', set()):
+            if key in interest_names:
+                score += 2
+            elif any(key in n or n in key for n in interest_names):
+                score += 1
+        if score > 0:
+            scored.append((score, p))
+
+    if not scored:
+        return []
+
+    scored.sort(key=lambda x: -x[0])
+    result = [p for _, p in scored[:2]]
+    logger.info(f"Ghirardelli: {len(result)} products matched profile interests {interest_names & _GHIRARDELLI_TRIGGER_INTERESTS}")
+    return result
+
+
+# ---------------------------------------------------------------------------
 # SILVERRUSHSTYLE — Static curated products (approved CJ partner, Feb 2026)
 # Advertiser ID (ADV_CID): 3874186
 # Home page Link ID 11260306 — $16.79 EPC
@@ -2849,6 +2981,7 @@ def search_products_cj(profile, api_key, company_id=None, publisher_id=None, tar
         (get_greatergood_products_for_profile, "GreaterGood"),
         (get_groundluxe_products_for_profile, "GroundLuxe"),
         (get_russellstover_products_for_profile, "Russell Stover"),
+        (get_ghirardelli_products_for_profile, "Ghirardelli"),
         (get_silverrushstyle_products_for_profile, "SilverRushStyle"),
     ]:
         products = getter(profile)

@@ -549,6 +549,13 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10, profile_intere
 
     logger.info(f"Post-curation cleanup: {len(product_gifts)} gifts from curator, {len(inventory)} in pool")
 
+    # Identify the splurge pick (at most one) — it gets special protection during trimming.
+    splurge_url = None
+    for gift in product_gifts:
+        if gift.get('is_splurge'):
+            splurge_url = (gift.get('product_url') or '').strip()
+            break
+
     for gift in product_gifts:
         url = (gift.get('product_url') or '').strip()
         name = gift.get('name', '')
@@ -567,6 +574,32 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10, profile_intere
 
         # Clean the title
         gift['name'] = clean_title(name)
+
+        # Splurge pick bypass: the curator's splurge pick skips diversity rules (3-6)
+        # but still must pass inventory validation (rule 1) and URL dedup (rule 2).
+        is_splurge = gift.get('is_splurge', False)
+        if is_splurge and url == splurge_url:
+            logger.info(f"CLEANUP: Splurge pick preserved (skipping diversity rules): {name[:50]}")
+            inv_product = inventory_by_url.get(url) or inventory_by_url.get(normalized_url) or {}
+            full_title = inv_product.get('title', name)
+            brand = extract_brand(full_title)
+            category = detect_category(full_title, inv_product.get('snippet', ''))
+            source = inv_product.get('source_domain', gift.get('where_to_buy', 'unknown')).lower()
+            # Still track what it uses so subsequent picks respect diversity
+            used_urls.add(url)
+            used_urls.add(normalized_url)
+            if brand:
+                used_brands.add(brand)
+            if category:
+                used_categories.add(category)
+            norm_t = _normalize_title_for_dedup(name)
+            if norm_t:
+                used_titles.add(norm_t)
+            source_counts[source] += 1
+            if interest:
+                interest_counts[interest] = interest_counts.get(interest, 0) + 1
+            cleaned.append(gift)
+            continue
 
         # Extract brand and category
         inv_product = inventory_by_url.get(url) or inventory_by_url.get(normalized_url) or {}

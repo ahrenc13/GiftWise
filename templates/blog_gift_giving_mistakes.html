@@ -33,6 +33,13 @@
         .footer p { opacity: 0.8; margin: 8px 0; }
         .footer a { color: white; opacity: 0.8; }
         @media (max-width: 768px) { h1 { font-size: 1.8em; } }
+        .tool-callout { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 16px 22px; margin: 20px 0 30px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .tool-callout-text { flex: 1; font-size: 0.95em; color: #374151; line-height: 1.5; }
+        .tool-callout-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 9px 20px; border-radius: 20px; text-decoration: none; font-weight: 600; font-size: 0.9em; white-space: nowrap; display: inline-block; }
+        .tool-callout-btn:hover { opacity: 0.9; text-decoration: none; }
+        .mid-cta { background: #fafafa; border: 1px solid #e5e7eb; border-left: 4px solid #667eea; border-radius: 0 8px 8px 0; padding: 18px 22px; margin: 35px 0; }
+        .mid-cta p { margin: 0; color: #374151; font-size: 0.95em; line-height: 1.6; }
+        .mid-cta a { color: #667eea; font-weight: 600; }
 {% endblock %}
 
 {% block content %}
@@ -48,12 +55,19 @@
             You want to give a thoughtful gift. But somehow it lands wrong. They smile, say "thanks," and you never see them use it. Here are the seven mistakes nearly everyone makes — and exactly how to avoid them.
         </p>
 
+        <div class="tool-callout">
+            <div class="tool-callout-text">
+                <strong>Skip the guesswork entirely.</strong> GiftWise reads their Instagram or TikTok and uses AI to find gifts matched to their actual interests — in under a minute.
+            </div>
+            <a href="/demo" class="tool-callout-btn">Try GiftWise free →</a>
+        </div>
+
         <div class="mistake">
             <h3>Mistake #1: Buying What YOU Would Want</h3>
             <p>This is the most common trap. You see something cool and think "I would love this!" Then you buy it for someone else, assuming they'll love it too. They won't.</p>
 
             <div class="fix">
-                <strong>The Fix:</strong> Pay attention to what <em>they</em> actually talk about, not what you find interesting. Their Instagram isn't full of hiking photos? Don't buy hiking gear. <a href="/signup">Let us look at their social media</a> to see what they're actually into.
+                <strong>The Fix:</strong> Pay attention to what <em>they</em> actually talk about, not what you find interesting. Their Instagram isn't full of hiking photos? Don't buy hiking gear. <a href="/demo">Let us look at their social media</a> to see what they're actually into.
             </div>
         </div>
 
@@ -73,6 +87,10 @@
             <div class="fix">
                 <strong>The Fix:</strong> If you're going the candle route, make it specific: get the <a href="https://www.diptyqueparis.com/" target="_blank" rel="nofollow">Diptyque Baies candle</a> everyone raves about, not a random Target candle. Or skip candles entirely and check <a href="/guides/homebody">our homebody gift guide</a> for better home gifts.
             </div>
+        </div>
+
+        <div class="mid-cta">
+            <p>The shortcut to avoiding all of these mistakes: actually knowing what they're into. <a href="/demo"><strong>GiftWise reads their social media</strong></a> so you don't have to guess.</p>
         </div>
 
         <div class="mistake">
@@ -124,7 +142,7 @@
         <div class="cta-box">
             <h2>Never Guess Again</h2>
             <p>Give us their Instagram or TikTok. We'll look at what they post, save, and love — then show you exactly what to get them.</p>
-            <a href="/signup">Get Personalized Gift Ideas</a>
+            <a href="/demo">Get AI-Powered Gift Ideas Free →</a>
         </div>
 
         <h2>One Last Tip</h2>

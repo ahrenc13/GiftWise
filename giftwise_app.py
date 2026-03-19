@@ -1455,6 +1455,10 @@ def demo_mode():
     For admin: redirects to real pipeline with @chadahren pre-filled.
     For public: shows sample recommendations with pre-canned data.
     """
+    # Track guide-to-tool funnel conversions
+    if request.args.get('ref') == 'guide':
+        track_event('guide_to_tool')
+
     # ADMIN TESTING: If admin email, create real test user with @chadahren
     admin_emails = os.getenv('ADMIN_EMAILS', '').split(',')
     is_admin_test = request.args.get('admin') == 'true'
@@ -1671,17 +1675,15 @@ def gift_guides():
 def gift_guide_detail(slug):
     """Individual gift guide article"""
     track_event('guide_hit')
+    track_event(f'guide_hit:{slug}')
     template_map = {
-        'beauty-lover': 'guide_beauty.html',
-        'music-fan': 'guide_music.html',
-        'homebody': 'guide_home.html',
-        'travel-obsessed': 'guide_travel.html',
-        'dog-parent': 'guide_dog.html',
-        'tech-nerd': 'guide_tech.html',
-        'etsy-home-decor': 'guide_etsy_home_decor.html',
-        'etsy-jewelry': 'guide_etsy_jewelry.html',
-        'etsy-under-50': 'guide_etsy_under_50.html',
         'mothers-day': 'guide_mothers_day.html',
+        'gifts-for-her': 'guide_gifts_for_her.html',
+        'gifts-for-him': 'guide_gifts_for_him.html',
+        'chocolate-gourmet': 'guide_chocolate_gourmet.html',
+        'coffee-tea': 'guide_coffee_tea.html',
+        'subscription-boxes': 'guide_subscription_boxes.html',
+        'tech-gifts': 'guide_tech_gifts.html',
     }
     template = template_map.get(slug)
     if template:
@@ -1697,6 +1699,7 @@ def blog_index():
 def blog_post(slug):
     """Individual blog article"""
     track_event('guide_hit')  # Count blog posts as content engagement
+    track_event(f'blog_hit:{slug}')
     blog_map = {
         'last-minute-gifts': 'blog_last_minute_gifts.html',
         'cash-vs-physical-gifts': 'blog_cash_vs_physical_gift.html',

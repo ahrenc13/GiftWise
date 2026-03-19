@@ -244,6 +244,7 @@ Before finalizing each pick, ask:
 
 FOR MUSIC-HEAVY PROFILES: Do NOT pick a poster for each artist they like. Pick at most ONE poster for their top artist. Express the rest of the music passion through different forms — concert-ready accessories, music-themed apparel, instruments/gear, listening equipment, or a curated experience. A wall of band posters is a record store, not a gift set.
 
+- SPLURGE PICK: Designate exactly ONE product as the "splurge pick" — an aspirational gift that's above {pronoun_possessive} typical budget but perfectly matched to {pronoun_possessive} strongest interest. Set "is_splurge": true for that one product only, false for all others. The splurge pick should make someone think "I'd never buy this for myself, but I'd LOVE it." It should be a meaningful upgrade, not just an expensive version of a basic item.
 - PRIORITIZE products matching GIFT SWEET SPOTS (gaps/aspirational interests) - these are the best opportunities
 - If the profile includes EXPLICIT WANT SIGNALS (phrases like "I need this", "someone buy me"), treat those as your highest-priority targets
 - Match interests with SPECIFIC profile evidence (cite posts, behaviors, venues)
@@ -265,6 +266,7 @@ Return JSON:
       "where_to_buy": "domain",
       "product_url": "exact URL from the item's URL field above",
       "confidence_level": "safe_bet|adventurous",
+      "is_splurge": false,
       "gift_type": "physical",
       "interest_match": "interest name"
     }}

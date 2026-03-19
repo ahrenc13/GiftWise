@@ -336,6 +336,21 @@ Files marked `⚠️ OPUS-ONLY ZONE` in code. Non-Opus sessions: add a `# SONNET
 - Add code filters for taste problems. If curator makes bad judgment calls, fix the prompt.
 - Build campaign-specific code.
 
+## Production Log Review (Mar 18-19, 2026)
+
+**Overall health: Good.** Startup clean, catalog sync completing daily (~2 min), recommendation pipeline working end-to-end. A real user session successfully generated 13 recommendations with 76% real image rate.
+
+**Observations:**
+- **Etsy API returns 403 Forbidden** on all search queries. Known/expected — Etsy has rejected dev credentials multiple times. Etsy searches are wasted API calls until credentials are approved.
+- **Duplicate in-flight Claude API calls** — two concurrent profile analysis requests for the same profile hash (`3c6142ae`) because the caching layer doesn't prevent in-flight duplicates. Not critical at current volume, but will waste API spend under load. Consider adding an in-flight lock (e.g., a dict of pending profile hashes) so the second request waits for the first to finish and uses its cached result.
+- **Railway severity mislabeling** — Gunicorn logs to stderr, so Railway tags all INFO-level logs as "error" severity in the dashboard. This is cosmetic; filter by message content, not severity badge.
+- **405 Method Not Allowed** (one-off, Mar 17) — likely a bot or misconfigured client hitting a route with wrong HTTP method. No action needed unless it recurs.
+- **Stripe not configured** — expected at current stage (paywall not enforced).
+- **Catalog sync healthy** — CJ: ~3,995 products across 40 search terms. Awin: ~7,743 products across 26 joined feeds.
+- **Claude model in use:** `claude-sonnet-4-20250514` for both profile analysis and curation.
+
+---
+
 ## Current Priorities (Updated Mar 2026)
 
 1. **Guide → tool conversion funnel** — Guides get significantly more traffic than the main tool (guide_hit >> rec_run in admin stats). Fix the funnel: add above-fold and mid-page CTAs, fix the 3 incomplete Etsy guides, add CTA to blog index. See "Content & SEO: Guide/Blog Strategy" section below.
@@ -420,7 +435,7 @@ Start with manual refresh — the 3 Etsy guides need it immediately since they'r
 | eBay (Browse API + EPN) | Active |
 | CJ Affiliate (GraphQL + 15 static partners) | Active |
 | Awin (13 confirmed merchants, ~35 pending) | Active, expanding |
-| Etsy (v3 API) | Blocked — awaiting dev credentials |
+| Etsy (v3 API) | Blocked — dev credentials rejected multiple times, API returns 403 on all queries |
 | Skimlinks | DEFUNCT — dead code, remove when convenient |
 | Impact.com | Blocked — account type issue |
 | FlexOffers | Applied, status unknown |

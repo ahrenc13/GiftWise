@@ -794,6 +794,13 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10, profile_intere
             category = detect_category(p.get('title', ''), p.get('snippet', ''))
             interest = (p.get('interest_match') or '').lower()
 
+            # Re-check category and brand diversity (candidates were built before
+            # replacements were added, so used_categories/used_brands have grown)
+            if category and category in used_categories:
+                continue
+            if brand and brand in used_brands:
+                continue
+
             # Build a gift dict from inventory product
             replacement = {
                 'name': clean_title(p.get('title', 'Gift')),

@@ -376,6 +376,29 @@ Files marked `⚠️ OPUS-ONLY ZONE` in code. Non-Opus sessions: add a `# SONNET
 - Add code filters for taste problems. If curator makes bad judgment calls, fix the prompt.
 - Build campaign-specific code.
 
+## Gift Selection Quality Fixes (Mar 21, 2026)
+
+**Three bugs fixed from production log review of msmollygmartin and lstratz sessions:**
+
+### 1. Replacement Diversity Bug — 4 Necklaces in lstratz Results
+**Symptom:** lstratz got ~4 similar basketball pendant necklaces in final recommendations.
+**Root cause:** `post_curation_cleanup.py` replacement loop (line ~782) re-checked URL and title dedup when adding replacements from the pool, but did NOT re-check category or brand diversity. The candidate list was built before any replacements were added, so `used_categories` grew stale.
+**Fix:** Added `if category and category in used_categories: continue` and `if brand and brand in used_brands: continue` in the replacement-adding loop, after line 794.
+
+### 2. `per_vendor_target` Unbound Variable
+**Symptom:** `multi_retailer_searcher.py` logged `cannot access local variable 'per_vendor_target' where it is not associated with a value` during the msmollygmartin session. The DB diversity gate code that caps per-source products was completely broken.
+**Root cause:** `per_vendor_target` was defined at line 150 (after the try/except) but referenced at line 128 (inside the try block). When the DB had products but insufficient diversity, the cap code crashed and fell through to the except handler, proceeding with all live APIs unnecessarily.
+**Fix:** Moved `per_vendor_target` definition before the DB query block.
+
+### 3. Interest Attribution — Brother's Fly Fishing in msmollygmartin
+**Symptom:** msmollygmartin's profile included "fly fishing" as a top interest, but her posts were about her brother's fly fishing accomplishments, not her own.
+**Root cause:** The profile analyzer prompt had no instruction to distinguish the account owner's interests from interests of people they post about. All content was treated as belonging to the account owner.
+**Fix:** Added INTEREST ATTRIBUTION instructions to the prompt: "Extract ONLY the account owner's interests. When posts mention a family member's, friend's, or partner's hobby, do NOT extract that unless they also demonstrate personal engagement." Also added confidence scoring (high/medium/low) and engagement weighting to prioritize interests from high-engagement posts.
+
+**Files changed:** `post_curation_cleanup.py`, `multi_retailer_searcher.py`, `profile_analyzer.py`
+
+---
+
 ## eBay Source Starvation Fix (Mar 19, 2026)
 
 **Problem:** eBay dominated recommendation results (~60%+ of final recs), crowding out CJ and Awin advertisers. This was NOT just test profiles — it was structural.

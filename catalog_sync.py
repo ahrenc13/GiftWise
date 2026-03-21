@@ -109,16 +109,46 @@ TIKTOK_SHOP_ADV_ID = "7563286"
 
 INTEREST_CATEGORIES: Dict[str, Dict] = {
 
+    # ===================================================================
+    # PRIORITY 1 — High-frequency interests, run in every nightly refresh
+    # ===================================================================
+
     'music': {
         'priority': 1,
         'terms': [
+            # Equipment & listening
             'vinyl record', 'record player', 'turntable', 'vinyl album',
-            'guitar', 'acoustic guitar', 'electric guitar', 'guitar picks',
             'headphones', 'wireless headphones', 'audiophile headphones',
             'bluetooth speaker', 'portable speaker',
+            # Instruments
+            'guitar', 'acoustic guitar', 'electric guitar', 'guitar picks',
+            'guitar strap', 'guitar capo', 'guitar tuner',
             'piano keyboard', 'midi keyboard', 'ukulele', 'bass guitar',
-            'drumsticks', 'drum pad', 'music production',
-            'concert gift', 'band merchandise',
+            'drumsticks', 'drum pad', 'harmonica',
+            # Production & accessories
+            'music production', 'audio interface', 'studio monitors',
+            'record storage', 'vinyl shelf', 'record cleaning kit',
+            'concert gift', 'band merchandise', 'music poster',
+            'band t-shirt', 'guitar wall mount',
+        ]
+    },
+
+    'music_genres': {
+        'priority': 2,
+        'terms': [
+            # Genre-specific merch (covers ontology interests)
+            'jazz vinyl', 'jazz poster', 'jazz gift',
+            'hip hop poster', 'hip hop vinyl',
+            'country music gift', 'country vinyl',
+            'classical music gift', 'orchestra gift',
+            'indie band poster', 'indie vinyl',
+            'punk rock poster', 'punk merchandise',
+            'EDM festival gear', 'rave accessories',
+            '80s music gift', '80s vinyl record',
+            '90s music poster', 'retro music gift',
+            'rock band poster', 'metal band shirt',
+            'reggae vinyl', 'blues vinyl record',
+            'folk music gift', 'Americana vinyl',
         ]
     },
 
@@ -127,96 +157,197 @@ INTEREST_CATEGORIES: Dict[str, Dict] = {
         'terms': [
             'coffee', 'pour over coffee', 'coffee subscription', 'espresso',
             'coffee grinder', 'coffee maker', 'french press', 'moka pot',
+            'coffee mug', 'espresso cup', 'latte art',
+            'cold brew maker', 'coffee scale',
             'tea', 'loose leaf tea', 'matcha', 'matcha kit', 'chai',
+            'tea infuser', 'teapot', 'tea set',
             'coffee gift set', 'tea gift set',
+            'coffee beans', 'single origin coffee',
         ]
     },
 
     'sports_outdoor': {
         'priority': 1,
         'terms': [
+            # Yoga & wellness fitness
             'yoga mat', 'yoga accessories', 'yoga block',
+            'pilates ring', 'pilates accessories',
+            'resistance bands', 'foam roller',
+            # Hiking & camping
             'hiking gear', 'hiking backpack', 'trekking poles',
-            'running gear', 'running shoes', 'fitness tracker',
-            'cycling gear', 'bike accessories', 'cycling jersey',
+            'trail running shoes', 'hiking boots',
             'camping gear', 'camping tent', 'sleeping bag',
+            'camping cookware', 'headlamp',
+            # Running & cycling
+            'running gear', 'running shoes', 'fitness tracker',
+            'running belt', 'running watch',
+            'cycling gear', 'bike accessories', 'cycling jersey',
+            'bike light', 'cycling gloves',
+            # Fishing
             'fishing gear', 'fly fishing', 'fishing rod',
+            'fly tying kit', 'tackle box', 'fishing net',
+            'fly fishing accessories', 'fishing vest',
+            # Climbing & water sports
             'rock climbing', 'climbing chalk', 'bouldering',
-            'surfing', 'surf accessories',
+            'climbing harness',
+            'surfing', 'surf accessories', 'surf wax',
             'kayaking', 'paddleboard',
-            'soccer cleats', 'soccer gear',
-            'basketball', 'tennis racket', 'golf',
+            'white water rafting gift',
+            # Ball sports
+            'soccer cleats', 'soccer gear', 'soccer ball',
+            'basketball', 'basketball shoes', 'basketball jersey',
+            'basketball hoop', 'basketball training',
+            'tennis racket', 'tennis gift',
+            'golf', 'golf accessories', 'golf balls',
+            'volleyball', 'volleyball gear',
+            # Other
+            'skiing gear', 'ski goggles', 'snowboard',
+            'skateboard', 'skateboard deck',
+            'martial arts gear', 'boxing gloves',
+            'swimming goggles', 'swim gear',
+            'crossfit gear', 'weightlifting belt',
         ]
     },
 
     'tech_gaming': {
         'priority': 1,
         'terms': [
+            # Gaming
             'gaming accessories', 'gaming headset', 'gaming mouse',
             'mechanical keyboard', 'gaming keyboard', 'gaming controller',
             'gaming chair', 'monitor stand', 'streaming setup',
+            'gaming desk mat', 'gaming poster',
+            'Nintendo Switch accessories', 'PlayStation gift',
+            'Xbox accessories', 'retro gaming',
+            'gaming gift card',
+            # Photography & video
             'photography accessories', 'camera bag', 'camera lens',
+            'camera strap', 'tripod', 'photo printer',
+            'polaroid camera', 'film camera', 'instant camera',
+            # Drones & tech
             'drone', 'fpv drone', 'drone accessories',
             'smart home', 'smart speaker', 'smart light',
             '3D printing filament', '3D printer accessories',
             'webcam', 'ring light', 'microphone',
+            'USB hub', 'laptop stand', 'desk organizer',
+            'wireless charger', 'portable charger',
+            'programming gift', 'developer gift',
         ]
     },
 
     'beauty_wellness': {
         'priority': 1,
         'terms': [
+            # Skincare
             'skincare', 'face serum', 'moisturizer', 'vitamin C serum',
+            'sunscreen', 'face mask', 'eye cream',
+            'skincare gift set', 'Korean skincare',
+            # Fragrance
             'perfume', 'fragrance', 'cologne', 'perfume gift set',
+            'perfume sampler', 'room spray',
+            # Hair
             'hair care', 'hair oil', 'hair tools', 'hair accessories',
+            'hair dryer', 'curling iron', 'silk scrunchie',
+            # Nails
             'nail art', 'nail polish', 'nail gel kit',
+            # Bath & body
             'bath bomb', 'bath soak', 'spa gift set',
+            'body lotion', 'body oil', 'lip balm',
+            # Tools & wellness
             'massage tool', 'gua sha', 'jade roller',
             'essential oils', 'aromatherapy diffuser',
-            'meditation', 'mindfulness', 'wellness gift',
+            'meditation cushion', 'meditation gift',
+            'mindfulness journal', 'wellness gift',
+            'self care gift', 'relaxation gift',
         ]
     },
 
     'food_drink': {
         'priority': 1,
         'terms': [
+            # Spirits & cocktails
             'whiskey', 'bourbon', 'whiskey glass', 'cocktail kit',
+            'cocktail shaker', 'cocktail smoker kit',
+            'whiskey stones', 'decanter set',
+            # Wine
             'wine accessory', 'wine decanter', 'wine glass',
+            'wine opener', 'wine rack', 'wine tasting',
+            'wine subscription', 'wine gift basket',
+            # Beer
             'craft beer', 'beer gift', 'home brewing kit',
+            'beer glass set', 'beer subscription',
+            # Cooking & baking
             'hot sauce', 'spice set', 'gourmet food gift',
             'baking tools', 'cooking gift', 'kitchen gadget',
             'charcuterie board', 'cheese board',
+            'cast iron skillet', 'chef knife',
+            'apron', 'cookbook', 'recipe book',
+            'Thai cooking kit', 'sushi making kit',
+            'BBQ accessories', 'grilling tools', 'smoker accessories',
+            # Chocolate & sweets
             'chocolate', 'artisan chocolate', 'truffle chocolate',
+            'chocolate gift box', 'candy gift',
+            # Dietary
             'vegan snacks', 'plant-based food gift',
+            'gluten free gift', 'organic food gift',
         ]
     },
 
     'art_creativity': {
         'priority': 1,
         'terms': [
+            # Painting & drawing
             'acrylic paint set', 'watercolor set', 'painting supplies',
+            'oil paint set', 'paint brush set', 'canvas',
             'sketchbook', 'drawing pencils', 'colored pencils',
-            'pottery tools', 'air dry clay',
+            'art markers', 'charcoal pencils',
+            # Pottery & sculpture
+            'pottery tools', 'air dry clay', 'pottery wheel',
+            'sculpting tools', 'ceramic glaze',
+            # Fiber arts
             'knitting needles', 'yarn gift set', 'crochet kit',
             'embroidery kit', 'cross stitch kit',
+            'sewing kit', 'quilting supplies',
+            # Lettering & paper
             'calligraphy set', 'hand lettering',
             'journaling supplies', 'bullet journal',
+            'washi tape', 'sticker set', 'planner',
+            # DIY crafts
             'candle making kit', 'soap making kit',
             'resin art kit', 'jewelry making kit',
+            'macrame kit', 'tie dye kit',
+            'woodworking tools', 'wood carving kit',
+            'leather craft kit',
         ]
     },
 
     'home_lifestyle': {
         'priority': 1,
         'terms': [
-            'scented candle', 'candle gift set',
-            'throw blanket', 'weighted blanket',
+            # Candles & ambiance
+            'scented candle', 'candle gift set', 'soy candle',
+            'incense', 'incense holder',
+            # Cozy
+            'throw blanket', 'weighted blanket', 'throw pillow',
+            'cozy socks', 'slippers',
+            # Plants & garden
             'succulent plant', 'plant pot', 'indoor plant',
+            'herb garden kit', 'terrarium kit',
+            'gardening tools', 'garden gloves',
+            'plant hanger', 'watering can',
+            # Art & decor
             'wall art print', 'framed art', 'art poster',
+            'photo frame', 'floating shelf',
+            'home decor', 'aesthetic home',
+            'decorative tray', 'vase',
+            # Books & games
             'book', 'coffee table book', 'novel',
             'board game', 'card game', 'puzzle',
+            'strategy board game', 'party game',
+            'jigsaw puzzle', '1000 piece puzzle',
+            # Stationery
             'journal', 'leather journal', 'notebook',
-            'home decor', 'aesthetic home',
+            'fountain pen', 'pen set', 'desk accessories',
         ]
     },
 
@@ -224,52 +355,185 @@ INTEREST_CATEGORIES: Dict[str, Dict] = {
         'priority': 1,
         'terms': [
             'dog toy', 'dog treats', 'dog collar', 'dog leash', 'dog bed',
+            'dog bandana', 'dog sweater', 'dog harness',
             'cat toy', 'cat tree', 'cat accessories',
+            'cat bed', 'cat scratcher', 'catnip toy',
             'pet portrait', 'personalized pet gift',
+            'pet memorial', 'paw print kit',
             'bird feeder', 'aquarium accessory',
         ]
     },
 
+    # ===================================================================
+    # PRIORITY 2 — Run in weekly full sync, less common but important
+    # ===================================================================
+
     'fashion_accessories': {
         'priority': 2,
         'terms': [
+            # Wallets & bags
             'leather wallet', 'bifold wallet', 'card holder',
-            'sunglasses', 'polarized sunglasses',
+            'tote bag', 'canvas bag', 'crossbody bag',
+            'backpack', 'weekender bag',
+            # Eyewear
+            'sunglasses', 'polarized sunglasses', 'blue light glasses',
+            # Jewelry
             'jewelry', 'minimalist necklace', 'earrings', 'bracelet',
-            'watch', 'men watch', 'women watch',
+            'gold necklace', 'silver earrings', 'charm bracelet',
+            'pendant necklace', 'hoop earrings', 'ring',
+            # Watches
+            'watch', 'men watch', 'women watch', 'smart watch',
+            # Hats & headwear
             'hat', 'baseball cap', 'bucket hat', 'beanie',
-            'tote bag', 'canvas bag',
+            # Shoes
             'sneakers', 'shoes gift',
+            # Clothing
             'streetwear', 'graphic tee', 'hoodie',
             'sustainable fashion', 'ethical clothing',
+            'vintage clothing', 'denim jacket',
+            # Scarves & accessories
+            'silk scarf', 'winter scarf', 'gloves',
+            'hair clip', 'scrunchie set',
         ]
     },
 
     'fandoms_entertainment': {
         'priority': 2,
         'terms': [
+            # Anime & manga
             'anime merchandise', 'anime figure', 'manga',
-            'K-pop merchandise', 'K-pop album',
+            'anime poster', 'anime wall scroll',
+            'Studio Ghibli gift', 'Naruto merchandise',
+            # K-pop
+            'K-pop merchandise', 'K-pop album', 'K-pop poster',
+            # Specific fandoms
             'Taylor Swift merchandise', 'Swiftie gift',
-            'Star Wars gift', 'Marvel gift', 'Disney gift',
-            'Harry Potter gift',
+            'Star Wars gift', 'Star Wars poster',
+            'Marvel gift', 'Marvel poster',
+            'Disney gift', 'Disney merchandise',
+            'Harry Potter gift', 'Harry Potter merchandise',
+            'Lord of the Rings gift',
+            'Pokemon merchandise', 'Pokemon gift',
+            # Broadway & theater
+            'Broadway merchandise', 'Hamilton merchandise',
+            'musical theater gift', 'Broadway poster',
+            # TV & film
             'sports fan gift', 'fan merchandise',
             'movie poster', 'TV show merchandise',
+            'film poster', 'cinema gift',
+            'Muppets merchandise', 'Jim Henson gift',
+            # Retro & nostalgia
+            'retro movie poster', '80s nostalgia gift',
+            '90s nostalgia gift', 'vintage poster',
         ]
     },
 
     'niche_high_value': {
         'priority': 2,
         'terms': [
+            # RC & models
             'RC car', 'remote control car', 'RC hobby',
-            'telescope', 'astronomy kit', 'stargazing',
-            'chess set', 'premium chess',
-            'leather goods', 'handmade leather',
-            'whiskey stones', 'cocktail smoker kit',
-            'terrarium kit', 'miniature garden',
-            'archery set', 'hunting accessory',
-            'bird watching binoculars',
             'model train', 'miniature figurines',
+            'model kit', 'scale model',
+            # Astronomy
+            'telescope', 'astronomy kit', 'stargazing',
+            'star map poster', 'constellation gift',
+            # Strategy & games
+            'chess set', 'premium chess',
+            'Dungeons and Dragons', 'D&D dice set',
+            'D&D miniatures', 'tabletop RPG',
+            # Leather & craft
+            'leather goods', 'handmade leather',
+            # Outdoors niche
+            'archery set', 'hunting accessory',
+            'bird watching binoculars', 'field guide',
+            # Automotive & motorsport
+            'Formula 1 merchandise', 'F1 poster',
+            'car enthusiast gift', 'automotive gift',
+            # Collectibles
+            'trading cards', 'sports cards',
+            'coin collecting', 'stamp collecting',
+        ]
+    },
+
+    'spirituality_astrology': {
+        'priority': 2,
+        'terms': [
+            'astrology gift', 'zodiac necklace',
+            'birth chart poster', 'horoscope gift',
+            'tarot cards', 'tarot deck', 'oracle cards',
+            'crystal set', 'crystal gift',
+            'sage bundle', 'smudge kit',
+            'moon phase wall art', 'celestial jewelry',
+        ]
+    },
+
+    'travel_adventure': {
+        'priority': 2,
+        'terms': [
+            'travel accessories', 'packing cubes',
+            'travel journal', 'scratch off map',
+            'passport holder', 'luggage tag',
+            'travel pillow', 'travel adapter',
+            'adventure gift', 'experience gift',
+            'travel photo book', 'world map poster',
+        ]
+    },
+
+    'reading_literature': {
+        'priority': 2,
+        'terms': [
+            # Books by genre (gift editions)
+            'sci-fi book', 'fantasy novel',
+            'true crime book', 'history book',
+            'philosophy book', 'classic literature',
+            'graphic novel', 'comic book',
+            # Reader accessories
+            'bookshelf', 'book ends', 'book light',
+            'bookmark', 'leather bookmark',
+            'book sleeve', 'reading pillow',
+            'book subscription box', 'book lover gift',
+            'e-reader case', 'Kindle accessories',
+        ]
+    },
+
+    'sustainability_lifestyle': {
+        'priority': 2,
+        'terms': [
+            'reusable water bottle', 'insulated bottle',
+            'beeswax wrap', 'reusable straw',
+            'bamboo utensils', 'zero waste kit',
+            'eco friendly gift', 'sustainable gift',
+            'compost bin', 'seed starting kit',
+            'solar charger', 'recycled materials',
+        ]
+    },
+
+    'dance_performance': {
+        'priority': 2,
+        'terms': [
+            'dance accessories', 'dance shoes',
+            'ballet gift', 'ballet accessories',
+            'dance poster', 'dance jewelry',
+            'leg warmers', 'dance bag',
+        ]
+    },
+
+    'specific_artists_brands': {
+        'priority': 2,
+        'terms': [
+            # These cover real user session interests that had zero catalog coverage
+            'Stevie Nicks merchandise', 'Fleetwood Mac vinyl',
+            'Sinead O Connor vinyl', 'Dolly Parton gift',
+            'Beatles merchandise', 'Beatles vinyl',
+            'Bob Marley poster', 'David Bowie poster',
+            'Beyonce merchandise', 'Adele vinyl',
+            'BTS merchandise', 'Blackpink merchandise',
+            'Billie Eilish merchandise',
+            'Bad Bunny merchandise',
+            'Drake merchandise', 'Kanye merch',
+            'The Office merchandise', 'Friends TV gift',
+            'Stranger Things gift', 'Game of Thrones gift',
         ]
     },
 }
@@ -286,19 +550,33 @@ ALL_SYNC_TERMS: List[Tuple[str, int, str]] = sorted(
 
 # Top 40 highest-priority terms for nightly refresh (keeps sync under ~20 min)
 REFRESH_TERMS = [
-    'vinyl record', 'headphones', 'bluetooth speaker', 'guitar',
+    # Music (5)
+    'vinyl record', 'headphones', 'bluetooth speaker', 'guitar', 'band merchandise',
+    # Coffee/tea (4)
     'coffee', 'pour over coffee', 'espresso', 'tea',
-    'yoga mat', 'hiking gear', 'camping gear', 'running gear',
-    'gaming accessories', 'gaming headset', 'mechanical keyboard',
-    'skincare', 'perfume', 'bath bomb', 'essential oils',
-    'scented candle', 'throw blanket', 'succulent plant', 'board game',
+    # Sports/outdoor (10)
+    'yoga mat', 'hiking gear', 'camping gear', 'running gear', 'fishing gear',
+    'basketball', 'cycling gear', 'surfing', 'skiing gear', 'golf',
+    # Tech/gaming (5)
+    'gaming accessories', 'gaming headset', 'mechanical keyboard', 'drone', 'photography accessories',
+    # Beauty/wellness (5)
+    'skincare', 'perfume', 'bath bomb', 'essential oils', 'self care gift',
+    # Food/drink (5)
+    'whiskey', 'cocktail kit', 'craft beer', 'chocolate', 'cooking gift',
+    # Art/creativity (4)
+    'acrylic paint set', 'watercolor set', 'embroidery kit', 'candle making kit',
+    # Home (5)
+    'scented candle', 'throw blanket', 'succulent plant', 'board game', 'puzzle',
+    # Pets (2)
     'dog toy', 'cat toy',
-    'whiskey', 'cocktail kit', 'craft beer',
-    'acrylic paint set', 'watercolor set', 'embroidery kit',
-    'photography accessories', 'drone',
+    # Stationery (2)
     'journal', 'leather journal',
+    # Fashion (3)
     'jewelry', 'watch', 'sunglasses',
-    'anime merchandise', 'Taylor Swift merchandise',
+    # Fandoms (4)
+    'anime merchandise', 'Taylor Swift merchandise', 'Broadway merchandise', 'movie poster',
+    # Niche (2)
+    'trading cards', 'tarot cards',
 ]
 
 
@@ -789,12 +1067,33 @@ def get_cached_awin_products_for_interest(
 
 def _upsert_catalog_product(product: Dict, gift_score: float,
                              interest_tags: List[str], conn: sqlite3.Connection):
-    """Upsert one product into the products table with gift_score, tags, and category."""
+    """Upsert one product into the products table with gift_score, tags, and category.
+
+    On conflict, merges new interest_tags with existing ones (union, preserving order).
+    This lets CJ products accumulate tags across multiple sync terms.
+    """
     from post_curation_cleanup import detect_category
 
     cur = conn.cursor()
     now = datetime.now().isoformat()
     category = detect_category(product.get('title', ''), product.get('description', ''))
+
+    product_id = product.get('product_id')
+    retailer = product.get('retailer', 'CJ')
+
+    # Merge tags: read existing, union with new, preserving order (new first)
+    existing_tags = []
+    try:
+        cur.execute(
+            "SELECT interest_tags FROM products WHERE product_id = ? AND retailer = ?",
+            (product_id, retailer)
+        )
+        row = cur.fetchone()
+        if row and row[0]:
+            existing_tags = json.loads(row[0])
+    except Exception:
+        pass
+    merged_tags = list(dict.fromkeys(interest_tags + existing_tags))
 
     cur.execute("""
         INSERT INTO products (
@@ -810,14 +1109,15 @@ def _upsert_catalog_product(product: Dict, gift_score: float,
             image_url       = excluded.image_url,
             affiliate_link  = excluded.affiliate_link,
             category        = excluded.category,
+            interest_tags   = excluded.interest_tags,
             in_stock        = 1,
             last_checked    = excluded.last_checked,
             last_updated    = excluded.last_updated,
             gift_score      = excluded.gift_score,
             cj_advertiser_id = excluded.cj_advertiser_id
     """, (
-        product.get('product_id'),
-        product.get('retailer', 'CJ'),
+        product_id,
+        retailer,
         product.get('title', ''),
         product.get('description', ''),
         product.get('price', 0.0),
@@ -826,7 +1126,7 @@ def _upsert_catalog_product(product: Dict, gift_score: float,
         product.get('affiliate_link', ''),
         product.get('brand', ''),
         category,
-        json.dumps(interest_tags),
+        json.dumps(merged_tags),
         now,
         now,
         gift_score,
@@ -1269,10 +1569,21 @@ def sync_term(
                     stats['skipped'] += 1
                     continue
 
+                # Multi-label tagging: tag CJ products with ALL matching
+                # catalog terms, not just the search term that found them.
+                # This matches Awin's behavior and improves DB cache hit rate.
+                cj_tags = _tag_awin_product_with_interests(
+                    product.get('title', ''),
+                    product.get('description', ''),
+                    _ALL_CATALOG_TERMS
+                )
+                if term.lower() not in cj_tags:
+                    cj_tags.append(term.lower())
+
                 _upsert_catalog_product(
                     product,
                     gift_score=gift_score,
-                    interest_tags=[term.lower()],
+                    interest_tags=cj_tags,
                     conn=conn,
                 )
                 scores_stored.append(gift_score)

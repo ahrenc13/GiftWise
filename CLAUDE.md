@@ -78,9 +78,18 @@ Each entry below includes the Opus prompt to copy-paste.
 >
 > After the audit, implement the Critical and High fixes. Add `# SONNET-FLAG:` comments for anything you defer. Update CLAUDE.md with findings.
 
-### [OPEN] Catalog-First Architecture: Interest Inventory Expansion & Source Separation
+### [PARTIAL] Catalog-First Architecture: Interest Inventory Expansion & Source Separation
 
-**Context:** Production logs show eBay dominating recommendation results (~60%+) despite accumulating ~40k products across CJ and Awin via daily catalog sync. Root cause analysis (Mar 19, 2026) found structural issues: the database-first shortcut let eBay flood the cache, live Awin/CJ calls duplicated work the nightly sync already does, and 252 generic sync terms ("yoga mat", "coffee") aren't granular enough to cover specific user interests — so live eBay calls fill the gap.
+**Phase 1 DONE (Mar 21, 2026 — Opus):** Term expansion and CJ multi-label tagging.
+
+- **Sync terms expanded 252 → 589** across 19 categories (was 12). Added: music_genres, spirituality_astrology, travel_adventure, reading_literature, sustainability_lifestyle, dance_performance, specific_artists_brands. Priority 1 (nightly): 366 terms. Priority 2 (weekly full): 223 terms. Refresh subset: 56 terms.
+- **CJ multi-label tagging implemented.** CJ products now tagged with ALL matching catalog terms via `_tag_awin_product_with_interests()`, matching Awin's existing behavior. Previously CJ products got only the single search term that found them.
+- **CJ upsert merges tags on conflict.** Previously `interest_tags` was not updated on conflict — new tags were silently dropped. Now reads existing tags and merges (union, new-first order).
+- **Coverage gaps addressed:** Added terms for Broadway/Hamilton, Jim Henson/Muppets, specific music artists (Stevie Nicks, Fleetwood Mac, Beatles, etc.), retro/nostalgia, Formula 1, D&D/tabletop RPG, astrology/tarot, dance, sustainability, reading accessories — all gaps observed in real user sessions.
+
+**Phase 2 REMAINING (safe for any session):**
+
+**Context:** Production logs show eBay dominating recommendation results (~60%+) despite accumulating ~40k products across CJ and Awin via daily catalog sync. Root cause analysis (Mar 19, 2026) found structural issues: the database-first shortcut let eBay flood the cache, live Awin/CJ calls duplicated work the nightly sync already does, and 252 generic sync terms ("yoga mat", "coffee") weren't granular enough to cover specific user interests — so live eBay calls fill the gap.
 
 A source cap fix (60% → 40%) and diversity gate on the DB shortcut were applied as immediate patches. This Opus task is the architectural fix.
 

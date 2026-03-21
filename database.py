@@ -276,18 +276,60 @@ def upsert_product(product: Dict) -> int:
         return cursor.lastrowid
 
 
+def _interest_to_keywords(interest: str) -> List[str]:
+    """
+    Extract meaningful keywords from a profile interest name.
+    Mirrors the logic in catalog_sync._tag_awin_product_with_interests so that
+    profile interests (e.g. 'dog care') match sync tags (e.g. 'dog toy', 'dog treats').
+    """
+    GENERIC = {"and", "the", "or", "with", "gift", "accessories",
+               "lover", "fan", "from", "for", "set", "kit"}
+    return [w.lower() for w in interest.split() if len(w) > 2 and w.lower() not in GENERIC]
+
+
+def _build_interest_conditions(interests: List[str]):
+    """
+    Build SQL condition parts and params for matching a list of profile interests
+    against the products table.
+
+    For each interest we generate three match types:
+      1. Exact tag match:    interest_tags LIKE '%"dog care"%'
+         (catches cases where profile interest IS a sync term)
+      2. Keyword tag match:  interest_tags LIKE '%dog%'
+         (catches sync tags like 'dog toy', 'dog treats' for interest 'dog care')
+      3. Title keyword match: title LIKE '%dog%'
+         (fallback for products whose tags are sparse)
+
+    This mirrors how _tag_awin_product_with_interests tags products at sync time.
+    """
+    condition_parts = []
+    params = []
+    for interest in interests:
+        # 1. Exact tag match
+        condition_parts.append("interest_tags LIKE ?")
+        params.append(f'%"{interest.lower()}"%')
+        # 2 & 3. Keyword matches
+        for word in _interest_to_keywords(interest):
+            condition_parts.append("interest_tags LIKE ?")
+            params.append(f'%{word}%')
+            condition_parts.append("title LIKE ?")
+            params.append(f'%{word}%')
+    return condition_parts, params
+
+
 def search_products_by_interests(interests: List[str], limit: int = 100) -> List[Dict]:
     """
     Search products matching any of the given interests.
     Returns list of product dicts.
     """
+    if not interests:
+        return []
+
     with get_db_connection() as conn:
         cursor = conn.cursor()
 
-        # Build query to match any interest tag
-        # SQLite JSON functions or simple LIKE for now
-        conditions = " OR ".join([f"interest_tags LIKE ?" for _ in interests])
-        params = [f'%"{interest}"%' for interest in interests]
+        condition_parts, params = _build_interest_conditions(interests)
+        conditions = " OR ".join(condition_parts)
 
         cursor.execute(f"""
             SELECT * FROM products
@@ -323,8 +365,8 @@ def search_products_diverse(interests: List[str], limit: int = 100,
         if not interests:
             return {'regular': [], 'splurge_candidates': [], 'per_interest_counts': {}}
 
-        conditions = " OR ".join([f"interest_tags LIKE ?" for _ in interests])
-        params = [f'%"{interest}"%' for interest in interests]
+        condition_parts, params = _build_interest_conditions(interests)
+        conditions = " OR ".join(condition_parts)
 
         # Form-diverse query: rank products within each category, keep top N per form.
         # Products with no category get category='_uncategorized' so they still participate

@@ -87,45 +87,37 @@ Each entry below includes the Opus prompt to copy-paste.
 - **CJ upsert merges tags on conflict.** Previously `interest_tags` was not updated on conflict — new tags were silently dropped. Now reads existing tags and merges (union, new-first order).
 - **Coverage gaps addressed:** Added terms for Broadway/Hamilton, Jim Henson/Muppets, specific music artists (Stevie Nicks, Fleetwood Mac, Beatles, etc.), retro/nostalgia, Formula 1, D&D/tabletop RPG, astrology/tarot, dance, sustainability, reading accessories — all gaps observed in real user sessions.
 
-**Phase 2 REMAINING (safe for any session):**
+**Phase 2 REMAINING — Source Separation (safe for Sonnet):**
 
-**Context:** Production logs show eBay dominating recommendation results (~60%+) despite accumulating ~40k products across CJ and Awin via daily catalog sync. Root cause analysis (Mar 19, 2026) found structural issues: the database-first shortcut let eBay flood the cache, live Awin/CJ calls duplicated work the nightly sync already does, and 252 generic sync terms ("yoga mat", "coffee") weren't granular enough to cover specific user interests — so live eBay calls fill the gap.
+These tasks enforce the catalog-first / live-fallback split. Phase 1 (term expansion + CJ multi-label tagging) is done; the DB should now have much richer coverage after a full sync. These are code-level pipeline changes — no prompt or ontology modifications needed.
 
-A source cap fix (60% → 40%) and diversity gate on the DB shortcut were applied as immediate patches. This Opus task is the architectural fix.
+**Task 1: Remove live CJ API calls from session-time code** (`multi_retailer_searcher.py`, `cj_searcher.py`)
+- CJ products should come from the DB only (via `search_products_by_interests`). The nightly sync populates 589 terms × 100 products each. Live CJ GraphQL calls during sessions are redundant and slow (~1.5s per term, sequential).
+- Remove `_run_cj` from the parallel retailer tasks in `multi_retailer_searcher.py`. Keep the CJ static partner logic (MonthlyClubs, Winebasket, etc.) — those are cheap and additive.
+- **Do NOT delete `cj_searcher.py`** — it's still used by `catalog_sync.py` for sync.
 
-**Opus prompt:**
+**Task 2: Remove live Awin feed download from session-time code** (`awin_searcher.py`)
+- The cache-first path (line ~732) already skips the live download when the DB has ≥ 50% of target_count. Make this the ONLY path — remove the live CSV download fallback entirely. Static Awin partners (from `_get_awin_static_products`) should still run.
+- **Do NOT remove or weaken the Awin `_matches_query()` 2-term threshold** (prevents the $800 scooter problem).
 
-> You are restructuring GiftWise's product inventory architecture. The goal: CJ and Awin products come from the nightly catalog sync ONLY (never live API calls during sessions). eBay and Amazon are live-only fallbacks for interests the catalog can't cover. The ~40k product catalog should be the primary source for recommendations, not a cache that gets bypassed.
->
-> This is a two-phase task: (1) expand the interest inventory so the catalog covers most user interests without live calls, (2) refactor the search pipeline to enforce the catalog-first/live-fallback split.
->
-> **Phase 1: Interest Inventory Expansion (Opus-only zone)**
->
-> Read `interest_ontology.py`, `catalog_sync.py` (especially `INTEREST_CATEGORIES` — currently 252 terms across 12 categories), `awin_catalog_sync.py`, and `search_query_utils.py`. Then:
->
-> 1. **Mine the interest ontology for granular sync terms.** `interest_ontology.py` has rich interest → subinterest → attribute mappings. Extract every specific interest, subinterest, and gift-relevant attribute and generate sync terms from them. Example: the ontology knows "Taylor Swift" is a music interest — generate sync terms like "Taylor Swift poster", "Taylor Swift merch", "Swiftie gift". Do this systematically for every interest in the ontology.
->
-> 2. **Expand from 252 to 500-800+ terms.** Organize by the existing 12 categories plus any new ones needed. Every term should be a plausible gift search query, not a bare noun. Prioritize terms that map to actual Awin/CJ advertiser inventory (read `docs/AFFILIATE_STATUS.md` for which merchants are joined). Mark priority-1 (nightly refresh) vs priority-2 (weekly full sync).
->
-> 3. **Add multi-label tagging for CJ products.** Awin products already get multi-label interest tags via `product_tagger.py`. CJ products only get a single tag (the search term used to find them). Design and implement multi-label tagging for CJ products so they surface for multiple relevant interests, not just the one term that found them.
->
-> 4. **Cross-reference with real user sessions.** Check Railway logs or any session data for interests that users actually searched for but the catalog had no coverage for. These are the highest-value terms to add.
->
-> **Phase 2: Source Separation (safe for any session after Phase 1)**
->
-> 5. **Refactor `multi_retailer_searcher.py`:** CJ and Awin should ONLY come from database queries (using interest_tags matching). Remove their live API call paths from session-time code. eBay and Amazon remain live-only — and stop writing their results back to the products DB (this is what caused eBay to flood the cache).
->
-> 6. **Improve the DB query for session-time product retrieval.** Current query (`database.search_products_by_interests`) uses simple LIKE matching on `interest_tags`. With richer multi-label tags, this needs to be smarter — score by number of matching interests, prefer higher `gift_score`, ensure source diversity in results.
->
-> 7. **Update the source diversity cap.** With CJ/Awin as catalog-only and eBay/Amazon as live-only, the `MAX_PER_SOURCE_PCT` in `post_curation_cleanup.py` (currently 0.4) may need retuning. Consider separate caps: e.g., max 30% from any single retailer, but catalog sources (CJ+Awin combined) can be up to 60%.
->
-> 8. **Preserve the interleaving.** Products from DB (CJ/Awin) and live APIs (eBay/Amazon) must still be interleaved by source before the curator sees them (no positional bias).
->
-> **Constraints:**
-> - Do NOT touch the curator prompt (`gift_curator.py`) or profile analyzer (`profile_analyzer.py`) — those are separate Opus zones.
-> - Do NOT remove or weaken the Awin `_matches_query()` 2-term threshold (it prevents the $800 scooter problem).
-> - The nightly refresh (40 terms, ~20 min) must stay fast. If expanding to 800 terms, the refresh subset should still be ~40-60 high-priority terms. Full sync can take longer.
-> - Update CLAUDE.md with the new term count, architecture summary, and any SONNET-FLAG items deferred.
+**Task 3: Wire eBay niche-only scoping** (`multi_retailer_searcher.py`)
+- Use `per_interest_counts` from `search_products_diverse()` to identify interests with < 3 DB products.
+- Run eBay ONLY for those 2-3 weak-coverage interests, not for all profile interests.
+- Cap eBay contribution at ~5-8 items.
+- eBay and Amazon remain live-only (no DB write-back — already enforced).
+
+**Task 4: Improve DB query scoring** (`database.py`)
+- `search_products_by_interests()` uses simple LIKE matching on `interest_tags`. With richer multi-label tags, score by number of matching interests, prefer higher `gift_score`, ensure source diversity in results.
+- Consider using `search_products_diverse()` (already built, has form-diverse windowing) as the primary session-time query.
+
+**Task 5: Retune source diversity cap** (`post_curation_cleanup.py`)
+- With CJ/Awin as catalog-only and eBay/Amazon as live-only, `MAX_PER_SOURCE_PCT` (currently 0.4) may need separate caps: max 30% from any single retailer, but catalog sources (CJ+Awin combined) can be up to 60%.
+- Preserve interleaving: products from DB and live APIs must be interleaved by source before the curator sees them.
+
+**Constraints for all Phase 2 tasks:**
+- Do NOT touch the curator prompt (`gift_curator.py`) or profile analyzer (`profile_analyzer.py`) — those are Opus zones.
+- Do NOT remove or weaken the Awin `_matches_query()` 2-term threshold.
+- Nightly refresh (56 terms) must stay fast (~3 min). Full sync (~589 terms) can run ~1 hour weekly.
 
 ### [DONE] Replacement backfill relevance gate — post_curation_cleanup.py
 

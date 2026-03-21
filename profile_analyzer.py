@@ -475,6 +475,8 @@ Extract and structure the following information:
    - For each interest: name, evidence from posts, intensity (casual/moderate/passionate), type (aspirational|current)
    - **is_work**: true ONLY if this is clearly their job/profession (e.g. "paramedic", "works at venue"); false for hobbies
    - **activity_type**: "passive" if they mainly watch/collect/consume (e.g. anime fan, book reader); "active" if they do it (cooking, sports); "both" if unclear
+   - **INTEREST ATTRIBUTION**: Extract ONLY the account owner's interests. When posts mention a family member's, friend's, or partner's hobby (e.g. "my brother loves fly fishing", "took my dad golfing", "so proud of my sister's marathon"), do NOT extract that as the account owner's interest UNLESS they also demonstrate personal engagement. Someone posting about their brother's fly fishing trip is showing family pride, not a fly fishing interest. Look for first-person language ("I love", "my new", "I can't stop") vs. third-person ("my brother's", "her favorite", "he caught").
+   - **ENGAGEMENT WEIGHTING**: Posts with significantly higher likes/views than the account's average signal core interests. A post with 5x the usual engagement reveals what resonates most. When the data includes engagement metrics, weight interests from high-engagement content higher than passing mentions.
    - Example: "Thai cooking (passionate, current, active) - Posted pad thai 5x, tagged #thaifood 8x"
 
 1b. **OWNERSHIP SIGNALS** (what they ALREADY HAVE — critical for avoiding duplicate gifts):
@@ -527,7 +529,8 @@ Return ONLY a JSON object with this structure:
       "intensity": "casual|moderate|passionate",
       "type": "aspirational|current",
       "is_work": false,
-      "activity_type": "passive|active|both"
+      "activity_type": "passive|active|both",
+      "confidence": "high|medium|low"
     }}
   ],
   "location_context": {{
@@ -572,6 +575,7 @@ Return ONLY a JSON object with this structure:
 CRITICAL REQUIREMENTS:
 - Be specific - "interested in cooking" is bad, "passionate about Thai cooking" with evidence is good
 - When there are many posts/videos with varied content, list 8-12 distinct interests (different topics, hobbies, aesthetics). Do not return only 1-2 interests when the data clearly shows variety.
+- **confidence**: "high" = multiple posts showing personal engagement (they do it, own it, talk about it in first person). "medium" = some evidence but could be shared/adjacent (posts about an activity they attend with others). "low" = mentioned once or appears to belong to someone else in their life. Do NOT include interests with low confidence — skip them entirely.
 - Only include information you have CLEAR evidence for
 - If something is unknown, mark it as null or empty array
 - Location: if city_region is unknown, do NOT invent a city; leave null. Only include places with concrete evidence.

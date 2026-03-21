@@ -79,7 +79,10 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
         import hashlib
 
         if config.FEATURES.get('profile_caching', True):
-            # Generate hash from platform data for cache lookup
+            # Generate hash from platform data for cache lookup.
+            # Include a prompt version so cache is invalidated when the
+            # analysis prompt changes (e.g. interest attribution fix).
+            _PROMPT_VERSION = "2026-03-21-attribution-v2"
             cache_data = {
                 'instagram': platforms.get('instagram', {}).get('data', {}),
                 'tiktok': platforms.get('tiktok', {}).get('data', {}),
@@ -87,6 +90,7 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
                 'spotify': platforms.get('spotify', {}).get('data', {}),
                 'spotify_wrapped': platforms.get('spotify_wrapped', {}).get('wrapped_text', ''),
                 'relationship': relationship,
+                '_prompt_version': _PROMPT_VERSION,
             }
             cache_str = json.dumps(cache_data, sort_keys=True)
             profile_hash = hashlib.sha256(cache_str.encode()).hexdigest()

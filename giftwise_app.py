@@ -3156,10 +3156,9 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
                 logger.info(f"MATERIALS: '{item_name[:40]}' is non-purchasable, skipping inventory match")
             # Require enough overlap that the match is meaningful:
             # - At least 2 words in common (absolute floor)
-            # - At least 35% of the material's meaningful words must match (lowered from 40%)
-            # With improved stopwords (keeping "portable", "travel"), matches are more precise
+            # - At least 50% of the material's meaningful words must match
             n_item_words = len(item_words)
-            min_overlap = max(2, int(n_item_words * 0.35)) if n_item_words > 1 else 1
+            min_overlap = max(2, int(n_item_words * 0.50)) if n_item_words > 1 else 1
 
             # Collect unique candidate products from word index
             seen_links = set()
@@ -3173,7 +3172,11 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
 
             for p in candidates:
                 title = (p.get('title') or '').lower()
-                title_words = {w for w in re.split(r'\W+', title) if len(w) >= 2 and w not in _STOPWORDS}
+                # Use _MATERIAL_STOPWORDS for title words too — same vocabulary as item_words.
+                # Using _STOPWORDS here was stripping context words (waterproof, case, portable)
+                # from product titles while preserving them in material names, making overlap
+                # impossible on exactly the words that matter most for matching.
+                title_words = {w for w in re.split(r'\W+', title) if len(w) >= 2 and w not in _MATERIAL_STOPWORDS}
                 overlap = item_words & title_words
                 score = len(overlap)
                 if score >= min_overlap and score > best_score:
@@ -3194,17 +3197,26 @@ def _backfill_materials_links(materials_list, products, is_bad_product_url_fn, a
                     for db_p in db_matches:
                         db_link = (db_p.get('affiliate_link') or db_p.get('link', '')).strip()
                         if db_link and not is_bad_product_url_fn(db_link):
-                            # Convert DB row format to match inventory format
-                            best = {
-                                'title': db_p.get('title', ''),
-                                'link': db_link,
-                                'source_domain': db_p.get('retailer', 'online'),
-                                'brand': db_p.get('brand', ''),
-                                'thumbnail': db_p.get('image_url', ''),
-                                'image_url': db_p.get('image_url', ''),
-                            }
-                            logger.info(f"MATERIALS: DB catalog match for '{item_name[:40]}' → '{best['title'][:50]}'")
-                            break
+                            # Score the DB match the same way as inventory matches —
+                            # don't blindly accept the first result.
+                            db_title = (db_p.get('title', '')).lower()
+                            db_title_words = {w for w in re.split(r'\W+', db_title) if len(w) >= 2 and w not in _MATERIAL_STOPWORDS}
+                            db_item_words = {w for w in re.split(r'\W+', item_name.lower()) if len(w) >= 2 and w not in _MATERIAL_STOPWORDS}
+                            db_overlap = db_item_words & db_title_words
+                            db_score = len(db_overlap)
+                            if db_score < 2:
+                                continue  # Skip weak DB matches
+                            if db_score > best_score:
+                                best = {
+                                    'title': db_p.get('title', ''),
+                                    'link': db_link,
+                                    'source_domain': db_p.get('retailer', 'online'),
+                                    'brand': db_p.get('brand', ''),
+                                    'thumbnail': db_p.get('image_url', ''),
+                                    'image_url': db_p.get('image_url', ''),
+                                }
+                                best_score = db_score
+                                logger.info(f"MATERIALS: DB catalog match for '{item_name[:40]}' → '{best['title'][:50]}' (score={db_score})")
             except Exception as e:
                 logger.debug(f"MATERIALS: DB search failed for '{item_name[:40]}': {e}")
 

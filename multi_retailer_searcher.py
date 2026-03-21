@@ -81,10 +81,24 @@ def search_products_multi_retailer(
         if config.FEATURES.get('database_first', True):
             logger.info("Querying product database for cached products...")
 
-            # Extract interests from profile
+            # Extract interests from profile, filtering out low-confidence ones.
+            # The profile analyzer assigns confidence (high/medium/low) to each interest.
+            # Low-confidence interests are often someone else's hobby (e.g. "fly fishing"
+            # from a post about the user's brother). Code-level enforcement here prevents
+            # low-confidence interests from polluting the product search even if the LLM
+            # didn't fully follow the "skip low confidence" prompt instruction.
             interests = []
             if isinstance(profile.get('interests'), list):
-                interests = [i.get('name', i) if isinstance(i, dict) else str(i) for i in profile.get('interests', [])]
+                for i in profile.get('interests', []):
+                    if isinstance(i, dict):
+                        confidence = i.get('confidence', 'high')
+                        if confidence == 'low':
+                            logger.info(f"Skipping low-confidence interest: {i.get('name', '?')}")
+                            continue
+                        interests.append(i.get('name', ''))
+                    else:
+                        interests.append(str(i))
+                interests = [n for n in interests if n]  # remove empty strings
 
             if interests:
                 # Query database for products matching interests
@@ -105,7 +119,26 @@ def search_products_multi_retailer(
                     # Without this check, once eBay floods the cache, Awin/CJ feeds are
                     # never queried again — starving the advertisers we've been accumulating.
                     MIN_SOURCES_TO_SKIP_LIVE = 3
-                    MAX_SINGLE_SOURCE_PCT = 0.50  # No source > 50% of cached results
+                    MAX_SINGLE_SOURCE_PCT = 0.40  # No source > 40% of cached results (was 50%)
+
+                    # Always cap per-source products first. This prevents a single CJ
+                    # marketplace advertiser (e.g. TikTok Shop at 44%) from dominating.
+                    # Cap = 30% of target or per_vendor_target, whichever is smaller.
+                    max_per_source = min(per_vendor_target, int(target_count * 0.30))
+                    source_counts_pre = defaultdict(int)
+                    capped_products = []
+                    for p in all_products:
+                        src = p.get("source_domain", "unknown")
+                        if source_counts_pre[src] < max_per_source:
+                            capped_products.append(p)
+                            source_counts_pre[src] += 1
+                    if len(capped_products) < len(all_products):
+                        logger.info(
+                            f"Per-source cap ({max_per_source}): trimmed {len(all_products) - len(capped_products)} "
+                            f"excess products from overrepresented sources"
+                        )
+                    all_products = capped_products
+
                     if len(all_products) >= target_count:
                         db_source_counts = defaultdict(int)
                         for p in all_products:
@@ -122,21 +155,9 @@ def search_products_multi_retailer(
                             )
                             return all_products[:MAX_INVENTORY_SIZE]
                         else:
-                            # Cap DB products per source so they don't crowd out live API results.
-                            # Keep at most per_vendor_target from any single source in the DB seed.
-                            capped = []
-                            cap_source_counts = defaultdict(int)
-                            for p in all_products:
-                                src = p.get("source_domain", "unknown")
-                                if cap_source_counts[src] < per_vendor_target:
-                                    capped.append(p)
-                                    cap_source_counts[src] += 1
-                            trimmed = len(all_products) - len(capped)
-                            all_products = capped
                             logger.info(
-                                f"Database has {len(capped)+trimmed} products but insufficient diversity "
+                                f"Database has {len(all_products)} products but insufficient diversity "
                                 f"({num_sources} sources, top source '{top_source_name}' at {top_source_pct:.0%}). "
-                                f"Capped DB seed to {len(capped)} (trimmed {trimmed} from overrepresented sources). "
                                 f"Proceeding with live API calls to diversify."
                             )
                 else:

@@ -377,6 +377,36 @@ Files marked `⚠️ OPUS-ONLY ZONE` in code. Non-Opus sessions: add a `# SONNET
 - Add code filters for taste problems. If curator makes bad judgment calls, fix the prompt.
 - Build campaign-specific code.
 
+## Post-Deploy Quality Audit (Mar 21, 2026)
+
+**Four bugs fixed from first live session after DB query fix (msmollygmartin @msmollygmartin):**
+
+The DB query fix landed and returned 80 products from 80k cached, 16 sources. But the session exposed four quality issues:
+
+### 1. Relevance Pre-Filter Uniform Scoring (all products scored 0.14)
+**Symptom:** `Pre-filtered to 30 products by relevance score (range 0.14–0.14)`. Every product scored identically — curator got random inventory.
+**Root cause:** `revenue_optimizer.py` `score_product_for_profile()` relied on `get_product_intelligence()` for gift quality scoring (30% weight). No intelligence exists for synced products — they come through `catalog_sync.py`, not the intelligence tables. Meanwhile, `gift_score` (0.0-1.0) was pre-computed at sync time and stored on every product row, but the scorer never read it. Interest matching (30% weight) used exact substring matching: `"pop culture" in product_title` — which never matches product titles like "Batman Batmobile Model Kit".
+**Fix:** Factor 1 now reads `product.get('gift_score')` directly (available on all DB products). Factor 2 now uses keyword extraction via `database._interest_to_keywords()` — same approach as the DB query fix — so `"pop culture"` matches products containing "pop" or "culture" in title/tags. Partial matches score proportionally.
+
+### 2. Materials Backfill Accepting Nonsensical Matches (score=0)
+**Symptom:** `"Waterproof phone case" → "Philips True Wireless Sports Headphones" (score=0)`. Materials matched to completely unrelated products.
+**Root cause:** Two bugs: (a) Stopword asymmetry — `_CONTEXT_WORDS` (containing "waterproof", "case", "portable", "bag") was stripped from product titles via `_STOPWORDS` but preserved in material names via `_MATERIAL_STOPWORDS`. The word overlap could never match on exactly the words that matter most. (b) DB fallback via `search_products_by_title()` accepted the first result without any quality check — `best_score` stayed 0.
+**Fix:** (a) Title words in the overlap scorer now use `_MATERIAL_STOPWORDS` instead of `_STOPWORDS`, so context words like "waterproof" and "case" participate in matching on both sides. (b) DB fallback now scores matches using the same word overlap logic and requires `score >= 2` before accepting. Min overlap threshold raised from 35% to 50%.
+
+### 3. Fly Fishing Interest Persisted Despite Attribution Fix
+**Symptom:** `Deferred (3rd+ for interest 'fly fishing')` — msmollygmartin's brother's hobby still in profile.
+**Root cause:** Two issues: (a) Profile cache hash was based only on scraped data + relationship. Adding interest attribution instructions to the prompt didn't change the hash, so the old cached profile (from before the fix) kept being served. (b) `multi_retailer_searcher.py` didn't filter interests by confidence level — it took ALL interest names regardless of the `"confidence": "low"` the analyzer assigned.
+**Fix:** (a) Profile cache hash now includes `_PROMPT_VERSION` — bump this string whenever the analyzer prompt changes materially. Old caches auto-invalidate. (b) `multi_retailer_searcher.py` now skips interests with `confidence == "low"` before passing to the DB query. This is code-level enforcement that doesn't depend on the LLM following prompt instructions perfectly.
+
+### 4. TikTok Shop Source Concentration (44% of DB results)
+**Symptom:** `top source 'TikTok Shop US - Marketplaces' at 44%`. One CJ advertiser dominated.
+**Root cause:** TikTok Shop products ARE legitimate CJ affiliate products (advertiser ID 7563286) — they earn commissions. But a single marketplace advertiser shouldn't dominate 44% of results. The diversity gate used `MAX_SINGLE_SOURCE_PCT = 0.50`, so 44% passed. The per-source capping (via `per_vendor_target`) only ran when diversity *failed*.
+**Fix:** Per-source capping now runs unconditionally before the diversity check. Each source capped at min(`per_vendor_target`, 30% of target). `MAX_SINGLE_SOURCE_PCT` tightened from 50% to 40%. This ensures no single CJ advertiser, Awin merchant, or marketplace dominates the pool.
+
+**Files changed:** `revenue_optimizer.py`, `giftwise_app.py`, `profile_analyzer.py`, `multi_retailer_searcher.py`
+
+---
+
 ## Gift Selection Quality Fixes (Mar 21, 2026)
 
 **Three bugs fixed from production log review of msmollygmartin and lstratz sessions:**

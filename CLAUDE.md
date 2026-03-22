@@ -405,6 +405,27 @@ The common insight: we were sending Claude raw text (captions, hashtags, tagged 
 
 ---
 
+## Pre-Filter Scoring Fix (Mar 22, 2026)
+
+**Symptom:** `Pre-filtered to 30 products by relevance score (range 0.14–0.16)`. Scores still nearly uniform after the Mar 21 fix — curator received essentially random inventory.
+
+**Root causes:**
+1. **`matched_interest` flag shared across loop** — once any interest matched, all subsequent interests skipped keyword matching via `if not matched_interest:`. Only the first matching interest contributed to the score. A product matching 3 interests scored the same as one matching 1.
+2. **Commission weight too high** — `commission_rate * 4` (20% weight) made irrelevant products from high-commission sources outscore relevant products from low-commission sources.
+3. **Factor 1 baseline too dominant** — `gift_score * 0.3` gives every product 0.12–0.15 regardless of relevance, drowning out the interest signal.
+
+**Fix (`revenue_optimizer.py`):**
+- Factor 2 now accumulates across ALL interests (removed shared flag, each interest scored independently).
+- Multi-interest bonus: +0.15 for 3+ matching interests, +0.08 for 2 matching interests.
+- Factor 2 weight: up to 50% of total score (was 30%).
+- Factor 1 weight: reduced from 30% to 20%.
+- Factor 3 (commission): reduced from `rate * 4` to `rate * 2` — tiebreaker, not primary signal.
+- Top 5 and bottom 5 scored products now logged so we can verify differentiation in production.
+
+**Expected result:** A product matching 2 profile interests should score ~0.35–0.45; an unrelated product should score ~0.08–0.15. Range should widen from 0.02 to 0.20+.
+
+---
+
 ## Post-Deploy Quality Audit (Mar 21, 2026)
 
 **Four bugs fixed from first live session after DB query fix (msmollygmartin @msmollygmartin):**

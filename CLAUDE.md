@@ -35,6 +35,33 @@ Add a one-line summary to the bug resolution note: "Checked server route first (
 
 ---
 
+## Fix Verification Protocol (Required for Every Code Change)
+
+**Claude's failure mode:** Confidently pattern-matching symptoms to plausible causes and presenting fixes that either don't work or create downstream regressions. This protocol is mandatory for every bug fix and every feature change. No exceptions.
+
+**1. Prove the bug before fixing it.**
+Show the exact line where the problem occurs. Trace real data through it: "This input → this function → this output, and here's why that's wrong." If you can't show the specific broken path with real values, you're guessing. Say so.
+
+**2. Write a test case (or trace) that reproduces the failure.**
+Before writing fix code, demonstrate the failure. For pipeline code: show what a real query/product/profile produces through the broken path. For UI code: describe the exact reproduction steps. If you can't reproduce it, you don't understand it yet.
+
+**3. One fix per commit, tested individually.**
+Don't bundle 3 fixes into one change. Fix one issue, verify it works, commit. If the second fix breaks something, you know exactly where. This also prevents the "I fixed 3 things and 2 of them were wrong" pattern.
+
+**4. Answer "what could this break?" before committing.**
+For every changed function, list its callers and downstream consumers. Trace the impact: "This function is called by X and Y. X will now get [different behavior]. Y depends on [this property] which is preserved." If you can't list the callers, read the code until you can.
+
+**5. Dry-run with real data when possible.**
+For pipeline code, the most valuable check is running the pipeline and comparing before/after. Log diffs beat code review. When you can't run the pipeline, simulate with concrete examples: "For msmollygmartin's interest 'fly fishing', the old code produces [X], the new code produces [Y]."
+
+**6. Flag uncertainty honestly.**
+If a fix is speculative, say "I believe this is the cause but I'm not certain because [reason]." Never use "root cause" unless you've completed steps 1-2. "Plausible cause" is fine. Confident language should be reserved for verified fixes.
+
+**7. After deploying, verify the fix worked.**
+Check logs, run the flow, confirm the symptom is gone. A fix isn't done until it's verified in the environment where the bug was observed.
+
+---
+
 ## ✅ RESOLVED: Generation POST Never Reached Flask (Mar 2026)
 
 **Symptom:** "Finding the Perfect Gifts…" / "Getting started…" spins forever. No `[ROUTE] /api/generate-recommendations` in server logs. No POST in Network tab.

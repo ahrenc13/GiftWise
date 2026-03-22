@@ -136,9 +136,11 @@ def _is_third_party_interest(interest: dict) -> bool:
     # #fishtok) from reposted content are insufficient evidence of personal
     # engagement — check if evidence mentions only hashtags without first-person
     # language like "I fish", "my rod", "I caught", "my catch".
-    if re.search(r'\bfish', name):
-        # For fishing-related interests, require first-person evidence.
+    if re.search(r'\bfish', name) and interest.get('confidence', 'high') != 'high':
+        # For fishing-related interests with non-high confidence, require first-person evidence.
         # Sonnet repeatedly extracts "fly fishing" from reposted brother's content.
+        # High-confidence fishing interests pass through — the aggressive observation
+        # patterns ("posts about", "posts showing") also match genuine fishers' evidence.
         has_first_person = re.search(
             r'\b(i fish|i caught|my (rod|reel|catch|fly|lure)|i went fishing|'
             r'my fishing|i love fishing|fishing trip i|i was fishing|'

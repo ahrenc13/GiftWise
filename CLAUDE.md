@@ -407,22 +407,25 @@ The common insight: we were sending Claude raw text (captions, hashtags, tagged 
 
 ## Pre-Filter Scoring Fix (Mar 22, 2026)
 
-**Symptom:** `Pre-filtered to 30 products by relevance score (range 0.14–0.16)`. Scores still nearly uniform after the Mar 21 fix — curator received essentially random inventory.
+**Symptom:** `Pre-filtered to 30 products by relevance score (range 0.14–0.16)`. Even after rebalancing weights, range only widened to 0.06–0.16. TOP 5 products were random junk (plant stand, medal hanger, star pillow) matching `partial[community tv show:1/2]` — the word "show" appeared in unrelated product descriptions.
 
-**Root causes:**
-1. **`matched_interest` flag shared across loop** — once any interest matched, all subsequent interests skipped keyword matching via `if not matched_interest:`. Only the first matching interest contributed to the score. A product matching 3 interests scored the same as one matching 1.
-2. **Commission weight too high** — `commission_rate * 4` (20% weight) made irrelevant products from high-commission sources outscore relevant products from low-commission sources.
-3. **Factor 1 baseline too dominant** — `gift_score * 0.3` gives every product 0.12–0.15 regardless of relevance, drowning out the interest signal.
+**Root causes (three layers):**
+1. **`to_curator_format()` stripped critical fields** (models.py) — `Product.from_db_row()` correctly reads `gift_score`, `interest_tags`, `product_id`, `brand`, `category` from DB. But `to_curator_format()` only returned title, link, snippet, image, source_domain, price. The pre-filter scorer got products with NO gift_score (Factor 1 = 0), NO interest_tags (Factor 2 could only match on title text), NO product_id (no intel lookup possible). **This was the primary cause.**
+2. **`matched_interest` flag shared across loop** — once any interest matched, all subsequent interests skipped keyword matching. Only the first matching interest contributed to the score.
+3. **`_interest_to_keywords()` produced generic words** — "community tv show" → ["community", "show"] ("tv" is 2 chars, filtered). The word "show" matched hundreds of product titles/descriptions. Combined with missing interest_tags, the scorer could only match on title text, where generic words cause massive false positives.
 
-**Fix (`revenue_optimizer.py`):**
-- Factor 2 now accumulates across ALL interests (removed shared flag, each interest scored independently).
-- Multi-interest bonus: +0.15 for 3+ matching interests, +0.08 for 2 matching interests.
-- Factor 2 weight: up to 50% of total score (was 30%).
-- Factor 1 weight: reduced from 30% to 20%.
-- Factor 3 (commission): reduced from `rate * 4` to `rate * 2` — tiebreaker, not primary signal.
-- Top 5 and bottom 5 scored products now logged so we can verify differentiation in production.
+**Fixes:**
+- **`to_curator_format()`** (models.py) now includes `gift_score`, `interest_tags`, `product_id`, `brand`, `category`, `retailer`. Product dataclass has new `gift_score` field, `from_db_row()` reads it.
+- **Factor 2 accumulates across ALL interests** (removed shared flag, per-interest `this_interest_matched`).
+- **Partial match threshold raised**: single keyword match from a 1-2 keyword interest now scores only 0.02 (was 0.04) and does NOT count toward multi-interest bonus.
+- **`_interest_to_keywords()` GENERIC list expanded** (database.py): added "show", "style", "culture", "activities", "life", "home", "care", "world", "day" and other words that match too many product titles.
+- Multi-interest bonus: +0.15 for 3+ matching interests, +0.08 for 2.
+- Factor 1 weight: 0.3 → 0.2. Factor 3 (commission): `rate * 4` → `rate * 2`.
+- Top 5 and bottom 5 scored products logged in production.
 
-**Expected result:** A product matching 2 profile interests should score ~0.35–0.45; an unrelated product should score ~0.08–0.15. Range should widen from 0.02 to 0.20+.
+**Expected result:** With interest_tags now visible to the scorer, a product tagged with "80s music" will full-match that interest. A random plant stand with "show" in its title will barely score. Score range should widen significantly.
+
+**Fly fishing in experiences:** The curator generated "West Virginia Fly Fishing Photography Workshop" by synthesizing "west virginia outdoor activities" + photography interests — not from a fly fishing interest (which was correctly filtered as low-confidence). This is a curator judgment issue in the Opus-only zone. Potential fix: pass excluded interests to the curator prompt so it avoids re-inventing them.
 
 ---
 

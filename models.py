@@ -68,6 +68,9 @@ class Product:
     # Popularity
     popularity_score: int = 0
 
+    # Gift scoring (pre-computed at sync time by catalog_sync.py)
+    gift_score: Optional[float] = None
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dict for JSON serialization or database storage"""
         data = asdict(self)
@@ -85,9 +88,10 @@ class Product:
 
     def to_curator_format(self) -> Dict[str, Any]:
         """
-        Convert to format expected by gift_curator.py
+        Convert to format expected by gift_curator.py and pre-filter scoring.
 
         Curator expects: title, link, snippet, image, thumbnail, source_domain, price
+        Pre-filter (revenue_optimizer) needs: gift_score, interest_tags, product_id, brand, category
         """
         return {
             'title': self.title,
@@ -101,6 +105,13 @@ class Product:
             'search_query': self.search_query,
             'interest_match': self.interest_match,
             'priority': self.priority,
+            # Fields needed by revenue_optimizer pre-filter scoring
+            'gift_score': self.gift_score,
+            'product_id': self.product_id,
+            'interest_tags': json.dumps(self.interest_tags) if isinstance(self.interest_tags, list) else (self.interest_tags or ''),
+            'brand': self.brand,
+            'category': self.category,
+            'retailer': self.retailer,
         }
 
     def to_db_format(self) -> Dict[str, Any]:
@@ -223,6 +234,7 @@ class Product:
             last_checked=last_checked,
             removed_at=removed_at,
             popularity_score=row.get('popularity_score', 0),
+            gift_score=row.get('gift_score'),
         )
 
 

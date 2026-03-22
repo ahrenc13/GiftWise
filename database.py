@@ -325,11 +325,20 @@ def _build_interest_conditions(interests: List[str]):
             continue
 
         if len(keywords) == 1:
-            # Single keyword: simple LIKE (same as before)
-            condition_parts.append("interest_tags LIKE ?")
-            params.append(f'%{keywords[0]}%')
-            condition_parts.append("title LIKE ?")
-            params.append(f'%{keywords[0]}%')
+            # Single keyword: use word-boundary-aware patterns to prevent
+            # "rafting" from matching "crafting" as a substring.
+            # Tags are JSON arrays, so values are quote-delimited.
+            # Use space-or-quote prefix to approximate word boundaries.
+            kw = keywords[0]
+            # Tag match: keyword appears at start of tag value or after a space
+            condition_parts.append("(interest_tags LIKE ? OR interest_tags LIKE ?)")
+            params.append(f'%"{kw}%')      # starts a tag value: ["rafting...]
+            params.append(f'% {kw}%')       # after a space within a tag: "white water rafting"
+            # Title match: similar word-boundary matching
+            condition_parts.append("(title LIKE ? OR title LIKE ? OR title LIKE ?)")
+            params.append(f'{kw}%')         # starts the title
+            params.append(f'% {kw}%')       # after a space
+            params.append(f'%-{kw}%')       # after a hyphen
         else:
             # Multi-keyword: require ALL keywords to appear together.
             # This prevents "fly" alone from matching "Zipper Fly".

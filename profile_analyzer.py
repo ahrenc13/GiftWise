@@ -263,7 +263,7 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
             # Generate hash from platform data for cache lookup.
             # Include a prompt version so cache is invalidated when the
             # analysis prompt changes (e.g. interest attribution fix).
-            _PROMPT_VERSION = "2026-03-22-signals-v3"
+            _PROMPT_VERSION = "2026-03-22-attribution-v4"
             cache_data = {
                 'instagram': platforms.get('instagram', {}).get('data', {}),
                 'tiktok': platforms.get('tiktok', {}).get('data', {}),
@@ -748,7 +748,14 @@ Extract and structure the following information:
    - For each interest: name, evidence from posts, intensity (casual/moderate/passionate), type (aspirational|current)
    - **is_work**: true ONLY if this is clearly their job/profession (e.g. "paramedic", "works at venue"); false for hobbies
    - **activity_type**: "passive" if they mainly watch/collect/consume (e.g. anime fan, book reader); "active" if they do it (cooking, sports); "both" if unclear
-   - **INTEREST ATTRIBUTION**: Extract ONLY the account owner's interests. When posts mention a family member's, friend's, or partner's hobby (e.g. "my brother loves fly fishing", "took my dad golfing", "so proud of my sister's marathon"), do NOT extract that as the account owner's interest UNLESS they also demonstrate personal engagement. Someone posting about their brother's fly fishing trip is showing family pride, not a fly fishing interest. Look for first-person language ("I love", "my new", "I can't stop") vs. third-person ("my brother's", "her favorite", "he caught").
+   - **INTEREST ATTRIBUTION — CRITICAL**: Extract ONLY the account owner's personal interests. NOT their family's, NOT their friends', NOT people they're proud of.
+     COMMON TRAPS (you MUST check for these):
+     - "My brother went fly fishing" → This is the BROTHER's interest, not the poster's. Do NOT include.
+     - "So proud of my sister's marathon" → SISTER's hobby. Do NOT include.
+     - "Took my dad golfing" → Only include if the poster ALSO golfs independently.
+     - Posting ABOUT someone's accomplishments ≠ personal interest. Cheering for a family member's hobby is family pride, not a hobby.
+     HOW TO VERIFY: For each interest, ask "Does this person DO this activity themselves, or are they posting about someone else doing it?" If the evidence is ONLY about someone else, exclude it entirely — do not even include it as low confidence.
+     Look for first-person language ("I love", "my new", "I can't stop") vs. third-person ("my brother's", "her favorite", "he caught", "proud of him/her").
    - **ENGAGEMENT WEIGHTING**: Posts with significantly higher likes/views than the account's average signal core interests. A post with 5x the usual engagement reveals what resonates most. When the data includes engagement metrics, weight interests from high-engagement content higher than passing mentions.
    - Example: "Thai cooking (passionate, current, active) - Posted pad thai 5x, tagged #thaifood 8x"
 

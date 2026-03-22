@@ -282,8 +282,19 @@ def _interest_to_keywords(interest: str) -> List[str]:
     Mirrors the logic in catalog_sync._tag_awin_product_with_interests so that
     profile interests (e.g. 'dog care') match sync tags (e.g. 'dog toy', 'dog treats').
     """
-    GENERIC = {"and", "the", "or", "with", "gift", "accessories",
-               "lover", "fan", "from", "for", "set", "kit"}
+    GENERIC = {
+        # Structural/function words
+        "and", "the", "or", "with", "gift", "accessories",
+        "lover", "fan", "from", "for", "set", "kit",
+        # Words too common in product titles/descriptions to be meaningful as
+        # standalone search terms. "show" matches every product with "show" in
+        # its description. These only cause false positives when they're the
+        # sole matching keyword from a compound interest like "community tv show".
+        "show", "new", "old", "style", "culture", "activities",
+        "life", "home", "care", "world", "day",
+        "best", "good", "real", "special", "classic", "modern",
+        "club", "group", "type", "stuff",
+    }
     return [w.lower() for w in interest.split() if len(w) > 2 and w.lower() not in GENERIC]
 
 

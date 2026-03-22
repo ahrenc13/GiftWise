@@ -128,12 +128,19 @@ def score_product_for_profile(product: Dict, profile: Dict, relationship: str):
                     interest_score += 0.15
                     interest_reasons.append(f"full_match[{interest_name}]")
                     this_interest_matched = True
-                elif matches > 0:
-                    # Partial match — proportional score
+                elif matches >= 2:
+                    # Partial match with 2+ keywords — reasonable signal
                     partial = 0.08 * (matches / len(keywords))
                     interest_score += partial
                     interest_reasons.append(f"partial[{interest_name}:{matches}/{len(keywords)}]")
                     this_interest_matched = True
+                elif matches == 1 and len(keywords) <= 2:
+                    # Single keyword match from a 1-2 keyword interest — very weak.
+                    # e.g. "80s music" matching only "music" in a Bluetooth speaker.
+                    # Give minimal credit; don't count as an interest match for the
+                    # multi-interest bonus.
+                    interest_score += 0.02
+                    interest_reasons.append(f"weak_partial[{interest_name}:{matches}/{len(keywords)}]")
 
         if this_interest_matched:
             interests_matched += 1

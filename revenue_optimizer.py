@@ -30,7 +30,7 @@ COMMISSION_RATES = {
 }
 
 
-def score_product_for_profile(product: Dict, profile: Dict, relationship: str) -> float:
+def score_product_for_profile(product: Dict, profile: Dict, relationship: str):
     """
     Score a product's suitability for a profile
     Returns 0.0-1.0 score (higher = better fit)
@@ -41,104 +41,124 @@ def score_product_for_profile(product: Dict, profile: Dict, relationship: str) -
         import database
     except ImportError:
         logger.warning("Database not available, skipping intelligent pre-filtering")
-        return 0.5  # Neutral score if no intelligence available
+        return 0.5, ["no_db"]
 
     score = 0.0
     reasons = []
 
-    # Factor 1: Gift suitability score (30% weight)
-    # First try the pre-computed gift_score from catalog_sync (available on all DB products).
-    # Fall back to product intelligence table for products without gift_score.
     product_id = product.get('product_id', '')
     retailer = product.get('source_domain', '') or product.get('retailer', '')
 
+    # Factor 1: Gift suitability score (20% weight)
+    # Pre-computed at sync time — available on all DB products. Clusters around 0.4–0.5
+    # for most products, so contributes ~0.08–0.10 uniformly. This is intentional:
+    # gift_score is a weak baseline; interest relevance (Factor 2) is the differentiator.
     gs = product.get('gift_score')
+    intel = None
     if gs is not None:
         try:
             gs = float(gs)
-            score += gs * 0.3
+            score += gs * 0.2
             reasons.append(f"gift_score={gs:.2f}")
         except (ValueError, TypeError):
             gs = None
 
-    intel = None
     if gs is None:
         intel = database.get_product_intelligence(product_id, retailer)
         if intel:
             igscore = intel.get('gift_worthiness_score', 0.5)
-            score += igscore * 0.3
+            score += igscore * 0.2
             reasons.append(f"intel_gift_score={igscore:.2f}")
     else:
         intel = database.get_product_intelligence(product_id, retailer)
 
     if intel:
-        # CTR boost (proven products get priority)
         ctr = intel.get('click_through_rate', 0.0)
-        if ctr > 0.05:  # 5%+ CTR is good
+        if ctr > 0.05:
             score += 0.15
             reasons.append(f"high_ctr={ctr:.1%}")
         elif ctr > 0:
-            score += ctr * 2  # Scale CTR to 0-0.10 bonus
+            score += ctr * 2
             reasons.append(f"ctr={ctr:.1%}")
 
-    # Factor 2: Interest matching (30% weight)
-    # Use keyword extraction so that "pop culture" matches products with "pop" or "culture"
-    # in titles, instead of requiring the exact substring "pop culture".
+    # Factor 2: Interest matching (PRIMARY DIFFERENTIATOR — up to 50% of score)
+    # Scores accumulate across ALL profile interests, not just the first match.
+    # A product matching 3 interests should clearly outscore one matching 1.
     interests = profile.get('interests') or []
     product_title = product.get('title', '').lower()
     product_snippet = product.get('snippet', '').lower()
     product_tags = product.get('interest_tags', '').lower() if isinstance(product.get('interest_tags'), str) else ''
     product_text = product_title + ' ' + product_snippet + ' ' + product_tags
 
-    matched_interest = False
+    interest_score = 0.0
+    interests_matched = 0
+    interest_reasons = []
+
     for interest in interests:
         interest_name = interest.get('name', '').lower() if isinstance(interest, dict) else str(interest).lower()
+        this_interest_matched = False
 
-        # Get interest intelligence
         interest_intel = database.get_interest_intelligence(interest_name)
 
         if interest_intel:
-            # Check do_buy list (strong positive signal)
+            # do_buy: strong positive signal for this interest
             do_buy = interest_intel.get('do_buy') or []
             for good_item in do_buy:
                 if good_item.lower() in product_text:
-                    score += 0.15
-                    reasons.append(f"matches_do_buy[{interest_name}]")
-                    matched_interest = True
+                    interest_score += 0.20
+                    interest_reasons.append(f"do_buy[{interest_name}]")
+                    this_interest_matched = True
                     break
 
-            # Check dont_buy list (strong negative signal)
+            # dont_buy: penalty regardless of other matches
             dont_buy = interest_intel.get('dont_buy') or []
             for bad_item in dont_buy:
                 if bad_item.lower() in product_text:
-                    score -= 0.3  # Heavy penalty
-                    reasons.append(f"AVOID:matches_dont_buy[{interest_name}]")
+                    score -= 0.3
+                    reasons.append(f"AVOID:dont_buy[{interest_name}]")
                     break
 
-        # Keyword matching: extract meaningful words from interest name and check
-        # if any appear in the product title/tags. This catches "pop culture" matching
-        # a product titled "Batman Batmobile" via the interest_tags field.
-        if not matched_interest:
+        # Keyword matching — runs for every interest independently
+        if not this_interest_matched:
             keywords = database._interest_to_keywords(interest_name)
-            matches = sum(1 for kw in keywords if kw in product_text)
-            if matches >= len(keywords) and len(keywords) > 0:
-                # All keywords match — strong signal
-                score += 0.12
-                reasons.append(f"full_keyword_match[{interest_name}]")
-                matched_interest = True
-            elif matches > 0:
-                # Partial match — weaker signal, scaled by match fraction
-                partial_score = 0.06 * (matches / max(len(keywords), 1))
-                score += partial_score
-                reasons.append(f"partial_keyword[{interest_name}:{matches}/{len(keywords)}]")
-                matched_interest = True
+            if keywords:
+                matches = sum(1 for kw in keywords if kw in product_text)
+                if matches >= len(keywords):
+                    # Full keyword match — all words from interest found in product
+                    interest_score += 0.15
+                    interest_reasons.append(f"full_match[{interest_name}]")
+                    this_interest_matched = True
+                elif matches > 0:
+                    # Partial match — proportional score
+                    partial = 0.08 * (matches / len(keywords))
+                    interest_score += partial
+                    interest_reasons.append(f"partial[{interest_name}:{matches}/{len(keywords)}]")
+                    this_interest_matched = True
 
-    # Factor 3: Commission rate (20% weight) - REVENUE-AWARE
+        if this_interest_matched:
+            interests_matched += 1
+
+    # Multi-interest bonus: product fitting 2+ profile interests is a strong signal
+    if interests_matched >= 3:
+        interest_score += 0.15
+        interest_reasons.append("multi_interest(3+)")
+    elif interests_matched == 2:
+        interest_score += 0.08
+        interest_reasons.append("multi_interest(2)")
+
+    # Cap interest contribution at 0.50 to keep score in 0–1 range
+    interest_score = min(interest_score, 0.50)
+    score += interest_score
+    reasons.extend(interest_reasons[:4])
+
+    # Factor 3: Commission rate (10% weight — tiebreaker, not primary signal)
+    # Reduced from 20% to prevent high-commission irrelevant products from
+    # outscoring low-commission relevant ones.
     commission_rate = COMMISSION_RATES.get(retailer.lower(), 0.01)
     if intel:
         commission_rate = intel.get('commission_rate', commission_rate)
 
-    score += commission_rate * 4  # 5% commission = +0.20 score
+    score += commission_rate * 2  # 5% commission = +0.10 score
     if commission_rate >= 0.04:
         reasons.append(f"high_commission={commission_rate:.1%}")
 
@@ -158,10 +178,10 @@ def score_product_for_profile(product: Dict, profile: Dict, relationship: str) -
             if low <= price <= high:
                 score += 0.10
                 reasons.append("price_in_range")
-            elif price < low * 0.5:  # Too cheap (might seem low-quality)
+            elif price < low * 0.5:
                 score -= 0.05
                 reasons.append("price_too_low")
-            elif price > high * 2:  # Too expensive
+            elif price > high * 2:
                 score -= 0.10
                 reasons.append("price_too_high")
         except:
@@ -177,12 +197,7 @@ def score_product_for_profile(product: Dict, profile: Dict, relationship: str) -
     # Clamp score to 0.0-1.0
     score = max(0.0, min(1.0, score))
 
-    if score > 0.6:
-        logger.debug(f"High-score product: {product.get('title', '')[:50]} = {score:.2f} ({', '.join(reasons[:3])})")
-    elif score < 0.2:
-        logger.debug(f"Low-score product (filtered): {product.get('title', '')[:50]} = {score:.2f} ({', '.join(reasons[:3])})")
-
-    return score
+    return score, reasons
 
 
 def intelligent_product_filter(products: List[Dict], profile: Dict, relationship: str, target_count: int = 30) -> List[Dict]:
@@ -205,22 +220,26 @@ def intelligent_product_filter(products: List[Dict], profile: Dict, relationship
     # Score all products
     scored_products = []
     for product in products:
-        score = score_product_for_profile(product, profile, relationship)
-        scored_products.append((score, product))
+        score, reasons = score_product_for_profile(product, profile, relationship)
+        scored_products.append((score, reasons, product))
 
-    # Sort by score (highest first) and take top N.
-    # No hard score threshold: the database has no history in early sessions so scores are
-    # commission-rate + keyword-match only (typically 0.05–0.25). A fixed cutoff of 0.25 failed
-    # every run and triggered a warning fallback that undid the sort. Sorting IS still valuable —
-    # higher-commission products (Peet's, Etsy) and keyword-matched products float up. Once
-    # sessions accumulate click data, scores will widen and a threshold can be reintroduced.
     scored_products.sort(reverse=True, key=lambda x: x[0])
-    filtered = [product for score, product in scored_products[:target_count]]
+    filtered = [product for score, reasons, product in scored_products[:target_count]]
 
     if scored_products:
-        top = scored_products[0][0]
-        bottom = scored_products[min(len(scored_products) - 1, target_count - 1)][0]
-        logger.info(f"Pre-filtered to {len(filtered)} products by relevance score (range {bottom:.2f}–{top:.2f})")
+        top_score = scored_products[0][0]
+        cutoff_idx = min(len(scored_products) - 1, target_count - 1)
+        bottom_score = scored_products[cutoff_idx][0]
+        logger.info(f"Pre-filtered to {len(filtered)} products by relevance score (range {bottom_score:.2f}–{top_score:.2f})")
+
+        # Log top 5 and bottom 5 so we can verify differentiation in production
+        logger.info("Pre-filter TOP 5:")
+        for score, reasons, product in scored_products[:5]:
+            logger.info(f"  {score:.2f} | {(product.get('title') or '')[:50]} | {', '.join(reasons[:3])}")
+        if len(scored_products) > 5:
+            logger.info("Pre-filter BOTTOM 5:")
+            for score, reasons, product in scored_products[-5:]:
+                logger.info(f"  {score:.2f} | {(product.get('title') or '')[:50]} | {', '.join(reasons[:3])}")
 
     return filtered
 

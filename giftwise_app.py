@@ -101,15 +101,19 @@ from database import check_and_record_pipeline_run
 
 def profile_for_search_and_curation(profile):
     """
-    Return a copy of profile with work interests removed.
-    Use for search and curation so work never drives queries or recommendations.
+    Return a copy of profile with work and low-confidence interests removed.
+    Use for search and curation so work never drives queries or recommendations,
+    and third-party interests (e.g. brother's fly fishing) don't leak through.
     Full profile is still used for filtering (e.g. exclude work-related products, workplace experiences).
     """
     if not profile or not isinstance(profile, dict):
         return profile
     import copy
     p = copy.deepcopy(profile)
-    p['interests'] = [i for i in p.get('interests', []) if not i.get('is_work')]
+    p['interests'] = [
+        i for i in p.get('interests', [])
+        if not i.get('is_work') and i.get('confidence', 'high') != 'low'
+    ]
     return p
 
 ENHANCED_ENGINE_AVAILABLE = False

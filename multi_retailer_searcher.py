@@ -114,7 +114,12 @@ def search_products_multi_retailer(
                 per_interest_counts = db_result.get('per_interest_counts', {})
 
                 if per_interest_counts:
-                    logger.info(f"Per-interest DB coverage: {dict(list(per_interest_counts.items())[:10])}")
+                    # Log coverage per PROFILE interest (not raw sync tags).
+                    # Shows which interests have DB products and which are gaps.
+                    logger.info(f"Per-interest DB coverage: {per_interest_counts}")
+                    zero_coverage = [i for i in interests if i.lower() not in per_interest_counts]
+                    if zero_coverage:
+                        logger.info(f"Interests with ZERO DB products: {zero_coverage}")
 
                 # Combine regular + a few splurge candidates for the pool
                 all_db_rows = db_products + splurge_candidates[:5]

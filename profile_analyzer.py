@@ -21,10 +21,19 @@ Date: February 2026
 import json
 import logging
 import re
+import threading
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
+
+# In-flight dedup: prevents duplicate Claude API calls when two concurrent
+# requests arrive for the same profile hash before either writes to cache.
+# Thread A computes hash, checks cache (miss), starts Claude call.
+# Thread B computes same hash, checks cache (still miss), would start ANOTHER call.
+# With this lock, Thread B waits for Thread A to finish and uses its cached result.
+_inflight_profiles = {}  # hash -> threading.Event
+_inflight_lock = threading.Lock()
 
 try:
     from enhanced_data_extraction import combine_all_signals
@@ -263,7 +272,7 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
             # Generate hash from platform data for cache lookup.
             # Include a prompt version so cache is invalidated when the
             # analysis prompt changes (e.g. interest attribution fix).
-            _PROMPT_VERSION = "2026-03-22-attribution-v4"
+            _PROMPT_VERSION = "2026-03-22-attribution-v5"
             cache_data = {
                 'instagram': platforms.get('instagram', {}).get('data', {}),
                 'tiktok': platforms.get('tiktok', {}).get('data', {}),
@@ -281,6 +290,26 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
             if cached_profile:
                 logger.info(f"Profile found in cache (hash: {profile_hash[:8]}...), skipping Claude call")
                 return cached_profile
+
+            # In-flight dedup: if another thread is already analyzing this hash, wait for it
+            with _inflight_lock:
+                if profile_hash in _inflight_profiles:
+                    logger.info(f"Profile {profile_hash[:8]}... already being analyzed by another thread, waiting...")
+                    event = _inflight_profiles[profile_hash]
+                else:
+                    event = threading.Event()
+                    _inflight_profiles[profile_hash] = event
+                    event = None  # We're the first — proceed with analysis
+
+            if event is not None:
+                # Wait for the other thread to finish (max 120s)
+                event.wait(timeout=120)
+                # Now check cache again — the other thread should have written it
+                cached_profile = database.get_cached_profile(profile_hash)
+                if cached_profile:
+                    logger.info(f"Profile available from parallel thread (hash: {profile_hash[:8]}...)")
+                    return cached_profile
+                logger.warning(f"Parallel thread didn't cache profile {profile_hash[:8]}..., proceeding with own analysis")
 
             logger.info(f"Profile not in cache (hash: {profile_hash[:8]}...), proceeding with Claude analysis")
     except ImportError:
@@ -753,8 +782,10 @@ Extract and structure the following information:
      - "My brother went fly fishing" → This is the BROTHER's interest, not the poster's. Do NOT include.
      - "So proud of my sister's marathon" → SISTER's hobby. Do NOT include.
      - "Took my dad golfing" → Only include if the poster ALSO golfs independently.
+     - Reposting someone else's content with hashtags (#flyfishing, #catchandrelease) → REPOSTED content, NOT the poster's hobby. Do NOT include unless the poster is shown personally doing the activity.
      - Posting ABOUT someone's accomplishments ≠ personal interest. Cheering for a family member's hobby is family pride, not a hobby.
      HOW TO VERIFY: For each interest, ask "Does this person DO this activity themselves, or are they posting about someone else doing it?" If the evidence is ONLY about someone else, exclude it entirely — do not even include it as low confidence.
+     HASHTAG TRAP: Hashtags alone (#flyfishing, #fishtok) are NOT sufficient evidence. The poster must be shown DOING the activity in first-person language ("I fish", "my catch", "I went fishing") or visible in photos doing it. Reposted content inherits the original creator's hashtags — those are NOT the reposter's interests.
      Look for first-person language ("I love", "my new", "I can't stop") vs. third-person ("my brother's", "her favorite", "he caught", "proud of him/her").
    - **ENGAGEMENT WEIGHTING**: Posts with significantly higher likes/views than the account's average signal core interests. A post with 5x the usual engagement reveals what resonates most. When the data includes engagement metrics, weight interests from high-engagement content higher than passing mentions.
    - Example: "Thai cooking (passionate, current, active) - Posted pad thai 5x, tagged #thaifood 8x"
@@ -917,10 +948,22 @@ Return ONLY the JSON object, no markdown, no backticks, no explanation."""
             except Exception as e:
                 logger.error(f"Failed to cache profile: {e}")
 
+            # Signal any waiting threads that this analysis is done
+            with _inflight_lock:
+                event = _inflight_profiles.pop(profile_hash, None)
+                if event:
+                    event.set()
+
         return profile
-        
+
     except Exception as e:
         logger.error(f"Error building recipient profile: {e}", exc_info=True)
+        # Signal any waiting threads even on failure
+        if profile_hash:
+            with _inflight_lock:
+                event = _inflight_profiles.pop(profile_hash, None)
+                if event:
+                    event.set()
         # Return minimal profile
         return {
             "interests": [],

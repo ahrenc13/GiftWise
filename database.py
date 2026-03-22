@@ -294,6 +294,12 @@ def _interest_to_keywords(interest: str) -> List[str]:
         "life", "home", "care", "world", "day",
         "best", "good", "real", "special", "classic", "modern",
         "club", "group", "type", "stuff",
+        # Words that match too many unrelated products in a 167k product catalog.
+        # "productions" matches "music production gear", "cult" matches "cult classic",
+        # "local" matches any local business, "records" matches vinyl records unrelated
+        # to "Empire Records" the film.
+        "productions", "production", "cult", "local", "films",
+        "records", "advocacy", "justice", "social",
     }
     return [w.lower() for w in interest.split() if len(w) > 2 and w.lower() not in GENERIC]
 
@@ -303,20 +309,21 @@ def _build_interest_conditions(interests: List[str]):
     Build SQL condition parts and params for matching a list of profile interests
     against the products table.
 
-    For each interest we generate match conditions that are OR'd across interests
-    but AND'd within a multi-keyword interest:
-      1. Exact tag match:    interest_tags LIKE '%"fly fishing"%'
-      2. All-keywords-in-tags: (tags LIKE '%fly%' AND tags LIKE '%fishing%')
-      3. All-keywords-in-title: (title LIKE '%fly%' AND title LIKE '%fishing%')
+    Strategy: prefer exact tag matches over keyword scatter.
+    - Exact tag match: interest_tags LIKE '%"fly fishing"%'  (strongest)
+    - Multi-keyword tag match: ALL keywords in interest_tags (moderate)
+    - Multi-keyword title match: ALL keywords in title (weak, only for 2-keyword interests)
+    - Single-keyword: word-boundary-aware matching in tags and title
 
-    For single-keyword interests, conditions 2 and 3 are simple single-word LIKE.
-    This prevents "Zipper Fly" from matching "fly fishing" — both keywords must
-    appear together, not just one.
+    Key constraint: for 3+ keyword interests (e.g. "Jim Henson productions"),
+    we ONLY use exact tag match and full-keyword tag match. Title matching on
+    3+ scattered keywords across 167k products produces too many false positives
+    (e.g. "jim" matches "Jim Beam", "productions" matches "music production").
     """
     condition_parts = []
     params = []
     for interest in interests:
-        # 1. Exact tag match (always)
+        # 1. Exact tag match (always — strongest signal)
         condition_parts.append("interest_tags LIKE ?")
         params.append(f'%"{interest.lower()}"%')
 
@@ -325,29 +332,37 @@ def _build_interest_conditions(interests: List[str]):
             continue
 
         if len(keywords) == 1:
-            # Single keyword: use word-boundary-aware patterns to prevent
-            # "rafting" from matching "crafting" as a substring.
-            # Tags are JSON arrays, so values are quote-delimited.
-            # Use space-or-quote prefix to approximate word boundaries.
             kw = keywords[0]
+            # Skip overly short keywords that match too broadly
+            if len(kw) < 4:
+                continue
             # Tag match: keyword appears at start of tag value or after a space
             condition_parts.append("(interest_tags LIKE ? OR interest_tags LIKE ?)")
             params.append(f'%"{kw}%')      # starts a tag value: ["rafting...]
-            params.append(f'% {kw}%')       # after a space within a tag: "white water rafting"
-            # Title match: similar word-boundary matching
+            params.append(f'% {kw}%')       # after a space within a tag
+            # Title match: word-boundary matching
             condition_parts.append("(title LIKE ? OR title LIKE ? OR title LIKE ?)")
             params.append(f'{kw}%')         # starts the title
             params.append(f'% {kw}%')       # after a space
             params.append(f'%-{kw}%')       # after a hyphen
-        else:
-            # Multi-keyword: require ALL keywords to appear together.
-            # This prevents "fly" alone from matching "Zipper Fly".
+        elif len(keywords) == 2:
+            # 2-keyword interests: tag AND match + title AND match
+            # Both words must appear together — "fly" alone won't match "Zipper Fly"
             tag_ands = " AND ".join(["interest_tags LIKE ?" for _ in keywords])
             condition_parts.append(f"({tag_ands})")
             params.extend(f'%{kw}%' for kw in keywords)
 
-            title_ands = " AND ".join(["title LIKE ?" for _ in keywords])
+            title_ands = " AND ".join(["LOWER(title) LIKE ?" for _ in keywords])
             condition_parts.append(f"({title_ands})")
+            params.extend(f'%{kw}%' for kw in keywords)
+        else:
+            # 3+ keyword interests (e.g. "Jim Henson productions", "Empire Records cult films"):
+            # ONLY match in tags, NOT in title. With 167k products, scattered keyword
+            # matching in titles produces massive false positives:
+            #   "jim" matches "Jim Beam", "productions" matches "music production"
+            # Tags are curated during sync and more reliable than title substrings.
+            tag_ands = " AND ".join(["interest_tags LIKE ?" for _ in keywords])
+            condition_parts.append(f"({tag_ands})")
             params.extend(f'%{kw}%' for kw in keywords)
 
     return condition_parts, params

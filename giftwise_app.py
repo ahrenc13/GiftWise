@@ -105,7 +105,8 @@ def _is_third_party_interest(interest: dict) -> bool:
     The profile analyzer SHOULD mark these as low confidence, but Sonnet
     sometimes assigns medium or even high. This is a code-level safety net.
 
-    Checks both the evidence text AND the interest name for third-party signals.
+    Checks the evidence text, the interest name, AND catches known
+    attribution failures where Sonnet ignores the prompt instructions.
     """
     evidence = (interest.get('evidence', '') or interest.get('description', '') or '').lower()
     name = (interest.get('name', '') or '').lower()
@@ -129,6 +130,35 @@ def _is_third_party_interest(interest: dict) -> bool:
     import re
     if re.search(r"\b(he|him|his|she|her)\b.*\b(fish|golf|hunt|hik|climb|ski|surf)", evidence):
         return True
+
+    # Catch evidence that mentions family members even when Sonnet doesn't
+    # explicitly attribute the interest to them. Hashtags alone (#flyfishing,
+    # #fishtok) from reposted content are insufficient evidence of personal
+    # engagement — check if evidence mentions only hashtags without first-person
+    # language like "I fish", "my rod", "I caught", "my catch".
+    if re.search(r'\bfish', name):
+        # For fishing-related interests, require first-person evidence.
+        # Sonnet repeatedly extracts "fly fishing" from reposted brother's content.
+        has_first_person = re.search(
+            r'\b(i fish|i caught|my (rod|reel|catch|fly|lure)|i went fishing|'
+            r'my fishing|i love fishing|fishing trip i|i was fishing|'
+            r'personal|herself fishing|himself fishing|own fishing)\b',
+            evidence
+        )
+        # If evidence is only hashtags/generic mentions without first-person language
+        if not has_first_person:
+            # Check if evidence is just hashtags and generic content mentions
+            evidence_without_hashtags = re.sub(r'#\w+', '', evidence).strip()
+            # If after removing hashtags, there's no substantial first-person evidence,
+            # OR evidence mentions "hashtag" (describing hashtags rather than activity),
+            # OR evidence uses observation language ("showing", "videos of/with")
+            is_observation = re.search(
+                r'\b(showing|videos (of|with|about)|content (about|featuring)|'
+                r'posts (about|showing|featuring))\b',
+                evidence_without_hashtags
+            )
+            if len(evidence_without_hashtags) < 30 or 'hashtag' in evidence or is_observation:
+                return True
 
     return False
 

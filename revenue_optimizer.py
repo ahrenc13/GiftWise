@@ -14,6 +14,8 @@ Date: February 2026
 """
 
 import logging
+import json
+import re
 from typing import List, Dict, Optional
 from collections import defaultdict
 
@@ -87,8 +89,29 @@ def score_product_for_profile(product: Dict, profile: Dict, relationship: str):
     interests = profile.get('interests') or []
     product_title = product.get('title', '').lower()
     product_snippet = product.get('snippet', '').lower()
-    product_tags = product.get('interest_tags', '').lower() if isinstance(product.get('interest_tags'), str) else ''
-    product_text = product_title + ' ' + product_snippet + ' ' + product_tags
+    raw_tags = product.get('interest_tags', '')
+
+    # Parse interest_tags as JSON array for proper membership checking.
+    # Previously did substring matching on the JSON string, causing false positives:
+    # "wine tasting" in '["wine", "tasting", "gardening"]' → False (lucky)
+    # "music" in '["80s music", "vinyl"]' → True (wrong: substring of "80s music")
+    parsed_tags = []
+    if isinstance(raw_tags, str) and raw_tags:
+        try:
+            parsed_tags = [t.lower().strip() for t in json.loads(raw_tags) if isinstance(t, str)]
+        except (json.JSONDecodeError, TypeError):
+            parsed_tags = []
+    elif isinstance(raw_tags, list):
+        parsed_tags = [str(t).lower().strip() for t in raw_tags]
+
+    # Build word sets for word-boundary matching (not substring matching).
+    # "jim" in "jimmy's guitar shop" is a substring match (bad).
+    # "jim" as a whole word in the title is a word match (still loose but better).
+    title_words = set(re.findall(r'\b\w+\b', product_title))
+    snippet_words = set(re.findall(r'\b\w+\b', product_snippet))
+    all_tag_text = ' '.join(parsed_tags)
+    tag_words = set(re.findall(r'\b\w+\b', all_tag_text))
+    all_words = title_words | snippet_words | tag_words
 
     interest_score = 0.0
     interests_matched = 0
@@ -104,7 +127,7 @@ def score_product_for_profile(product: Dict, profile: Dict, relationship: str):
             # do_buy: strong positive signal for this interest
             do_buy = interest_intel.get('do_buy') or []
             for good_item in do_buy:
-                if good_item.lower() in product_text:
+                if good_item.lower() in product_title:
                     interest_score += 0.20
                     interest_reasons.append(f"do_buy[{interest_name}]")
                     this_interest_matched = True
@@ -113,54 +136,63 @@ def score_product_for_profile(product: Dict, profile: Dict, relationship: str):
             # dont_buy: penalty regardless of other matches
             dont_buy = interest_intel.get('dont_buy') or []
             for bad_item in dont_buy:
-                if bad_item.lower() in product_text:
+                if bad_item.lower() in product_title:
                     score -= 0.3
                     reasons.append(f"AVOID:dont_buy[{interest_name}]")
                     break
 
-        # Interest matching: prefer exact phrase match in tags over scattered keyword match.
-        # "fly fishing" as a tagged phrase is a real signal.
-        # "fly" from "Zipper Fly" + "fishing" from unrelated tags is a false positive.
+        # Interest matching: prefer exact tag membership over scattered keyword match.
+        # Use parsed JSON array for proper matching instead of substring on JSON string.
         if not this_interest_matched:
-            # First: check if the full interest phrase appears in tags (strongest signal)
-            if interest_name in product_tags:
+            # First: check if the full interest phrase is an exact tag (strongest signal)
+            if interest_name in parsed_tags:
                 interest_score += 0.20
                 interest_reasons.append(f"tag_match[{interest_name}]")
                 this_interest_matched = True
             else:
-                # Fall back to keyword matching
-                keywords = database._interest_to_keywords(interest_name)
-                if keywords:
-                    # Check keywords in tags vs title separately
-                    tag_matches = sum(1 for kw in keywords if kw in product_tags)
-                    title_matches = sum(1 for kw in keywords if kw in product_title)
-                    total_matches = sum(1 for kw in keywords if kw in product_text)
+                # Check if interest phrase appears within any tag (e.g. "wine" in "wine tasting" tag)
+                tag_contains = any(interest_name in tag for tag in parsed_tags)
+                if tag_contains:
+                    interest_score += 0.15
+                    interest_reasons.append(f"tag_substr[{interest_name}]")
+                    this_interest_matched = True
 
-                    if total_matches >= len(keywords) and tag_matches >= len(keywords):
-                        # All keywords found in tags — strong signal
-                        interest_score += 0.15
-                        interest_reasons.append(f"full_match[{interest_name}]")
-                        this_interest_matched = True
-                    elif total_matches >= len(keywords) and tag_matches > 0:
-                        # All keywords found overall, at least one in tags — moderate
-                        interest_score += 0.10
-                        interest_reasons.append(f"mixed_match[{interest_name}]")
-                        this_interest_matched = True
-                    elif total_matches >= len(keywords):
-                        # All keywords found but NONE in tags — likely false positive
-                        # (e.g. "fly" from "Zipper Fly" + "fishing" from description)
-                        interest_score += 0.03
-                        interest_reasons.append(f"title_only[{interest_name}]")
-                    elif total_matches >= 2:
-                        # Partial match with 2+ keywords
-                        partial = 0.06 * (total_matches / len(keywords))
-                        interest_score += partial
-                        interest_reasons.append(f"partial[{interest_name}:{total_matches}/{len(keywords)}]")
-                        this_interest_matched = True
-                    elif total_matches == 1 and len(keywords) <= 2:
-                        # Single keyword match from short interest — very weak
-                        interest_score += 0.02
-                        interest_reasons.append(f"weak_partial[{interest_name}:{total_matches}/{len(keywords)}]")
+        if not this_interest_matched:
+            # Fall back to keyword matching with word boundaries
+            keywords = database._interest_to_keywords(interest_name)
+            if keywords:
+                # Use word-set matching instead of substring matching.
+                # "jim" must be a whole word, not a substring of "jimmy".
+                tag_kw_matches = sum(1 for kw in keywords if kw in tag_words)
+                title_kw_matches = sum(1 for kw in keywords if kw in title_words)
+                total_kw_matches = sum(1 for kw in keywords if kw in all_words)
+
+                if total_kw_matches >= len(keywords) and tag_kw_matches >= len(keywords):
+                    # All keywords found as whole words in tags — strong signal
+                    interest_score += 0.15
+                    interest_reasons.append(f"full_match[{interest_name}]")
+                    this_interest_matched = True
+                elif total_kw_matches >= len(keywords) and tag_kw_matches > 0:
+                    # All keywords found overall, at least one in tags — moderate
+                    interest_score += 0.10
+                    interest_reasons.append(f"mixed_match[{interest_name}]")
+                    this_interest_matched = True
+                elif total_kw_matches >= len(keywords) and len(keywords) >= 2:
+                    # All keywords in title/snippet but NONE in tags — weak
+                    interest_score += 0.03
+                    interest_reasons.append(f"title_only[{interest_name}]")
+                elif total_kw_matches >= 2 and len(keywords) >= 3:
+                    # Partial match: 2+ of 3+ keywords. Reduce score for 3+ kw interests
+                    # since scattered keyword matches are more likely false positives.
+                    partial = 0.04 * (total_kw_matches / len(keywords))
+                    interest_score += partial
+                    interest_reasons.append(f"partial[{interest_name}:{total_kw_matches}/{len(keywords)}]")
+                    this_interest_matched = True
+                elif total_kw_matches >= len(keywords) and len(keywords) == 1:
+                    # Single keyword fully matched — moderate signal
+                    interest_score += 0.08
+                    interest_reasons.append(f"single_kw[{interest_name}]")
+                    this_interest_matched = True
 
         if this_interest_matched:
             interests_matched += 1

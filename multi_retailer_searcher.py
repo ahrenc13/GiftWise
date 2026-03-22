@@ -114,7 +114,12 @@ def search_products_multi_retailer(
                 per_interest_counts = db_result.get('per_interest_counts', {})
 
                 if per_interest_counts:
-                    logger.info(f"Per-interest DB coverage: {dict(list(per_interest_counts.items())[:10])}")
+                    # Log coverage per PROFILE interest (not raw sync tags).
+                    # Shows which interests have DB products and which are gaps.
+                    logger.info(f"Per-interest DB coverage: {per_interest_counts}")
+                    zero_coverage = [i for i in interests if i.lower() not in per_interest_counts]
+                    if zero_coverage:
+                        logger.info(f"Interests with ZERO DB products: {zero_coverage}")
 
                 # Combine regular + a few splurge candidates for the pool
                 all_db_rows = db_products + splurge_candidates[:5]
@@ -154,6 +159,13 @@ def search_products_multi_retailer(
                         )
                     all_products = capped_products
 
+                    # Check interest coverage: what fraction of profile interests have DB products?
+                    # If most interests have zero coverage, live APIs must run even if quantity looks fine.
+                    MIN_INTEREST_COVERAGE_PCT = 0.50  # At least 50% of interests need DB products
+                    covered_interests = len(per_interest_counts) if per_interest_counts else 0
+                    total_interests = len(interests) if interests else 1
+                    interest_coverage_pct = covered_interests / total_interests
+
                     if len(all_products) >= target_count:
                         db_source_counts = defaultdict(int)
                         for p in all_products:
@@ -162,17 +174,24 @@ def search_products_multi_retailer(
                         top_source_pct = max(db_source_counts.values()) / len(all_products) if all_products else 1.0
                         top_source_name = max(db_source_counts, key=db_source_counts.get) if db_source_counts else "unknown"
 
-                        if num_sources >= MIN_SOURCES_TO_SKIP_LIVE and top_source_pct <= MAX_SINGLE_SOURCE_PCT:
+                        if (num_sources >= MIN_SOURCES_TO_SKIP_LIVE
+                                and top_source_pct <= MAX_SINGLE_SOURCE_PCT
+                                and interest_coverage_pct >= MIN_INTEREST_COVERAGE_PCT):
                             logger.info(
                                 f"Database provided enough diverse products ({len(all_products)} >= {target_count}, "
-                                f"{num_sources} sources, top source '{top_source_name}' at {top_source_pct:.0%}), "
+                                f"{num_sources} sources, top source '{top_source_name}' at {top_source_pct:.0%}, "
+                                f"interest coverage {covered_interests}/{total_interests} = {interest_coverage_pct:.0%}), "
                                 f"skipping live API calls"
                             )
                             return all_products[:MAX_INVENTORY_SIZE]
                         else:
+                            reason_parts = []
+                            if num_sources < MIN_SOURCES_TO_SKIP_LIVE or top_source_pct > MAX_SINGLE_SOURCE_PCT:
+                                reason_parts.append(f"source diversity ({num_sources} sources, top '{top_source_name}' at {top_source_pct:.0%})")
+                            if interest_coverage_pct < MIN_INTEREST_COVERAGE_PCT:
+                                reason_parts.append(f"interest coverage ({covered_interests}/{total_interests} = {interest_coverage_pct:.0%}, need {MIN_INTEREST_COVERAGE_PCT:.0%})")
                             logger.info(
-                                f"Database has {len(all_products)} products but insufficient diversity "
-                                f"({num_sources} sources, top source '{top_source_name}' at {top_source_pct:.0%}). "
+                                f"Database has {len(all_products)} products but insufficient {' and '.join(reason_parts)}. "
                                 f"Proceeding with live API calls to diversify."
                             )
                 else:

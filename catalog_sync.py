@@ -1222,31 +1222,35 @@ def _tag_awin_product_with_interests(title: str, description: str,
     Return all catalog terms whose keywords appear in this product's text.
     Used at sync time to pre-tag Awin/CJ products for fast DB lookup.
 
-    Multi-word terms require ALL meaningful keywords to appear (AND logic).
-    Single-word terms require a word-boundary match (not substring).
-    This prevents "wine tasting" from tagging everything containing just "wine",
-    and "rafting" from tagging products containing "crafting".
+    Both single-word and multi-word terms require word-boundary matches.
+    This prevents "music" from matching "musical", "jim" from matching "jimmy",
+    and multi-word terms like "80s music" from tagging every product that
+    mentions "music" somewhere in a different context.
     """
     text = ' ' + (title + ' ' + description).lower() + ' '
     generic = {"and", "the", "or", "with", "gift", "accessories",
                "lover", "fan", "from", "for", "set", "kit"}
     matching = []
+
+    def _word_boundary_match(w: str) -> bool:
+        """Check if word appears at a word boundary in text."""
+        return ((' ' + w + ' ') in text or (' ' + w + ',') in text or
+                (' ' + w + '.') in text or (' ' + w + ')') in text or
+                (' ' + w + "'") in text or (' ' + w + '"') in text or
+                (' ' + w + '-') in text or (' ' + w + '/') in text or
+                text.startswith(w + ' ') or ('"' + w) in text)
+
     for term in term_list:
         words = [w.lower() for w in term.split()
                  if len(w) > 2 and w.lower() not in generic]
         if not words:
             continue
-        if len(words) == 1:
-            # Single-word: require word boundary (space, punctuation, etc.)
-            w = words[0]
-            if (' ' + w + ' ') in text or (' ' + w + ',') in text or \
-               (' ' + w + '.') in text or (' ' + w + ')') in text or \
-               text.startswith(w + ' ') or ('"' + w) in text:
-                matching.append(term.lower())
-        else:
-            # Multi-word: ALL keywords must appear
-            if all(w in text for w in words):
-                matching.append(term.lower())
+        # All keywords (single or multi-word) require word boundary match.
+        # This prevents "jim" matching "jimmy", "music" matching "musical",
+        # and cross-context matches like a gardening set being tagged "wine tasting"
+        # because its description mentions "wine" and "tasting" in unrelated contexts.
+        if all(_word_boundary_match(w) for w in words):
+            matching.append(term.lower())
     return matching
 
 

@@ -309,6 +309,14 @@ def _build_interest_conditions(interests: List[str]):
     Build SQL condition parts and params for matching a list of profile interests
     against the products table.
 
+    Returns:
+      - condition_parts: flat list of SQL conditions (OR'd for WHERE clause)
+      - params: corresponding parameter values
+      - interest_groups: list of (interest_name, group_conditions, group_params)
+        where group_conditions are the conditions for ONE interest. Used by
+        search_products_diverse to build per-interest CASE WHEN scoring so
+        products matching more interests rank higher.
+
     Strategy: prefer exact tag matches over keyword scatter.
     - Exact tag match: interest_tags LIKE '%"fly fishing"%'  (strongest)
     - Multi-keyword tag match: ALL keywords in interest_tags (moderate)
@@ -322,50 +330,53 @@ def _build_interest_conditions(interests: List[str]):
     """
     condition_parts = []
     params = []
+    interest_groups = []  # per-interest groups for relevance scoring
+
     for interest in interests:
+        group_conds = []
+        group_params = []
+
         # 1. Exact tag match (always — strongest signal)
-        condition_parts.append("interest_tags LIKE ?")
-        params.append(f'%"{interest.lower()}"%')
+        group_conds.append("interest_tags LIKE ?")
+        group_params.append(f'%"{interest.lower()}"%')
 
         keywords = _interest_to_keywords(interest)
-        if not keywords:
-            continue
 
-        if len(keywords) == 1:
-            kw = keywords[0]
-            # Skip overly short keywords that match too broadly
-            if len(kw) < 4:
-                continue
-            # Tag match: keyword appears at start of tag value or after a space
-            condition_parts.append("(interest_tags LIKE ? OR interest_tags LIKE ?)")
-            params.append(f'%"{kw}%')      # starts a tag value: ["rafting...]
-            params.append(f'% {kw}%')       # after a space within a tag
-            # Title match: word-boundary matching
-            condition_parts.append("(title LIKE ? OR title LIKE ? OR title LIKE ?)")
-            params.append(f'{kw}%')         # starts the title
-            params.append(f'% {kw}%')       # after a space
-            params.append(f'%-{kw}%')       # after a hyphen
-        elif len(keywords) == 2:
-            # 2-keyword interests: tag AND match + title AND match
-            # Both words must appear together — "fly" alone won't match "Zipper Fly"
-            tag_ands = " AND ".join(["interest_tags LIKE ?" for _ in keywords])
-            condition_parts.append(f"({tag_ands})")
-            params.extend(f'%{kw}%' for kw in keywords)
+        if keywords:
+            if len(keywords) == 1:
+                kw = keywords[0]
+                # Skip overly short keywords that match too broadly
+                if len(kw) >= 4:
+                    # Tag match: keyword appears at start of tag value or after a space
+                    group_conds.append("(interest_tags LIKE ? OR interest_tags LIKE ?)")
+                    group_params.append(f'%"{kw}%')      # starts a tag value: ["rafting...]
+                    group_params.append(f'% {kw}%')       # after a space within a tag
+                    # Title match: word-boundary matching
+                    group_conds.append("(title LIKE ? OR title LIKE ? OR title LIKE ?)")
+                    group_params.append(f'{kw}%')         # starts the title
+                    group_params.append(f'% {kw}%')       # after a space
+                    group_params.append(f'%-{kw}%')       # after a hyphen
+            elif len(keywords) == 2:
+                # 2-keyword interests: tag AND match + title AND match
+                # Both words must appear together — "fly" alone won't match "Zipper Fly"
+                tag_ands = " AND ".join(["interest_tags LIKE ?" for _ in keywords])
+                group_conds.append(f"({tag_ands})")
+                group_params.extend(f'%{kw}%' for kw in keywords)
 
-            title_ands = " AND ".join(["LOWER(title) LIKE ?" for _ in keywords])
-            condition_parts.append(f"({title_ands})")
-            params.extend(f'%{kw}%' for kw in keywords)
-        else:
-            # 3+ keyword interests (e.g. "Jim Henson productions", "Empire Records cult films"):
-            # ONLY match in tags, NOT in title. With 167k products, scattered keyword
-            # matching in titles produces massive false positives:
-            #   "jim" matches "Jim Beam", "productions" matches "music production"
-            # Tags are curated during sync and more reliable than title substrings.
-            tag_ands = " AND ".join(["interest_tags LIKE ?" for _ in keywords])
-            condition_parts.append(f"({tag_ands})")
-            params.extend(f'%{kw}%' for kw in keywords)
+                title_ands = " AND ".join(["LOWER(title) LIKE ?" for _ in keywords])
+                group_conds.append(f"({title_ands})")
+                group_params.extend(f'%{kw}%' for kw in keywords)
+            else:
+                # 3+ keyword interests: ONLY match in tags, NOT in title.
+                tag_ands = " AND ".join(["interest_tags LIKE ?" for _ in keywords])
+                group_conds.append(f"({tag_ands})")
+                group_params.extend(f'%{kw}%' for kw in keywords)
 
-    return condition_parts, params
+        condition_parts.extend(group_conds)
+        params.extend(group_params)
+        interest_groups.append((interest, group_conds, group_params))
+
+    return condition_parts, params, interest_groups
 
 
 def search_products_by_interests(interests: List[str], limit: int = 100) -> List[Dict]:
@@ -379,7 +390,7 @@ def search_products_by_interests(interests: List[str], limit: int = 100) -> List
     with get_db_connection() as conn:
         cursor = conn.cursor()
 
-        condition_parts, params = _build_interest_conditions(interests)
+        condition_parts, params, _groups = _build_interest_conditions(interests)
         conditions = " OR ".join(condition_parts)
 
         cursor.execute(f"""
@@ -416,30 +427,54 @@ def search_products_diverse(interests: List[str], limit: int = 100,
         if not interests:
             return {'regular': [], 'splurge_candidates': [], 'per_interest_counts': {}}
 
-        condition_parts, params = _build_interest_conditions(interests)
+        condition_parts, params, interest_groups = _build_interest_conditions(interests)
         conditions = " OR ".join(condition_parts)
 
-        # Form-diverse query: rank products within each category, keep top N per form.
-        # Products with no category get category='_uncategorized' so they still participate
-        # in the window function but don't block each other (uncategorized is a big bucket).
+        # Build per-interest CASE WHEN expressions for relevance scoring.
+        # Products matching more interests rank higher than products matching one
+        # loose condition. This prevents guitar picks (matching "80s music" via
+        # a loose "music" substring) from outranking genuinely relevant products.
+        score_parts = []
+        score_params = []
+        for interest_name, group_conds, group_pars in interest_groups:
+            group_or = " OR ".join(group_conds)
+            score_parts.append(f"CASE WHEN ({group_or}) THEN 1 ELSE 0 END")
+            score_params.extend(group_pars)
+
+        if score_parts:
+            relevance_expr = " + ".join(score_parts)
+        else:
+            relevance_expr = "0"
+
+        # Form-diverse query with relevance scoring:
+        # 1. WHERE matches ANY interest condition (same as before)
+        # 2. relevance_score counts HOW MANY interests match (new)
+        # 3. Window function orders by relevance_score DESC, then gift_score DESC
+        # This ensures the top products per category are the most relevant ones,
+        # not just whichever scored 0.98 on the generic gift_score.
         cursor.execute(f"""
-            WITH matched AS (
+            WITH scored AS (
                 SELECT *,
-                    COALESCE(NULLIF(category, ''), '_uncategorized') AS form,
-                    ROW_NUMBER() OVER (
-                        PARTITION BY COALESCE(NULLIF(category, ''), '_uncategorized')
-                        ORDER BY gift_score DESC, popularity_score DESC
-                    ) AS form_rank
+                    ({relevance_expr}) AS relevance_score
                 FROM products
                 WHERE in_stock = 1
                   AND removed_at IS NULL
                   AND ({conditions})
+            ),
+            matched AS (
+                SELECT *,
+                    COALESCE(NULLIF(category, ''), '_uncategorized') AS form,
+                    ROW_NUMBER() OVER (
+                        PARTITION BY COALESCE(NULLIF(category, ''), '_uncategorized')
+                        ORDER BY relevance_score DESC, gift_score DESC, popularity_score DESC
+                    ) AS form_rank
+                FROM scored
             )
             SELECT * FROM matched
             WHERE form_rank <= ?
-            ORDER BY gift_score DESC, popularity_score DESC
+            ORDER BY relevance_score DESC, gift_score DESC, popularity_score DESC
             LIMIT ?
-        """, params + [max_per_category, limit * 2])
+        """, score_params + params + [max_per_category, limit * 2])
 
         all_rows = [dict(row) for row in cursor.fetchall()]
 
@@ -455,16 +490,21 @@ def search_products_diverse(interests: List[str], limit: int = 100,
         except (TypeError, ValueError):
             price = 0.0
 
-        # Count per-interest for gap detection
+        # Count per-interest for gap detection — count PROFILE interests
+        # that appear in the product's tags, not raw tag values.
+        # This makes the log output useful: shows which profile interests
+        # have DB coverage rather than which sync terms are most common.
         tags_raw = row.get('interest_tags', '[]')
         try:
             tags = json.loads(tags_raw) if isinstance(tags_raw, str) else tags_raw
         except (json.JSONDecodeError, TypeError):
             tags = []
-        for tag in (tags if isinstance(tags, list) else []):
-            t = tag.lower().strip()
-            if t:
-                per_interest_counts[t] = per_interest_counts.get(t, 0) + 1
+        tag_set = {t.lower().strip() for t in tags if isinstance(t, str)}
+        for interest in interests:
+            interest_lower = interest.lower()
+            # Check if this profile interest is represented in this product's tags
+            if interest_lower in tag_set or any(interest_lower in t for t in tag_set):
+                per_interest_counts[interest_lower] = per_interest_counts.get(interest_lower, 0) + 1
 
         if splurge_min <= price <= splurge_max:
             splurge.append(row)

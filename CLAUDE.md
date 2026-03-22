@@ -405,6 +405,28 @@ The common insight: we were sending Claude raw text (captions, hashtags, tagged 
 
 ---
 
+## End-to-End Quality Audit (Mar 22, 2026)
+
+**Symptom:** Gift lists for msmollygmartin were nonsensical — camping chairs, weighted blankets, Christmas pullovers, cat toys. Fly fishing (brother's hobby) dominated the top-scored products. Results felt random despite multiple scoring fixes.
+
+**Root causes found (three systemic issues, not just scoring):**
+
+### 1. `search_products_diverse()` was never wired in
+The form-diverse DB query (ROW_NUMBER OVER PARTITION BY category, max 4 per form, ordered by gift_score DESC) was implemented in `database.py` but **never called**. The pipeline still used `search_products_by_interests()` which returns products ordered by popularity with NO form diversity. Result: 15 candles, 12 mugs, whatever was popular — not what matched the profile.
+**Fix:** Switched `multi_retailer_searcher.py` to call `search_products_diverse()`. Now enforces max 4 products per form, orders by gift_score, separates splurge candidates ($200-$1500).
+
+### 2. DB query keyword matching was too loose
+`_build_interest_conditions()` generated separate OR conditions for each keyword. "fly fishing" → `tags LIKE '%fly%' OR tags LIKE '%fishing%' OR title LIKE '%fly%' OR title LIKE '%fishing%'`. A product with "Zipper Fly" in its title matched the "fly" condition alone.
+**Fix:** Multi-keyword interests now require ALL keywords to match together: `(tags LIKE '%fly%' AND tags LIKE '%fishing%')`. Single-keyword interests unchanged. This prevents "Zipper Fly" from matching "fly fishing".
+
+### 3. Third-party interests leaked through confidence filter
+Profile analyzer was told to skip low-confidence interests (fly fishing = brother's hobby). But Sonnet sometimes assigned medium confidence instead of low. The code filter only caught `confidence == 'low'`.
+**Fix:** Added `_is_third_party_interest()` in `giftwise_app.py` that checks the interest's evidence text for third-person markers ("brother", "sister", "dad", "his hobby", etc.). Catches interests that Sonnet mislabeled as medium confidence.
+
+**Files changed:** `multi_retailer_searcher.py`, `database.py`, `giftwise_app.py`, `revenue_optimizer.py`, `recommendation_service.py`, `models.py`
+
+---
+
 ## Pre-Filter Scoring Fix (Mar 22, 2026)
 
 **Symptom:** `Pre-filtered to 30 products by relevance score (range 0.14–0.16)`. Even after rebalancing weights, range only widened to 0.06–0.16. TOP 5 products were random junk (plant stand, medal hanger, star pillow) matching `partial[community tv show:1/2]` — the word "show" appeared in unrelated product descriptions.

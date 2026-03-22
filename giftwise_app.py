@@ -99,21 +99,46 @@ from apify_utils import scrape_instagram_apify, scrape_tiktok_apify
 from database import check_and_record_pipeline_run
 
 
+def _is_third_party_interest(interest: dict) -> bool:
+    """
+    Detect interests that belong to someone else (family, friend, partner).
+    The profile analyzer SHOULD mark these as low confidence, but Sonnet
+    sometimes assigns medium. This is a code-level safety net.
+    """
+    evidence = (interest.get('evidence', '') or interest.get('description', '') or '').lower()
+    # Third-person possessives and family references in the evidence text
+    THIRD_PARTY_MARKERS = [
+        "brother", "sister", "dad", "father", "mom", "mother",
+        "husband", "wife", "partner", "boyfriend", "girlfriend",
+        "his hobby", "her hobby", "his passion", "her passion",
+        "their hobby", "family member",
+    ]
+    return any(marker in evidence for marker in THIRD_PARTY_MARKERS)
+
+
 def profile_for_search_and_curation(profile):
     """
-    Return a copy of profile with work and low-confidence interests removed.
+    Return a copy of profile with work, low-confidence, and third-party interests removed.
     Use for search and curation so work never drives queries or recommendations,
     and third-party interests (e.g. brother's fly fishing) don't leak through.
     Full profile is still used for filtering (e.g. exclude work-related products, workplace experiences).
     """
     if not profile or not isinstance(profile, dict):
         return profile
-    import copy
+    import copy, logging
+    logger = logging.getLogger('giftwise')
     p = copy.deepcopy(profile)
-    p['interests'] = [
-        i for i in p.get('interests', [])
-        if not i.get('is_work') and i.get('confidence', 'high') != 'low'
-    ]
+    filtered = []
+    for i in p.get('interests', []):
+        if i.get('is_work'):
+            continue
+        if i.get('confidence', 'high') == 'low':
+            continue
+        if _is_third_party_interest(i):
+            logger.info(f"Filtering third-party interest: {i.get('name', '?')} (evidence mentions family/friend)")
+            continue
+        filtered.append(i)
+    p['interests'] = filtered
     return p
 
 ENHANCED_ENGINE_AVAILABLE = False

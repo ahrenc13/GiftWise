@@ -150,12 +150,19 @@ def score_product_for_profile(product: Dict, profile: Dict, relationship: str):
                 interest_reasons.append(f"tag_match[{interest_name}]")
                 this_interest_matched = True
             else:
-                # Check if interest phrase appears within any tag (e.g. "wine" in "wine tasting" tag)
-                tag_contains = any(interest_name in tag for tag in parsed_tags)
-                if tag_contains:
-                    interest_score += 0.15
-                    interest_reasons.append(f"tag_substr[{interest_name}]")
-                    this_interest_matched = True
+                # Check if interest phrase appears within any tag, but only if the tag
+                # is closely related (not a mega-tag with 10+ interests crammed in).
+                # A tag like "jim henson" containing interest "jim henson" is fine.
+                # A tag like "jim henson muppets fraggle rock wine tasting gardening"
+                # containing "jim henson" is too loose — the product was multi-labeled
+                # during sync and the match is coincidental. Require the interest to be
+                # at least 40% of the tag length to count as a real substring match.
+                for tag in parsed_tags:
+                    if interest_name in tag and len(interest_name) >= len(tag) * 0.4:
+                        interest_score += 0.15
+                        interest_reasons.append(f"tag_substr[{interest_name}]")
+                        this_interest_matched = True
+                        break
 
         if not this_interest_matched:
             # Fall back to keyword matching with word boundaries

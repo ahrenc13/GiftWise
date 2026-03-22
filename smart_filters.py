@@ -221,22 +221,26 @@ class ObsoleteFormatFilter:
         'surname', 'clan gift', 'family name gift', 'family crest gift',
     ]
 
-    # Retro/analog interest signals — if ANY interest matches these,
-    # skip the obsolete content filter for products tied to that interest.
-    # Also covers explicit CD/physical media collectors.
-    RETRO_SIGNALS = [
-        'vinyl', 'record', 'turntable', 'retro', 'analog', 'analogue',
-        'cassette', 'tape deck', 'hi-fi', 'hifi', 'audiophile',
-        'vintage audio', 'vintage music', 'record collection',
-        'record store', 'crate digging',
-        # Explicit physical media collectors — only exempt if they SAID they collect these
+    # FORMAT-SPECIFIC signals — interest explicitly mentions a physical media format.
+    # Only these justify exempting obsolete media products from filtering.
+    # "Retro" and "vintage" alone do NOT qualify — liking 80s culture doesn't mean
+    # you want a random DVD.
+    FORMAT_SPECIFIC_SIGNALS = [
+        'vinyl', 'record collection', 'record store', 'crate digging',
+        'turntable', 'cassette', 'tape deck', 'hi-fi', 'hifi', 'audiophile',
+        'vintage audio', 'vintage music', 'analog audio', 'analogue audio',
         'cd collecting', 'cd collection', 'compact disc collection',
         'dvd collecting', 'blu-ray collection', 'physical media',
     ]
 
     @staticmethod
     def _has_retro_interest(profile):
-        """Check if profile has retro/analog audio interests."""
+        """Check if profile has explicit physical media format interests.
+
+        Only returns interest names where the person explicitly signals they
+        collect or care about a physical format (vinyl, cassettes, CDs, DVDs).
+        Broad cultural interests like '80s culture' or 'retro' do NOT qualify.
+        """
         if not profile:
             return set()
         retro_interest_names = set()
@@ -244,7 +248,7 @@ class ObsoleteFormatFilter:
             name = (interest.get('name') or '').lower()
             desc = (interest.get('description') or '').lower()
             combined = name + ' ' + desc
-            if any(signal in combined for signal in ObsoleteFormatFilter.RETRO_SIGNALS):
+            if any(signal in combined for signal in ObsoleteFormatFilter.FORMAT_SPECIFIC_SIGNALS):
                 retro_interest_names.add(name)
         return retro_interest_names
 
@@ -290,7 +294,7 @@ class ObsoleteFormatFilter:
 
         retro_interests = ObsoleteFormatFilter._has_retro_interest(profile)
         if retro_interests:
-            logger.info(f"Retro/analog interests detected: {retro_interests} — allowing vintage media for those interests")
+            logger.info(f"Physical media format interests detected: {retro_interests} — allowing vintage media for those interests")
 
         filtered = []
         excluded_count = 0

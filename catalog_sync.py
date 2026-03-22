@@ -1219,20 +1219,34 @@ def _awin_row_to_catalog_product(row: Dict, advertiser_name: str, advertiser_id:
 def _tag_awin_product_with_interests(title: str, description: str,
                                       term_list: List[str]) -> List[str]:
     """
-    Return all catalog terms whose primary words appear in this product's text.
-    Used at sync time to pre-tag Awin products for fast DB lookup by interest.
-    We use the first meaningful word of each term (broad match), which is the
-    right tradeoff for pre-tagging: we'd rather over-tag than miss a match.
+    Return all catalog terms whose keywords appear in this product's text.
+    Used at sync time to pre-tag Awin/CJ products for fast DB lookup.
+
+    Multi-word terms require ALL meaningful keywords to appear (AND logic).
+    Single-word terms require a word-boundary match (not substring).
+    This prevents "wine tasting" from tagging everything containing just "wine",
+    and "rafting" from tagging products containing "crafting".
     """
-    text = (title + ' ' + description).lower()
+    text = ' ' + (title + ' ' + description).lower() + ' '
     generic = {"and", "the", "or", "with", "gift", "accessories",
                "lover", "fan", "from", "for", "set", "kit"}
     matching = []
     for term in term_list:
         words = [w.lower() for w in term.split()
                  if len(w) > 2 and w.lower() not in generic]
-        if words and any(w in text for w in words):
-            matching.append(term.lower())
+        if not words:
+            continue
+        if len(words) == 1:
+            # Single-word: require word boundary (space, punctuation, etc.)
+            w = words[0]
+            if (' ' + w + ' ') in text or (' ' + w + ',') in text or \
+               (' ' + w + '.') in text or (' ' + w + ')') in text or \
+               text.startswith(w + ' ') or ('"' + w) in text:
+                matching.append(term.lower())
+        else:
+            # Multi-word: ALL keywords must appear
+            if all(w in text for w in words):
+                matching.append(term.lower())
     return matching
 
 

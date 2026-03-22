@@ -103,17 +103,34 @@ def _is_third_party_interest(interest: dict) -> bool:
     """
     Detect interests that belong to someone else (family, friend, partner).
     The profile analyzer SHOULD mark these as low confidence, but Sonnet
-    sometimes assigns medium. This is a code-level safety net.
+    sometimes assigns medium or even high. This is a code-level safety net.
+
+    Checks both the evidence text AND the interest name for third-party signals.
     """
     evidence = (interest.get('evidence', '') or interest.get('description', '') or '').lower()
+    name = (interest.get('name', '') or '').lower()
+
     # Third-person possessives and family references in the evidence text
     THIRD_PARTY_MARKERS = [
         "brother", "sister", "dad", "father", "mom", "mother",
         "husband", "wife", "partner", "boyfriend", "girlfriend",
         "his hobby", "her hobby", "his passion", "her passion",
         "their hobby", "family member",
+        # Broader attribution language Sonnet sometimes uses
+        "proud of", "cheering for", "supporting",
+        "someone else", "another person", "family",
+        "his trip", "her trip", "his catch", "her catch",
+        "watching him", "watching her",
     ]
-    return any(marker in evidence for marker in THIRD_PARTY_MARKERS)
+    if any(marker in evidence for marker in THIRD_PARTY_MARKERS):
+        return True
+
+    # Check for third-person possessives in evidence (e.g. "brother's fly fishing")
+    import re
+    if re.search(r"\b(he|him|his|she|her)\b.*\b(fish|golf|hunt|hik|climb|ski|surf)", evidence):
+        return True
+
+    return False
 
 
 def profile_for_search_and_curation(profile):

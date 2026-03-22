@@ -283,7 +283,8 @@ class RecommendationService:
             is_work = i.get('is_work', False)
             in_backend = name in [bi.get('name', '') for bi in profile_for_backend.get('interests', [])]
             status = 'INCLUDED' if in_backend else ('WORK' if is_work else f'EXCLUDED(conf={conf})')
-            logger.info(f"  Interest: {name} | confidence={conf} | {status}")
+            evidence_snippet = (i.get('evidence', '') or i.get('description', '') or '')[:100]
+            logger.info(f"  Interest: {name} | confidence={conf} | {status} | evidence={evidence_snippet}")
 
         self.progress_callback(
             stage='profile_done',
@@ -383,6 +384,19 @@ class RecommendationService:
                 if not self.should_filter_product(p.get('title', '') or p.get('name', ''), quality_filters)
             ]
             logger.info(f"Intelligence filters removed {original_count - len(products)} inappropriate products ({len(products)} remaining)")
+
+        # Category blocklist — remove products that should never be gift recommendations
+        # (religious ceremony items, baby supplies, industrial goods, etc.)
+        # These leak through because the DB has 80k products with loose keyword tags.
+        from post_curation_cleanup import _is_wrong_category_for_replacement
+        pre_blocklist = len(products)
+        products = [
+            p for p in products
+            if not _is_wrong_category_for_replacement(p.get('title', '') or p.get('name', ''))
+        ]
+        blocked = pre_blocklist - len(products)
+        if blocked:
+            logger.info(f"Category blocklist removed {blocked} products ({len(products)} remaining)")
 
         # Smart filters (work exclusion, passive/active, etc.)
         products = self.apply_smart_filters(products, profile)

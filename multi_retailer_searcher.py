@@ -100,6 +100,8 @@ def search_products_multi_retailer(
                         interests.append(str(i))
                 interests = [n for n in interests if n]  # remove empty strings
 
+            logger.info(f"Interests for DB search ({len(interests)}): {interests}")
+
             if interests:
                 # Query database for products matching interests
                 db_products = database.search_products_by_interests(interests, limit=target_count * 2)

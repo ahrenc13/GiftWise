@@ -276,6 +276,15 @@ class RecommendationService:
 
         logger.info(f"Profile built: {len(interest_names)} interests ({non_work_count} non-work), location: {location}")
 
+        # Log individual interests with confidence for debugging quality issues
+        for i in profile.get('interests', []):
+            name = i.get('name', '?')
+            conf = i.get('confidence', 'unset')
+            is_work = i.get('is_work', False)
+            in_backend = name in [bi.get('name', '') for bi in profile_for_backend.get('interests', [])]
+            status = 'INCLUDED' if in_backend else ('WORK' if is_work else f'EXCLUDED(conf={conf})')
+            logger.info(f"  Interest: {name} | confidence={conf} | {status}")
+
         self.progress_callback(
             stage='profile_done',
             stage_label='Profile complete! Enriching with gift intelligence...',

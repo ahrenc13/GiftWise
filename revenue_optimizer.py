@@ -118,29 +118,49 @@ def score_product_for_profile(product: Dict, profile: Dict, relationship: str):
                     reasons.append(f"AVOID:dont_buy[{interest_name}]")
                     break
 
-        # Keyword matching — runs for every interest independently
+        # Interest matching: prefer exact phrase match in tags over scattered keyword match.
+        # "fly fishing" as a tagged phrase is a real signal.
+        # "fly" from "Zipper Fly" + "fishing" from unrelated tags is a false positive.
         if not this_interest_matched:
-            keywords = database._interest_to_keywords(interest_name)
-            if keywords:
-                matches = sum(1 for kw in keywords if kw in product_text)
-                if matches >= len(keywords):
-                    # Full keyword match — all words from interest found in product
-                    interest_score += 0.15
-                    interest_reasons.append(f"full_match[{interest_name}]")
-                    this_interest_matched = True
-                elif matches >= 2:
-                    # Partial match with 2+ keywords — reasonable signal
-                    partial = 0.08 * (matches / len(keywords))
-                    interest_score += partial
-                    interest_reasons.append(f"partial[{interest_name}:{matches}/{len(keywords)}]")
-                    this_interest_matched = True
-                elif matches == 1 and len(keywords) <= 2:
-                    # Single keyword match from a 1-2 keyword interest — very weak.
-                    # e.g. "80s music" matching only "music" in a Bluetooth speaker.
-                    # Give minimal credit; don't count as an interest match for the
-                    # multi-interest bonus.
-                    interest_score += 0.02
-                    interest_reasons.append(f"weak_partial[{interest_name}:{matches}/{len(keywords)}]")
+            # First: check if the full interest phrase appears in tags (strongest signal)
+            if interest_name in product_tags:
+                interest_score += 0.20
+                interest_reasons.append(f"tag_match[{interest_name}]")
+                this_interest_matched = True
+            else:
+                # Fall back to keyword matching
+                keywords = database._interest_to_keywords(interest_name)
+                if keywords:
+                    # Check keywords in tags vs title separately
+                    tag_matches = sum(1 for kw in keywords if kw in product_tags)
+                    title_matches = sum(1 for kw in keywords if kw in product_title)
+                    total_matches = sum(1 for kw in keywords if kw in product_text)
+
+                    if total_matches >= len(keywords) and tag_matches >= len(keywords):
+                        # All keywords found in tags — strong signal
+                        interest_score += 0.15
+                        interest_reasons.append(f"full_match[{interest_name}]")
+                        this_interest_matched = True
+                    elif total_matches >= len(keywords) and tag_matches > 0:
+                        # All keywords found overall, at least one in tags — moderate
+                        interest_score += 0.10
+                        interest_reasons.append(f"mixed_match[{interest_name}]")
+                        this_interest_matched = True
+                    elif total_matches >= len(keywords):
+                        # All keywords found but NONE in tags — likely false positive
+                        # (e.g. "fly" from "Zipper Fly" + "fishing" from description)
+                        interest_score += 0.03
+                        interest_reasons.append(f"title_only[{interest_name}]")
+                    elif total_matches >= 2:
+                        # Partial match with 2+ keywords
+                        partial = 0.06 * (total_matches / len(keywords))
+                        interest_score += partial
+                        interest_reasons.append(f"partial[{interest_name}:{total_matches}/{len(keywords)}]")
+                        this_interest_matched = True
+                    elif total_matches == 1 and len(keywords) <= 2:
+                        # Single keyword match from short interest — very weak
+                        interest_score += 0.02
+                        interest_reasons.append(f"weak_partial[{interest_name}:{total_matches}/{len(keywords)}]")
 
         if this_interest_matched:
             interests_matched += 1

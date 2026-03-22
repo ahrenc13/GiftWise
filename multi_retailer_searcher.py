@@ -103,19 +103,32 @@ def search_products_multi_retailer(
             logger.info(f"Interests for DB search ({len(interests)}): {interests}")
 
             if interests:
-                # Query database for products matching interests
-                db_products = database.search_products_by_interests(interests, limit=target_count * 2)
+                # Use form-diverse query: returns at most 4 products per category,
+                # ordered by gift_score DESC. This prevents 15 candles or 12 mugs
+                # from dominating the pool. Also separates splurge candidates ($200-$1500).
+                db_result = database.search_products_diverse(
+                    interests, limit=target_count * 2, max_per_category=4
+                )
+                db_products = db_result.get('regular', [])
+                splurge_candidates = db_result.get('splurge_candidates', [])
+                per_interest_counts = db_result.get('per_interest_counts', {})
 
-                if db_products:
+                if per_interest_counts:
+                    logger.info(f"Per-interest DB coverage: {dict(list(per_interest_counts.items())[:10])}")
+
+                # Combine regular + a few splurge candidates for the pool
+                all_db_rows = db_products + splurge_candidates[:5]
+
+                if all_db_rows:
                     # Convert database rows to product dicts
-                    for row in db_products:
+                    for row in all_db_rows:
                         try:
                             product = Product.from_db_row(row)
                             all_products.append(product.to_curator_format())
                         except Exception as e:
                             logger.error(f"Error converting database product: {e}")
 
-                    logger.info(f"Got {len(all_products)} products from database cache")
+                    logger.info(f"Got {len(all_products)} products from database cache (form-diverse, {len(splurge_candidates)} splurge candidates)")
 
                     # Only skip live APIs if we have enough products AND source diversity.
                     # Without this check, once eBay floods the cache, Awin/CJ feeds are

@@ -303,28 +303,44 @@ def _build_interest_conditions(interests: List[str]):
     Build SQL condition parts and params for matching a list of profile interests
     against the products table.
 
-    For each interest we generate three match types:
-      1. Exact tag match:    interest_tags LIKE '%"dog care"%'
-         (catches cases where profile interest IS a sync term)
-      2. Keyword tag match:  interest_tags LIKE '%dog%'
-         (catches sync tags like 'dog toy', 'dog treats' for interest 'dog care')
-      3. Title keyword match: title LIKE '%dog%'
-         (fallback for products whose tags are sparse)
+    For each interest we generate match conditions that are OR'd across interests
+    but AND'd within a multi-keyword interest:
+      1. Exact tag match:    interest_tags LIKE '%"fly fishing"%'
+      2. All-keywords-in-tags: (tags LIKE '%fly%' AND tags LIKE '%fishing%')
+      3. All-keywords-in-title: (title LIKE '%fly%' AND title LIKE '%fishing%')
 
-    This mirrors how _tag_awin_product_with_interests tags products at sync time.
+    For single-keyword interests, conditions 2 and 3 are simple single-word LIKE.
+    This prevents "Zipper Fly" from matching "fly fishing" — both keywords must
+    appear together, not just one.
     """
     condition_parts = []
     params = []
     for interest in interests:
-        # 1. Exact tag match
+        # 1. Exact tag match (always)
         condition_parts.append("interest_tags LIKE ?")
         params.append(f'%"{interest.lower()}"%')
-        # 2 & 3. Keyword matches
-        for word in _interest_to_keywords(interest):
+
+        keywords = _interest_to_keywords(interest)
+        if not keywords:
+            continue
+
+        if len(keywords) == 1:
+            # Single keyword: simple LIKE (same as before)
             condition_parts.append("interest_tags LIKE ?")
-            params.append(f'%{word}%')
+            params.append(f'%{keywords[0]}%')
             condition_parts.append("title LIKE ?")
-            params.append(f'%{word}%')
+            params.append(f'%{keywords[0]}%')
+        else:
+            # Multi-keyword: require ALL keywords to appear together.
+            # This prevents "fly" alone from matching "Zipper Fly".
+            tag_ands = " AND ".join(["interest_tags LIKE ?" for _ in keywords])
+            condition_parts.append(f"({tag_ands})")
+            params.extend(f'%{kw}%' for kw in keywords)
+
+            title_ands = " AND ".join(["title LIKE ?" for _ in keywords])
+            condition_parts.append(f"({title_ands})")
+            params.extend(f'%{kw}%' for kw in keywords)
+
     return condition_parts, params
 
 

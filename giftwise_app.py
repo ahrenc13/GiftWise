@@ -1236,6 +1236,7 @@ def parse_tiktok_data(data, username):
     original_creators = []
     hashtags_all = []
     music_all = []
+    music_artists_all = []
 
     def _get(item, flat_key, nested_keys=None, default=''):
         """Try flattened key first, then nested path."""
@@ -1299,12 +1300,15 @@ def parse_tiktok_data(data, username):
         hashtags_all.extend(video_info['hashtags'])
         if video_info['music']:
             music_all.append(video_info['music'])
-    
+        if video_info.get('music_artist'):
+            music_artists_all.append(video_info['music_artist'])
+
     # Analyze repost patterns
     creator_frequency = Counter(original_creators)
     hashtag_frequency = Counter(hashtags_all)
     music_frequency = Counter(music_all)
-    
+    music_artist_frequency = Counter(music_artists_all)
+
     return {
         'username': username,
         'videos': videos,
@@ -1315,6 +1319,7 @@ def parse_tiktok_data(data, username):
         'favorite_creators': creator_frequency.most_common(10),
         'top_hashtags': dict(hashtag_frequency.most_common(15)),
         'top_music': dict(music_frequency.most_common(10)),
+        'top_music_artists': dict(music_artist_frequency.most_common(10)),
         'repost_patterns': {
             'total_reposts': len(reposts),
             'favorite_creators': creator_frequency.most_common(5),

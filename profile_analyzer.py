@@ -20,8 +20,9 @@ Date: February 2026
 
 import json
 import logging
-from collections import Counter
-from datetime import datetime
+import re
+from collections import Counter, defaultdict
+from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,186 @@ PINTEREST_BOARDS_SAMPLED = 15
 PINTEREST_PINS_PER_BOARD = 8
 PINTEREST_PIN_DESCRIPTIONS_IN_SUMMARY = 35
 PINTEREST_BOARD_NAMES = 20
+
+
+# ---------------------------------------------------------------------------
+# Pre-LLM signal extraction helpers (Items 1-4)
+# These extract structured signals from raw platform data before sending to
+# Claude, so the LLM receives facts rather than having to infer them from
+# walls of captions.
+# ---------------------------------------------------------------------------
+
+def _parse_timestamp(ts_str):
+    """Parse ISO-ish timestamp strings from Apify into a datetime (UTC).
+    Returns None on failure — callers should skip posts with no valid timestamp."""
+    if not ts_str:
+        return None
+    try:
+        # Handle ISO format with or without timezone
+        ts_str = str(ts_str).strip()
+        # Remove trailing Z and treat as UTC
+        if ts_str.endswith('Z'):
+            ts_str = ts_str[:-1] + '+00:00'
+        dt = datetime.fromisoformat(ts_str)
+        # Normalize to UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except (ValueError, TypeError):
+        return None
+
+
+def _extract_temporal_signals(posts, hashtag_key='hashtags', now=None):
+    """Analyze post timestamps to detect recent vs dormant interests.
+
+    Returns a dict with:
+      - recent_hashtags: hashtags from last 30 days with counts
+      - older_hashtags: hashtags from 30+ days ago with counts
+      - recent_post_count / older_post_count
+      - momentum_topics: hashtags that appear MORE in recent than older (rising)
+      - fading_topics: hashtags that appear in older but NOT recent (declining)
+
+    Designed to be additive — caller decides how to format for the prompt.
+    """
+    if now is None:
+        now = datetime.now(timezone.utc)
+
+    recent_hashtags = Counter()
+    older_hashtags = Counter()
+    recent_count = 0
+    older_count = 0
+
+    for p in posts:
+        dt = _parse_timestamp(p.get('timestamp', ''))
+        if dt is None:
+            continue
+        days_ago = (now - dt).days
+        tags = p.get(hashtag_key, [])
+        if days_ago <= 30:
+            recent_count += 1
+            recent_hashtags.update(tags)
+        else:
+            older_count += 1
+            older_hashtags.update(tags)
+
+    # Momentum: topics that are rising (more frequent recently, relative to post count)
+    momentum = []
+    fading = []
+    if recent_count > 0 and older_count > 0:
+        # Normalize rates per post
+        for tag in set(list(recent_hashtags.keys()) + list(older_hashtags.keys())):
+            recent_rate = recent_hashtags.get(tag, 0) / recent_count
+            older_rate = older_hashtags.get(tag, 0) / older_count
+            if recent_rate > older_rate * 1.5 and recent_hashtags.get(tag, 0) >= 2:
+                momentum.append(tag)
+            elif older_rate > 0 and recent_hashtags.get(tag, 0) == 0 and older_hashtags.get(tag, 0) >= 2:
+                fading.append(tag)
+
+    return {
+        'recent_hashtags': recent_hashtags.most_common(15),
+        'older_hashtags': older_hashtags.most_common(15),
+        'recent_post_count': recent_count,
+        'older_post_count': older_count,
+        'momentum_topics': momentum[:10],
+        'fading_topics': fading[:10],
+    }
+
+
+def _extract_engagement_spikes(posts, engagement_fn=None):
+    """Find posts with 3x+ average engagement — high-resonance content.
+
+    Returns list of (post, spike_ratio) tuples, sorted by ratio desc.
+    """
+    if not posts:
+        return []
+
+    if engagement_fn is None:
+        engagement_fn = lambda p: p.get('likes', 0) + p.get('comments', 0) * 2
+
+    engagements = [engagement_fn(p) for p in posts]
+    avg = sum(engagements) / len(engagements) if engagements else 1
+
+    spikes = []
+    for p, eng in zip(posts, engagements):
+        if avg > 0 and eng >= avg * 3:
+            spikes.append((p, eng / avg))
+
+    spikes.sort(key=lambda x: x[1], reverse=True)
+    return spikes[:8]
+
+
+def _extract_music_artists(tiktok_data):
+    """Extract music artists used frequently in TikTok videos.
+
+    Returns list of (artist, count) tuples for artists used 2+ times.
+    These are concrete interest signals that don't need LLM inference.
+    """
+    top_artists = tiktok_data.get('top_music_artists', {})
+    if not top_artists:
+        # Fallback: iterate videos if top_music_artists wasn't aggregated
+        artist_counts = Counter()
+        for v in tiktok_data.get('videos', []):
+            artist = v.get('music_artist', '')
+            if artist and artist.lower() not in ('original sound', 'original audio',
+                                                   'original', 'son original',
+                                                   'som original'):
+                artist_counts[artist] += 1
+        top_artists = dict(artist_counts.most_common(10))
+
+    # Filter: only artists used 2+ times (1x could be random/background)
+    # Also filter out "original sound" variants
+    _ORIGINAL_SOUND = {'original sound', 'original audio', 'original', 'son original', 'som original'}
+    return [
+        (artist, count)
+        for artist, count in sorted(top_artists.items(), key=lambda x: x[1], reverse=True)
+        if count >= 2 and artist.lower() not in _ORIGINAL_SOUND
+    ]
+
+
+# Known brand-indicator patterns for Instagram tagged accounts
+_BRAND_SUFFIXES = {'official', 'hq', 'shop', 'store', 'brand', 'co', 'inc',
+                   'boutique', 'studio', 'beauty', 'apparel', 'clothing',
+                   'skincare', 'cosmetics', 'jewelry', 'jewellery', 'watches',
+                   'coffee', 'brewing', 'fitness', 'athletics', 'outdoors'}
+
+def _classify_tagged_accounts(tagged_counter):
+    """Separate tagged Instagram accounts into likely-brand vs likely-personal.
+
+    Heuristics (conservative — false negatives are fine, false positives hurt):
+    - Contains a dot mid-name (e.g. free.people, glossier.official)
+    - Ends with a brand suffix (e.g. nike_official, target_style)
+    - Single word, no numbers, all lowercase (e.g. nike, glossier, sephora)
+
+    Returns (brand_tags, personal_tags) as lists of (name, count).
+    """
+    brands = []
+    personal = []
+
+    for name, count in tagged_counter.most_common(30):
+        name_lower = name.lower().strip('@')
+
+        # Check for brand-indicator patterns
+        is_brand = False
+
+        # Dot in username (not at start/end) — very common for brands
+        if '.' in name_lower and not name_lower.startswith('.') and not name_lower.endswith('.'):
+            is_brand = True
+
+        # Ends with a brand suffix after underscore or dot
+        parts = re.split(r'[._]', name_lower)
+        if len(parts) >= 2 and parts[-1] in _BRAND_SUFFIXES:
+            is_brand = True
+
+        # Single word, no numbers, 3+ chars — likely a brand handle (nike, sephora, target)
+        if re.match(r'^[a-z]{3,20}$', name_lower) and count >= 2:
+            is_brand = True
+
+        if is_brand:
+            brands.append((name, count))
+        else:
+            personal.append((name, count))
+
+    return brands, personal
 
 
 def build_recipient_profile(platforms, recipient_type, relationship, claude_client, model=None):
@@ -82,7 +263,7 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
             # Generate hash from platform data for cache lookup.
             # Include a prompt version so cache is invalidated when the
             # analysis prompt changes (e.g. interest attribution fix).
-            _PROMPT_VERSION = "2026-03-21-attribution-v2"
+            _PROMPT_VERSION = "2026-03-22-signals-v3"
             cache_data = {
                 'instagram': platforms.get('instagram', {}).get('data', {}),
                 'tiktok': platforms.get('tiktok', {}).get('data', {}),
@@ -157,15 +338,55 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
         if followers and followers > 0:
             follower_section = f"\n- Followers: {followers:,}"
 
-        # Tagged accounts section - brands, venues, people they engage with
+        # [Item 4] Separate tagged accounts into brand vs personal
         tagged_section = ""
+        brand_affinity_section = ""
         if tagged_accounts:
-            top_tagged = tagged_accounts.most_common(20)
-            tagged_section = f"\nTAGGED ACCOUNTS (brands, venues, friends tagged in photos - strong affinity signal): {', '.join(f'@{t} ({c}x)' for t, c in top_tagged)}"
+            brand_tags, personal_tags = _classify_tagged_accounts(tagged_accounts)
+            if brand_tags:
+                brand_affinity_section = (
+                    "\nBRAND AFFINITIES (accounts tagged that appear to be brands — "
+                    "direct ownership/loyalty signal, stronger than hashtags):\n" +
+                    "\n".join(f"- @{t} ({c}x)" for t, c in brand_tags[:15])
+                )
+            # Keep personal tags in the existing format (less prominent)
+            if personal_tags:
+                tagged_section = f"\nTAGGED PEOPLE (friends, collaborators): {', '.join(f'@{t} ({c}x)' for t, c in personal_tags[:15])}"
 
         # Engagement relative to their own average (more meaningful than absolute)
-        avg_engagement = sum(p.get('likes', 0) + p.get('comments', 0) * 2 for p in priority_posts) / len(priority_posts) if priority_posts else 1
+        # [Item 2] Calculate average over ALL posts (not just priority_posts) for a true baseline
+        all_engagements = [(p.get('likes', 0) + p.get('comments', 0) * 2) for p in posts]
+        avg_engagement = sum(all_engagements) / len(all_engagements) if all_engagements else 1
         standout_posts = [p for p in priority_posts if (p.get('likes', 0) + p.get('comments', 0) * 2) > avg_engagement * 2]
+
+        # [Item 2] True spikes (3x+ average across ALL posts) — high-resonance content
+        ig_spikes = _extract_engagement_spikes(posts)
+        spike_section = ""
+        if ig_spikes:
+            spike_lines = []
+            for p, ratio in ig_spikes[:5]:
+                caption = (p.get('caption', '') or '')[:120]
+                spike_lines.append(f"- [{ratio:.1f}x avg] {caption}")
+            spike_section = (
+                f"\nHIGH-RESONANCE POSTS ({len(ig_spikes)} posts with 3x+ their normal engagement — "
+                "these topics are core identity, not just passing content):\n" +
+                "\n".join(spike_lines)
+            )
+
+        # [Item 1] Temporal signals — recent vs older interest patterns
+        temporal_section = ""
+        temporal = _extract_temporal_signals(posts)
+        if temporal['recent_post_count'] > 0 and temporal['older_post_count'] > 0:
+            parts = []
+            if temporal['momentum_topics']:
+                parts.append(f"Rising interests (more frequent recently): {', '.join(temporal['momentum_topics'][:8])}")
+            if temporal['fading_topics']:
+                parts.append(f"Fading interests (absent from recent posts): {', '.join(temporal['fading_topics'][:8])}")
+            if temporal['recent_hashtags']:
+                recent_tags = [f"{t} ({c}x)" for t, c in temporal['recent_hashtags'][:10]]
+                parts.append(f"Last 30 days focus ({temporal['recent_post_count']} posts): {', '.join(recent_tags)}")
+            if parts:
+                temporal_section = "\nTEMPORAL SIGNALS (what's current vs fading — prioritize recent activity):\n" + "\n".join(f"- {p}" for p in parts)
 
         data_summary.append(f"""
 INSTAGRAM PROFILE (@{username} - {len(posts)} posts analyzed):{bio_section}
@@ -176,7 +397,7 @@ HIGH ENGAGEMENT POSTS ({len(high_engagement)} posts with 50+ engagement):
 TOP HASHTAGS: {', '.join(top_hashtags)}
 
 GEOTAGGED LOCATIONS (structured - these are real venue/place tags, not guesses): {', '.join(set(locations[:15])) if locations else 'none'}
-{tagged_section}
+{brand_affinity_section}{tagged_section}{spike_section}{temporal_section}
 STANDOUT POSTS ({len(standout_posts)} posts with 2x+ their average engagement - these topics resonate MOST):
 {chr(10).join(['- ' + (p.get('caption', '')[:150]) for p in standout_posts[:8]]) if standout_posts else '(none)'}
 
@@ -222,6 +443,48 @@ MUSIC TASTE (songs used in their videos - indicates music preferences, concert i
 {chr(10).join(music_lines)}
 """
 
+        # [Item 3] Music artist extraction — concrete interest signals without LLM inference.
+        # If someone uses Fleetwood Mac in 4 videos, that's a direct interest.
+        music_artist_section = ""
+        music_artists = _extract_music_artists(tiktok_data)
+        if music_artists:
+            artist_lines = [f"- {artist} ({count} videos)" for artist, count in music_artists]
+            music_artist_section = (
+                "\nMUSIC ARTISTS (repeatedly used in videos — these are direct interest signals, "
+                "treat each as a confirmed interest for merch, vinyl, concert tickets):\n" +
+                "\n".join(artist_lines)
+            )
+
+        # [Item 2] Engagement spikes for TikTok (3x+ average)
+        tt_engagement_fn = lambda v: v.get('likes', 0) + v.get('comments', 0) * 2 + v.get('shares', 0) * 3
+        tt_spikes = _extract_engagement_spikes(videos, engagement_fn=tt_engagement_fn)
+        tt_spike_section = ""
+        if tt_spikes:
+            spike_lines = []
+            for v, ratio in tt_spikes[:5]:
+                desc = (v.get('description', '') or '')[:120]
+                spike_lines.append(f"- [{ratio:.1f}x avg] {desc}")
+            tt_spike_section = (
+                f"\nHIGH-RESONANCE VIDEOS ({len(tt_spikes)} videos with 3x+ their normal engagement — "
+                "core identity content):\n" +
+                "\n".join(spike_lines)
+            )
+
+        # [Item 1] Temporal signals for TikTok
+        tt_temporal_section = ""
+        tt_temporal = _extract_temporal_signals(videos)
+        if tt_temporal['recent_post_count'] > 0 and tt_temporal['older_post_count'] > 0:
+            parts = []
+            if tt_temporal['momentum_topics']:
+                parts.append(f"Rising interests (more frequent recently): {', '.join(tt_temporal['momentum_topics'][:8])}")
+            if tt_temporal['fading_topics']:
+                parts.append(f"Fading interests (absent from recent posts): {', '.join(tt_temporal['fading_topics'][:8])}")
+            if tt_temporal['recent_hashtags']:
+                recent_tags = [f"{t} ({c}x)" for t, c in tt_temporal['recent_hashtags'][:10]]
+                parts.append(f"Last 30 days ({tt_temporal['recent_post_count']} videos): {', '.join(recent_tags)}")
+            if parts:
+                tt_temporal_section = "\nTEMPORAL SIGNALS (prioritize recent activity over older content):\n" + "\n".join(f"- {p}" for p in parts)
+
         data_summary.append(f"""
 TIKTOK PROFILE (@{username} - {len(videos)} videos, {len(reposts)} reposts):
 
@@ -229,7 +492,7 @@ OWN VIDEO CONTENT (What they POST - use this for current interests and variety):
 {chr(10).join(['- ' + d for d in own_descriptions[:n_own]]) if own_descriptions else '(no captions)'}
 
 VIDEO HASHTAGS (all videos): {', '.join(top_video_hashtags) if top_video_hashtags else 'none'}
-{music_section}
+{music_section}{music_artist_section}{tt_spike_section}{tt_temporal_section}
 ASPIRATIONAL CONTENT (REPOSTS - What they WANT):
 {chr(10).join(['- ' + d for d in repost_descriptions[:TIKTOK_REPOST_DESCRIPTIONS_IN_SUMMARY]]) if repost_descriptions else '(no repost captions)'}
 
@@ -471,6 +734,12 @@ PRIORITY: Want signals > cross-platform confirmed > high engagement > aspiration
     prompt = f"""Analyze this person's social media data and build a comprehensive profile for gift curation.
 
 {chr(10).join(data_summary)}{relationship_context}
+
+SIGNAL PRIORITY (use these to weight your analysis):
+- **BRAND AFFINITIES**: Tagged brands are direct evidence of ownership/loyalty. Include the brand in style_preferences.brands.
+- **MUSIC ARTISTS**: Artists listed under "MUSIC ARTISTS" are confirmed interests — treat each as a named interest (for merch, vinyl, concert tickets).
+- **TEMPORAL SIGNALS**: Prioritize "rising" interests over "fading" ones. Set confidence to "low" for interests that appear only in older content.
+- **HIGH-RESONANCE content** (3x+ engagement): These topics are core identity. Weight them higher than average posts.
 
 Extract and structure the following information:
 

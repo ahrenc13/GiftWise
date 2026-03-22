@@ -377,6 +377,34 @@ Files marked `⚠️ OPUS-ONLY ZONE` in code. Non-Opus sessions: add a `# SONNET
 - Add code filters for taste problems. If curator makes bad judgment calls, fix the prompt.
 - Build campaign-specific code.
 
+## Pre-LLM Signal Extraction Improvements (Mar 22, 2026)
+
+**Four new structured signal types added to the profile analyzer data summary.**
+
+The common insight: we were sending Claude raw text (captions, hashtags, tagged accounts) and asking it to infer things that the metadata already tells us directly. Timestamps, engagement ratios, music tracks, brand tags — these are structured signals that should be extracted in code (pre-LLM layer) and handed to Claude as facts.
+
+### 1. Temporal Signals (Recency Weighting)
+**Problem:** All posts weighted equally regardless of when posted. A hiking post from 8 months ago carried the same weight as a cooking post from yesterday.
+**Fix:** `_extract_temporal_signals()` parses post timestamps and identifies momentum topics (rising in last 30 days) and fading topics (present in older posts but absent recently). Added for both Instagram and TikTok. Prompt tells Claude to prioritize rising interests.
+
+### 2. Engagement Spike Detection
+**Problem:** Engagement metrics used only for ranking which posts to send to Claude. Posts with 10x normal engagement (core identity content) treated the same as average posts.
+**Fix:** `_extract_engagement_spikes()` identifies posts with 3x+ the account's average engagement. Labeled as "high-resonance" in the data summary. Both Instagram and TikTok.
+
+### 3. TikTok Music Artist Extraction (Pre-LLM)
+**Problem:** `top_music` only had track names, not artist names. Claude had to infer artist interests from track names.
+**Fix:** Added `top_music_artists` counter to `parse_tiktok_data()`. `_extract_music_artists()` filters out "original sound" and requires 2+ uses. Passed to Claude as confirmed interests.
+
+### 4. Instagram Brand-Tag Extraction
+**Problem:** Tagged accounts passed as a flat list mixing brands and friends. Brand tags (@nike, @glossier) are much stronger ownership signals than friend tags.
+**Fix:** `_classify_tagged_accounts()` separates likely-brand vs likely-personal using conservative heuristics (dots in name, brand suffixes, single-word handles). Brands get a prominent "BRAND AFFINITIES" section.
+
+**Token cost:** ~130-240 extra input tokens per session (~$0.001). Negligible.
+**Files changed:** `profile_analyzer.py`, `giftwise_app.py`
+**Cache invalidation:** `_PROMPT_VERSION` bumped to `"2026-03-22-signals-v3"`
+
+---
+
 ## Post-Deploy Quality Audit (Mar 21, 2026)
 
 **Four bugs fixed from first live session after DB query fix (msmollygmartin @msmollygmartin):**

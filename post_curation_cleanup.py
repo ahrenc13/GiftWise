@@ -292,6 +292,27 @@ _OCCASION_TITLE_ANCHORS = {
     },
 }
 
+_WRONG_CATEGORY_PHRASES = {
+    # Religious ceremony / sacraments — almost never appropriate for a general gift
+    'communion', 'first communion', 'confirmation gift', 'baptism', 'christening',
+    'prayer book', 'rosary', 'crucifix', 'bible study', 'devotional',
+    'bar mitzvah', 'bat mitzvah',
+    # Children's ceremony / baby-specific
+    'baby shower', 'baby registry', 'diaper', 'pacifier', 'teething',
+    'infant', 'newborn', 'nursery decor',
+    # Pet-specific (unless profile explicitly shows pet interest)
+    'dog collar', 'cat litter', 'pet food', 'dog leash',
+    # Industrial / business supplies
+    'industrial', 'commercial grade', 'wholesale lot', 'bulk pack of 100',
+}
+
+
+def _is_wrong_category_for_replacement(title: str) -> bool:
+    """Reject products that are obviously wrong for a general gift recommendation."""
+    t = title.lower()
+    return any(phrase in t for phrase in _WRONG_CATEGORY_PHRASES)
+
+
 def _is_query_relevant_to_product(product):
     """
     Check that an inventory product is genuinely relevant to the search query it came from.
@@ -745,6 +766,10 @@ def cleanup_curated_gifts(product_gifts, inventory, rec_count=10, profile_intere
             # Skip low-relevance replacements — products that only matched on surname/last name
             # when the search query was a full artist/person name (e.g. "JD McPherson" → "McPherson T-Shirt")
             if not _is_query_relevant_to_product(p):
+                continue
+            # Skip products from obviously wrong categories (religious ceremony, children's
+            # sacraments, etc.) that leak through the DB's loose keyword tagging.
+            if _is_wrong_category_for_replacement(p.get('title', '')):
                 continue
             # Skip replacements whose interest has zero overlap with the actual profile.
             # The database cache spans multiple sessions — a candy product cached from a

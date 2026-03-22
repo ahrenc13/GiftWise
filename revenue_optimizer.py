@@ -46,16 +46,32 @@ def score_product_for_profile(product: Dict, profile: Dict, relationship: str) -
     score = 0.0
     reasons = []
 
-    # Factor 1: Product intelligence from past performance (30% weight)
+    # Factor 1: Gift suitability score (30% weight)
+    # First try the pre-computed gift_score from catalog_sync (available on all DB products).
+    # Fall back to product intelligence table for products without gift_score.
     product_id = product.get('product_id', '')
     retailer = product.get('source_domain', '') or product.get('retailer', '')
 
-    intel = database.get_product_intelligence(product_id, retailer)
-    if intel:
-        gift_score = intel.get('gift_worthiness_score', 0.5)
-        score += gift_score * 0.3
-        reasons.append(f"gift_score={gift_score:.2f}")
+    gs = product.get('gift_score')
+    if gs is not None:
+        try:
+            gs = float(gs)
+            score += gs * 0.3
+            reasons.append(f"gift_score={gs:.2f}")
+        except (ValueError, TypeError):
+            gs = None
 
+    intel = None
+    if gs is None:
+        intel = database.get_product_intelligence(product_id, retailer)
+        if intel:
+            igscore = intel.get('gift_worthiness_score', 0.5)
+            score += igscore * 0.3
+            reasons.append(f"intel_gift_score={igscore:.2f}")
+    else:
+        intel = database.get_product_intelligence(product_id, retailer)
+
+    if intel:
         # CTR boost (proven products get priority)
         ctr = intel.get('click_through_rate', 0.0)
         if ctr > 0.05:  # 5%+ CTR is good
@@ -65,13 +81,18 @@ def score_product_for_profile(product: Dict, profile: Dict, relationship: str) -
             score += ctr * 2  # Scale CTR to 0-0.10 bonus
             reasons.append(f"ctr={ctr:.1%}")
 
-    # Factor 2: Interest matching using intelligence (30% weight)
+    # Factor 2: Interest matching (30% weight)
+    # Use keyword extraction so that "pop culture" matches products with "pop" or "culture"
+    # in titles, instead of requiring the exact substring "pop culture".
     interests = profile.get('interests') or []
     product_title = product.get('title', '').lower()
     product_snippet = product.get('snippet', '').lower()
+    product_tags = product.get('interest_tags', '').lower() if isinstance(product.get('interest_tags'), str) else ''
+    product_text = product_title + ' ' + product_snippet + ' ' + product_tags
 
+    matched_interest = False
     for interest in interests:
-        interest_name = interest.get('name', '').lower()
+        interest_name = interest.get('name', '').lower() if isinstance(interest, dict) else str(interest).lower()
 
         # Get interest intelligence
         interest_intel = database.get_interest_intelligence(interest_name)
@@ -80,23 +101,37 @@ def score_product_for_profile(product: Dict, profile: Dict, relationship: str) -
             # Check do_buy list (strong positive signal)
             do_buy = interest_intel.get('do_buy') or []
             for good_item in do_buy:
-                if good_item.lower() in product_title or good_item.lower() in product_snippet:
+                if good_item.lower() in product_text:
                     score += 0.15
                     reasons.append(f"matches_do_buy[{interest_name}]")
+                    matched_interest = True
                     break
 
             # Check dont_buy list (strong negative signal)
             dont_buy = interest_intel.get('dont_buy') or []
             for bad_item in dont_buy:
-                if bad_item.lower() in product_title or bad_item.lower() in product_snippet:
+                if bad_item.lower() in product_text:
                     score -= 0.3  # Heavy penalty
                     reasons.append(f"AVOID:matches_dont_buy[{interest_name}]")
                     break
-        else:
-            # No intelligence yet, do simple keyword matching
-            if interest_name in product_title or interest_name in product_snippet:
-                score += 0.10
-                reasons.append(f"keyword_match[{interest_name}]")
+
+        # Keyword matching: extract meaningful words from interest name and check
+        # if any appear in the product title/tags. This catches "pop culture" matching
+        # a product titled "Batman Batmobile" via the interest_tags field.
+        if not matched_interest:
+            keywords = database._interest_to_keywords(interest_name)
+            matches = sum(1 for kw in keywords if kw in product_text)
+            if matches >= len(keywords) and len(keywords) > 0:
+                # All keywords match — strong signal
+                score += 0.12
+                reasons.append(f"full_keyword_match[{interest_name}]")
+                matched_interest = True
+            elif matches > 0:
+                # Partial match — weaker signal, scaled by match fraction
+                partial_score = 0.06 * (matches / max(len(keywords), 1))
+                score += partial_score
+                reasons.append(f"partial_keyword[{interest_name}:{matches}/{len(keywords)}]")
+                matched_interest = True
 
     # Factor 3: Commission rate (20% weight) - REVENUE-AWARE
     commission_rate = COMMISSION_RATES.get(retailer.lower(), 0.01)

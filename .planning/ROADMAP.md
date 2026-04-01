@@ -38,7 +38,7 @@ GiftWise is a live, revenue-generating product. These phases address the gap bet
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Tracking fix (remove redundant `guide_hit` event) + catalog sync terms for AWOL Vision and OUFER Body Jewelry
+- [x] 01-01-PLAN.md — Tracking fix (remove redundant `guide_hit` event) + catalog sync terms for AWOL Vision and OUFER Body Jewelry
 - [ ] 01-02-PLAN.md — Static products for youngelectricbikes + Tayst Coffee; fix VitaJuwel + VSGO Awin links
 
 ---
@@ -213,7 +213,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Revenue & Conversion Quick Wins | 0/2 | Not started | - |
+| 1. Revenue & Conversion Quick Wins | 1/2 | In Progress|  |
 | 2. Catalog-First Source Separation | 0/2 | Not started | - |
 | 3. 14-Item Output (Sonnet Portions) | 0/2 | Not started | - |
 | 4. Infrastructure Hardening | 0/2 | Not started | - |

@@ -20,58 +20,26 @@ GiftWise is a live, revenue-generating product. These phases address the gap bet
 ## Phase Details
 
 ### Phase 1: Revenue & Conversion Quick Wins
-**Goal**: Convert more of the guide traffic that already exists into tool sessions, and add 4 new monetized retailers to the nightly sync.
+**Goal**: Fix the one remaining tracking issue with guide analytics, and add 4 new monetized retailers to the codebase/nightly sync.
 
 **Depends on**: Nothing (first phase)
 
-**Requirements**: CONV-01, CONV-02, CONV-03, CONV-04, CONV-05, CONV-06, RET-01, RET-02, RET-03, RET-04, RET-05
+**Requirements**: CONV-05, RET-01, RET-02, RET-03, RET-04, RET-05
+
+**Note**: CONV-01 through CONV-04 and CONV-06 are already complete — all guide templates have above-fold and mid-page CTAs linking to `/demo`, and the 3 Etsy guides never existed (no routes). The `/blog` and `/guides` indexes already have CTAs.
 
 **Success Criteria** (what must be TRUE after this phase):
-1. Every guide page shows a CTA above the fold (visible without scrolling) that links to `/demo`
-2. Every guide page shows a second CTA after the 3rd–4th product, also linking to `/demo`
-3. The 3 broken Etsy guides (`guide_etsy_home_decor.html`, `guide_etsy_jewelry.html`, `guide_etsy_under_50.html`) contain no placeholder text (`[Add product image URL]`, `[ETSY AFFILIATE LINK]`, etc.)
-4. `/blog` and `/guides` index pages have a tool callout visible without scrolling
-5. `track_event('guide_hit')` replaced with `track_event(f'guide_hit:{slug}')` across all guide/blog routes
-6. AWOL Vision and OUFER Body Jewelry appear in DB after next nightly sync (advertiser IDs added to `catalog_sync.py`)
-7. youngelectricbikes and Tayst Coffee have static product entries in `awin_searcher.py`
-8. VitaJuwel and VSGO placeholder URLs replaced with real Awin deep links
+1. `track_event('guide_hit')` (bare, redundant) removed from guide route; only `track_event(f'guide_hit:{slug}')` fires
+2. `track_event('guide_hit')` (misclassified) removed from blog route; only `track_event(f'blog_hit:{slug}')` fires
+3. AWOL Vision and OUFER Body Jewelry products receive matching interest tags at nightly sync once joined in Awin dashboard
+4. youngelectricbikes and Tayst Coffee have static product entries in `awin_searcher.py`
+5. VitaJuwel and VSGO placeholder URLs replaced with real Awin deep links
 
-**Plans**: 3 plans
+**Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Guide CTA injection — add above-fold + mid-page CTAs to all guide templates
-- [ ] 01-02: Guide cleanup — fix/remove 3 broken Etsy guides, add CTAs to blog/guide indexes, per-slug tracking
-- [ ] 01-03: New retailer wiring — AWOL Vision + OUFER into catalog_sync.py, youngelectricbikes + Tayst static in awin_searcher.py, fix VitaJuwel/VSGO URLs
-
----
-
-**Implementation notes for plan-phase:**
-
-**01-01 (Guide CTA injection):**
-- Find all guide templates: `templates/guide_*.html` and `templates/blog_*.html`
-- Above-fold CTA: place inside the page hero/header section, before the first `<h2>` or product section. Style: subtle banner or inline callout. Copy: `"Want gifts personalized to a specific person? Try GiftWise free →"` → href `/demo`
-- Mid-page CTA: place after the 3rd `<li>` or 3rd product card `<div>` in the product list. Copy: `"These are great general picks. For gifts matched to their actual interests, try GiftWise →"` → href `/demo`
-- Do NOT use `/signup` anywhere — always `/demo`
-- Do NOT add CTAs to pages that already have them — check first
-
-**01-02 (Guide cleanup):**
-- Broken Etsy guides to fix or remove: `templates/guide_etsy_home_decor.html`, `templates/guide_etsy_jewelry.html`, `templates/guide_etsy_under_50.html`
-  - Search for `[Add product image URL]`, `[ETSY AFFILIATE LINK]`, `TODO`, `placeholder` in those files
-  - Decision: if content structure is mostly there, populate with 5 real Etsy-category products using Amazon/Awin fallback links; if skeleton-only, remove the route and template and redirect to `/guides`
-- Blog index route: find in `giftwise_app.py`, read `templates/blog_index.html` (or equivalent), add tool callout
-- Guide index route: find in `giftwise_app.py`, read `templates/guides.html` (or equivalent), add tool callout
-- Per-slug tracking: find all `track_event('guide_hit')` calls in `giftwise_app.py`, replace with `track_event(f'guide_hit:{slug}')` where `slug` is the guide identifier (derive from URL or template name)
-
-**01-03 (New retailer wiring):**
-- `catalog_sync.py`: Find the Awin sync section (where advertiser IDs are listed). Add:
-  - AWOL Vision: advertiser_id=98169, interest_tags=["home theater", "movies", "tech", "entertainment", "projector", "home cinema"]
-  - OUFER Body Jewelry: advertiser_id=91941, interest_tags=["body jewelry", "piercing", "alternative fashion", "edgy style", "jewelry"]
-  - Use the same upsert pattern as existing feed-enabled merchants (Crown and Paw pattern is the reference)
-- `awin_searcher.py`: Find the static partner section (VitaJuwel/OUTFITR/Goldia pattern). Add:
-  - youngelectricbikes (120209): Browse https://youngelectricbikes.com — pick 3–5 hero e-bike models, $500–$2000 range, use Awin link format `https://www.awin1.com/cread.php?awinmid=120209&awinaffid=YOUR_ID&agen=&clickref=&p=[product_url_encoded]`
-  - Tayst Coffee (90529): 2–3 subscription coffee products, use Awin link format with awinmid=90529
-  - Interest tags: youngelectricbikes → ["cycling", "fitness", "outdoor adventure", "electric bikes", "splurge"]; Tayst → ["coffee", "sustainability", "eco-friendly", "subscription", "morning routine"]
-- VitaJuwel (97077) and VSGO: Find their entries in `awin_searcher.py`, replace placeholder URLs with proper Awin deep links using format above with correct awinmid values
+- [ ] 01-01-PLAN.md — Tracking fix (remove redundant `guide_hit` event) + catalog sync terms for AWOL Vision and OUFER Body Jewelry
+- [ ] 01-02-PLAN.md — Static products for youngelectricbikes + Tayst Coffee; fix VitaJuwel + VSGO Awin links
 
 ---
 
@@ -245,7 +213,7 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Revenue & Conversion Quick Wins | 0/3 | Not started | - |
+| 1. Revenue & Conversion Quick Wins | 0/2 | Not started | - |
 | 2. Catalog-First Source Separation | 0/2 | Not started | - |
 | 3. 14-Item Output (Sonnet Portions) | 0/2 | Not started | - |
 | 4. Infrastructure Hardening | 0/2 | Not started | - |
@@ -268,4 +236,4 @@ Per CLAUDE.md: `search_products_by_interests()` scoring improvement using multi-
 
 ---
 *Roadmap created: 2026-04-01*
-*Last updated: 2026-04-01 after GSD project initialization*
+*Last updated: 2026-04-01 — Phase 1 revised to 2 plans (CONV-01 through CONV-04 and CONV-06 already complete)*

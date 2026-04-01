@@ -1759,7 +1759,6 @@ def gift_guides():
 @app.route('/guides/<slug>')
 def gift_guide_detail(slug):
     """Individual gift guide article"""
-    track_event('guide_hit')
     track_event(f'guide_hit:{slug}')
     template_map = {
         'mothers-day': 'guide_mothers_day.html',
@@ -1783,7 +1782,6 @@ def blog_index():
 @app.route('/blog/<slug>')
 def blog_post(slug):
     """Individual blog article"""
-    track_event('guide_hit')  # Count blog posts as content engagement
     track_event(f'blog_hit:{slug}')
     blog_map = {
         'last-minute-gifts': 'blog_last_minute_gifts.html',

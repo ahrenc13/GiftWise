@@ -536,6 +536,35 @@ INTEREST_CATEGORIES: Dict[str, Dict] = {
             'Stranger Things gift', 'Game of Thrones gift',
         ]
     },
+
+    'home_theater_av': {
+        'priority': 2,
+        'terms': [
+            # Projectors & home cinema (for AWOL Vision — Awin ID 98169)
+            'projector', 'home projector', 'portable projector',
+            'outdoor projector', 'mini projector',
+            'home theater', 'home cinema',
+            'projector screen', 'projection screen',
+            'movie night setup', 'backyard movie',
+            '4K projector', 'laser projector',
+        ]
+    },
+
+    'body_jewelry_piercing': {
+        'priority': 2,
+        'terms': [
+            # Body jewelry & piercing (for OUFER Body Jewelry — Awin ID 91941)
+            'body jewelry', 'body piercing jewelry',
+            'nose ring', 'septum ring', 'septum jewelry',
+            'belly button ring', 'navel jewelry',
+            'helix earring', 'cartilage earring',
+            'tragus earring', 'daith piercing jewelry',
+            'industrial barbell', 'piercing jewelry set',
+            'nipple ring', 'lip ring',
+            'tongue ring', 'eyebrow ring',
+            'surgical steel jewelry', 'titanium body jewelry',
+        ]
+    },
 }
 
 # Flat ordered list: (term, priority, category)

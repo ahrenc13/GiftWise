@@ -105,7 +105,7 @@ _VITAJUWEL_ALL_PRODUCTS = [
         "snippet": "Portable gemstone water bottle with hand-selected sunstone and maifan stone gems. BPA-free borosilicate glass, stainless steel cap. Carry the energy of crystals wherever you go.",
         "price": "$130.00",
         "source_domain": "vitajuwel.us",
-        "link": "https://www.vitajuwel.us/products/via-indian-summer",  # Replace with Awin deep link
+        "link": "https://www.awin1.com/cread.php?awinmid=97077&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fwww.vitajuwel.us%2Fproducts%2Fvia-indian-summer",
         "image_url": "",
         "interest_match": "wellness crystals gemstone",
     },
@@ -114,7 +114,7 @@ _VITAJUWEL_ALL_PRODUCTS = [
         "snippet": "The bestselling VitaJuwel bottle. Trio of amethyst, rose quartz, and clear quartz suspended in a glass gem pod. Loved by yoga and meditation practitioners.",
         "price": "$130.00",
         "source_domain": "vitajuwel.us",
-        "link": "https://www.vitajuwel.us/products/via-wellness",  # Replace with Awin deep link
+        "link": "https://www.awin1.com/cread.php?awinmid=97077&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fwww.vitajuwel.us%2Fproducts%2Fvia-wellness",
         "image_url": "",
         "interest_match": "yoga meditation crystals wellness",
     },
@@ -123,7 +123,7 @@ _VITAJUWEL_ALL_PRODUCTS = [
         "snippet": "Elegant 1-liter glass carafe with removable gemstone vial. Perfect for the home altar, bedside table, or gifting to anyone obsessed with crystals and intentional living.",
         "price": "$135.00",
         "source_domain": "vitajuwel.us",
-        "link": "https://www.vitajuwel.us/products/era-wellness",  # Replace with Awin deep link
+        "link": "https://www.awin1.com/cread.php?awinmid=97077&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fwww.vitajuwel.us%2Fproducts%2Fera-wellness",
         "image_url": "",
         "interest_match": "crystals wellness spiritual self-care",
     },
@@ -138,7 +138,7 @@ _VSGO_ALL_PRODUCTS = [
         "snippet": "Award-winning camera backpack with ultra-light carrying system and patented camera compartment. Fits mirrorless and DSLR kits. Weatherproof exterior, laptop sleeve, tripod holder.",
         "price": "$119.00",
         "source_domain": "vsgotech.com",
-        "link": "https://vsgotech.com/collections/bags",  # Replace with Awin deep link to specific SKU
+        "link": "https://www.awin1.com/cread.php?awinmid=120898&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fvsgotech.com%2Fproducts%2Fblack-snipe-camera-backpack",
         "image_url": "",
         "interest_match": "photography cameras travel content creation",
     },
@@ -147,7 +147,7 @@ _VSGO_ALL_PRODUCTS = [
         "snippet": "Compact sling bag designed for mirrorless shooters on the go. Fast-access side opening, padded dividers, weather-resistant. Great for street photography and travel.",
         "price": "$79.00",
         "source_domain": "vsgotech.com",
-        "link": "https://vsgotech.com/collections/bags",  # Replace with Awin deep link to specific SKU
+        "link": "https://www.awin1.com/cread.php?awinmid=120898&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fvsgotech.com%2Fproducts%2Fpocket-ranger-camera-sling-bag",
         "image_url": "",
         "interest_match": "photography street photography travel cameras",
     },
@@ -249,6 +249,72 @@ _OUTFITR_ALL_PRODUCTS = [
     },
 ]
 
+# Young Electric Bikes (youngelectricbikes.com) — Premium e-bikes for commuting and adventure.
+# Triggers: cycling, outdoor adventure, fitness, e-bike themes. Splurge-tier price points.
+# Advertiser ID: 120209. No product feed — static list only.
+_YOUNG_ELECTRIC_BIKES_ALL_PRODUCTS = [
+    {
+        "title": "Young Electric E-Scout Pro Electric Mountain Bike",
+        "snippet": "Full-suspension electric mountain bike with 750W motor, 48V 15Ah battery, and 28 mph top speed. 7-speed Shimano drivetrain, hydraulic disc brakes, front suspension fork. Built for trail riding and adventure.",
+        "price": "$1,499.00",
+        "source_domain": "youngelectricbikes.com",
+        "link": "https://www.awin1.com/cread.php?awinmid=120209&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fyoungelectricbikes.com%2Fproducts%2Fe-scout-pro",
+        "image_url": "",
+        "interest_match": "cycling mountain biking electric bike outdoor adventure fitness",
+    },
+    {
+        "title": "Young Electric E-Cross Pro Electric Commuter Bike",
+        "snippet": "Versatile electric commuter and trail bike with 750W motor, 48V 15Ah battery, 28 mph top speed, and integrated rear rack. Shimano 7-speed gears, hydraulic disc brakes, aluminum frame.",
+        "price": "$1,299.00",
+        "source_domain": "youngelectricbikes.com",
+        "link": "https://www.awin1.com/cread.php?awinmid=120209&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fyoungelectricbikes.com%2Fproducts%2Fe-cross-pro",
+        "image_url": "",
+        "interest_match": "cycling commuting electric bike fitness outdoor adventure",
+    },
+    {
+        "title": "Young Electric E-Scout Electric Mountain Bike (Standard)",
+        "snippet": "Entry-point electric mountain bike with 500W motor, 48V 10.4Ah battery, 25 mph top speed. 7-speed Shimano drivetrain, mechanical disc brakes. Great first e-bike for trail riders.",
+        "price": "$999.00",
+        "source_domain": "youngelectricbikes.com",
+        "link": "https://www.awin1.com/cread.php?awinmid=120209&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fyoungelectricbikes.com%2Fproducts%2Fe-scout",
+        "image_url": "",
+        "interest_match": "cycling mountain biking electric bike outdoor adventure",
+    },
+]
+
+# Tayst Coffee (taystcoffee.com) — Sustainable coffee subscriptions in 100% compostable pods.
+# Triggers: coffee, sustainability, eco-friendly, subscription, morning routine themes.
+# Advertiser ID: 90529. No product feed — static list only.
+_TAYST_COFFEE_ALL_PRODUCTS = [
+    {
+        "title": "Tayst Coffee — Sustainable Coffee Pod Subscription (6-Month Prepaid)",
+        "snippet": "Six months of freshly-roasted coffee delivered in 100% compostable pods — no plastic, no landfill. Choose your roast profile (light, medium, dark). Better for the planet and your morning.",
+        "price": "$89.00",
+        "source_domain": "taystcoffee.com",
+        "link": "https://www.awin1.com/cread.php?awinmid=90529&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fwww.tayst.com%2Fpages%2Fsubscriptions",
+        "image_url": "",
+        "interest_match": "coffee sustainability eco-friendly subscription morning routine environment",
+    },
+    {
+        "title": "Tayst Coffee — Gift Box Sampler (Compostable Pods, 3 Roasts)",
+        "snippet": "A curated sampler gift box with Tayst's three signature roasts — light, medium, and dark — all in compostable pods. The perfect gift for coffee lovers who care about sustainability.",
+        "price": "$29.00",
+        "source_domain": "taystcoffee.com",
+        "link": "https://www.awin1.com/cread.php?awinmid=90529&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fwww.tayst.com%2Fpages%2Four-coffee-promotion",
+        "image_url": "",
+        "interest_match": "coffee eco-friendly sustainability gift morning routine",
+    },
+    {
+        "title": "Tayst Coffee — Monthly Coffee Subscription (Compostable Pods)",
+        "snippet": "Monthly delivery of freshly-roasted coffee in 100% compostable pods. Customize roast, grind, and quantity. Cancel anytime. A thoughtful recurring gift for eco-conscious coffee drinkers.",
+        "price": "$19.00",
+        "source_domain": "taystcoffee.com",
+        "link": "https://www.awin1.com/cread.php?awinmid=90529&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fwww.tayst.com%2Fpages%2Fsubscriptions",
+        "image_url": "",
+        "interest_match": "coffee subscription sustainability eco-friendly morning routine",
+    },
+]
+
 
 def _get_awin_static_products(profile):
     """Return static Awin products relevant to the current profile's interests.
@@ -286,6 +352,19 @@ def _get_awin_static_products(profile):
     outfitr_triggers = {"cycling", "biking", "bike", "bicycle", "cyclist", "road trip", "rv", "camping", "e-bike", "ebike", "mountain bike", "trail"}
     if any(t in interest_text for t in outfitr_triggers):
         results.extend(_OUTFITR_ALL_PRODUCTS)
+
+    # Young Electric Bikes — trigger on cycling/e-bike/outdoor adventure themes
+    young_electric_triggers = {"cycling", "biking", "bike", "bicycle", "cyclist", "e-bike", "ebike",
+                                "electric bike", "mountain bike", "trail", "outdoor adventure", "commuting"}
+    if any(t in interest_text for t in young_electric_triggers):
+        results.extend(_YOUNG_ELECTRIC_BIKES_ALL_PRODUCTS)
+
+    # Tayst Coffee — trigger on coffee/sustainability/eco-friendly/subscription themes
+    tayst_triggers = {"coffee", "espresso", "cappuccino", "latte", "morning routine", "sustainability",
+                      "sustainable", "eco", "eco-friendly", "environment", "environmentalist",
+                      "zero waste", "compost", "subscription box"}
+    if any(t in interest_text for t in tayst_triggers):
+        results.extend(_TAYST_COFFEE_ALL_PRODUCTS)
 
     return results
 

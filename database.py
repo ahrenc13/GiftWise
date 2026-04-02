@@ -650,6 +650,25 @@ def get_database_stats() -> Dict:
         }
 
 
+def get_total_product_count() -> int:
+    """
+    Return total number of active, in-stock products in the catalog.
+    Used by the circuit breaker in multi_retailer_searcher.py to detect
+    sync failures (DB thin = fall back to live APIs for this session).
+    Fast single-query; do not use get_database_stats() at session time.
+    """
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT COUNT(*) FROM products WHERE removed_at IS NULL AND in_stock = 1"
+            )
+            return cursor.fetchone()[0]
+    except Exception as e:
+        logger.error(f"get_total_product_count failed: {e}")
+        return 0
+
+
 def set_metadata(key: str, value: str):
     """Set database metadata value"""
     with get_db_connection() as conn:

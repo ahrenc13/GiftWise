@@ -53,44 +53,45 @@ Plans:
 **Success Criteria** (what must be TRUE after this phase):
 1. Session logs show NO CJ GraphQL API calls during recommendation generation
 2. Session logs show NO Awin feed CSV download during recommendation generation
-3. eBay is called for at most 2–3 interests per session (those with < 3 DB products), not all interests
-4. Total eBay contribution is capped at ~5–8 items in final recommendations
+3. eBay is called only for interests with < 5 DB products (per CONTEXT.md decision); threshold `EBAY_WEAK_COVERAGE_THRESHOLD = 5`
+4. Total eBay contribution is capped at 7 items (`EBAY_NICHE_CAP = 7`)
 5. CJ static partners (MonthlyClubs, Winebasket, zChocolat, etc.) still appear in recommendations
 6. Awin static partners still appear in recommendations
 7. No eBay or Amazon products written to the DB
+8. Circuit breaker re-enables live CJ/Awin if DB has < 100 total products
 
 **Plans**: 2 plans
 
 Plans:
-- [ ] 02-01: Remove live CJ + Awin session calls (`multi_retailer_searcher.py`, `awin_searcher.py`)
-- [ ] 02-02: eBay niche-only scoping using `per_interest_counts` from `search_products_diverse()`
+- [ ] 02-01-PLAN.md — Remove live CJ GraphQL + Awin feed from session code; add `get_total_product_count()` + circuit breaker; remove obsolete diversity gate
+- [ ] 02-02-PLAN.md — eBay niche-only scoping using `per_interest_counts`; `EBAY_NICHE_CAP = 7`; pre-initialize `per_interest_counts` before DB try block
 
 ---
 
 **Implementation notes for plan-phase:**
 
 **02-01 (Remove live CJ + Awin session calls):**
+- `database.py`: Add `get_total_product_count()` — single-query `SELECT COUNT(*)` for circuit breaker
 - `multi_retailer_searcher.py`:
-  - Find `_run_cj` in the parallel retailer task list and remove it from the parallel execution
-  - Keep `_run_cj_static` (or equivalent) — the static partner logic (MonthlyClubs, Winebasket, etc.)
-  - Do NOT delete `cj_searcher.py` — still used by `catalog_sync.py`
-  - After removal, verify CJ products still come from DB via `search_products_diverse()` call
+  - Add circuit breaker before DB query block: if DB < 100 products, set `_db_is_thin = True` and log WARNING
+  - Replace `if cj_api_key: _run_cj()` guard with unconditional `_run_cj` that passes `api_key=None` when DB is healthy
+  - `api_key=None` triggers cj_searcher.py line 2992-2994 static-only return (17 merchants preserved)
+  - Remove obsolete diversity gate constants (MIN_SOURCES_TO_SKIP_LIVE, MAX_SINGLE_SOURCE_PCT, MIN_INTEREST_COVERAGE_PCT) and the early-return if/else block — keep per-source capping block
+  - Update no-write-back comment to reference Phase 2
 - `awin_searcher.py`:
-  - Find the live CSV download fallback (around line ~732 per CLAUDE.md notes) — the code that fires when DB has < 50% of target_count
-  - Remove the live download fallback entirely. The cache-first path becomes the ONLY path.
-  - Static Awin partners (`_get_awin_static_products`) must still run — do NOT remove
-  - Do NOT remove or weaken `_matches_query()` 2-term threshold — this prevents $800 scooter incidents
-- Add log lines confirming live calls are skipped: `logger.info("[CATALOG] Using DB-only for CJ")`, `logger.info("[CATALOG] Using DB-only for Awin")`
+  - Remove `if len(cached_products) >= target_count // 2:` gate (line 826) — make cache-first block unconditional
+  - Update except handler to return static products only (not fall through to deleted live code)
+  - Delete lines 835–1087 (live feed CSV download flow)
+  - Add `[CATALOG] Awin live feed skipped — using DB only` log line
 
 **02-02 (eBay niche-only scoping):**
 - `multi_retailer_searcher.py`:
-  - `search_products_diverse()` already returns `per_interest_counts` dict (per Mar 22 2026 fix)
-  - After the DB query, identify interests where `per_interest_counts[interest] < 3`
-  - Pass only those weak-coverage interests to the eBay searcher
-  - Cap eBay results at 5–8 items total (add `EBAY_NICHE_CAP = 7` constant)
-  - If all interests have sufficient DB coverage, skip eBay entirely
-  - Log: `logger.info(f"[EBAY] Weak coverage interests: {weak_interests}. eBay called for {len(weak_interests)} interests.")`
-  - eBay results still NOT written to DB (already enforced — add assertion/comment to document this)
+  - Pre-initialize `per_interest_counts = {}` before DB try block (prevents NameError if DB fails)
+  - Add `EBAY_NICHE_CAP = 7` and `EBAY_WEAK_COVERAGE_THRESHOLD = 5` as module-level constants
+  - Before `_run_ebay` definition, compute `weak_interests` using `per_interest_counts.get(i.lower(), 0) < 5`
+  - If `weak_interests` is empty, skip eBay entirely and log `[EBAY] All interests have sufficient DB coverage`
+  - If non-empty, build `_ebay_profile` (shallow copy with only weak-coverage interests) and pass to `search_products_ebay`
+  - Cap eBay results at `EBAY_NICHE_CAP` inside `_run_ebay`
 
 ---
 
@@ -112,8 +113,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: Pipeline wiring — splurge_candidates from DB through to curator input
-- [ ] 03-02: Splurge tile UI in recommendations.html + SONNET-FLAG with Opus prompt
+- [ ] 03-01-PLAN.md — Pipeline wiring — splurge_candidates from DB through to curator input
+- [ ] 03-02-PLAN.md — Splurge tile UI in recommendations.html + SONNET-FLAG with Opus prompt
 
 ---
 
@@ -184,8 +185,8 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01: Remove Skimlinks dead code (file + JS snippets in templates)
-- [ ] 04-02: In-flight duplicate prevention + rate limit verification
+- [ ] 04-01-PLAN.md — Remove Skimlinks dead code (file + JS snippets in templates)
+- [ ] 04-02-PLAN.md — In-flight duplicate prevention + rate limit verification
 
 ---
 
@@ -214,7 +215,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Revenue & Conversion Quick Wins | 1/2 | In Progress|  |
-| 2. Catalog-First Source Separation | 0/2 | Not started | - |
+| 2. Catalog-First Source Separation | 0/2 | Planned | - |
 | 3. 14-Item Output (Sonnet Portions) | 0/2 | Not started | - |
 | 4. Infrastructure Hardening | 0/2 | Not started | - |
 
@@ -236,4 +237,4 @@ Per CLAUDE.md: `search_products_by_interests()` scoring improvement using multi-
 
 ---
 *Roadmap created: 2026-04-01*
-*Last updated: 2026-04-01 — Phase 1 revised to 2 plans (CONV-01 through CONV-04 and CONV-06 already complete)*
+*Last updated: 2026-04-02 — Phase 2 plans written (02-01, 02-02); success criteria updated to reflect CONTEXT.md threshold=5 decision*

@@ -185,7 +185,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Remove Skimlinks dead code (file + JS snippets in templates)
+- [x] 04-01-PLAN.md — Remove Skimlinks dead code (file + JS snippets in templates)
 - [ ] 04-02-PLAN.md — In-flight duplicate prevention + rate limit verification
 
 ---
@@ -217,7 +217,7 @@ Plans:
 | 1. Revenue & Conversion Quick Wins | 1/2 | In Progress|  |
 | 2. Catalog-First Source Separation | 0/2 | Planned | - |
 | 3. 14-Item Output (Sonnet Portions) | 1/2 | In Progress|  |
-| 4. Infrastructure Hardening | 0/2 | Not started | - |
+| 4. Infrastructure Hardening | 1/2 | In Progress|  |
 
 ---
 

@@ -68,6 +68,10 @@ def search_products_multi_retailer(
     )
 
     all_products = []
+    per_interest_counts = {}  # Pre-initialize; populated by DB query. eBay scoping reads this
+                               # after the try/except block ends. If DB fails, defaults to {}
+                               # which means all interests are treated as weak-coverage (eBay fires for all).
+    interests = []             # Pre-initialize; populated inside DB try block.
 
     # Per-vendor target: used both for DB source capping and live API calls.
     per_vendor_target = min(target_count, MAX_INVENTORY_SIZE // 5)  # so 5 vendors don't exceed MAX

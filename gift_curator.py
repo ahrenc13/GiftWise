@@ -29,35 +29,6 @@ logger = logging.getLogger(__name__)
 
 
 def curate_gifts(profile, products, recipient_type, relationship, claude_client, rec_count=10, enhanced_search_terms=None, enrichment_context=None, model=None, ontology_briefing=None, splurge_candidates=None):
-    # SONNET-FLAG: Opus implements the splurge slot changes below.
-    #
-    # OPUS PROMPT:
-    # You are updating gift_curator.py to add a splurge slot to the recommendation output.
-    #
-    # Context:
-    # - The curator currently outputs 10 regular gifts + 3 experiences (rec_count=10)
-    # - We want to add 1 SPLURGE item: the nicest possible gift, $200-$1500 range
-    # - splurge_candidates (list of products $200-$1500 from the DB) are now passed in the inventory
-    # - The profile dict contains price_signals.budget_category; map to ceiling:
-    #     budget->$300, moderate->$500, premium->$1000, luxury->$1500, unknown->$500
-    # - The splurge slot is SEPARATE from the 10 regular gifts -- it goes after them
-    # - Splurge can be a physical item OR an extravagant experience -- curator decides based on what's strongest
-    #
-    # What to implement:
-    # 1. Change rec_count from 10 -> 11 (10 regular + 1 splurge)
-    # 2. Add splurge_candidates to the inventory section shown to Claude
-    # 3. Add splurge slot instructions to the curator prompt:
-    #    "Pick 1 SPLURGE item -- the nicest version of something they love OR an extravagant experience.
-    #     Price $[ceiling] max. This should feel like the 'if money were no object' pick.
-    #     Pull from the SPLURGE CANDIDATES list if one fits. Label it SPLURGE in your output."
-    # 4. Parse the SPLURGE item out of the curator response into a separate field
-    # 5. Pass it to the template as splurge_item (template rendering already done by Sonnet in Phase 3)
-    #
-    # Constraints:
-    # - Do NOT touch the gift reasoning framework, selection principle, or ownership section
-    # - Do NOT route image URLs or affiliate links through the prompt
-    # - Do NOT increase the experiences count (stays at 3)
-    # - The splurge ceiling comes from price_signals.budget_category -- DO wire this in
     """
     Curate gift recommendations from real products and profile.
 
@@ -67,19 +38,26 @@ def curate_gifts(profile, products, recipient_type, relationship, claude_client,
         recipient_type: 'myself' or 'someone_else'
         relationship: Relationship type if someone_else
         claude_client: Anthropic client for AI curation
-        rec_count: Number of product recommendations (default 10)
+        rec_count: Number of product recommendations (default 10, +1 splurge when splurge_candidates present)
         enhanced_search_terms: Optional list of enhanced search terms from intelligence layer
         enrichment_context: Optional dict with demographics, trending, anti-recs from enrichment engine
         model: Claude model ID (default: claude-sonnet-4-20250514)
+        splurge_candidates: Optional list of premium products ($200-$1500) for the splurge slot
 
     Returns:
         Dict with:
-        - product_gifts: List of 10 curated products
+        - product_gifts: List of curated products (10 regular + 1 splurge when available)
         - experience_gifts: List of 2-3 hyper-specific experiences
     """
+    # Compute splurge ceiling from profile budget category
+    _SPLURGE_CEILING = {'budget': 300, 'moderate': 500, 'premium': 1000, 'luxury': 1500}
+    budget_category = (profile.get('price_signals') or {}).get('budget_category', 'unknown')
+    splurge_ceiling = _SPLURGE_CEILING.get(budget_category, 500)
+    has_splurge = bool(splurge_candidates)
+
     if not model:
         model = "claude-sonnet-4-20250514"
-    
+
     if not products:
         logger.error("No products to curate from")
         return {"product_gifts": [], "experience_gifts": []}
@@ -254,7 +232,21 @@ RECIPIENT CONTEXT: This is for {"the user themselves (gifts for you)" if recipie
 - Prefer: "something {pronoun_subject}'ve been wanting," "right up {pronoun_possessive} alley," "perfect for someone who loves X," "{pronoun_subject}'ll love this because," "a little treat that shows you get them," "fits what {pronoun_subject} are into."
 """
     
-    prompt = f"""You are selecting {rec_count} product gifts from a real inventory.
+    # Build splurge instruction block (only when splurge candidates exist)
+    splurge_instruction = ""
+    splurge_total_line = f"{rec_count} product gifts"
+    if has_splurge:
+        splurge_instruction = f"""
+SPLURGE SLOT (1 additional pick — SEPARATE from your {rec_count} regular picks):
+Pick the single most impressive gift from the SPLURGE CANDIDATES section above. This is the "if money were no object" pick — the nicest version of something {pronoun_subject} love, or a truly extraordinary item that matches {pronoun_possessive} strongest interest. Price ceiling: ${splurge_ceiling}. Set "is_splurge": true for this one product only, false for all others.
+- MUST come from the SPLURGE CANDIDATES section (not the regular inventory)
+- Should feel aspirational — a meaningful upgrade, not just an expensive version of a basic item
+- If none of the splurge candidates are a good fit for the profile, pick the BEST one anyway and explain why in why_perfect
+- The splurge pick is item #{rec_count + 1} in your product_gifts array (after the {rec_count} regular picks)
+"""
+        splurge_total_line = f"{rec_count} regular product gifts + 1 SPLURGE pick"
+
+    prompt = f"""You are selecting {splurge_total_line} from a real inventory.
 
 {pronoun_context}
 
@@ -262,7 +254,7 @@ RECIPIENT CONTEXT: This is for {"the user themselves (gifts for you)" if recipie
 
 {products_summary}
 
-SELECT {rec_count} BEST PRODUCTS from above. Requirements:
+SELECT {rec_count} BEST PRODUCTS from the main inventory above{" PLUS 1 SPLURGE PICK from the splurge candidates" if has_splurge else ""}. Requirements:
 
 SELECTION PRINCIPLE: The best gift fills an aspiration gap — something they WANT but don't yet HAVE. A gift matching a current interest risks duplicating what they own. A gift matching an aspiration makes them say "how did you KNOW?" At least 60% of your picks should target gaps/aspirational interests, not current ones.
 
@@ -281,7 +273,7 @@ Before finalizing each pick, ask:
 
 FOR MUSIC-HEAVY PROFILES: Do NOT pick a poster for each artist they like. Pick at most ONE poster for their top artist. Express the rest of the music passion through different forms — concert-ready accessories, music-themed apparel, instruments/gear, listening equipment, or a curated experience. A wall of band posters is a record store, not a gift set.
 
-- SPLURGE PICK: Designate exactly ONE product as the "splurge pick" — an aspirational gift that's above {pronoun_possessive} typical budget but perfectly matched to {pronoun_possessive} strongest interest. Set "is_splurge": true for that one product only, false for all others. The splurge pick should make someone think "I'd never buy this for myself, but I'd LOVE it." It should be a meaningful upgrade, not just an expensive version of a basic item.
+{splurge_instruction if has_splurge else '- SPLURGE PICK: Designate exactly ONE product as the "splurge pick" — an aspirational gift above ' + pronoun_possessive + ' typical budget but perfectly matched to ' + pronoun_possessive + ' strongest interest. Set "is_splurge": true for that one product only, false for all others. The splurge pick should make someone think "I would never buy this for myself, but I would LOVE it." It should be a meaningful upgrade, not just an expensive version of a basic item.'}
 - PRIORITIZE products matching GIFT SWEET SPOTS (gaps/aspirational interests) - these are the best opportunities
 - If the profile includes EXPLICIT WANT SIGNALS (phrases like "I need this", "someone buy me"), treat those as your highest-priority targets
 - Match interests with SPECIFIC profile evidence (cite posts, behaviors, venues)
@@ -412,7 +404,7 @@ DIVERSITY & EVIDENCE:
 - INTEREST SPREAD: Max 2 products per single interest/theme (e.g., max 2 per band). Spread across at least 5+ distinct interests.
 - NOVELTY: Prioritize unique, surprising, and thoughtful gifts over obvious/generic ones. A creative niche product is better than a mass-market default.
 - Each recommendation must have SPECIFIC evidence from the profile (not generic "they'll love this")
-- Total: {rec_count} product gifts + 3 experience gifts (we will filter to keep 2-3)
+- Total: {splurge_total_line} + 3 experience gifts (we will filter to keep 2-3)
 - Every product gift MUST reference a real inventory item by number. Copy the URL exactly from that item — no invented products, no search pages.
 
 BEFORE RETURNING YOUR JSON — SELF-CHECK (do this mentally for every product gift):
@@ -457,9 +449,33 @@ Return ONLY the JSON object, no markdown, no backticks"""
         
         # Parse JSON
         curated_gifts = json.loads(response_text)
-        
-        logger.info(f"Curated {len(curated_gifts.get('product_gifts', []))} products + {len(curated_gifts.get('experience_gifts', []))} experiences")
-        
+
+        # Separate splurge item from regular product gifts.
+        # The curator places is_splurge=true on exactly one product.
+        product_gifts = curated_gifts.get('product_gifts', [])
+        splurge_item = None
+        regular_gifts = []
+        for gift in product_gifts:
+            if gift.get('is_splurge'):
+                if splurge_item is None:
+                    splurge_item = gift
+                    logger.info(f"Splurge pick identified: {gift.get('name', 'unknown')} (${gift.get('price', '?')})")
+                else:
+                    # Multiple splurge flags — keep only the first, demote the rest
+                    gift['is_splurge'] = False
+                    regular_gifts.append(gift)
+            else:
+                regular_gifts.append(gift)
+
+        curated_gifts['product_gifts'] = regular_gifts
+        curated_gifts['splurge_item'] = splurge_item
+
+        logger.info(
+            f"Curated {len(regular_gifts)} regular products + "
+            f"{'1 splurge' if splurge_item else 'no splurge'} + "
+            f"{len(curated_gifts.get('experience_gifts', []))} experiences"
+        )
+
         return curated_gifts
         
     except Exception as e:

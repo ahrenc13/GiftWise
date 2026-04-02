@@ -195,15 +195,22 @@ class RecommendationService:
         products = self._apply_filters(products, profile, quality_filters)
 
         # STEP 5: Curate gifts with AI
-        curated_products, curated_experiences = self._curate_gifts(
+        curated_products, curated_experiences, splurge_item = self._curate_gifts(
             user_id, profile_for_backend, products, recipient_type, relationship,
             enhanced_search_terms, enriched_profile, splurge_candidates=splurge_candidates
         )
 
-        # STEP 6: Post-curation cleanup
+        # STEP 6: Post-curation cleanup (splurge item bypasses cleanup — it's a separate slot)
         final_products, final_experiences = self._cleanup_curation(
             user_id, curated_products, curated_experiences, products, profile
         )
+
+        # Re-add splurge item after cleanup (it shouldn't be subject to brand/category dedup
+        # against regular picks — it's intentionally in a different tier)
+        if splurge_item:
+            splurge_item['is_splurge'] = True  # Ensure flag survives
+            final_products.append(splurge_item)
+            logger.info(f"Splurge item added to final products: {splurge_item.get('name', 'unknown')}")
 
         if not final_products and not final_experiences:
             raise ValueError('Unable to generate recommendations. Please try again.')
@@ -474,12 +481,26 @@ class RecommendationService:
 
         product_gifts = curated.get('product_gifts', [])
         experience_gifts = curated.get('experience_gifts', [])
+        splurge_item = curated.get('splurge_item')
 
         # Opus fix: hallucination grounding (Mar 3 2026)
         # Resolve curator selections by inventory_id → real product URL.
         # The curator returns a 1-indexed item number which is far more reliable than
         # a copied URL. When the URL is wrong but the id is valid, fix the URL.
         product_gifts = self._ground_curator_selections(product_gifts, products_for_curator)
+
+        # Ground the splurge item separately against the combined inventory
+        # (splurge candidates were appended to the prompt inventory after regular products)
+        if splurge_item:
+            grounded_splurge = self._ground_curator_selections(
+                [splurge_item],
+                products_for_curator + (splurge_candidates or [])
+            )
+            splurge_item = grounded_splurge[0] if grounded_splurge else None
+            if splurge_item:
+                logger.info(f"Splurge item grounded: {splurge_item.get('name', 'unknown')}")
+            else:
+                logger.warning("Splurge item failed grounding — dropped")
 
         # Fallback: if curator returned nothing usable, build minimal set from inventory
         if not product_gifts:
@@ -489,9 +510,10 @@ class RecommendationService:
             )
 
         # Track recommended products for learning
-        self._track_recommendations(product_gifts)
+        all_tracked = product_gifts + ([splurge_item] if splurge_item else [])
+        self._track_recommendations(all_tracked)
 
-        return product_gifts, experience_gifts
+        return product_gifts, experience_gifts, splurge_item
 
     def _optimize_product_selection(self, products: List[Dict], profile: Dict,
                                     relationship: str) -> List[Dict]:

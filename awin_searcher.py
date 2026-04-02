@@ -808,7 +808,10 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
 
     api_key = data_feed_api_key.strip()
 
-    # --- Cache-first: check SQLite catalog before downloading any feeds ---
+    # --- Catalog-only: Awin products come exclusively from the nightly-synced DB.
+    # Live feed CSV download removed (Phase 2, Apr 2026). The nightly sync populates
+    # 589 terms via catalog_sync.py. Static Awin partners always inject below.
+    # _matches_query() 2-term threshold is preserved in the static partner logic. ---
     try:
         from catalog_sync import get_cached_awin_products_for_interest
         interests = profile.get("interests", [])
@@ -823,24 +826,22 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
                 if pid and pid not in seen_ids:
                     seen_ids.add(pid)
                     cached_products.append(p)
-        if len(cached_products) >= target_count // 2:
-            static = _get_awin_static_products(profile)
-            result = (cached_products + static)[:target_count]
-            logger.info("Awin: returning %d products from catalog cache (skipping live download)",
-                        len(result))
-            return result
+        static = _get_awin_static_products(profile)
+        result = (cached_products + static)[:target_count]
+        logger.info(
+            "[CATALOG] Awin live feed skipped — using DB only (%d cached + %d static = %d products)",
+            len(cached_products), len(static), len(result)
+        )
+        return result
     except Exception as e:
-        logger.debug("Awin cache check failed, falling back to live: %s", e)
-
-    logger.info("Searching Awin feeds for %s products (live)", target_count)
-
-    interests = profile.get("interests", [])
-    enhanced = list(enhanced_search_terms or [])
-    if not interests and not enhanced:
-        return []
-
-    # Build search queries from profile interests (skip work); include primary term for relaxed matching
-    search_queries = []
+        logger.warning("Awin catalog lookup failed (%s) — returning static products only", e)
+        try:
+            static = _get_awin_static_products(profile)
+            logger.info("Awin: returning %d static products after catalog failure", len(static))
+            return static
+        except Exception as e2:
+            logger.error("Awin static products also failed: %s", e2)
+            return []
     for interest in interests:
         name = interest.get("name", "")
         if not name:

@@ -64,7 +64,7 @@ Plans:
 
 Plans:
 - [x] 02-01-PLAN.md — Remove live CJ GraphQL + Awin feed from session code; add `get_total_product_count()` + circuit breaker; remove obsolete diversity gate
-- [ ] 02-02-PLAN.md — eBay niche-only scoping using `per_interest_counts`; `EBAY_NICHE_CAP = 7`; pre-initialize `per_interest_counts` before DB try block
+- [x] 02-02-PLAN.md — eBay niche-only scoping using `per_interest_counts`; `EBAY_NICHE_CAP = 7`; pre-initialize `per_interest_counts` before DB try block
 
 ---
 

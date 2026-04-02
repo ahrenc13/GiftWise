@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-04-02T00:54:12.435Z"
+status: verifying
+last_updated: "2026-04-02T00:59:06.636Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 
 Phase: 02 (catalog-first-source-separation) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-04-02
 
 Progress: [░░░░░░░░░░] 0%
@@ -49,6 +49,7 @@ Progress: [░░░░░░░░░░] 0%
 | 4. Infrastructure Hardening | 0/2 | — | — |
 | Phase 01 P01 | 5 | 2 tasks | 2 files |
 | Phase 02 P01 | 2min | 3 tasks | 3 files |
+| Phase 02 P02 | 1min | 2 tasks | 1 files |
 
 ## Accumulated Context
 
@@ -62,6 +63,7 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 01]: Added home_theater_av and body_jewelry_piercing to INTEREST_CATEGORIES at priority 2 for AWOL Vision (98169) and OUFER Body Jewelry (91941)
 - [Phase 02]: Circuit breaker threshold at 100 products for live CJ/Awin fallback
 - [Phase 02]: CJ static partners always run via api_key=None; Awin degrades to static on catalog failure
+- [Phase 02]: EBAY_WEAK_COVERAGE_THRESHOLD=5, EBAY_NICHE_CAP=7 for niche-only eBay scoping
 
 ### Pending Todos
 

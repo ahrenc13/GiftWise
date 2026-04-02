@@ -25,6 +25,14 @@ logger = logging.getLogger(__name__)
 # Max products in the merged inventory (so curator prompt stays manageable)
 MAX_INVENTORY_SIZE = 100
 
+# eBay niche-only scoping (Phase 2, Apr 2026).
+# eBay fires ONLY for interests with fewer DB products than this threshold.
+# With a healthy DB (11,000+ products), most interests have enough coverage
+# and eBay is skipped entirely. This prevents eBay marketplace listings from
+# flooding the inventory pool and crowding out CJ/Awin affiliate products.
+EBAY_WEAK_COVERAGE_THRESHOLD = 5   # interests with < 5 DB products trigger eBay
+EBAY_NICHE_CAP = 7                  # max total eBay products across all weak interests
+
 
 def search_products_multi_retailer(
     profile,
@@ -227,16 +235,48 @@ def search_products_multi_retailer(
         logger.info("Awin data feed API key not set - skipping Awin")
 
     if ebay_client_id and ebay_client_secret:
-        def _run_ebay():
-            from ebay_searcher import search_products_ebay
-            _notify('eBay', searching=True)
-            products = search_products_ebay(
-                profile, ebay_client_id, ebay_client_secret,
-                target_count=per_vendor_target,
+        # Identify interests with thin DB coverage. per_interest_counts keys are lowercased
+        # interest names; a missing key means 0 products for that interest.
+        # interests[] was built in the DB try block (or is [] if DB failed).
+        weak_interests = [
+            i for i in interests
+            if per_interest_counts.get(i.lower(), 0) < EBAY_WEAK_COVERAGE_THRESHOLD
+        ]
+
+        if not weak_interests:
+            logger.info("[EBAY] All interests have sufficient DB coverage — skipping eBay.")
+        else:
+            logger.info(
+                "[EBAY] Weak-coverage interests (< %d DB products): %s. "
+                "Calling eBay for %d interest(s).",
+                EBAY_WEAK_COVERAGE_THRESHOLD, weak_interests, len(weak_interests)
             )
-            _notify('eBay', count=len(products), done=True)
-            return 'eBay', products
-        retailer_tasks.append(_run_ebay)
+            # Build a filtered profile containing only the weak-coverage interests.
+            # ebay_searcher.search_products_ebay() reads profile["interests"] directly,
+            # so we pass a shallow copy with the filtered list.
+            _weak_interest_names = {w.lower() for w in weak_interests}
+            _ebay_profile = {
+                **profile,
+                "interests": [
+                    i for i in profile.get("interests", [])
+                    if isinstance(i, dict)
+                    and i.get("name", "").lower() in _weak_interest_names
+                ],
+            }
+
+            def _run_ebay():
+                from ebay_searcher import search_products_ebay
+                _notify('eBay', searching=True)
+                products = search_products_ebay(
+                    _ebay_profile, ebay_client_id, ebay_client_secret,
+                    target_count=per_vendor_target,
+                )
+                # Cap total eBay contribution at EBAY_NICHE_CAP.
+                # NOTE: eBay results are NOT written to the DB — live-only by design.
+                products = products[:EBAY_NICHE_CAP]
+                _notify('eBay', count=len(products), done=True)
+                return 'eBay', products
+            retailer_tasks.append(_run_ebay)
     else:
         logger.info("eBay credentials not set - skipping eBay")
 

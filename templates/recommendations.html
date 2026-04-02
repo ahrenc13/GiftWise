@@ -279,6 +279,10 @@ input[type="range"] {
     display: block;
 }
 
+.recommendation-card[data-splurge="true"] {
+    border: 2px solid #d97706;
+}
+
 .badge.physical {
     background: #dbeafe;
     color: #1e40af;
@@ -701,7 +705,7 @@ input[type="range"] {
                 <!-- Compact View -->
                 <div class="rec-compact-view">
                     <div class="rec-image-container" style="position: relative;">
-                        <span class="splurge-label">SPLURGE PICK</span>
+                        <span class="splurge-label">Splurge Pick · up to ${{ splurge_ceiling }}</span>
                         {% if rec.image_url %}
                         <img src="{{ rec.image_url }}"
                              alt="{{ rec.name }}"
@@ -769,7 +773,7 @@ input[type="range"] {
                         <div style="display: flex; gap: 10px; align-items: center;">
                             <div class="rec-badges">
                                 {% if rec.is_splurge %}
-                                <span class="badge splurge">Splurge Pick</span>
+                                <span class="badge splurge">Splurge Pick · up to ${{ splurge_ceiling }}</span>
                                 {% endif %}
                                 <span class="badge {{ rec.confidence_level|replace('_', '-') }}">
                                     {{ 'Safe Bet' if rec.confidence_level == 'safe_bet' else 'Adventurous' }}

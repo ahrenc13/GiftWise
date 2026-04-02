@@ -29,10 +29,35 @@ logger = logging.getLogger(__name__)
 
 
 def curate_gifts(profile, products, recipient_type, relationship, claude_client, rec_count=10, enhanced_search_terms=None, enrichment_context=None, model=None, ontology_briefing=None, splurge_candidates=None):
-    # SONNET-FLAG: splurge_candidates section added below (line ~208). Opus task: update
-    # the SPLURGE PICK instruction at line ~247 to direct the curator to prefer items
-    # from the SPLURGE CANDIDATES section when marking is_splurge=true. Also update
-    # rec_count from 10 → 11 (10 regular + 1 splurge slot). See ROADMAP.md Phase 3 TODO.
+    # SONNET-FLAG: Opus implements the splurge slot changes below.
+    #
+    # OPUS PROMPT:
+    # You are updating gift_curator.py to add a splurge slot to the recommendation output.
+    #
+    # Context:
+    # - The curator currently outputs 10 regular gifts + 3 experiences (rec_count=10)
+    # - We want to add 1 SPLURGE item: the nicest possible gift, $200-$1500 range
+    # - splurge_candidates (list of products $200-$1500 from the DB) are now passed in the inventory
+    # - The profile dict contains price_signals.budget_category; map to ceiling:
+    #     budget->$300, moderate->$500, premium->$1000, luxury->$1500, unknown->$500
+    # - The splurge slot is SEPARATE from the 10 regular gifts -- it goes after them
+    # - Splurge can be a physical item OR an extravagant experience -- curator decides based on what's strongest
+    #
+    # What to implement:
+    # 1. Change rec_count from 10 -> 11 (10 regular + 1 splurge)
+    # 2. Add splurge_candidates to the inventory section shown to Claude
+    # 3. Add splurge slot instructions to the curator prompt:
+    #    "Pick 1 SPLURGE item -- the nicest version of something they love OR an extravagant experience.
+    #     Price $[ceiling] max. This should feel like the 'if money were no object' pick.
+    #     Pull from the SPLURGE CANDIDATES list if one fits. Label it SPLURGE in your output."
+    # 4. Parse the SPLURGE item out of the curator response into a separate field
+    # 5. Pass it to the template as splurge_item (template rendering already done by Sonnet in Phase 3)
+    #
+    # Constraints:
+    # - Do NOT touch the gift reasoning framework, selection principle, or ownership section
+    # - Do NOT route image URLs or affiliate links through the prompt
+    # - Do NOT increase the experiences count (stays at 3)
+    # - The splurge ceiling comes from price_signals.budget_category -- DO wire this in
     """
     Curate gift recommendations from real products and profile.
 

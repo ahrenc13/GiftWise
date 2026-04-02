@@ -408,7 +408,7 @@ def extract_image_url(item_data: Dict, platform: str) -> Optional[str]:
     Args:
         item_data: Raw API response item dict
         platform: Retailer identifier (case-insensitive):
-                 'amazon', 'ebay', 'etsy', 'awin', 'skimlinks', 'cj', 'flexoffers'
+                 'amazon', 'ebay', 'etsy', 'awin', 'cj', 'flexoffers'
 
     Returns:
         Image URL string if found, None otherwise
@@ -438,7 +438,6 @@ def extract_image_url(item_data: Dict, platform: str) -> Optional[str]:
         'ebay': _extract_ebay_image,
         'etsy': _extract_etsy_image,
         'awin': _extract_awin_image,
-        'skimlinks': _extract_skimlinks_image,
         'cj': _extract_cj_image,
         'flexoffers': _extract_flexoffers_image,
     }
@@ -549,23 +548,6 @@ def _extract_awin_image(item: Dict) -> Optional[str]:
     """
     # Try Awin-prefixed keys first (most reliable)
     for key in ['aw_image_url', 'merchant_image_url', 'image_url', 'product_image', 'imageUrl']:
-        value = item.get(key)
-        if value and isinstance(value, str):
-            return value
-
-    return None
-
-
-def _extract_skimlinks_image(item: Dict) -> Optional[str]:
-    """
-    Handle Skimlinks Product API response.
-
-    Skimlinks Product Key API v2 returns:
-    - image_url (primary)
-    - thumbnail (alternate)
-    - imageUrl (camelCase variant)
-    """
-    for key in ['image_url', 'imageUrl', 'thumbnail', 'image']:
         value = item.get(key)
         if value and isinstance(value, str):
             return value

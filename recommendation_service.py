@@ -54,7 +54,6 @@ class RecommendationService:
 
         # Load environment variables
         self.amazon_affiliate_tag = os.environ.get('AMAZON_AFFILIATE_TAG', '')
-        self.skimlinks_publisher_id = os.environ.get('SKIMLINKS_PUBLISHER_ID', '')
 
         # Import required modules
         self._import_modules()
@@ -359,10 +358,6 @@ class RecommendationService:
             shareasale_id=os.environ.get('SHAREASALE_AFFILIATE_ID', ''),
             shareasale_token=os.environ.get('SHAREASALE_API_TOKEN', ''),
             shareasale_secret=os.environ.get('SHAREASALE_API_SECRET', ''),
-            skimlinks_publisher_id=os.environ.get('SKIMLINKS_PUBLISHER_ID', ''),
-            skimlinks_client_id=os.environ.get('SKIMLINKS_CLIENT_ID', ''),
-            skimlinks_client_secret=os.environ.get('SKIMLINKS_CLIENT_SECRET', ''),
-            skimlinks_domain_id=os.environ.get('SKIMLINKS_PUBLISHER_DOMAIN_ID', ''),
             cj_api_key=os.environ.get('CJ_API_KEY', ''),
             cj_company_id=os.environ.get('CJ_COMPANY_ID', ''),
             cj_publisher_id=os.environ.get('CJ_PUBLISHER_ID', ''),
@@ -1200,10 +1195,6 @@ class RecommendationService:
             if 'tag=' not in url:
                 sep = '&' if '?' in url else '?'
                 url = f"{url}{sep}tag={self.amazon_affiliate_tag}"
-
-        # Step 2: Skimlinks server-side wrapping
-        if self.skimlinks_publisher_id and not url.startswith('https://go.skimresources.com'):
-            url = f"https://go.skimresources.com/?id={self.skimlinks_publisher_id}&url={quote(url)}"
 
         return url
 

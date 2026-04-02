@@ -463,7 +463,6 @@ ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY')
 STRIPE_SECRET_KEY = os.environ.get('STRIPE_SECRET_KEY')
 STRIPE_PRICE_ID = os.environ.get('STRIPE_PRICE_ID')
 AMAZON_AFFILIATE_TAG = os.environ.get('AMAZON_AFFILIATE_TAG', '')  # Optional: for affiliate links
-SKIMLINKS_PUBLISHER_ID = os.environ.get('SKIMLINKS_PUBLISHER_ID', '')  # Set when Skimlinks approved
 
 # OneSignal Web Push — set ONESIGNAL_APP_ID in Railway to activate
 ONESIGNAL_APP_ID = os.environ.get('ONESIGNAL_APP_ID', '')
@@ -3015,22 +3014,17 @@ def api_places_autocomplete():
 def _apply_affiliate_tag(url):
     """Apply affiliate tracking to an outbound product URL.
 
-    1. Amazon links: append affiliate tag if set
-    2. All merchant links: wrap with Skimlinks redirect if publisher ID is set
+    Amazon links: append affiliate tag if set.
     Returns the tagged URL, or the original if no tags apply.
     """
     if not url or not isinstance(url, str):
         return url
 
-    # Step 1: Amazon affiliate tag
+    # Amazon affiliate tag
     if AMAZON_AFFILIATE_TAG and 'amazon.com' in url.lower():
         if 'tag=' not in url:
             sep = '&' if '?' in url else '?'
             url = f"{url}{sep}tag={AMAZON_AFFILIATE_TAG}"
-
-    # Step 2: Skimlinks server-side wrapping (when approved)
-    if SKIMLINKS_PUBLISHER_ID and not url.startswith('https://go.skimresources.com'):
-        url = f"https://go.skimresources.com/?id={SKIMLINKS_PUBLISHER_ID}&url={quote(url)}"
 
     return url
 

@@ -44,11 +44,6 @@ except ImportError:
     awin_searcher = None
 
 try:
-    import skimlinks_searcher
-except ImportError:
-    skimlinks_searcher = None
-
-try:
     import cj_searcher
 except ImportError:
     cj_searcher = None
@@ -327,62 +322,6 @@ def refresh_awin(interests: List[str], max_products: int = 500) -> int:
         return products_added
 
 
-def refresh_skimlinks(interests: List[str], max_products: int = 500) -> int:
-    """
-    Refresh Skimlinks products via Product Key API v2
-
-    Args:
-        interests: List of interest keywords to search
-        max_products: Maximum products to fetch
-
-    Returns:
-        Number of products upserted
-    """
-    if not skimlinks_searcher or not config.SKIMLINKS_PUBLISHER_ID:
-        logger.warning("Skimlinks searcher not available - awaiting approval")
-        return 0
-
-    logger.info("Starting Skimlinks refresh...")
-    products_added = 0
-
-    dummy_profile = {
-        'interests': [{'name': interest} for interest in interests],
-        'price_signals': {'preferred_range': {'min': config.DEFAULT_MIN_PRICE, 'max': config.DEFAULT_MAX_PRICE}}
-    }
-
-    try:
-        for interest in interests[:20]:
-            if products_added >= max_products:
-                break
-
-            logger.info(f"  Searching Skimlinks for '{interest}'...")
-
-            results = skimlinks_searcher.search_products_skimlinks(
-                dummy_profile,
-                config.SKIMLINKS_PUBLISHER_ID,
-                config.SKIMLINKS_CLIENT_ID,
-                config.SKIMLINKS_CLIENT_SECRET,
-                config.SKIMLINKS_PUBLISHER_DOMAIN_ID,
-                target_count=25,
-                enhanced_search_terms=[interest]
-            )
-
-            for result in results:
-                try:
-                    product = Product.from_searcher_dict(result, retailer='skimlinks')
-                    database.upsert_product(product.to_db_format())
-                    products_added += 1
-                except Exception as e:
-                    logger.error(f"Failed to upsert Skimlinks product: {e}")
-
-        logger.info(f"Skimlinks refresh complete: {products_added} products")
-        return products_added
-
-    except Exception as e:
-        logger.error(f"Skimlinks refresh failed: {e}")
-        return products_added
-
-
 def refresh_cj(interests: List[str], max_products: int = 500) -> int:
     """
     Refresh CJ Affiliate products via Product Catalog API
@@ -448,7 +387,7 @@ def refresh_retailer(retailer: str, interests: Optional[List[str]] = None, max_p
     Refresh products from a specific retailer
 
     Args:
-        retailer: 'amazon', 'ebay', 'etsy', 'awin', 'skimlinks', 'cj'
+        retailer: 'amazon', 'ebay', 'etsy', 'awin', 'cj'
         interests: List of interests to search (uses CORE_INTERESTS if None)
         max_products: Maximum products to fetch
 
@@ -463,7 +402,6 @@ def refresh_retailer(retailer: str, interests: Optional[List[str]] = None, max_p
         'ebay': refresh_ebay,
         'etsy': refresh_etsy,
         'awin': refresh_awin,
-        'skimlinks': refresh_skimlinks,
         'cj': refresh_cj,
     }
 
@@ -506,7 +444,6 @@ def refresh_all_products(interests: Optional[List[str]] = None) -> Dict[str, int
         'ebay': refresh_retailer('ebay', interests, max_per_retailer),
         'etsy': refresh_retailer('etsy', interests, max_per_retailer),
         'awin': refresh_retailer('awin', interests, max_per_retailer),
-        'skimlinks': refresh_retailer('skimlinks', interests, max_per_retailer),
         'cj': refresh_retailer('cj', interests, max_per_retailer),
     }
 
@@ -531,7 +468,6 @@ def refresh_all_products(interests: Optional[List[str]] = None) -> Dict[str, int
     logger.info(f"  eBay: {results['ebay']}")
     logger.info(f"  Etsy: {results['etsy']}")
     logger.info(f"  Awin: {results['awin']}")
-    logger.info(f"  Skimlinks: {results['skimlinks']}")
     logger.info(f"  CJ: {results['cj']}")
     logger.info(f"Stale products marked: {stale_count}")
     logger.info(f"Expired profiles cleaned: {expired_profiles}")
@@ -551,7 +487,7 @@ if __name__ == "__main__":
     parser.add_argument(
         '--retailer',
         type=str,
-        choices=['amazon', 'ebay', 'etsy', 'awin', 'skimlinks', 'cj', 'all'],
+        choices=['amazon', 'ebay', 'etsy', 'awin', 'cj', 'all'],
         default='all',
         help='Which retailer to refresh (default: all)'
     )

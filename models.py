@@ -29,7 +29,7 @@ class Product:
     title: str
     link: str
     source_domain: str
-    retailer: str  # 'amazon', 'ebay', 'etsy', 'awin', 'skimlinks', 'cj'
+    retailer: str  # 'amazon', 'ebay', 'etsy', 'awin', 'cj'
 
     # Optional product details
     snippet: str = ''

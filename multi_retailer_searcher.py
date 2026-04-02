@@ -1,6 +1,6 @@
 """
 MULTI-RETAILER PRODUCT ORCHESTRATOR
-Combines Etsy + Awin + eBay + ShareASale + Amazon + Skimlinks + CJ
+Combines Etsy + Awin + eBay + ShareASale + Amazon + CJ
 
 Strategy:
 - Build a large inventory from every available vendor (request target_count from each
@@ -44,10 +44,6 @@ def search_products_multi_retailer(
     shareasale_token=None,
     shareasale_secret=None,
     amazon_key=None,
-    skimlinks_publisher_id=None,
-    skimlinks_client_id=None,
-    skimlinks_client_secret=None,
-    skimlinks_domain_id=None,
     cj_api_key=None,
     cj_company_id=None,
     cj_publisher_id=None,
@@ -63,7 +59,6 @@ def search_products_multi_retailer(
     - Add Awin products (feed-based)
     - Add eBay products (Browse API)
     - Add ShareASale products (brand names, legacy)
-    - Add Skimlinks products (48,500+ merchants)
     - Add CJ Affiliate products (approved advertisers only)
     - Use Amazon as fallback if needed
 
@@ -74,7 +69,7 @@ def search_products_multi_retailer(
     """
     logger.info(f"Multi-retailer search: target {target_count} products")
     logger.info(
-        f"Available: Etsy={bool(etsy_key)}, Awin={bool(awin_data_feed_api_key)}, eBay={bool(ebay_client_id and ebay_client_secret)}, ShareASale={bool(shareasale_id)}, Skimlinks={bool(skimlinks_publisher_id)}, CJ={bool(cj_api_key)}, Amazon={bool(amazon_key)}"
+        f"Available: Etsy={bool(etsy_key)}, Awin={bool(awin_data_feed_api_key)}, eBay={bool(ebay_client_id and ebay_client_secret)}, ShareASale={bool(shareasale_id)}, CJ={bool(cj_api_key)}, Amazon={bool(amazon_key)}"
     )
 
     all_products = []
@@ -297,22 +292,6 @@ def search_products_multi_retailer(
         retailer_tasks.append(_run_shareasale)
     else:
         logger.info("ShareASale credentials not set - skipping ShareASale")
-
-    if skimlinks_publisher_id:
-        def _run_skimlinks():
-            from skimlinks_searcher import search_products_skimlinks
-            _notify('Skimlinks', searching=True)
-            products = search_products_skimlinks(
-                profile, skimlinks_publisher_id,
-                skimlinks_client_id, skimlinks_client_secret, skimlinks_domain_id,
-                target_count=per_vendor_target,
-                enhanced_search_terms=enhanced_search_terms,
-            )
-            _notify('Skimlinks', count=len(products), done=True)
-            return 'Skimlinks', products
-        retailer_tasks.append(_run_skimlinks)
-    else:
-        logger.info("Skimlinks credentials not set - skipping Skimlinks")
 
     # CJ: always run, but pass api_key=None unless DB is thin.
     # When api_key is None, search_products_cj() returns static partners only

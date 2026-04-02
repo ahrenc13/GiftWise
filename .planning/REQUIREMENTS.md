@@ -35,8 +35,8 @@
 
 ### 14-Item Output (Sonnet Portions)
 
-- [ ] **OUT-01**: `search_products_diverse()` returns a separate `splurge_candidates` list ($200–$1500) passed through the pipeline to the curator
-- [ ] **OUT-02**: Splurge candidates are included in the inventory payload shown to the curator (alongside regular candidates)
+- [x] **OUT-01**: `search_products_diverse()` returns a separate `splurge_candidates` list ($200–$1500) passed through the pipeline to the curator
+- [x] **OUT-02**: Splurge candidates are included in the inventory payload shown to the curator (alongside regular candidates)
 - [ ] **OUT-03**: Recommendations template (`templates/recommendations.html`) renders a visually differentiated splurge tile — positioned after the 10 regular gifts, before the 3 experiences
 - [ ] **OUT-04**: Splurge tile includes a "Splurge Pick" badge and uses the profile's `budget_category` to set the price ceiling shown (budget→$300, moderate→$500, premium→$1000, luxury→$1500)
 - [ ] **OUT-05**: `# SONNET-FLAG:` comment added to `gift_curator.py` at the rec_count and splurge slot instruction location, with a complete Opus prompt ready to paste (see ROADMAP Phase 3 notes)
@@ -119,8 +119,8 @@
 | CAT-04 | Phase 2 | Complete |
 | CAT-05 | Phase 2 | Complete |
 | CAT-06 | Phase 2 | Complete |
-| OUT-01 | Phase 3 | Pending |
-| OUT-02 | Phase 3 | Pending |
+| OUT-01 | Phase 3 | Complete |
+| OUT-02 | Phase 3 | Complete |
 | OUT-03 | Phase 3 | Pending |
 | OUT-04 | Phase 3 | Pending |
 | OUT-05 | Phase 3 | Pending |

@@ -26,13 +26,24 @@ Show the right gift for THIS specific person — not a generic list — by groun
 
 ### Active
 
-- [ ] Guide → tool conversion funnel (CTAs above-fold and mid-page on all guides)
-- [ ] Fix/remove 3 broken Etsy guides with placeholder content
-- [ ] New retailer wiring: AWOL Vision, OUFER Body Jewelry, youngelectricbikes, Tayst Coffee
-- [ ] Catalog-First Phase 2: remove live CJ/Awin calls from session-time code
-- [ ] eBay niche-only scoping (only for interests with < 3 DB products)
 - [ ] 14-item output: splurge slot wired through pipeline and displayed in UI (Sonnet portions)
 - [ ] Infrastructure: remove Skimlinks dead code, fix in-flight duplicate Claude calls
+
+### Validated in Phase 01 (2026-04-02)
+
+- ✓ New retailer wiring: youngelectricbikes, Tayst Coffee static products added to awin_searcher.py
+- ✓ VitaJuwel + VSGO placeholder links replaced with real Awin deep links (awinmid params)
+- ✓ AWOL Vision + OUFER Body Jewelry catalog sync terms added (catalog_sync.py)
+- ✓ Tracking fixed: per-slug guide_hit events (guide_hit:{slug}, blog_hit:{slug})
+
+### Validated in Phase 02 (2026-04-02)
+
+- ✓ Catalog-First source separation: live CJ GraphQL and Awin feed CSV download removed from session-time code
+- ✓ eBay niche-only scoping: fires only for interests with < 5 DB products (EBAY_WEAK_COVERAGE_THRESHOLD=5, EBAY_NICHE_CAP=7)
+- ✓ Circuit breaker: DB < 100 products → re-enable live CJ/Awin fallback
+- ✓ CJ static partners (MonthlyClubs, Winebasket, etc.) preserved via api_key=None path
+- ✓ Awin _matches_query() 2-term threshold preserved
+- ✓ No eBay/Amazon DB write-back (documented in code)
 
 ### Out of Scope
 

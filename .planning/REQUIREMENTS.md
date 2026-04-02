@@ -28,7 +28,7 @@
 
 - [x] **CAT-01**: Live CJ GraphQL calls removed from session-time code (`multi_retailer_searcher.py`) — CJ products come from DB only
 - [x] **CAT-02**: Live Awin feed CSV download fallback removed from `awin_searcher.py` — Awin products come from DB only; static Awin partners still run
-- [x] **CAT-03**: eBay runs ONLY for interests with < 3 matching DB products (identified via `per_interest_counts` from `search_products_diverse()`), capped at ~5–8 items total
+- [x] **CAT-03**: eBay runs ONLY for interests with < 5 matching DB products (identified via `per_interest_counts` from `search_products_diverse()`), capped at 7 items total (EBAY_NICHE_CAP=7)
 - [x] **CAT-04**: `_run_cj` removed from parallel retailer tasks in `multi_retailer_searcher.py`; CJ static partner logic (MonthlyClubs, Winebasket, etc.) preserved
 - [x] **CAT-05**: `awin_searcher.py` Awin `_matches_query()` 2-term threshold preserved and not weakened
 - [x] **CAT-06**: No eBay or Amazon results written to DB (already enforced — verify and document)

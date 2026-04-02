@@ -72,6 +72,25 @@ def search_products_multi_retailer(
     # Per-vendor target: used both for DB source capping and live API calls.
     per_vendor_target = min(target_count, MAX_INVENTORY_SIZE // 5)  # so 5 vendors don't exceed MAX
 
+    # Circuit breaker: if the catalog DB is thin (sync failure or fresh environment),
+    # fall back to live CJ and Awin for this session. Under normal operation the DB
+    # has 11,000+ products and this never triggers.
+    _DB_CIRCUIT_BREAKER_THRESHOLD = 100
+    _db_is_thin = False
+    try:
+        import database as _db_module
+        _total = _db_module.get_total_product_count()
+        if _total < _DB_CIRCUIT_BREAKER_THRESHOLD:
+            logger.warning(
+                f"[CATALOG] DB thin (<100 products, found {_total}) — "
+                f"falling back to live CJ/Awin for this session"
+            )
+            _db_is_thin = True
+        else:
+            logger.info(f"[CATALOG] DB health OK: {_total} products in catalog")
+    except Exception as _e:
+        logger.warning(f"[CATALOG] Circuit breaker check failed ({_e}) — assuming DB healthy")
+
     # 0. Query database FIRST (added Feb 2026 for cost reduction)
     try:
         import config
@@ -135,12 +154,6 @@ def search_products_multi_retailer(
 
                     logger.info(f"Got {len(all_products)} products from database cache (form-diverse, {len(splurge_candidates)} splurge candidates)")
 
-                    # Only skip live APIs if we have enough products AND source diversity.
-                    # Without this check, once eBay floods the cache, Awin/CJ feeds are
-                    # never queried again — starving the advertisers we've been accumulating.
-                    MIN_SOURCES_TO_SKIP_LIVE = 3
-                    MAX_SINGLE_SOURCE_PCT = 0.40  # No source > 40% of cached results (was 50%)
-
                     # Always cap per-source products first. This prevents a single CJ
                     # marketplace advertiser (e.g. TikTok Shop at 44%) from dominating.
                     # Cap = 30% of target or per_vendor_target, whichever is smaller.
@@ -158,42 +171,6 @@ def search_products_multi_retailer(
                             f"excess products from overrepresented sources"
                         )
                     all_products = capped_products
-
-                    # Check interest coverage: what fraction of profile interests have DB products?
-                    # If most interests have zero coverage, live APIs must run even if quantity looks fine.
-                    MIN_INTEREST_COVERAGE_PCT = 0.50  # At least 50% of interests need DB products
-                    covered_interests = len(per_interest_counts) if per_interest_counts else 0
-                    total_interests = len(interests) if interests else 1
-                    interest_coverage_pct = covered_interests / total_interests
-
-                    if len(all_products) >= target_count:
-                        db_source_counts = defaultdict(int)
-                        for p in all_products:
-                            db_source_counts[p.get("source_domain", "unknown")] += 1
-                        num_sources = len(db_source_counts)
-                        top_source_pct = max(db_source_counts.values()) / len(all_products) if all_products else 1.0
-                        top_source_name = max(db_source_counts, key=db_source_counts.get) if db_source_counts else "unknown"
-
-                        if (num_sources >= MIN_SOURCES_TO_SKIP_LIVE
-                                and top_source_pct <= MAX_SINGLE_SOURCE_PCT
-                                and interest_coverage_pct >= MIN_INTEREST_COVERAGE_PCT):
-                            logger.info(
-                                f"Database provided enough diverse products ({len(all_products)} >= {target_count}, "
-                                f"{num_sources} sources, top source '{top_source_name}' at {top_source_pct:.0%}, "
-                                f"interest coverage {covered_interests}/{total_interests} = {interest_coverage_pct:.0%}), "
-                                f"skipping live API calls"
-                            )
-                            return all_products[:MAX_INVENTORY_SIZE]
-                        else:
-                            reason_parts = []
-                            if num_sources < MIN_SOURCES_TO_SKIP_LIVE or top_source_pct > MAX_SINGLE_SOURCE_PCT:
-                                reason_parts.append(f"source diversity ({num_sources} sources, top '{top_source_name}' at {top_source_pct:.0%})")
-                            if interest_coverage_pct < MIN_INTEREST_COVERAGE_PCT:
-                                reason_parts.append(f"interest coverage ({covered_interests}/{total_interests} = {interest_coverage_pct:.0%}, need {MIN_INTEREST_COVERAGE_PCT:.0%})")
-                            logger.info(
-                                f"Database has {len(all_products)} products but insufficient {' and '.join(reason_parts)}. "
-                                f"Proceeding with live API calls to diversify."
-                            )
                 else:
                     logger.info("No products found in database for these interests")
             else:
@@ -289,23 +266,28 @@ def search_products_multi_retailer(
     else:
         logger.info("Skimlinks credentials not set - skipping Skimlinks")
 
-    if cj_api_key:
-        def _run_cj():
-            from cj_searcher import search_products_cj
-            _notify('CJ Affiliate', searching=True)
-            products = search_products_cj(
-                profile, cj_api_key,
-                company_id=cj_company_id,
-                publisher_id=cj_publisher_id,
-                target_count=per_vendor_target,
-                enhanced_search_terms=enhanced_search_terms,
-                joined_only=False,
-            )
-            _notify('CJ Affiliate', count=len(products), done=True)
-            return 'CJ Affiliate', products
-        retailer_tasks.append(_run_cj)
-    else:
-        logger.info("CJ Affiliate credentials not set - skipping CJ")
+    # CJ: always run, but pass api_key=None unless DB is thin.
+    # When api_key is None, search_products_cj() returns static partners only
+    # (17 merchants: MonthlyClubs, Winebasket, zChocolat, Peet's, illy, etc.)
+    # without making any GraphQL API calls. (cj_searcher.py lines 2992-2994)
+    # Only pass the real api_key when DB is thin (circuit breaker triggered).
+    def _run_cj():
+        from cj_searcher import search_products_cj
+        _notify('CJ Affiliate', searching=True)
+        _api_key = cj_api_key if _db_is_thin else None
+        if not _db_is_thin:
+            logger.info("[CATALOG] CJ GraphQL skipped — using DB only (static partners still run)")
+        products = search_products_cj(
+            profile, _api_key,
+            company_id=cj_company_id,
+            publisher_id=cj_publisher_id,
+            target_count=per_vendor_target,
+            enhanced_search_terms=enhanced_search_terms,
+            joined_only=False,
+        )
+        _notify('CJ Affiliate', count=len(products), done=True)
+        return 'CJ Affiliate', products
+    retailer_tasks.append(_run_cj)
 
     if amazon_key:
         def _run_amazon():
@@ -376,9 +358,8 @@ def search_products_multi_retailer(
     logger.info(f"Total products in pool: {len(all_products)}")
 
     # NOTE: DB write-back of live API results was removed (Mar 2026).
-    # The product DB should only contain nightly-synced CJ/Awin inventory
-    # from catalog_sync.py. Writing eBay/Amazon results back polluted the
-    # curated catalog with marketplace listings that go stale quickly and
-    # lack affiliate tracking from our approved networks.
+    # Phase 2 (Apr 2026): CJ GraphQL and Awin live feed also removed from session-time
+    # code — CJ/Awin products now come exclusively from the nightly-synced catalog DB.
+    # eBay and Amazon remain live-only. Neither writes results back to the DB.
 
     return all_products

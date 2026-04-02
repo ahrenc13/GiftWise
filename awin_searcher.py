@@ -105,7 +105,7 @@ _VITAJUWEL_ALL_PRODUCTS = [
         "snippet": "Portable gemstone water bottle with hand-selected sunstone and maifan stone gems. BPA-free borosilicate glass, stainless steel cap. Carry the energy of crystals wherever you go.",
         "price": "$130.00",
         "source_domain": "vitajuwel.us",
-        "link": "https://www.vitajuwel.us/products/via-indian-summer",  # Replace with Awin deep link
+        "link": "https://www.awin1.com/cread.php?awinmid=97077&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fwww.vitajuwel.us%2Fproducts%2Fvia-indian-summer",
         "image_url": "",
         "interest_match": "wellness crystals gemstone",
     },
@@ -114,7 +114,7 @@ _VITAJUWEL_ALL_PRODUCTS = [
         "snippet": "The bestselling VitaJuwel bottle. Trio of amethyst, rose quartz, and clear quartz suspended in a glass gem pod. Loved by yoga and meditation practitioners.",
         "price": "$130.00",
         "source_domain": "vitajuwel.us",
-        "link": "https://www.vitajuwel.us/products/via-wellness",  # Replace with Awin deep link
+        "link": "https://www.awin1.com/cread.php?awinmid=97077&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fwww.vitajuwel.us%2Fproducts%2Fvia-wellness",
         "image_url": "",
         "interest_match": "yoga meditation crystals wellness",
     },
@@ -123,7 +123,7 @@ _VITAJUWEL_ALL_PRODUCTS = [
         "snippet": "Elegant 1-liter glass carafe with removable gemstone vial. Perfect for the home altar, bedside table, or gifting to anyone obsessed with crystals and intentional living.",
         "price": "$135.00",
         "source_domain": "vitajuwel.us",
-        "link": "https://www.vitajuwel.us/products/era-wellness",  # Replace with Awin deep link
+        "link": "https://www.awin1.com/cread.php?awinmid=97077&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fwww.vitajuwel.us%2Fproducts%2Fera-wellness",
         "image_url": "",
         "interest_match": "crystals wellness spiritual self-care",
     },
@@ -138,7 +138,7 @@ _VSGO_ALL_PRODUCTS = [
         "snippet": "Award-winning camera backpack with ultra-light carrying system and patented camera compartment. Fits mirrorless and DSLR kits. Weatherproof exterior, laptop sleeve, tripod holder.",
         "price": "$119.00",
         "source_domain": "vsgotech.com",
-        "link": "https://vsgotech.com/collections/bags",  # Replace with Awin deep link to specific SKU
+        "link": "https://www.awin1.com/cread.php?awinmid=120898&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fvsgotech.com%2Fproducts%2Fblack-snipe-camera-backpack",
         "image_url": "",
         "interest_match": "photography cameras travel content creation",
     },
@@ -147,7 +147,7 @@ _VSGO_ALL_PRODUCTS = [
         "snippet": "Compact sling bag designed for mirrorless shooters on the go. Fast-access side opening, padded dividers, weather-resistant. Great for street photography and travel.",
         "price": "$79.00",
         "source_domain": "vsgotech.com",
-        "link": "https://vsgotech.com/collections/bags",  # Replace with Awin deep link to specific SKU
+        "link": "https://www.awin1.com/cread.php?awinmid=120898&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fvsgotech.com%2Fproducts%2Fpocket-ranger-camera-sling-bag",
         "image_url": "",
         "interest_match": "photography street photography travel cameras",
     },
@@ -249,6 +249,72 @@ _OUTFITR_ALL_PRODUCTS = [
     },
 ]
 
+# Young Electric Bikes (youngelectricbikes.com) — Premium e-bikes for commuting and adventure.
+# Triggers: cycling, outdoor adventure, fitness, e-bike themes. Splurge-tier price points.
+# Advertiser ID: 120209. No product feed — static list only.
+_YOUNG_ELECTRIC_BIKES_ALL_PRODUCTS = [
+    {
+        "title": "Young Electric E-Scout Pro Electric Mountain Bike",
+        "snippet": "Full-suspension electric mountain bike with 750W motor, 48V 15Ah battery, and 28 mph top speed. 7-speed Shimano drivetrain, hydraulic disc brakes, front suspension fork. Built for trail riding and adventure.",
+        "price": "$1,499.00",
+        "source_domain": "youngelectricbikes.com",
+        "link": "https://www.awin1.com/cread.php?awinmid=120209&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fyoungelectricbikes.com%2Fproducts%2Fe-scout-pro",
+        "image_url": "",
+        "interest_match": "cycling mountain biking electric bike outdoor adventure fitness",
+    },
+    {
+        "title": "Young Electric E-Cross Pro Electric Commuter Bike",
+        "snippet": "Versatile electric commuter and trail bike with 750W motor, 48V 15Ah battery, 28 mph top speed, and integrated rear rack. Shimano 7-speed gears, hydraulic disc brakes, aluminum frame.",
+        "price": "$1,299.00",
+        "source_domain": "youngelectricbikes.com",
+        "link": "https://www.awin1.com/cread.php?awinmid=120209&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fyoungelectricbikes.com%2Fproducts%2Fe-cross-pro",
+        "image_url": "",
+        "interest_match": "cycling commuting electric bike fitness outdoor adventure",
+    },
+    {
+        "title": "Young Electric E-Scout Electric Mountain Bike (Standard)",
+        "snippet": "Entry-point electric mountain bike with 500W motor, 48V 10.4Ah battery, 25 mph top speed. 7-speed Shimano drivetrain, mechanical disc brakes. Great first e-bike for trail riders.",
+        "price": "$999.00",
+        "source_domain": "youngelectricbikes.com",
+        "link": "https://www.awin1.com/cread.php?awinmid=120209&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fyoungelectricbikes.com%2Fproducts%2Fe-scout",
+        "image_url": "",
+        "interest_match": "cycling mountain biking electric bike outdoor adventure",
+    },
+]
+
+# Tayst Coffee (taystcoffee.com) — Sustainable coffee subscriptions in 100% compostable pods.
+# Triggers: coffee, sustainability, eco-friendly, subscription, morning routine themes.
+# Advertiser ID: 90529. No product feed — static list only.
+_TAYST_COFFEE_ALL_PRODUCTS = [
+    {
+        "title": "Tayst Coffee — Sustainable Coffee Pod Subscription (6-Month Prepaid)",
+        "snippet": "Six months of freshly-roasted coffee delivered in 100% compostable pods — no plastic, no landfill. Choose your roast profile (light, medium, dark). Better for the planet and your morning.",
+        "price": "$89.00",
+        "source_domain": "taystcoffee.com",
+        "link": "https://www.awin1.com/cread.php?awinmid=90529&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fwww.tayst.com%2Fpages%2Fsubscriptions",
+        "image_url": "",
+        "interest_match": "coffee sustainability eco-friendly subscription morning routine environment",
+    },
+    {
+        "title": "Tayst Coffee — Gift Box Sampler (Compostable Pods, 3 Roasts)",
+        "snippet": "A curated sampler gift box with Tayst's three signature roasts — light, medium, and dark — all in compostable pods. The perfect gift for coffee lovers who care about sustainability.",
+        "price": "$29.00",
+        "source_domain": "taystcoffee.com",
+        "link": "https://www.awin1.com/cread.php?awinmid=90529&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fwww.tayst.com%2Fpages%2Four-coffee-promotion",
+        "image_url": "",
+        "interest_match": "coffee eco-friendly sustainability gift morning routine",
+    },
+    {
+        "title": "Tayst Coffee — Monthly Coffee Subscription (Compostable Pods)",
+        "snippet": "Monthly delivery of freshly-roasted coffee in 100% compostable pods. Customize roast, grind, and quantity. Cancel anytime. A thoughtful recurring gift for eco-conscious coffee drinkers.",
+        "price": "$19.00",
+        "source_domain": "taystcoffee.com",
+        "link": "https://www.awin1.com/cread.php?awinmid=90529&awinaffid=!!id!!&agen=&clickref=&p=https%3A%2F%2Fwww.tayst.com%2Fpages%2Fsubscriptions",
+        "image_url": "",
+        "interest_match": "coffee subscription sustainability eco-friendly morning routine",
+    },
+]
+
 
 def _get_awin_static_products(profile):
     """Return static Awin products relevant to the current profile's interests.
@@ -286,6 +352,19 @@ def _get_awin_static_products(profile):
     outfitr_triggers = {"cycling", "biking", "bike", "bicycle", "cyclist", "road trip", "rv", "camping", "e-bike", "ebike", "mountain bike", "trail"}
     if any(t in interest_text for t in outfitr_triggers):
         results.extend(_OUTFITR_ALL_PRODUCTS)
+
+    # Young Electric Bikes — trigger on cycling/e-bike/outdoor adventure themes
+    young_electric_triggers = {"cycling", "biking", "bike", "bicycle", "cyclist", "e-bike", "ebike",
+                                "electric bike", "mountain bike", "trail", "outdoor adventure", "commuting"}
+    if any(t in interest_text for t in young_electric_triggers):
+        results.extend(_YOUNG_ELECTRIC_BIKES_ALL_PRODUCTS)
+
+    # Tayst Coffee — trigger on coffee/sustainability/eco-friendly/subscription themes
+    tayst_triggers = {"coffee", "espresso", "cappuccino", "latte", "morning routine", "sustainability",
+                      "sustainable", "eco", "eco-friendly", "environment", "environmentalist",
+                      "zero waste", "compost", "subscription box"}
+    if any(t in interest_text for t in tayst_triggers):
+        results.extend(_TAYST_COFFEE_ALL_PRODUCTS)
 
     return results
 
@@ -729,7 +808,10 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
 
     api_key = data_feed_api_key.strip()
 
-    # --- Cache-first: check SQLite catalog before downloading any feeds ---
+    # --- Catalog-only: Awin products come exclusively from the nightly-synced DB.
+    # Live feed CSV download removed (Phase 2, Apr 2026). The nightly sync populates
+    # 589 terms via catalog_sync.py. Static Awin partners always inject below.
+    # _matches_query() 2-term threshold is preserved in the static partner logic. ---
     try:
         from catalog_sync import get_cached_awin_products_for_interest
         interests = profile.get("interests", [])
@@ -744,265 +826,19 @@ def search_products_awin(profile, data_feed_api_key, target_count=20, enhanced_s
                 if pid and pid not in seen_ids:
                     seen_ids.add(pid)
                     cached_products.append(p)
-        if len(cached_products) >= target_count // 2:
-            static = _get_awin_static_products(profile)
-            result = (cached_products + static)[:target_count]
-            logger.info("Awin: returning %d products from catalog cache (skipping live download)",
-                        len(result))
-            return result
-    except Exception as e:
-        logger.debug("Awin cache check failed, falling back to live: %s", e)
-
-    logger.info("Searching Awin feeds for %s products (live)", target_count)
-
-    interests = profile.get("interests", [])
-    enhanced = list(enhanced_search_terms or [])
-    if not interests and not enhanced:
-        return []
-
-    # Build search queries from profile interests (skip work); include primary term for relaxed matching
-    search_queries = []
-    for interest in interests:
-        name = interest.get("name", "")
-        if not name:
-            continue
-        if interest.get("is_work", False):
-            logger.info("Skipping work interest: %s", name)
-            continue
-        # Primary term = first significant word (e.g. "dog" from "Dog ownership and care") for broader Awin matching
-        words = [w for w in re.split(r"\s+", name) if len(w) > 1 and w.lower() not in ("and", "the", "or", "for")]
-        primary = words[0].lower() if words else name.lower()[:20]
-        search_queries.append({
-            "query": f"{name} gift",
-            "interest": name,
-            "primary_term": primary,
-            "priority": "high" if interest.get("intensity") == "passionate" else "medium",
-        })
-    # Add intelligence-layer enhanced search terms as extra queries (broaden match)
-    for term in enhanced[:15]:
-        if term and isinstance(term, str) and term.strip() and term.strip() not in {q["query"] for q in search_queries}:
-            t = term.strip()
-            words = [w for w in re.split(r"\s+", t) if len(w) > 1 and w.lower() not in ("and", "the", "or", "for")]
-            primary = words[0].lower() if words else t.lower()[:20]
-            search_queries.append({
-                "query": f"{t} gift",
-                "interest": t,
-                "primary_term": primary,
-                "priority": "medium",
-            })
-    search_queries = search_queries[:20]
-    if not search_queries:
-        return []
-
-    feed_list = _get_feed_list(api_key)
-    if not feed_list:
-        logger.warning("Awin feed list empty or failed")
-        return []
-
-    # Prefer Joined/active feeds; accept multiple status values
-    _active_statuses = {"joined", "active", "approved", "yes", "1", "true"}
-    _niche_keywords = ("bunch", "flower", "florist", "roses", "bouquet", "tooled up", "tools")
-    _adult_keywords = ("pleasure", "erotic", "lingerie", "adult", "sex", "vibrator", "fetish", "intimacy")
-    # Non-English-speaking regions to deprioritize (we want US/UK/AU/CA feeds)
-    _english_regions = {"us", "uk", "gb", "au", "ca", "ie", "nz"}
-
-    def _is_niche_retailer(advertiser_name):
-        name = (advertiser_name or "").lower()
-        return any(k in name for k in _niche_keywords)
-
-    def _is_adult_feed(feed_info):
-        text = " ".join([
-            (feed_info.get("feed_name") or "").lower(),
-            (feed_info.get("advertiser_name") or "").lower(),
-            (feed_info.get("vertical") or "").lower(),
-        ])
-        return any(k in text for k in _adult_keywords)
-
-    def _is_closed_feed(feed_info):
-        text = " ".join([
-            (feed_info.get("feed_name") or "").lower(),
-            (feed_info.get("advertiser_name") or "").lower(),
-        ])
-        return "closed" in text
-
-    def _is_english_region(feed_info):
-        region = (feed_info.get("primary_region") or "").lower().strip()
-        lang = (feed_info.get("language") or "").lower().strip()
-        # If region is specified, check it's English-speaking
-        if region and region in _english_regions:
-            return True
-        if region and region not in _english_regions:
-            return False
-        # Fall back to language check
-        if lang and ("en" in lang or "english" in lang):
-            return True
-        # No region/language info — don't exclude
-        return not region and not lang
-
-    # Hard-filter: remove closed and adult feeds before scoring
-    feed_list = [f for f in feed_list if not _is_closed_feed(f) and not _is_adult_feed(f)]
-
-    joined = [f for f in feed_list if (f.get("membership_status") or "").lower() in _active_statuses]
-    logger.info("Awin joined/active feeds: %d (out of %d total after filtering)", len(joined), len(feed_list))
-
-    # Gate: if no joined feeds, don't waste time downloading and scanning random feeds
-    if not joined:
-        logger.warning(
-            "Awin: 0 joined advertisers — skipping feed downloads. "
-            "Join advertisers at https://www.awin.com/us/search/advertiser-directory "
-            "to enable Awin product results."
+        static = _get_awin_static_products(profile)
+        result = (cached_products + static)[:target_count]
+        logger.info(
+            "[CATALOG] Awin live feed skipped — using DB only (%d cached + %d static = %d products)",
+            len(cached_products), len(static), len(result)
         )
-        return []
-
-    candidates = joined
-
-    # Prefer English-language feeds and gift-relevant verticals
-    _gift_verticals = {"retail", "gifts", "home & garden", "sports & outdoors", "sports equipment",
-                       "clothing & accessories", "food & drink", "health & beauty", "entertainment",
-                       "travel", "toys & games", "arts & crafts", "books", "music", "pets", "jewelry"}
-
-    # Score each feed for selection (higher = better)
-    interest_keywords = set()
-    for q in search_queries:
-        pt = q.get("primary_term")
-        if pt:
-            interest_keywords.add(pt)
-        for w in re.split(r"\s+", (q.get("interest") or "")):
-            if len(w) > 2:
-                interest_keywords.add(w.lower())
-
-    # Pet semantic expansion: if the profile mentions any pet breed or animal,
-    # add generic pet terms so pet-focused advertisers (e.g. "Crown and Paw")
-    # score higher than generic fashion retailers that just happen to share a
-    # keyword like 'fashion' with a 'vintage fashion' interest.
-    _PET_SIGNALS = {
-        'pug', 'dog', 'cat', 'puppy', 'kitten', 'labrador', 'retriever',
-        'bulldog', 'poodle', 'dachshund', 'husky', 'corgi', 'beagle',
-        'golden', 'terrier', 'spaniel', 'shepherd', 'feline', 'canine',
-        'rabbit', 'bunny', 'hamster', 'parrot', 'bird', 'reptile',
-        'pet owner', 'pet lover', 'pet care',
-    }
-    if interest_keywords & _PET_SIGNALS:
-        interest_keywords.update({'pet', 'pets', 'paw', 'animal'})
-
-    def _feed_score(feed_info):
-        score = 0
-        text = " ".join([
-            (feed_info.get("vertical") or "").lower(),
-            (feed_info.get("feed_name") or "").lower(),
-            (feed_info.get("advertiser_name") or "").lower(),
-        ])
-        # Interest keyword matches
-        score += sum(2 for k in interest_keywords if k in text)
-        # Gift-relevant vertical bonus
-        vertical_lower = (feed_info.get("vertical") or "").lower()
-        if any(v in vertical_lower for v in _gift_verticals):
-            score += 5
-        # Larger catalogs are more likely to have matches
-        num_products = feed_info.get("num_products", 0)
-        if num_products > 10000:
-            score += 3
-        elif num_products > 1000:
-            score += 2
-        elif num_products > 100:
-            score += 1
-        # English/US region preference — non-English regions are almost never useful
-        if _is_english_region(feed_info):
-            score += 3
-        else:
-            score -= 15  # Strong penalty: non-English feeds are rarely relevant for US users
-        # Penalize niche single-category retailers
-        if _is_niche_retailer(feed_info.get("advertiser_name", "")):
-            score -= 5
-        return score
-
-    scored_feeds = sorted(candidates, key=lambda f: -_feed_score(f))
-
-    # Deduplicate by advertiser name — only keep the best feed per advertiser
-    seen_advertisers = set()
-    ordered_feeds = []
-    for f in scored_feeds:
-        adv = (f.get("advertiser_name") or "").lower().strip()
-        if adv in seen_advertisers:
-            continue
-        seen_advertisers.add(adv)
-        ordered_feeds.append(f)
-
-    # Log top selections for debugging
-    for i, f in enumerate(ordered_feeds[:10]):
-        logger.info("Awin feed rank %d: %s (%s) score=%d products=%s",
-                     i + 1, f.get("advertiser_name", "?"), f.get("vertical", "?"),
-                     _feed_score(f), f.get("num_products", "?"))
-
-    # Stream-and-match: search top feeds, scan up to MAX_ROWS_TO_SCAN_PER_FEED per feed
-    max_feeds = 12
-    per_feed_target = max((target_count + max_feeds - 1) // max_feeds, 3)
-    all_products = []
-    seen_ids = set()
-    feeds_used = []
-
-    logger.info("Awin searching %d feeds (joined=%d, total=%d)", min(max_feeds, len(ordered_feeds)), len(joined), len(feed_list))
-    for idx, feed_info in enumerate(ordered_feeds[:max_feeds]):
-        if len(all_products) >= target_count:
-            break
-        feed_url = feed_info.get("url")
-        advertiser = feed_info.get("advertiser_name", "Awin")
-        logger.info("Awin feed %d/%d: %s (%s)", idx + 1, min(max_feeds, len(ordered_feeds)), advertiser, feed_info.get("vertical", "?"))
-        need = min(per_feed_target, target_count - len(all_products))
-        feed_count = 0
-        for product in _stream_feed_and_match(feed_url, search_queries, need, seen_ids):
-            all_products.append(product)
-            feed_count += 1
-            if len(all_products) >= target_count:
-                break
-        if feed_count == 0:
-            for product in _fetch_feed_nonstream(feed_url, search_queries, need, seen_ids):
-                all_products.append(product)
-                feed_count += 1
-                if len(all_products) >= target_count:
-                    break
-            if feed_count > 0:
-                logger.info("Awin used non-stream fallback for %s", advertiser)
-        if feed_count > 0:
-            feeds_used.append(advertiser)
-
-    # Fallback: if no matches from any feed, take first few products from first feed for diversity
-    if not all_products and ordered_feeds:
-        first_feed = ordered_feeds[0]
-        for product in _stream_feed_first_n(first_feed.get("url"), 5, seen_ids):
-            all_products.append(product)
-        if all_products:
-            feeds_used.append(first_feed.get("advertiser_name", "Awin"))
-            logger.info("Awin fallback: took first %s products from %s", len(all_products), first_feed.get("advertiser_name"))
-
-    # Block non-gift merchant domains before any other filtering.
-    before_block = len(all_products)
-    all_products = [p for p in all_products if p.get("source_domain", "") not in _AWIN_BLOCKED_DOMAINS]
-    if len(all_products) < before_block:
-        logger.info("Awin: blocked %d products from non-gift domains (%s)",
-                    before_block - len(all_products), ", ".join(_AWIN_BLOCKED_DOMAINS))
-
-    # Price filter: Awin feeds are full product catalogs, not gift-curated lists.
-    # Drop anything over AWIN_MAX_PRICE_USD before it reaches the inventory pool.
-    def _parse_price(price_str):
+        return result
+    except Exception as e:
+        logger.warning("Awin catalog lookup failed (%s) — returning static products only", e)
         try:
-            return float(re.sub(r'[^\d.]', '', str(price_str)))
-        except (ValueError, TypeError):
-            return None
-
-    before = len(all_products)
-    all_products = [
-        p for p in all_products
-        if _parse_price(p.get("price", "")) is None or _parse_price(p.get("price", "")) <= AWIN_MAX_PRICE_USD
-    ]
-    if len(all_products) < before:
-        logger.info("Awin: removed %d overpriced items (>$%d)", before - len(all_products), AWIN_MAX_PRICE_USD)
-
-    # Inject static products for approved merchants with feedEnabled=no.
-    static = _get_awin_static_products(profile)
-    if static:
-        all_products.extend(static)
-        logger.info("Awin: injected %d static products (no-feed merchants)", len(static))
-
-    logger.info("Found %s Awin products from %s", len(all_products), ", ".join(feeds_used) or "Awin")
-    return all_products[:target_count]
+            static = _get_awin_static_products(profile)
+            logger.info("Awin: returning %d static products after catalog failure", len(static))
+            return static
+        except Exception as e2:
+            logger.error("Awin static products also failed: %s", e2)
+            return []

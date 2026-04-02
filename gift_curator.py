@@ -28,7 +28,11 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-def curate_gifts(profile, products, recipient_type, relationship, claude_client, rec_count=10, enhanced_search_terms=None, enrichment_context=None, model=None, ontology_briefing=None):
+def curate_gifts(profile, products, recipient_type, relationship, claude_client, rec_count=10, enhanced_search_terms=None, enrichment_context=None, model=None, ontology_briefing=None, splurge_candidates=None):
+    # SONNET-FLAG: splurge_candidates section added below (line ~208). Opus task: update
+    # the SPLURGE PICK instruction at line ~247 to direct the curator to prefer items
+    # from the SPLURGE CANDIDATES section when marking is_splurge=true. Also update
+    # rec_count from 10 → 11 (10 regular + 1 splurge slot). See ROADMAP.md Phase 3 TODO.
     """
     Curate gift recommendations from real products and profile.
 
@@ -206,6 +210,14 @@ SPECIFIC VENUES/PLACES:
     # Opus fix: hallucination grounding (Mar 3 2026)
     # Format products for prompt — numbered items serve as inventory_id anchors
     products_summary = f"━━━ PRODUCT INVENTORY ({len(products)} items) — ONLY PICK FROM THIS LIST ━━━\n\n" + format_products(products) + "\n\n━━━ END OF INVENTORY — every product gift must reference an item number above ━━━"
+
+    # Append splurge candidates section if available (wired Apr 2026).
+    # These are higher-priced items ($200-$1500) from the catalog DB, separated from the
+    # regular pool. The curator can reference them when designating the SPLURGE PICK.
+    # Opus task: update the SPLURGE PICK instruction to explicitly prefer items from this section.
+    if splurge_candidates:
+        splurge_formatted = format_products(splurge_candidates)
+        products_summary += f"\n\n━━━ SPLURGE CANDIDATES ($200-$1500) ━━━\n\n{splurge_formatted}\n\n━━━ END SPLURGE CANDIDATES ━━━"
     
     # Pronoun guidance: "your/you" when recipient is user themselves, "their/they" when buying for someone else
     pronoun_possessive = "your" if recipient_type == 'myself' else "their"

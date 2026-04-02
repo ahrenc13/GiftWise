@@ -497,6 +497,15 @@ ETSY_CLIENT_ID = os.environ.get('ETSY_CLIENT_ID', '')
 ETSY_CLIENT_SECRET = os.environ.get('ETSY_CLIENT_SECRET', '')
 ETSY_REDIRECT_URI = os.environ.get('ETSY_REDIRECT_URI', 'http://localhost:5000/oauth/etsy/callback')
 
+# Splurge ceiling: max price for splurge pick badge text, keyed by profile budget_category.
+# Used in view_recommendations() and passed to recommendations.html as splurge_ceiling.
+_SPLURGE_CEILING_MAP = {
+    'budget': 300,
+    'moderate': 500,
+    'premium': 1000,
+    'luxury': 1500,
+}
+
 # Google OAuth Configuration (for YouTube)
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
 GOOGLE_CLIENT_SECRET = os.environ.get('GOOGLE_CLIENT_SECRET', '')
@@ -3677,6 +3686,12 @@ def view_recommendations(user=None):
     product_count = sum(1 for r in recommendations if r.get('gift_type') == 'physical')
     experience_count = sum(1 for r in recommendations if r.get('gift_type') == 'experience')
 
+    # Compute splurge ceiling from profile budget_category for badge text in template.
+    # The `or {}` handles None when the profile was generated before this deploy.
+    _profile = (user.get('recipient_profile') or {})
+    _budget_cat = _profile.get('price_signals', {}).get('budget_category', 'unknown')
+    splurge_ceiling = _SPLURGE_CEILING_MAP.get(_budget_cat, 500)
+
     return render_template('recommendations.html',
                          recommendations=visible_recommendations,
                          data_quality=data_quality,
@@ -3688,7 +3703,8 @@ def view_recommendations(user=None):
                          total_count=total_count,
                          product_count=product_count,
                          experience_count=experience_count,
-                         locked_count=locked_count)
+                         locked_count=locked_count,
+                         splurge_ceiling=splurge_ceiling)
 
 
 @app.route('/recommendations/experience/<int:index>')
@@ -3899,14 +3915,16 @@ def view_favorites():
                              connected_count=len(user.get('platforms', {})),
                              user=user,
                              favorites=favorites,
+                             splurge_ceiling=500,
                              message="No favorites yet. Click the ❤️ icon on recommendations to save them!")
-    
+
     return render_template('recommendations.html',
                          recommendations=favorited_recs,
                          data_quality={},
                          connected_count=len(user.get('platforms', {})),
                          user=user,
                          favorites=favorites,
+                         splurge_ceiling=500,
                          is_favorites_page=True)
 
 @app.route('/api/check-scraping-status')

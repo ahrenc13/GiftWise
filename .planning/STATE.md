@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-04-02T00:47:43.361Z"
-last_activity: 2026-04-02 -- Phase 02 execution started
+last_updated: "2026-04-02T00:54:12.435Z"
+last_activity: 2026-04-02
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -25,9 +25,9 @@ See: .planning/PROJECT.md (updated 2026-04-01)
 ## Current Position
 
 Phase: 02 (catalog-first-source-separation) — EXECUTING
-Plan: 1 of 2
-Status: Executing Phase 02
-Last activity: 2026-04-02 -- Phase 02 execution started
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-04-02
 
 Progress: [░░░░░░░░░░] 0%
 
@@ -48,6 +48,7 @@ Progress: [░░░░░░░░░░] 0%
 | 3. 14-Item Output (Sonnet Portions) | 0/2 | — | — |
 | 4. Infrastructure Hardening | 0/2 | — | — |
 | Phase 01 P01 | 5 | 2 tasks | 2 files |
+| Phase 02 P01 | 2min | 3 tasks | 3 files |
 
 ## Accumulated Context
 
@@ -59,6 +60,8 @@ Progress: [░░░░░░░░░░] 0%
 - 2026-04-01: Joyrealtoys deferred — amber payment, no metrics, come back once they have track record
 - [Phase 01]: Removed generic guide_hit event; per-slug tracking is sufficient and keeps analytics clean
 - [Phase 01]: Added home_theater_av and body_jewelry_piercing to INTEREST_CATEGORIES at priority 2 for AWOL Vision (98169) and OUFER Body Jewelry (91941)
+- [Phase 02]: Circuit breaker threshold at 100 products for live CJ/Awin fallback
+- [Phase 02]: CJ static partners always run via api_key=None; Awin degrades to static on catalog failure
 
 ### Pending Todos
 

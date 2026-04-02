@@ -26,12 +26,12 @@
 
 ### Catalog-First Architecture (Source Separation)
 
-- [ ] **CAT-01**: Live CJ GraphQL calls removed from session-time code (`multi_retailer_searcher.py`) — CJ products come from DB only
-- [ ] **CAT-02**: Live Awin feed CSV download fallback removed from `awin_searcher.py` — Awin products come from DB only; static Awin partners still run
+- [x] **CAT-01**: Live CJ GraphQL calls removed from session-time code (`multi_retailer_searcher.py`) — CJ products come from DB only
+- [x] **CAT-02**: Live Awin feed CSV download fallback removed from `awin_searcher.py` — Awin products come from DB only; static Awin partners still run
 - [ ] **CAT-03**: eBay runs ONLY for interests with < 3 matching DB products (identified via `per_interest_counts` from `search_products_diverse()`), capped at ~5–8 items total
-- [ ] **CAT-04**: `_run_cj` removed from parallel retailer tasks in `multi_retailer_searcher.py`; CJ static partner logic (MonthlyClubs, Winebasket, etc.) preserved
-- [ ] **CAT-05**: `awin_searcher.py` Awin `_matches_query()` 2-term threshold preserved and not weakened
-- [ ] **CAT-06**: No eBay or Amazon results written to DB (already enforced — verify and document)
+- [x] **CAT-04**: `_run_cj` removed from parallel retailer tasks in `multi_retailer_searcher.py`; CJ static partner logic (MonthlyClubs, Winebasket, etc.) preserved
+- [x] **CAT-05**: `awin_searcher.py` Awin `_matches_query()` 2-term threshold preserved and not weakened
+- [x] **CAT-06**: No eBay or Amazon results written to DB (already enforced — verify and document)
 
 ### 14-Item Output (Sonnet Portions)
 
@@ -113,12 +113,12 @@
 | RET-03 | Phase 1 | Pending |
 | RET-04 | Phase 1 | Pending |
 | RET-05 | Phase 1 | Pending |
-| CAT-01 | Phase 2 | Pending |
-| CAT-02 | Phase 2 | Pending |
+| CAT-01 | Phase 2 | Complete |
+| CAT-02 | Phase 2 | Complete |
 | CAT-03 | Phase 2 | Pending |
-| CAT-04 | Phase 2 | Pending |
-| CAT-05 | Phase 2 | Pending |
-| CAT-06 | Phase 2 | Pending |
+| CAT-04 | Phase 2 | Complete |
+| CAT-05 | Phase 2 | Complete |
+| CAT-06 | Phase 2 | Complete |
 | OUT-01 | Phase 3 | Pending |
 | OUT-02 | Phase 3 | Pending |
 | OUT-03 | Phase 3 | Pending |

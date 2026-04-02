@@ -50,6 +50,34 @@
 
 ---
 
+## v1.1 Requirements — The TikTok Launch
+
+**Milestone goal:** 50 real sessions from strangers. Not from you, not from test accounts.
+**North star:** The reel is the unlock. Every requirement here either prepares for it or captures what it brings.
+
+### Launch Readiness
+
+- [ ] **LAUNCH-01**: The tool renders correctly on iOS Safari and Android Chrome — no horizontal scroll, no overlapping elements, readable text without zooming
+- [ ] **LAUNCH-02**: The "Text a link" share button is reachable without scrolling on mobile results page (above the fold or within one scroll)
+- [ ] **LAUNCH-03**: Share-via-text flow works end-to-end on mobile: generates URL, opens SMS composer with pre-filled message
+
+### Distribution (Non-Code Gate)
+
+- [ ] **DIST-01**: TikTok reel ("The Birthday") posted publicly with sound — this is a manual milestone gate, not a code task
+- [ ] **DIST-02**: giftwise.fit link in TikTok bio
+
+### Post-Launch Visibility
+
+- [ ] **VIS-01**: Admin dashboard shows `product_click` count broken down by retailer (not just a raw total) — so you know if eBay, Amazon, CJ, or Awin converts better
+- [ ] **VIS-02**: Admin dashboard shows `share_create` and `share_view` event counts
+- [ ] **VIS-03**: `rec_run` count visible and updating in real-time on admin dashboard
+
+### Exit Criterion
+
+- [ ] **EXIT-01**: 50 `rec_run` events from non-admin IPs recorded in site_stats — milestone is not complete until this is met
+
+---
+
 ## v2 Requirements
 
 ### Affiliate Network Expansion

@@ -208,16 +208,128 @@ Plans:
 
 ---
 
+---
+
+## v1.1 — The TikTok Launch
+
+**Goal:** 50 real sessions from strangers. The reel is the unlock — these phases prepare for it, ship it, and capture what it brings.
+
+**Depends on:** v1.0 complete (✓)
+
+**Requirements:** LAUNCH-01, LAUNCH-02, LAUNCH-03, DIST-01, DIST-02, VIS-01, VIS-02, VIS-03, EXIT-01
+
+---
+
+### Phase 5: Pre-Launch Mobile Audit
+
+**Goal:** Verify the tool works on a phone before traffic arrives. Fix anything that would make a TikTok visitor bounce immediately.
+
+**Depends on:** Nothing (first phase of v1.1)
+
+**Requirements:** LAUNCH-01, LAUNCH-02, LAUNCH-03
+
+**Success Criteria:**
+1. Recommendations page has no horizontal scroll on 390px viewport (iPhone 14)
+2. "Text a link" button visible within first two scrolls on mobile
+3. Share flow generates a working URL and opens SMS composer on mobile
+4. No overlapping text or cut-off UI elements on mobile results
+
+**Plans:**
+- [ ] 05-01-PLAN.md — Mobile audit: read templates, identify issues, fix CSS/layout problems
+- [ ] 05-02-PLAN.md — Share button prominence: verify placement, make it impossible to miss on mobile
+
+**Implementation notes for plan-phase:**
+
+**05-01 (Mobile audit):**
+- Read `templates/recommendations.html` and `templates/base.html`
+- Check viewport meta tag (`<meta name="viewport" content="width=device-width, initial-scale=1">`)
+- Check for fixed-width elements (`width: 700px` etc.) that won't flex on mobile
+- Check touch target sizes (buttons need min 44px height on mobile)
+- Check that the recommendation cards don't overflow or clip on narrow viewports
+- Do NOT redesign — surgical fixes only
+
+**05-02 (Share button):**
+- The share section is at line ~914 in `recommendations.html`
+- On desktop it appears after all recommendations — on mobile this means after significant scrolling
+- Options: (a) add a floating "Text this list" button that sticks to bottom of screen on mobile, or (b) add a share prompt card near the top of the results on mobile only
+- Preferred: floating sticky button, mobile-only (`@media (max-width: 768px)`)
+- Must not break desktop layout
+
+---
+
+### Phase 6: Distribution Gate (Non-Code)
+
+**Goal:** Post the reel. This is not a code phase — it's a tracked milestone gate.
+
+**Depends on:** Phase 5 complete
+
+**Requirements:** DIST-01, DIST-02
+
+**Success Criteria:**
+1. TikTok reel posted publicly with sound (not draft)
+2. giftwise.fit link in TikTok bio
+
+**Plans:**
+- [ ] 06-01-PLAN.md — Checklist: sound added, reel posted, bio link confirmed, share URL tested from TikTok traffic
+
+**Implementation notes for plan-phase:**
+
+**06-01 (Distribution checklist):**
+- This plan has no code tasks. It's a verification checklist plan.
+- Tasks: (1) Confirm reel has sound, (2) Confirm reel is posted publicly, (3) Confirm bio link points to giftwise.fit, (4) Run the tool yourself from a mobile browser via the bio link and confirm it works end-to-end
+- Create a SUMMARY.md confirming each item checked
+- The plan is "done" when all 4 items are manually confirmed by the user
+
+---
+
+### Phase 7: Admin Visibility
+
+**Goal:** Make the data actionable after the reel lands. Right now `product_click` is a raw count — you can't tell which retailer or product drives clicks.
+
+**Depends on:** Phase 5 complete (can run in parallel with Phase 6)
+
+**Requirements:** VIS-01, VIS-02, VIS-03, EXIT-01
+
+**Success Criteria:**
+1. Admin dashboard shows `product_click` events broken down by retailer (eBay vs Amazon vs CJ vs Awin)
+2. Admin dashboard shows `share_create` and `share_view` counts
+3. `rec_run` count visible and accurate
+4. EXIT-01: 50 `rec_run` events from non-admin IPs (this is a real-world gate — milestone closes when hit)
+
+**Plans:**
+- [ ] 07-01-PLAN.md — Enhance `/api/track-click` to include retailer in event name (e.g., `product_click:ebay`); update admin dashboard to show breakdown
+
+**Implementation notes for plan-phase:**
+
+**07-01 (Click breakdown):**
+- `giftwise_app.py` line 3798: `track_event('product_click')` — change to `track_event(f'product_click:{retailer}')` where retailer is extracted from the URL or passed as a request param
+- The `/api/track-click` endpoint receives `source` and `url` params — derive retailer from URL domain
+- Admin dashboard (`/admin/stats`): read `site_stats.py` and `giftwise_app.py` admin route to understand current display format; add retailer breakdown rows
+- Add `share_create` and `share_view` to the visible dashboard counters if not already shown
+- Do NOT change the `track_event` call signature in ways that break existing counts
+
+---
+
 ## Progress
 
-**Execution Order:** 1 → 2 → 3 → 4
+**Execution Order:** 1 → 2 → 3 → 4 → 5 → [6 ∥ 7]
+
+**v1.0:**
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Revenue & Conversion Quick Wins | 1/2 | In Progress|  |
-| 2. Catalog-First Source Separation | 0/2 | Planned | - |
-| 3. 14-Item Output (Sonnet Portions) | 1/2 | In Progress|  |
-| 4. Infrastructure Hardening | 2/2 | Complete   | 2026-04-02 |
+| 1. Revenue & Conversion Quick Wins | 2/2 | Complete | 2026-04-02 |
+| 2. Catalog-First Source Separation | 2/2 | Complete | 2026-04-02 |
+| 3. 14-Item Output (Sonnet Portions) | 2/2 | Complete | 2026-04-02 |
+| 4. Infrastructure Hardening | 2/2 | Complete | 2026-04-02 |
+
+**v1.1:**
+
+| Phase | Plans Complete | Status | Completed |
+|-------|----------------|--------|-----------|
+| 5. Pre-Launch Mobile Audit | 0/2 | Not started | - |
+| 6. Distribution Gate | 0/1 | Not started | - |
+| 7. Admin Visibility | 0/1 | Not started | - |
 
 ---
 

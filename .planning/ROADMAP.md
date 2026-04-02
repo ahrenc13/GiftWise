@@ -113,7 +113,7 @@ Plans:
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Pipeline wiring — splurge_candidates from DB through to curator input
+- [x] 03-01-PLAN.md — Pipeline wiring — splurge_candidates from DB through to curator input
 - [ ] 03-02-PLAN.md — Splurge tile UI in recommendations.html + SONNET-FLAG with Opus prompt
 
 ---
@@ -216,7 +216,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Revenue & Conversion Quick Wins | 1/2 | In Progress|  |
 | 2. Catalog-First Source Separation | 0/2 | Planned | - |
-| 3. 14-Item Output (Sonnet Portions) | 0/2 | Not started | - |
+| 3. 14-Item Output (Sonnet Portions) | 1/2 | In Progress|  |
 | 4. Infrastructure Hardening | 0/2 | Not started | - |
 
 ---

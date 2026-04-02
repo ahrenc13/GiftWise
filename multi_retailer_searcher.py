@@ -67,7 +67,9 @@ def search_products_multi_retailer(
     - Add CJ Affiliate products (approved advertisers only)
     - Use Amazon as fallback if needed
 
-    Returns mixed list of products from all sources.
+    Returns dict with keys:
+      - 'products': mixed list of products from all sources (regular + up to 5 splurge)
+      - 'splurge_candidates': full list of splurge-tier products ($200-$1500) from DB
     If an API key is missing, that source is skipped (no crash).
     """
     logger.info(f"Multi-retailer search: target {target_count} products")
@@ -79,6 +81,8 @@ def search_products_multi_retailer(
     per_interest_counts = {}  # Pre-initialize; populated by DB query. eBay scoping reads this
                                # after the try/except block ends. If DB fails, defaults to {}
                                # which means all interests are treated as weak-coverage (eBay fires for all).
+    splurge_candidates = []    # Pre-initialize; populated inside DB try block. If DB fails or
+                               # profile has no interests, returns empty list alongside all_products.
     interests = []             # Pre-initialize; populated inside DB try block.
 
     # Per-vendor target: used both for DB source capping and live API calls.
@@ -406,4 +410,4 @@ def search_products_multi_retailer(
     # code — CJ/Awin products now come exclusively from the nightly-synced catalog DB.
     # eBay and Amazon remain live-only. Neither writes results back to the DB.
 
-    return all_products
+    return {'products': all_products, 'splurge_candidates': splurge_candidates}

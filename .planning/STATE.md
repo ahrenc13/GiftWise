@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: verifying
-last_updated: "2026-04-02T01:04:40.060Z"
+last_updated: "2026-04-02T02:59:51.742Z"
 last_activity: 2026-04-02
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 6
+  completed_plans: 5
   percent: 0
 ---
 
@@ -50,6 +50,7 @@ Progress: [░░░░░░░░░░] 0%
 | Phase 01 P01 | 5 | 2 tasks | 2 files |
 | Phase 02 P01 | 2min | 3 tasks | 3 files |
 | Phase 02 P02 | 1min | 2 tasks | 1 files |
+| Phase 03 P01 | 5 | 2 tasks | 4 files |
 
 ## Accumulated Context
 
@@ -64,6 +65,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 02]: Circuit breaker threshold at 100 products for live CJ/Awin fallback
 - [Phase 02]: CJ static partners always run via api_key=None; Awin degrades to static on catalog failure
 - [Phase 02]: EBAY_WEAK_COVERAGE_THRESHOLD=5, EBAY_NICHE_CAP=7 for niche-only eBay scoping
+- [Phase 03]: splurge_candidates kept in regular pool AND exposed separately in dict return from searcher
+- [Phase 03]: splurge_ceiling defaults to 500 in favorites/shared views where profile unavailable
 
 ### Pending Todos
 

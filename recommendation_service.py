@@ -187,7 +187,7 @@ class RecommendationService:
         )
 
         # STEP 3: Search retailers for products
-        products = self._search_products(
+        products, splurge_candidates = self._search_products(
             user_id, profile_for_backend, enhanced_search_terms
         )
 
@@ -197,7 +197,7 @@ class RecommendationService:
         # STEP 5: Curate gifts with AI
         curated_products, curated_experiences = self._curate_gifts(
             user_id, profile_for_backend, products, recipient_type, relationship,
-            enhanced_search_terms, enriched_profile
+            enhanced_search_terms, enriched_profile, splurge_candidates=splurge_candidates
         )
 
         # STEP 6: Post-curation cleanup
@@ -321,8 +321,12 @@ class RecommendationService:
         return enriched, search_terms, filters
 
     def _search_products(self, user_id: str, profile_for_backend: Dict,
-                        enhanced_search_terms: List[str]) -> List[Dict]:
-        """Search retailers for products."""
+                        enhanced_search_terms: List[str]) -> tuple:
+        """Search retailers for products.
+
+        Returns:
+            Tuple of (products, splurge_candidates) where both are lists of product dicts.
+        """
         product_rec_count = 10
         inventory_target = product_rec_count * 4
 
@@ -339,7 +343,7 @@ class RecommendationService:
                 retailers={retailer: {'status': status, 'count': count or 0}}
             )
 
-        products = self.search_products_multi_retailer(
+        search_result = self.search_products_multi_retailer(
             profile_for_backend,
             etsy_key=os.environ.get('ETSY_API_KEY', ''),
             awin_data_feed_api_key=os.environ.get('AWIN_DATA_FEED_API_KEY', ''),
@@ -361,17 +365,25 @@ class RecommendationService:
             progress_callback=retailer_progress,
         )
 
+        # Unpack dict return; isinstance guard for safety if ever called differently
+        if isinstance(search_result, dict):
+            products = search_result.get('products', [])
+            splurge_candidates = search_result.get('splurge_candidates', [])
+        else:
+            products = search_result
+            splurge_candidates = []
+
         if len(products) == 0:
             raise ValueError("We're having trouble loading gift ideas right now. Please try again in a few minutes.")
 
-        logger.info(f"Inventory: {len(products)} products")
+        logger.info(f"Inventory: {len(products)} products, {len(splurge_candidates)} splurge candidates")
         self.progress_callback(
             product_count=len(products),
             stage='filtering',
             stage_label=f'Found {len(products)} products! Filtering for quality...'
         )
 
-        return products
+        return products, splurge_candidates
 
     def _apply_filters(self, products: List[Dict], profile: Dict,
                       quality_filters: Optional[List[str]]) -> List[Dict]:
@@ -406,7 +418,7 @@ class RecommendationService:
 
     def _curate_gifts(self, user_id: str, profile_for_backend: Dict, products: List[Dict],
                      recipient_type: str, relationship: str, enhanced_search_terms: List[str],
-                     enriched_profile: Optional[Dict]) -> tuple:
+                     enriched_profile: Optional[Dict], splurge_candidates=None) -> tuple:
         """Curate gifts using AI."""
         product_rec_count = 10
 
@@ -456,7 +468,8 @@ class RecommendationService:
             enhanced_search_terms=enhanced_search_terms,
             enrichment_context=enrichment_context,
             model=self.curator_model,
-            ontology_briefing=ontology_briefing
+            ontology_briefing=ontology_briefing,
+            splurge_candidates=splurge_candidates
         )
 
         product_gifts = curated.get('product_gifts', [])

@@ -2643,6 +2643,7 @@ def generate_recommendations_route():
             logger.info(f"Gift emergency credit consumed for {user_email}")
         else:
             client_ip = request.headers.get('X-Forwarded-For', request.remote_addr).split(',')[0].strip()
+            # Rate limiting: SQLite-backed via database.check_and_record_pipeline_run (rate_limits table, WAL mode)
             allowed, reset_time = check_and_record_pipeline_run(client_ip)
             if not allowed:
                 reset_str = reset_time.strftime('%-I:%M %p') if reset_time else 'tomorrow'

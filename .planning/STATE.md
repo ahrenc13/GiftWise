@@ -69,6 +69,8 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 03]: splurge_candidates kept in regular pool AND exposed separately in dict return from searcher
 - [Phase 03]: splurge_ceiling defaults to 500 in favorites/shared views where profile unavailable
 - [Phase 04-infrastructure-hardening]: Removed all Skimlinks dead code: deleted skimlinks_searcher.py and purged references from 12 Python files and base.html
+- [Phase 04]: INF-03 VERIFIED — In-flight profile dedup implemented in profile_analyzer.py (threading.Event, within-process lock). Two concurrent requests for same profile hash result in one Claude call.
+- [Phase 04]: INF-04 VERIFIED — Rate limiting uses SQLite rate_limits table via check_and_record_pipeline_run() in database.py. WAL mode enabled. No shelve usage in rate-limit path.
 
 ### Pending Todos
 

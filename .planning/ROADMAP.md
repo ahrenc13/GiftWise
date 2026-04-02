@@ -13,7 +13,7 @@ GiftWise is a live, revenue-generating product. These phases address the gap bet
 - [ ] **Phase 1: Revenue & Conversion Quick Wins** — Guide CTAs + 4 new retailers wired into sync
 - [ ] **Phase 2: Catalog-First Source Separation** — Remove live CJ/Awin from session code, eBay niche scoping
 - [ ] **Phase 3: 14-Item Output (Sonnet Portions)** — Splurge pipeline + UI; Opus prompt flagged with ready-to-paste instructions
-- [ ] **Phase 4: Infrastructure Hardening** — Remove dead code, fix in-flight duplicates, verify rate limits
+- [x] **Phase 4: Infrastructure Hardening** — Remove dead code, fix in-flight duplicates, verify rate limits (completed 2026-04-02)
 
 ---
 
@@ -186,7 +186,7 @@ Plans:
 
 Plans:
 - [x] 04-01-PLAN.md — Remove Skimlinks dead code (file + JS snippets in templates)
-- [ ] 04-02-PLAN.md — In-flight duplicate prevention + rate limit verification
+- [x] 04-02-PLAN.md — In-flight duplicate prevention + rate limit verification
 
 ---
 
@@ -217,7 +217,7 @@ Plans:
 | 1. Revenue & Conversion Quick Wins | 1/2 | In Progress|  |
 | 2. Catalog-First Source Separation | 0/2 | Planned | - |
 | 3. 14-Item Output (Sonnet Portions) | 1/2 | In Progress|  |
-| 4. Infrastructure Hardening | 1/2 | In Progress|  |
+| 4. Infrastructure Hardening | 2/2 | Complete   | 2026-04-02 |
 
 ---
 

@@ -45,8 +45,8 @@
 
 - [x] **INF-01**: `skimlinks_searcher.py` deleted (dead code — service defunct)
 - [x] **INF-02**: Skimlinks JS snippet removed from all templates
-- [ ] **INF-03**: In-flight duplicate prevention: a dict of pending profile hashes prevents two concurrent Claude API calls for the same profile
-- [ ] **INF-04**: Rate limits confirmed backed by SQLite `rate_limits` table (not shelve) — verify current implementation
+- [x] **INF-03**: In-flight duplicate prevention: a dict of pending profile hashes prevents two concurrent Claude API calls for the same profile
+- [x] **INF-04**: Rate limits confirmed backed by SQLite `rate_limits` table (not shelve) — verify current implementation
 
 ---
 
@@ -126,8 +126,8 @@
 | OUT-05 | Phase 3 | Pending |
 | INF-01 | Phase 4 | Complete |
 | INF-02 | Phase 4 | Complete |
-| INF-03 | Phase 4 | Pending |
-| INF-04 | Phase 4 | Pending |
+| INF-03 | Phase 4 | Complete |
+| INF-04 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 25 total

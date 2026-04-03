@@ -58,8 +58,8 @@
 ### Launch Readiness
 
 - [ ] **LAUNCH-01**: The tool renders correctly on iOS Safari and Android Chrome — no horizontal scroll, no overlapping elements, readable text without zooming
-- [ ] **LAUNCH-02**: The "Text a link" share button is reachable without scrolling on mobile results page (above the fold or within one scroll)
-- [ ] **LAUNCH-03**: Share-via-text flow works end-to-end on mobile: generates URL, opens SMS composer with pre-filled message
+- [x] **LAUNCH-02**: The "Text a link" share button is reachable without scrolling on mobile results page (above the fold or within one scroll)
+- [x] **LAUNCH-03**: Share-via-text flow works end-to-end on mobile: generates URL, opens SMS composer with pre-filled message
 
 ### Distribution (Non-Code Gate)
 

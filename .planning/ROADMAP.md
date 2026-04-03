@@ -333,7 +333,24 @@ Plans:
 
 ---
 
-## Opus Work Items (Not in Roadmap — Separate Sessions)
+## Backlog
+
+### Phase 999.1: Close product intelligence feedback loop (BACKLOG)
+
+**Goal:** Wire `click_through_rate` and `times_favorited` from the `product_intelligence` SQLite table back into the pre-filter scorer in `revenue_optimizer.py`. Currently clicks and favorites are tracked and stored but never read — catalog products score 0 on the intelligence dimension, making the learning loop invisible.
+
+**Trigger:** After 50+ real sessions have generated click/favorite data worth learning from. Useless before then.
+
+**Files:** `revenue_optimizer.py` (`score_product_for_profile`), `database.py` (`get_product_intelligence` already exists — just not called meaningfully for catalog products)
+
+**Effort:** Small — one function change, no new infrastructure needed.
+
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
+
 
 These require Opus and cannot be executed by Sonnet. They are tracked here so they don't get lost.
 

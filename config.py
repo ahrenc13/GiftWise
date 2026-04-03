@@ -60,12 +60,6 @@ ETSY_API_KEY = os.environ.get('ETSY_API_KEY', '')
 AWIN_API_TOKEN = os.environ.get('AWIN_API_TOKEN', '')
 AWIN_PUBLISHER_ID = os.environ.get('AWIN_PUBLISHER_ID', '')
 
-# Skimlinks
-SKIMLINKS_PUBLISHER_ID = os.environ.get('SKIMLINKS_PUBLISHER_ID', '')
-SKIMLINKS_CLIENT_ID = os.environ.get('SKIMLINKS_CLIENT_ID', '')
-SKIMLINKS_CLIENT_SECRET = os.environ.get('SKIMLINKS_CLIENT_SECRET', '')
-SKIMLINKS_PUBLISHER_DOMAIN_ID = os.environ.get('SKIMLINKS_PUBLISHER_DOMAIN_ID', '')
-
 # CJ Affiliate
 CJ_API_KEY = os.environ.get('CJ_API_KEY', '')
 CJ_COMPANY_ID = os.environ.get('CJ_COMPANY_ID', '')  # Your publisher company ID (CID)
@@ -129,7 +123,6 @@ RETAILER_PRIORITY = {
     'awin': 2,          # Multiple brands, good commission
     'ebay': 3,          # Broad inventory
     'shareasale': 4,    # Legacy, being phased out
-    'skimlinks': 5,     # Broad but lower commission due to revenue share
     'cj': 6,            # Pending activation
     'amazon': 10,       # Fallback - lowest commission
 }
@@ -376,7 +369,6 @@ API_RATE_LIMITS = {
     'ebay': 5000,       # eBay Browse API default
     'etsy': 100,        # Etsy v3 API default (verify on approval)
     'awin': 60,         # Conservative estimate (1 req/min)
-    'skimlinks': 100,   # Verify in publisher portal
     'cj': 100,          # Verify in developer portal
     'shareasale': 60,   # Legacy
 }
@@ -419,9 +411,6 @@ def validate_config():
 
     if not AWIN_API_TOKEN or not AWIN_PUBLISHER_ID:
         logger.warning("Awin credentials incomplete - Awin search disabled")
-
-    if not SKIMLINKS_PUBLISHER_ID:
-        logger.warning("Skimlinks credentials missing - awaiting approval")
 
     if not CJ_API_KEY or not CJ_COMPANY_ID or not CJ_PUBLISHER_ID:
         logger.warning("CJ Affiliate credentials incomplete - CJ search disabled")
@@ -556,7 +545,6 @@ if __name__ == "__main__":
     print(f"  eBay: {'✓ Set' if EBAY_APP_ID else '✗ Missing'}")
     print(f"  Etsy: {'✓ Set' if ETSY_API_KEY else '✗ Missing'}")
     print(f"  Awin: {'✓ Set' if AWIN_API_TOKEN and AWIN_PUBLISHER_ID else '✗ Missing'}")
-    print(f"  Skimlinks: {'✓ Set' if SKIMLINKS_PUBLISHER_ID else '✗ Missing'}")
     print(f"  CJ Affiliate: {'✓ Set' if CJ_API_KEY and CJ_COMPANY_ID and CJ_PUBLISHER_ID else '✗ Missing'}")
     print()
     print("Feature Flags:")

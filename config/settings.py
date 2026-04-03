@@ -54,12 +54,6 @@ class RetailerAPISettings:
     shareasale_api_token: str = field(default_factory=lambda: os.environ.get('SHAREASALE_API_TOKEN', ''))
     shareasale_api_secret: str = field(default_factory=lambda: os.environ.get('SHAREASALE_API_SECRET', ''))
 
-    # Skimlinks
-    skimlinks_publisher_id: str = field(default_factory=lambda: os.environ.get('SKIMLINKS_PUBLISHER_ID', ''))
-    skimlinks_client_id: str = field(default_factory=lambda: os.environ.get('SKIMLINKS_CLIENT_ID', ''))
-    skimlinks_client_secret: str = field(default_factory=lambda: os.environ.get('SKIMLINKS_CLIENT_SECRET', ''))
-    skimlinks_domain_id: str = field(default_factory=lambda: os.environ.get('SKIMLINKS_PUBLISHER_DOMAIN_ID', ''))
-
     # Amazon (RapidAPI)
     rapidapi_key: str = field(default_factory=lambda: os.environ.get('RAPIDAPI_KEY', ''))
     amazon_affiliate_tag: str = field(default_factory=lambda: os.environ.get('AMAZON_AFFILIATE_TAG', ''))
@@ -159,7 +153,6 @@ class Settings:
                 self.retailers.shareasale_api_token.strip(),
                 self.retailers.shareasale_api_secret.strip(),
             ]),
-            'skimlinks': bool(self.retailers.skimlinks_publisher_id.strip()),
             'amazon': bool(self.retailers.rapidapi_key.strip()),
         }
 

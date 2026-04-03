@@ -24,10 +24,11 @@ Show the right gift for THIS specific person — not a generic list — by groun
 - ✓ CJ multi-label tagging + sync term expansion (252 → 589 terms) — Mar 2026
 - ✓ Temporal signals + engagement spike detection in profile analysis — Mar 2026
 
-### Active
+### Active (v1.1)
 
-- [ ] 14-item output: splurge slot wired through pipeline and displayed in UI (Sonnet portions)
-- [ ] Infrastructure: remove Skimlinks dead code, fix in-flight duplicate Claude calls
+- [ ] Phase 5: Pre-launch mobile audit — verify tool works on iOS/Android before reel traffic arrives
+- [ ] Phase 6: TikTok reel posted with sound (non-code gate)
+- [ ] Phase 7: Admin visibility — product_click breakdown by retailer, share event counts
 
 ### Validated in Phase 01 (2026-04-02)
 
@@ -35,6 +36,17 @@ Show the right gift for THIS specific person — not a generic list — by groun
 - ✓ VitaJuwel + VSGO placeholder links replaced with real Awin deep links (awinmid params)
 - ✓ AWOL Vision + OUFER Body Jewelry catalog sync terms added (catalog_sync.py)
 - ✓ Tracking fixed: per-slug guide_hit events (guide_hit:{slug}, blog_hit:{slug})
+
+### Validated in Phase 03 + 04 (2026-04-02)
+
+- ✓ Splurge slot wired end-to-end: pipeline + UI + Opus curator prompt implemented
+- ✓ Skimlinks purged: `skimlinks_searcher.py` deleted, 484 lines removed from 12 Python files + base.html
+- ✓ In-flight dedup confirmed: `profile_analyzer.py` threading.Event mechanism verified
+- ✓ Rate limiting confirmed: SQLite-backed via `check_and_record_pipeline_run()`, WAL mode enabled
+
+### v1.0 Complete — 2026-04-02
+
+All 4 phases shipped. Pipeline is clean, catalog-first, and infrastructure-hardened. No real users yet — distribution is the unlock. v1.1 milestone: The TikTok Launch. North star: 50 real `rec_run` events from strangers.
 
 ### Validated in Phase 02 (2026-04-02)
 

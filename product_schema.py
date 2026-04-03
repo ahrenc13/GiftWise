@@ -83,7 +83,6 @@ COMMISSION_RATES = {
     'etsy': 0.04,        # 4% - unique items, higher commission
     'awin': 0.05,        # 5% - varies by advertiser, using conservative avg
     'shareasale': 0.05,  # 5% - legacy, migrated to Awin
-    'skimlinks': 0.03,   # Varies, but Skimlinks takes 25% cut
     'cj': 0.06,          # 6% - varies by brand, often higher than others
     'default': 0.02,     # Fallback
 }
@@ -416,55 +415,6 @@ class Product:
         )
 
     @classmethod
-    def from_skimlinks(cls, item: Dict, query: str, interest: str) -> 'Product':
-        """
-        Create Product from Skimlinks Product API response.
-
-        Skimlinks API response format:
-            {
-                "id": "123",
-                "title": "...",
-                "url": "...",
-                "description": "...",
-                "image_url": "...",
-                "price": 24.99,
-                "currency": "USD",
-                "merchant": "Cool Store",
-            }
-
-        Args:
-            item: Skimlinks API response item
-            query: Search query that found this product
-            interest: Profile interest name
-
-        Returns:
-            Product instance
-        """
-        # Extract merchant domain
-        merchant = item.get('merchant', 'skimlinks')
-        source_domain = merchant.lower().replace(' ', '') + '.com'
-
-        # Format price
-        price_value = item.get('price', '')
-        currency = item.get('currency', 'USD')
-        price = f"${price_value}" if price_value else ""
-
-        return cls(
-            title=item.get('title', 'Untitled')[:200],
-            link=item.get('url', ''),
-            snippet=item.get('description', '')[:500],
-            image=item.get('image_url', ''),
-            source_domain=source_domain,
-            search_query=query,
-            interest_match=interest,
-            price=price,
-            product_id=str(item.get('id', '')),
-            priority='medium',
-            commission_rate=COMMISSION_RATES['skimlinks'],
-            metadata={'raw_item': item, 'merchant': merchant},
-        )
-
-    @classmethod
     def from_cj(cls, item: Dict, query: str, interest: str) -> 'Product':
         """
         Create Product from CJ Affiliate API response.
@@ -528,7 +478,7 @@ def build_product_list(
 
     Args:
         items: List of API response items
-        platform: 'amazon', 'ebay', 'etsy', 'awin', 'skimlinks', 'cj'
+        platform: 'amazon', 'ebay', 'etsy', 'awin', 'cj'
         query: Search query that found these products
         interest: Profile interest name
 
@@ -550,7 +500,6 @@ def build_product_list(
         'ebay': Product.from_ebay,
         'etsy': Product.from_etsy,
         'awin': Product.from_awin,
-        'skimlinks': Product.from_skimlinks,
         'cj': Product.from_cj,
     }
 

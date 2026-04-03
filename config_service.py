@@ -104,12 +104,6 @@ class AffiliateConfig:
     shareasale_api_token: str = ""
     shareasale_api_secret: str = ""
 
-    # Skimlinks
-    skimlinks_publisher_id: str = "298548X178612"  # Default publisher ID
-    skimlinks_client_id: str = ""
-    skimlinks_client_secret: str = ""
-    skimlinks_domain_id: str = ""
-
     # CJ Affiliate
     cj_account_id: str = ""
     cj_api_key: str = ""
@@ -148,12 +142,6 @@ class AffiliateConfig:
             shareasale_api_token=os.getenv('SHAREASALE_TOKEN', ''),
             shareasale_api_secret=os.getenv('SHAREASALE_SECRET', ''),
 
-            # Skimlinks
-            skimlinks_publisher_id=os.getenv('SKIMLINKS_PUBLISHER_ID', '298548X178612'),
-            skimlinks_client_id=os.getenv('SKIMLINKS_CLIENT_ID', ''),
-            skimlinks_client_secret=os.getenv('SKIMLINKS_CLIENT_SECRET', ''),
-            skimlinks_domain_id=os.getenv('SKIMLINKS_PUBLISHER_DOMAIN_ID', ''),
-
             # CJ Affiliate
             cj_account_id=os.getenv('CJ_ACCOUNT_ID', ''),
             cj_api_key=os.getenv('CJ_API_KEY', ''),
@@ -179,7 +167,6 @@ class AffiliateConfig:
             'shareasale': bool(self.shareasale_affiliate_id.strip() and
                              self.shareasale_api_token.strip() and
                              self.shareasale_api_secret.strip()),
-            'skimlinks': bool(self.skimlinks_publisher_id.strip()),
             'cj': bool(self.cj_api_key.strip() or self.cj_api_token.strip()),
             'yelp': bool(self.yelp_api_key.strip()),
         }

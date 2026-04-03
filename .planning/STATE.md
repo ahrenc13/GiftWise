@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: verifying
-last_updated: "2026-04-02T02:59:51.742Z"
+milestone: v1.1
+milestone_name: the-tiktok-launch
+status: planning
+last_updated: "2026-04-02"
 last_activity: 2026-04-02
 progress:
-  total_phases: 4
-  completed_phases: 2
-  total_plans: 6
-  completed_plans: 5
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 4
+  completed_plans: 0
   percent: 0
 ---
 
@@ -17,40 +17,34 @@ progress:
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-04-01)
+See: .planning/PROJECT.md
+See: .planning/ROADMAP.md (v1.1 section — phases 5-7)
 
 **Core value:** Show the right gift for THIS specific person — grounded in their actual interests, posts, and aesthetic.
-**Current focus:** Phase 02 — catalog-first-source-separation
+**Current focus:** v1.1 — The TikTok Launch. North star: 50 real `rec_run` events from strangers.
+
+**v1.0 status:** COMPLETE (phases 1-4, 2026-04-02)
 
 ## Current Position
 
-Phase: 3
-Plan: Not started
-Status: Phase complete — ready for verification
+Milestone: v1.1
+Phase: 5 (not started — plan-phase 5 is next)
+Status: Ready to plan
 Last activity: 2026-04-02
 
 Progress: [░░░░░░░░░░] 0%
 
-## Performance Metrics
+## v1.1 Phase Status
 
-**Velocity:**
+| Phase | Description | Status |
+|-------|-------------|--------|
+| 5 | Pre-Launch Mobile Audit | Not started |
+| 6 | Distribution Gate (non-code) | Not started |
+| 7 | Admin Visibility | Not started |
 
-- Total plans completed: 0
-- Average duration: —
-- Total execution time: —
+## Exit Criterion
 
-**By Phase:**
-
-| Phase | Plans | Total | Avg/Plan |
-|-------|-------|-------|----------|
-| 1. Revenue & Conversion Quick Wins | 0/3 | — | — |
-| 2. Catalog-First Source Separation | 0/2 | — | — |
-| 3. 14-Item Output (Sonnet Portions) | 0/2 | — | — |
-| 4. Infrastructure Hardening | 0/2 | — | — |
-| Phase 01 P01 | 5 | 2 tasks | 2 files |
-| Phase 02 P01 | 2min | 3 tasks | 3 files |
-| Phase 02 P02 | 1min | 2 tasks | 1 files |
-| Phase 03 P01 | 5 | 2 tasks | 4 files |
+**EXIT-01:** 50 `rec_run` events from non-admin IPs. Milestone is NOT complete until this is met — even if all phases are "done."
 
 ## Accumulated Context
 
@@ -67,6 +61,9 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 02]: EBAY_WEAK_COVERAGE_THRESHOLD=5, EBAY_NICHE_CAP=7 for niche-only eBay scoping
 - [Phase 03]: splurge_candidates kept in regular pool AND exposed separately in dict return from searcher
 - [Phase 03]: splurge_ceiling defaults to 500 in favorites/shared views where profile unavailable
+- [Phase 04-infrastructure-hardening]: Removed all Skimlinks dead code: deleted skimlinks_searcher.py and purged references from 12 Python files and base.html
+- [Phase 04]: INF-03 VERIFIED — In-flight profile dedup implemented in profile_analyzer.py (threading.Event, within-process lock). Two concurrent requests for same profile hash result in one Claude call.
+- [Phase 04]: INF-04 VERIFIED — Rate limiting uses SQLite rate_limits table via check_and_record_pipeline_run() in database.py. WAL mode enabled. No shelve usage in rate-limit path.
 
 ### Pending Todos
 

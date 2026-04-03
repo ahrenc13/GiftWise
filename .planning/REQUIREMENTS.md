@@ -43,10 +43,38 @@
 
 ### Infrastructure
 
-- [ ] **INF-01**: `skimlinks_searcher.py` deleted (dead code — service defunct)
-- [ ] **INF-02**: Skimlinks JS snippet removed from all templates
-- [ ] **INF-03**: In-flight duplicate prevention: a dict of pending profile hashes prevents two concurrent Claude API calls for the same profile
-- [ ] **INF-04**: Rate limits confirmed backed by SQLite `rate_limits` table (not shelve) — verify current implementation
+- [x] **INF-01**: `skimlinks_searcher.py` deleted (dead code — service defunct)
+- [x] **INF-02**: Skimlinks JS snippet removed from all templates
+- [x] **INF-03**: In-flight duplicate prevention: a dict of pending profile hashes prevents two concurrent Claude API calls for the same profile
+- [x] **INF-04**: Rate limits confirmed backed by SQLite `rate_limits` table (not shelve) — verify current implementation
+
+---
+
+## v1.1 Requirements — The TikTok Launch
+
+**Milestone goal:** 50 real sessions from strangers. Not from you, not from test accounts.
+**North star:** The reel is the unlock. Every requirement here either prepares for it or captures what it brings.
+
+### Launch Readiness
+
+- [ ] **LAUNCH-01**: The tool renders correctly on iOS Safari and Android Chrome — no horizontal scroll, no overlapping elements, readable text without zooming
+- [ ] **LAUNCH-02**: The "Text a link" share button is reachable without scrolling on mobile results page (above the fold or within one scroll)
+- [ ] **LAUNCH-03**: Share-via-text flow works end-to-end on mobile: generates URL, opens SMS composer with pre-filled message
+
+### Distribution (Non-Code Gate)
+
+- [ ] **DIST-01**: TikTok reel ("The Birthday") posted publicly with sound — this is a manual milestone gate, not a code task
+- [ ] **DIST-02**: giftwise.fit link in TikTok bio
+
+### Post-Launch Visibility
+
+- [ ] **VIS-01**: Admin dashboard shows `product_click` count broken down by retailer (not just a raw total) — so you know if eBay, Amazon, CJ, or Awin converts better
+- [ ] **VIS-02**: Admin dashboard shows `share_create` and `share_view` event counts
+- [ ] **VIS-03**: `rec_run` count visible and updating in real-time on admin dashboard
+
+### Exit Criterion
+
+- [ ] **EXIT-01**: 50 `rec_run` events from non-admin IPs recorded in site_stats — milestone is not complete until this is met
 
 ---
 
@@ -124,10 +152,10 @@
 | OUT-03 | Phase 3 | Pending |
 | OUT-04 | Phase 3 | Pending |
 | OUT-05 | Phase 3 | Pending |
-| INF-01 | Phase 4 | Pending |
-| INF-02 | Phase 4 | Pending |
-| INF-03 | Phase 4 | Pending |
-| INF-04 | Phase 4 | Pending |
+| INF-01 | Phase 4 | Complete |
+| INF-02 | Phase 4 | Complete |
+| INF-03 | Phase 4 | Complete |
+| INF-04 | Phase 4 | Complete |
 
 **Coverage:**
 - v1 requirements: 25 total

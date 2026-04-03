@@ -96,6 +96,7 @@
     font-weight: 500;
     transition: all 0.2s;
     color: #6b7280;
+    min-height: 44px;
 }
 
 .filter-button:hover {
@@ -522,7 +523,10 @@ input[type="range"] {
 }
 
 .rec-link {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
     padding: 12px 24px;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -588,8 +592,10 @@ input[type="range"] {
     position: absolute;
     top: 12px;
     right: 12px;
-    width: 36px;
-    height: 36px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
     border-radius: 50%;
     background: rgba(0,0,0,0.6);
     color: white;
@@ -597,12 +603,24 @@ input[type="range"] {
     border: none;
     cursor: pointer;
     z-index: 102;
-    line-height: 36px;
+    line-height: 44px;
     text-align: center;
 }
 
-.recommendation-card.focused .card-close-btn { 
-    display: block; 
+.recommendation-card.focused .card-close-btn {
+    display: block;
+}
+
+.favorite-btn {
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    background: transparent;
+    border: none;
+    cursor: pointer;
 }
 
 @media (max-width: 768px) {
@@ -622,6 +640,50 @@ input[type="range"] {
     }
     .header {
         margin: -50px -20px 0;
+    }
+    .actions-section {
+        padding: 32px 20px;
+    }
+}
+
+/* Mobile sticky share bar — desktop hidden */
+.mobile-share-bar {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    body {
+        padding-bottom: 80px;
+    }
+
+    .mobile-share-bar {
+        display: flex;
+        position: fixed;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        z-index: 50;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        padding: 12px 20px;
+        padding-bottom: calc(12px + env(safe-area-inset-bottom));
+        border-top: 1px solid #e5e7eb;
+        justify-content: center;
+    }
+
+    .mobile-share-btn {
+        background: linear-gradient(135deg, #10b981, #059669);
+        color: white;
+        border: none;
+        border-radius: 10px;
+        padding: 14px 32px;
+        font-size: 16px;
+        font-weight: 700;
+        cursor: pointer;
+        width: 100%;
+        max-width: 360px;
+        min-height: 44px;
     }
 }
 {% endblock %}
@@ -981,7 +1043,14 @@ input[type="range"] {
             </div>
         </div>
         </div>
-        
+
+<!-- Floating share bar: mobile only, always visible -->
+<div class="mobile-share-bar" id="mobile-share-bar">
+    <button class="mobile-share-btn" onclick="shareViaText(false)">
+        📱 Text this list
+    </button>
+</div>
+
 {% endblock %}
 
 {% block extra_js %}

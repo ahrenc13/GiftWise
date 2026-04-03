@@ -1,15 +1,15 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.1
-milestone_name: the-tiktok-launch
+milestone_name: — The TikTok Launch
 status: planning
-last_updated: "2026-04-02"
+last_updated: "2026-04-03T01:12:03.099Z"
 last_activity: 2026-04-02
 progress:
-  total_phases: 3
-  completed_phases: 0
-  total_plans: 4
-  completed_plans: 0
+  total_phases: 7
+  completed_phases: 5
+  total_plans: 10
+  completed_plans: 10
   percent: 0
 ---
 
@@ -64,6 +64,7 @@ Progress: [░░░░░░░░░░] 0%
 - [Phase 04-infrastructure-hardening]: Removed all Skimlinks dead code: deleted skimlinks_searcher.py and purged references from 12 Python files and base.html
 - [Phase 04]: INF-03 VERIFIED — In-flight profile dedup implemented in profile_analyzer.py (threading.Event, within-process lock). Two concurrent requests for same profile hash result in one Claude call.
 - [Phase 04]: INF-04 VERIFIED — Rate limiting uses SQLite rate_limits table via check_and_record_pipeline_run() in database.py. WAL mode enabled. No shelve usage in rate-limit path.
+- [Phase 05]: z-index: 50 for sticky bar, below card modal (z-index 100+)
 
 ### Pending Todos
 

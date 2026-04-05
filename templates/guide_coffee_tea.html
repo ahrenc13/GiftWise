@@ -6,6 +6,10 @@
 <meta name="description" content="Skip the novelty mug. 10 gifts coffee and tea lovers actually want — from single-origin subscriptions to Italian espresso machines. Every link earns us a commission.">
 <meta name="keywords" content="coffee gifts, gifts for coffee lovers, tea gifts">
 {% endblock %}
+{% block og_title %}Gifts for Coffee Lovers That Aren't a Mug — GiftWise{% endblock %}
+{% block og_description %}Single-origin subscriptions, Italian espresso machines, premium loose-leaf tea. 10 gifts for people who take their caffeine seriously.{% endblock %}
+{% block og_type %}article{% endblock %}
+{% block jsonld %}<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Gifts for Coffee Lovers That Aren't a Mug","description":"Single-origin subscriptions, Italian espresso machines, premium tea. 10 gifts for caffeine lovers.","datePublished":"2026-03-01","dateModified":"2026-03-01","publisher":{"@type":"Organization","name":"GiftWise","url":"https://giftwise.fit"}}</script>{% endblock %}
 
 {% block extra_css %}
 .nav { background: white; border-bottom: 2px solid #f0f0f0; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; max-width: 1200px; margin: 0 auto; }
@@ -211,6 +215,14 @@
         </div>
     </div>
 
+    <div style="margin-top:40px; padding-top:30px; border-top:2px solid #f0f0f0;">
+        <h2 style="font-size:1.2em; color:#6b7280; margin-bottom:16px;">More Gift Guides</h2>
+        <div style="display:flex; flex-wrap:wrap; gap:12px;">
+            <a href="/guides/chocolate-gourmet" style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px 16px; text-decoration:none; color:#374151; font-size:0.9em; font-weight:500;">Gourmet Food Gifts &rarr;</a>
+            <a href="/guides/subscription-boxes" style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px 16px; text-decoration:none; color:#374151; font-size:0.9em; font-weight:500;">Subscription Gifts &rarr;</a>
+            <a href="/guides/gifts-for-him" style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px 16px; text-decoration:none; color:#374151; font-size:0.9em; font-weight:500;">Gifts for Him &rarr;</a>
+        </div>
+    </div>
     <div class="footer">
         <p><a href="/">Giftwise</a> &mdash; AI-powered gift recommendations</p>
         <p><a href="/guides">Gift Guides</a> &middot; <a href="/blog">Blog</a> &middot; <a href="/demo?ref=guide">Try Giftwise</a></p>

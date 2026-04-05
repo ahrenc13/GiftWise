@@ -164,6 +164,51 @@ A teenager posting about their parent's AI project is a different kind of conten
 
 ---
 
+## Gift Guide Cadence
+
+Guides are the primary source of organic traffic (~50 visits/day). Keep them timely and linked to the tool.
+
+### Seasonal Calendar
+
+| Holiday | Date | Lead Time | Guide Status |
+|---------|------|-----------|--------------|
+| Mother's Day | May 10 | Update by Apr 15 | Done — urgency banner added Apr 2026 |
+| Father's Day | Jun 15 | Update by May 25 | Done — new guide created Apr 2026 |
+| Back to School | Aug-Sep | Create by Jul 20 | Not started |
+| Halloween | Oct 31 | Create by Oct 1 | Not started |
+| Thanksgiving/Friendsgiving | Nov | Create by Nov 1 | Not started |
+| Christmas/Holiday | Dec 25 | Update all guides by Nov 15 | Not started |
+| Valentine's Day | Feb 14 | Update by Jan 20 | Not started |
+
+### Maintenance Rules
+
+1. **Urgency banners**: Add shipping deadline callouts 6 weeks before each holiday — they drive conversions
+2. **"Updated [Month Year]"**: Refresh the date tag whenever content is touched — signals freshness to Google
+3. **Affiliate links**: Verify quarterly — CJ/Awin links can expire or change; dead links kill trust and conversions
+4. **New guides**: Add one per major holiday at least 6 weeks before the date for SEO lead time
+5. **CTAs**: Always link to `/demo?ref=guide` (not `/signup`) — lower friction, higher conversion
+
+### Guide Inventory (8 total as of Apr 2026)
+
+| Slug | Title | Last Updated |
+|------|-------|-------------|
+| `/guides/mothers-day` | Mother's Day | April 2026 |
+| `/guides/fathers-day` | Father's Day | April 2026 |
+| `/guides/gifts-for-her` | Gifts for Her | March 2026 |
+| `/guides/gifts-for-him` | Gifts for Him | March 2026 |
+| `/guides/chocolate-gourmet` | Gourmet Food Gifts | March 2026 |
+| `/guides/coffee-tea` | Coffee & Tea Gifts | March 2026 |
+| `/guides/subscription-boxes` | Subscription Boxes | March 2026 |
+| `/guides/tech-gifts` | Tech Gifts | March 2026 |
+
+### Next Actions
+
+- [ ] Add urgency banner to Father's Day guide by May 25 (shipping deadline reminder)
+- [ ] Create graduation guide by May 1 (May/June ceremonies)
+- [ ] Review affiliate link health on all guides quarterly (next check: July 2026)
+
+---
+
 ## Decisions Log
 
 - 2026-04-03: Created content workstream
@@ -172,5 +217,8 @@ A teenager posting about their parent's AI project is a different kind of conten
 - 2026-04-03: Added C0 (personal network post) as fastest path to first real users
 - 2026-04-03: Kid's video tracked as C3 — their concept, their account, not scripted
 - 2026-04-03: Strategy: C0 runs immediately (no production needed), C1 runs as soon as sound is added, C2 reads signal, C3/C4 follow data
+- 2026-04-05: Mother's Day guide updated with urgency/shipping deadline banner
+- 2026-04-05: Father's Day guide created (new) — /guides/fathers-day — 10 picks from existing affiliate partners
+- 2026-04-05: Guide cadence section added — seasonal calendar, maintenance rules, inventory tracker
 </content>
 </invoke>

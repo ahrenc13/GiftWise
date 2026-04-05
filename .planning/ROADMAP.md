@@ -310,9 +310,70 @@ Plans:
 
 ---
 
+### Phase 8: SEO Foundation
+
+**Goal:** Make every guide page get indexed quickly, look good when shared on social, and earn rich search results. The ~50 daily organic visits compound with better SEO — start now before traffic grows.
+
+**Depends on:** Phase 5 complete (can run in parallel with 6 and 7)
+
+**Success Criteria:**
+1. `/sitemap.xml` is live and includes all guide, blog, and core pages with `<lastmod>` dates
+2. Open Graph and Twitter Card tags render correctly when a guide URL is shared on Facebook or iMessage — shows title, description, image
+3. JSON-LD `Article` schema present on all guide and blog templates; `ItemList` on `/guides` and `/blog` index pages
+4. Every guide has a "More Gift Guides" internal linking section (3 related links) at the bottom
+
+**Plans:**
+- [ ] 08-01-PLAN.md — Sitemap.xml route + robots.txt + Open Graph / Twitter Card meta in base.html
+- [ ] 08-02-PLAN.md — JSON-LD Article schema on guides + ItemList on indexes + internal linking section
+
+**Implementation notes for plan-phase:**
+
+**08-01 (Sitemap + Open Graph):**
+
+Sitemap:
+- Add `/sitemap.xml` Flask route — returns XML with `Content-Type: application/xml`
+- Include all guide slugs, blog slugs, and core pages (`/`, `/guides`, `/blog`, `/demo`)
+- `<lastmod>` per URL (hardcode guide dates; use today's date for dynamic pages)
+- `<changefreq>`: monthly for guides/blog, weekly for `/demo`
+- Add `/robots.txt` Flask route — `User-agent: *`, `Allow: /`, `Sitemap: https://giftwise.fit/sitemap.xml`
+
+Open Graph:
+- `base.html`: add inside `<head>` (after existing meta block), using Jinja2 block overrides:
+  - `og:site_name`, `og:type`, `og:url` (use `request.path`), `og:title`, `og:description`, `og:image`
+  - `twitter:card` (summary_large_image), `twitter:title`, `twitter:description`
+- Define `{% block og_title %}`, `{% block og_description %}`, `{% block og_image %}` with sensible defaults
+- Each guide template: override `og_title` and `og_description` to match its existing `<title>` and meta description
+- OG image: use `/static/images/og-default.png` (1200×630, purple gradient + wordmark — make in Canva; for now any 1200×630 placeholder works)
+- Verify `request` is available in template context — it is by default in Flask with `render_template`
+
+**08-02 (JSON-LD + internal linking):**
+
+JSON-LD:
+- Add `{% block jsonld %}{% endblock %}` slot to `base.html` `<head>`
+- Each guide template: fill the block with `<script type="application/ld+json">` containing `Article` schema:
+  - `headline`, `description`, `datePublished`, `dateModified`, `publisher` (GiftWise, giftwise.fit)
+- `/guides` index (`gift_guides.html`): add `ItemList` schema listing all 8 guide URLs + names
+- `/blog` index (`blog.html`): add `ItemList` schema listing all 4 blog post URLs + names
+
+Internal linking:
+- Add a "More Gift Guides" section to each guide template, just above `{% endblock %}`
+- Each guide: 3 curated related links (hardcoded — e.g., Mother's Day → Gifts for Her, Chocolate, Coffee)
+- Simple card row or styled link list — keep it light, do not copy the full guide card CSS
+- Related guide map (suggested):
+  - mothers-day → gifts-for-her, chocolate-gourmet, coffee-tea
+  - fathers-day → gifts-for-him, subscription-boxes, tech-gifts
+  - gifts-for-her → mothers-day, chocolate-gourmet, subscription-boxes
+  - gifts-for-him → fathers-day, tech-gifts, coffee-tea
+  - chocolate-gourmet → coffee-tea, subscription-boxes, gifts-for-her
+  - coffee-tea → chocolate-gourmet, subscription-boxes, gifts-for-him
+  - subscription-boxes → coffee-tea, chocolate-gourmet, gifts-for-her
+  - tech-gifts → gifts-for-him, subscription-boxes, fathers-day
+
+---
+
 ## Progress
 
-**Execution Order:** 1 → 2 → 3 → 4 → 5 → [6 ∥ 7]
+**Execution Order:** 1 → 2 → 3 → 4 → 5 → [6 ∥ 7 ∥ 8]
 
 **v1.0:**
 
@@ -327,9 +388,10 @@ Plans:
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 5. Pre-Launch Mobile Audit | 2/2 | Complete   | 2026-04-03 |
+| 5. Pre-Launch Mobile Audit | 2/2 | Complete | 2026-04-03 |
 | 6. Distribution Gate | 0/1 | Not started | - |
 | 7. Admin Visibility | 0/1 | Not started | - |
+| 8. SEO Foundation | 0/2 | Not started | - |
 
 ---
 

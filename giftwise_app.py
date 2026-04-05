@@ -1770,6 +1770,7 @@ def gift_guide_detail(slug):
     track_event(f'guide_hit:{slug}')
     template_map = {
         'mothers-day': 'guide_mothers_day.html',
+        'fathers-day': 'guide_fathers_day.html',
         'gifts-for-her': 'guide_gifts_for_her.html',
         'gifts-for-him': 'guide_gifts_for_him.html',
         'chocolate-gourmet': 'guide_chocolate_gourmet.html',

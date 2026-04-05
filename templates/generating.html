@@ -357,6 +357,13 @@
             "Each recommendation is tied to real interests, not generic best-sellers.",
             "We analyze posting patterns — actions reveal interests that words don't.",
             "A well-chosen $20 gift beats a generic $100 one every time.",
+            "We cross-reference interests against 80,000+ products to find the overlap.",
+            "Most gift guides are written for no one. This one is written for this person.",
+            "The best gifts feel inevitable — like you've been paying attention all year.",
+            "We skip the first 10 obvious results and look for what actually fits.",
+            "Posting about something is a stronger signal than saying you like it.",
+            "We check affiliate networks most shoppers have never heard of.",
+            "Our AI reads the subtext — not just what they post, but what it reveals.",
         ];
 
         // ── Progress targets per pipeline stage ───────────────────────────
@@ -420,7 +427,7 @@
 
         // Show first quote right away
         showQuote(state.quoteIndex);
-        setInterval(rotateQuote, 14000);
+        setInterval(rotateQuote, 9000);
 
         // ── Fun fact ticker ───────────────────────────────────────────────
         function rotateFunFact() {
@@ -436,7 +443,7 @@
         }
 
         setTimeout(rotateFunFact, 4000);
-        setInterval(rotateFunFact, 11000);
+        setInterval(rotateFunFact, 7000);
 
         // ── Progress bar ──────────────────────────────────────────────────
         const bar = $('progressBar');
@@ -475,6 +482,7 @@
         function showInterests(interests) {
             if (state.interestsShown || !interests || !interests.length) return;
             state.interestsShown = true;
+            state.detectedInterests = interests;  // save for personalized curating messages
             const container = $('interestsReveal');
             const tags      = $('interestTags');
             if (!container || !tags) return;
@@ -488,6 +496,40 @@
                     tags.appendChild(tag);
                 }, i * 110);
             });
+        }
+
+        // ── Personalized curating messages ────────────────────────────────
+        // During the long curating wait, cycle through messages that name
+        // the person's actual interests so the screen feels alive and personal.
+        let curatingTimer = null;
+
+        const curatingPhrases = [
+            n => `Browsing ${n} gifts…`,
+            n => `Looking for the perfect ${n} pick…`,
+            n => `Checking out ${n} options…`,
+            n => `Finding something for the ${n} obsession…`,
+            n => `Hunting for a great ${n} gift…`,
+            n => `Sorting through ${n} ideas…`,
+        ];
+
+        function startCuratingMessages() {
+            const interests = state.detectedInterests;
+            if (!interests || interests.length === 0) return;
+
+            let i = 0;
+            const statusEl = $('statusMessage');
+
+            function nextMessage() {
+                if (state.complete || state.lastStage !== 'curating') return;
+                const interest = interests[i % interests.length];
+                const phrase   = curatingPhrases[i % curatingPhrases.length];
+                if (statusEl) fadeText(statusEl, phrase(interest));
+                i++;
+                curatingTimer = setTimeout(nextMessage, 3200);
+            }
+
+            // Small delay so the stage_label transition lands first
+            curatingTimer = setTimeout(nextMessage, 1800);
         }
 
         // ── Retailer progress rows ────────────────────────────────────────
@@ -549,6 +591,7 @@
         function applyProgress(data) {
             if (state.complete) return;
             const stage = data.stage || 'starting';
+            state.lastStage = stage;
 
             // Advance bar to the target for this stage
             const target = STAGE_TARGETS[stage];
@@ -573,6 +616,7 @@
                 setStepState('step-profile', 'done');
                 setStepState('step-search', 'done');
                 setStepState('step-curate', 'active');
+                startCuratingMessages();
             } else if (stage === 'cleanup' || stage === 'images') {
                 setStepState('step-profile', 'done');
                 setStepState('step-search', 'done');

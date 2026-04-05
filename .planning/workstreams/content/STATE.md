@@ -49,25 +49,89 @@ Tell me what the comments said. I'll help you figure out what to do next.
 
 ---
 
-## Phase C1: The Birthday Reel — TikTok
+## Phase C1: Distribution — Screen Recording + Reddit
 
 **Status:** In progress
-**Gate:** Reel posted publicly with sound + giftwise.fit in bio
+**Gate:** 50 `rec_run` events from strangers
 
-### Checklist
-- [x] Frames 4-5 done (photorealistic phone screens)
-- [x] Frames 1-3: character illustration — DONE (kid confirmed reel is finished)
-- [ ] Add sound (royalty-free or trending audio — pick something upbeat, not dramatic)
-- [ ] Assemble final cut in CapCut if not already done
-- [ ] Post publicly
-- [ ] giftwise.fit in bio
+### What shipped
+- **Facebook (Apr 5):** iMovie screen recording of the full GiftWise experience — cut to 44 seconds with wait times removed. Posted to personal network. Authentic, self-deprecating tone.
+- **TikTok reel:** "The Birthday" concept was built but pivoted away from. Not posted. Keep as an asset if needed later.
 
-### Next action
-**Add sound.** That's the one remaining task. If you're stuck on which audio to pick: go to TikTok, search for a trending sound that feels light/fun, use it. Don't overthink it — the sound matters less than getting it posted.
+### Reddit — Post This Week
 
-### Notes
-- Your kid making their own video is a separate asset — don't wait for that before posting this one
-- Post C1 even if it's cringe. Cringe from a 50-year-old building AI tools is endearing, not damaging.
+See post language below. Post to each community separately, a day apart. Don't cross-post the same text verbatim — Reddit penalizes that.
+
+---
+
+#### r/GiftIdeas — Post first, highest intent traffic
+
+> **I built an AI that reads someone's Instagram or TikTok to figure out what they'd actually want as a gift — here's how it works**
+>
+> Every time I have to buy a gift for someone, I end up Googling "gifts for [type of person]" and getting the same 10 listicles. So I built something that skips that entirely.
+>
+> You paste someone's Instagram or TikTok handle, it reads their posts and figures out their actual interests, then searches a bunch of retailers and gives you a list of things matched to what they actually care about. So if someone posts a lot about hiking and photography, you get gifts for *that person* — not a generic "gifts for outdoorsy people" list.
+>
+> It's at giftwise.fit if you want to try it. Works best when the person you're shopping for has an active Instagram or TikTok.
+>
+> Curious if it's actually useful to people outside my immediate circle or if I've built something only I would use.
+
+**Why this works here:** Community is full of people actively stuck on gift ideas. You're offering a tool, not asking for help. The last line invites genuine feedback without begging.
+
+---
+
+#### r/ChatGPT — AI builder audience, high sharing behavior
+
+> **I built a gift recommendation tool that reads someone's social media using Claude — here's what I learned about making AI actually useful vs. generic**
+>
+> The problem I kept running into with AI gift suggestions: they're generic. Ask ChatGPT for gift ideas and you get "a nice watch" or "a book." Useless if you actually know the person.
+>
+> So I built giftwise.fit — you paste an Instagram or TikTok handle, it scrapes their posts, runs them through Claude to extract actual interests (with ownership signals — so if they post about their brother's fly fishing hobby, it doesn't count that as *their* interest), searches multiple retailers, then has Claude curate the final list.
+>
+> The interesting part was making Claude understand the difference between "this person does X" vs. "this person posts about someone else doing X." That took a few iterations to get right.
+>
+> Happy to talk through the architecture if anyone's curious. Also works as an actual gift finder if you have a birthday coming up.
+
+**Why this works here:** This community loves seeing real Claude/AI applications. The technical detail (ownership signals, multi-step pipeline) gives them something to engage with. Link lands naturally.
+
+---
+
+#### r/SideProject — Builder community, high goodwill
+
+> **I'm 50, learned to code during the pandemic, and just shipped an AI gift recommendation engine. Here's what it actually does.**
+>
+> Background: I'm not a developer by trade. I've been building this thing called GiftWise for the last few months — it takes someone's Instagram or TikTok handle, reads their posts with Claude, figures out their actual interests, searches a bunch of retailers, and spits out gift recommendations matched to who that person actually is.
+>
+> The problem I was solving: I'm terrible at gift-giving and I wanted to stop buying my family's gift card defaults.
+>
+> It's live at giftwise.fit. Working on getting it in front of actual users now. Would love any feedback from people who've built similar AI-powered tools — what distribution channels actually worked for you?
+
+**Why this works here:** r/SideProject loves the non-traditional builder story. "50 years old, pandemic learner" is a genuine hook. Ends with a question that invites engagement.
+
+---
+
+#### r/InternetIsBeautiful — Keep it extremely short
+
+> **giftwise.fit — paste someone's Instagram or TikTok, get gifts matched to their actual interests**
+>
+> Uses AI to read their posts, figure out what they're genuinely into, and search real retailers. Useful if you have a birthday coming up for someone you have no idea what to get.
+
+**Why this works here:** r/TIIB has a strict "show don't tell" culture. The title IS the pitch. No backstory needed, no begging for feedback.
+
+---
+
+### Posting order and timing
+
+| Subreddit | Post order | When | Notes |
+|-----------|-----------|------|-------|
+| r/GiftIdeas | 1st | Day 1 | Highest intent, best chance of conversions |
+| r/ChatGPT | 2nd | Day 2 | Highest reach/sharing potential |
+| r/SideProject | 3rd | Day 3 | Builder goodwill, feedback |
+| r/InternetIsBeautiful | 4th | Day 4 | Requires karma — check if you can post there |
+
+**Do:** Reply to every comment personally. A question like "what if the person doesn't have Instagram?" is your next piece of content.  
+**Don't:** Delete and repost if it doesn't take off. Let it sit.  
+**Avoid:** r/relationship_advice unless a relevant thread appears naturally — don't force it.
 
 ---
 

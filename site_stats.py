@@ -103,6 +103,17 @@ def get_count(event_name: str, date_str: str = None) -> int:
         conn.close()
 
 
+_GUIDE_SLUGS = [
+    'mothers-day', 'fathers-day', 'gifts-for-her', 'gifts-for-him',
+    'chocolate-gourmet', 'coffee-tea', 'subscription-boxes', 'tech-gifts',
+]
+_BLOG_SLUGS = [
+    'last-minute-gifts', 'cash-vs-physical-gifts',
+    'gift-giving-mistakes', 'gifts-for-someone-who-has-everything',
+]
+_RETAILERS = ['ebay', 'amazon', 'cj', 'awin', 'other']
+
+
 def get_dashboard_data() -> dict:
     """
     Return a summary dict for the admin dashboard.
@@ -111,6 +122,8 @@ def get_dashboard_data() -> dict:
         'today': {'signup': N, 'rec_run': N, ...},
         'week':  {'signup': N, 'rec_run': N, ...},
         'daily': [{'date': '2026-02-09', 'signup': N, ...}, ...],  # last 7 days
+        'clicks_by_retailer': {'today': {'ebay': N, ...}, 'week': {'ebay': N, ...}},
+        'guide_hits': {'today': {'mothers-day': N, ...}, 'week': {...}},
         'generated_at': '2026-02-09 14:30:00',
     }
     """
@@ -120,10 +133,15 @@ def get_dashboard_data() -> dict:
     today_str = _today()
     week_keys = _this_week_keys()
 
+    # Build all keys we need: base events + retailer breakdown + per-slug guide/blog hits
+    retailer_events = [f'product_click:{r}' for r in _RETAILERS]
+    guide_events = [f'guide_hit:{s}' for s in _GUIDE_SLUGS]
+    blog_events = [f'blog_hit:{s}' for s in _BLOG_SLUGS]
+    all_events = events + retailer_events + guide_events + blog_events
+
     conn = _connect()
     try:
-        # Load all relevant keys in one query for efficiency
-        all_keys = [f"{d}:{ev}" for d in week_keys for ev in events]
+        all_keys = [f"{d}:{ev}" for d in week_keys for ev in all_events]
         placeholders = ','.join('?' * len(all_keys))
         rows = conn.execute(
             f"SELECT key, count FROM counters WHERE key IN ({placeholders})",
@@ -141,10 +159,27 @@ def get_dashboard_data() -> dict:
             for d in week_keys
         ]
 
+        clicks_by_retailer = {
+            'today': {r: counts.get(f"{today_str}:product_click:{r}", 0) for r in _RETAILERS},
+            'week':  {r: sum(counts.get(f"{d}:product_click:{r}", 0) for d in week_keys) for r in _RETAILERS},
+        }
+
+        guide_hits = {
+            'today': {s: counts.get(f"{today_str}:guide_hit:{s}", 0) for s in _GUIDE_SLUGS},
+            'week':  {s: sum(counts.get(f"{d}:guide_hit:{s}", 0) for d in week_keys) for s in _GUIDE_SLUGS},
+        }
+        blog_hits = {
+            'today': {s: counts.get(f"{today_str}:blog_hit:{s}", 0) for s in _BLOG_SLUGS},
+            'week':  {s: sum(counts.get(f"{d}:blog_hit:{s}", 0) for d in week_keys) for s in _BLOG_SLUGS},
+        }
+
         return {
             'today': today_counts,
             'week': week_counts,
             'daily': daily,
+            'clicks_by_retailer': clicks_by_retailer,
+            'guide_hits': guide_hits,
+            'blog_hits': blog_hits,
             'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         }
     finally:

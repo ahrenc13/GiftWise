@@ -104,6 +104,45 @@ h1 { font-size: 20px; color: #9ca3af; margin-bottom: 4px; }
     </div>
 
     <div class="section">
+        <h2>Clicks by Retailer (today / week)</h2>
+        <div style="overflow-x: auto;">
+        <table>
+            <tr><th>Retailer</th><th>Today</th><th>This Week</th></tr>
+            {% for r in ['cj', 'awin', 'ebay', 'amazon', 'other'] %}
+            <tr>
+                <td>{{ r|upper }}</td>
+                <td class="{{ 'zero' if data.clicks_by_retailer.today[r] == 0 else '' }}">{{ data.clicks_by_retailer.today[r] }}</td>
+                <td class="{{ 'zero' if data.clicks_by_retailer.week[r] == 0 else '' }}">{{ data.clicks_by_retailer.week[r] }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>Guide Hits (today / week)</h2>
+        <div style="overflow-x: auto;">
+        <table>
+            <tr><th>Guide</th><th>Today</th><th>This Week</th></tr>
+            {% for slug, label in [('mothers-day', "Mother's Day"), ('fathers-day', "Father's Day"), ('gifts-for-her', 'Gifts for Her'), ('gifts-for-him', 'Gifts for Him'), ('chocolate-gourmet', 'Chocolate'), ('coffee-tea', 'Coffee & Tea'), ('subscription-boxes', 'Subscriptions'), ('tech-gifts', 'Tech')] %}
+            <tr>
+                <td>{{ label }}</td>
+                <td class="{{ 'zero' if data.guide_hits.today[slug] == 0 else '' }}">{{ data.guide_hits.today[slug] }}</td>
+                <td class="{{ 'zero' if data.guide_hits.week[slug] == 0 else '' }}">{{ data.guide_hits.week[slug] }}</td>
+            </tr>
+            {% endfor %}
+            {% for slug, label in [('last-minute-gifts', 'Last Minute'), ('cash-vs-physical-gifts', 'Cash vs Physical'), ('gift-giving-mistakes', 'Mistakes'), ('gifts-for-someone-who-has-everything', 'Has Everything')] %}
+            <tr>
+                <td style="color:#6b7280">blog: {{ label }}</td>
+                <td class="{{ 'zero' if data.blog_hits.today[slug] == 0 else '' }}">{{ data.blog_hits.today[slug] }}</td>
+                <td class="{{ 'zero' if data.blog_hits.week[slug] == 0 else '' }}">{{ data.blog_hits.week[slug] }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        </div>
+    </div>
+
+    <div class="section">
         <h2>What To Do</h2>
         <div class="actions">
             <strong>Share views > 0 but signups flat:</strong> shared page CTA isn't converting<br>
@@ -112,7 +151,8 @@ h1 { font-size: 20px; color: #9ca3af; margin-bottom: 4px; }
             <strong>5+ recs/day consistently:</strong> past hobby traffic — think about paywall<br>
             <strong>Share views > signups by 3x:</strong> people are looking but not converting — improve CTA or landing page<br>
             <strong>Recs running but 0 product clicks:</strong> recommendations aren't compelling enough or CTAs are too weak<br>
-            <strong>Product clicks > 0:</strong> affiliate revenue is flowing — check Skimlinks/Amazon dashboards for actual conversions
+            <strong>CJ/Awin clicks > eBay/Amazon:</strong> affiliate commissions flowing — check CJ and Awin dashboards<br>
+            <strong>Guide hits >> rec_run:</strong> guide-to-tool funnel is leaking — check CTAs on top guides
         </div>
     </div>
 {% endblock %}

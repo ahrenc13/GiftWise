@@ -1803,6 +1803,62 @@ def blog_post(slug):
         return render_template(template)
     return render_template('error.html', error_message="Article not found."), 404
 
+@app.route('/sitemap.xml')
+def sitemap():
+    """XML sitemap for search engine indexing."""
+    from flask import Response
+    _BASE = 'https://giftwise.fit'
+    _guides = [
+        ('mothers-day', '2026-04-05', 'monthly'),
+        ('fathers-day', '2026-04-05', 'monthly'),
+        ('gifts-for-her', '2026-03-01', 'monthly'),
+        ('gifts-for-him', '2026-03-01', 'monthly'),
+        ('chocolate-gourmet', '2026-03-01', 'monthly'),
+        ('coffee-tea', '2026-03-01', 'monthly'),
+        ('subscription-boxes', '2026-03-01', 'monthly'),
+        ('tech-gifts', '2026-03-01', 'monthly'),
+    ]
+    _blog = [
+        ('last-minute-gifts', '2026-03-01', 'monthly'),
+        ('cash-vs-physical-gifts', '2026-03-01', 'monthly'),
+        ('gift-giving-mistakes', '2026-03-01', 'monthly'),
+        ('gifts-for-someone-who-has-everything', '2026-03-01', 'monthly'),
+    ]
+    _core = [
+        ('/', '2026-04-05', 'weekly'),
+        ('/guides', '2026-04-05', 'weekly'),
+        ('/blog', '2026-03-01', 'monthly'),
+        ('/demo', '2026-04-05', 'weekly'),
+    ]
+    urls = []
+    for path, lastmod, freq in _core:
+        urls.append(f'  <url><loc>{_BASE}{path}</loc><lastmod>{lastmod}</lastmod><changefreq>{freq}</changefreq></url>')
+    for slug, lastmod, freq in _guides:
+        urls.append(f'  <url><loc>{_BASE}/guides/{slug}</loc><lastmod>{lastmod}</lastmod><changefreq>{freq}</changefreq></url>')
+    for slug, lastmod, freq in _blog:
+        urls.append(f'  <url><loc>{_BASE}/blog/{slug}</loc><lastmod>{lastmod}</lastmod><changefreq>{freq}</changefreq></url>')
+    xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
+    xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+    xml += '\n'.join(urls)
+    xml += '\n</urlset>'
+    return Response(xml, mimetype='application/xml')
+
+
+@app.route('/robots.txt')
+def robots():
+    """robots.txt — allow all crawlers, point to sitemap."""
+    from flask import Response
+    content = "User-agent: *\nAllow: /\nSitemap: https://giftwise.fit/sitemap.xml\n"
+    return Response(content, mimetype='text/plain')
+
+
+@app.route('/googlef18ce1baab96164b.html')
+def google_site_verification():
+    """Google Search Console HTML verification file."""
+    from flask import Response
+    return Response('google-site-verification: googlef18ce1baab96164b.html', mimetype='text/html')
+
+
 @app.route('/about')
 def about():
     """About page — ownership, editorial principles, transparency"""
@@ -3796,8 +3852,29 @@ def track_product_click():
     retailer = data.get('retailer', '')
 
     if url:
+        # Derive retailer from explicit field or URL domain fallback
+        if not retailer and url:
+            _cj_domains = {'tkqlhce.com', 'dpbolvw.net', 'kqzyfj.com', 'jdoqocy.com',
+                           'anrdoezrs.net', 'awltovhc.com', 'tqlkg.com', 'lduhtrp.net'}
+            try:
+                from urllib.parse import urlparse
+                _host = urlparse(url).hostname or ''
+                if 'ebay.com' in _host:
+                    retailer = 'ebay'
+                elif 'amazon.com' in _host:
+                    retailer = 'amazon'
+                elif 'awin1.com' in _host or _host.startswith('aw-'):
+                    retailer = 'awin'
+                elif any(d in _host for d in _cj_domains):
+                    retailer = 'cj'
+                else:
+                    retailer = 'other'
+            except Exception:
+                retailer = 'other'
         track_event('product_click')
-        logger.info(f"Product click: source={source}, url={url[:80]}")
+        if retailer:
+            track_event(f'product_click:{retailer}')
+        logger.info(f"Product click: source={source}, retailer={retailer}, url={url[:80]}")
 
         # REVENUE OPTIMIZATION: Track clicks to learn which products convert
         if product_id and retailer:

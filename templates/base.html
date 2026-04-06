@@ -19,6 +19,23 @@
     <meta name="description" content="AI-powered gift recommendations based on social media insights">
     {% endblock %}
 
+    <link rel="canonical" href="https://giftwise.fit{{ request.path }}">
+
+    <!-- Open Graph / Social sharing -->
+    <meta property="og:site_name" content="GiftWise">
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}">
+    <meta property="og:url" content="https://giftwise.fit{{ request.path }}">
+    <meta property="og:title" content="{% block og_title %}GiftWise — AI Gift Recommendations{% endblock %}">
+    <meta property="og:description" content="{% block og_description %}Paste someone's Instagram or TikTok handle and get gifts matched to their actual interests. No generic lists — gifts for this specific person.{% endblock %}">
+    <meta property="og:image" content="{% block og_image %}https://giftwise.fit/static/images/og-default.png{% endblock %}">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{% block twitter_title %}GiftWise — AI Gift Recommendations{% endblock %}">
+    <meta name="twitter:description" content="{% block twitter_description %}Paste someone's Instagram or TikTok — get gifts matched to their actual interests.{% endblock %}">
+    <meta name="twitter:image" content="https://giftwise.fit/static/images/og-default.png">
+
+    <!-- JSON-LD structured data -->
+    {% block jsonld %}{% endblock %}
+
     <style>
         /* Global Reset & Base Styles */
         * {

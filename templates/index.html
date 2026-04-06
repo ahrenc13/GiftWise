@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 
-{% block title %}Giftwise - Gift Recommendations from Your Social Media{% endblock %}
+{% block title %}GiftWise — AI Gift Recommendations From Social Media{% endblock %}
+
+{% block og_title %}GiftWise — AI Gift Recommendations From Social Media{% endblock %}
+{% block og_description %}Paste someone's Instagram or TikTok handle and get gifts matched to their actual interests. No generic lists — gifts for this specific person, in 30 seconds.{% endblock %}
+
+{% block jsonld %}<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"GiftWise","url":"https://giftwise.fit","description":"AI-powered gift recommendations based on Instagram and TikTok social media analysis. Paste a handle, get personalized gifts in 30 seconds.","applicationCategory":"LifestyleApplication","operatingSystem":"Web","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"publisher":{"@type":"Organization","name":"GiftWise","url":"https://giftwise.fit"}}</script>{% endblock %}
 
 {% block content %}
 <!-- Hero -->
@@ -99,6 +104,46 @@
                 <div class="rec-confidence" style="display: inline-block; padding: 5px 14px; background: #f3f4f6; border-radius: 15px; font-size: 0.9em; color: #6b7280; margin-bottom: 18px;">stretch</div>
                 <p class="rec-reason" style="color: #6b7280; line-height: 1.7; font-size: 0.98em;">Rock aesthetic (Marshall brand) + practical for music education content creation + complements School of Rock practice.</p>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gift Guides -->
+<div class="guides-section" style="padding: 80px 20px; background: white;">
+    <div class="container" style="max-width: 1100px; margin: 0 auto; padding: 0 20px;">
+        <h2 class="section-title" style="margin-bottom: 15px;">Gift Guides by Occasion</h2>
+        <p style="text-align: center; color: #6b7280; font-size: 1.15em; margin-bottom: 50px; max-width: 700px; margin-left: auto; margin-right: auto;">Not sure where to start? Browse curated picks for every occasion — then let GiftWise personalize them for <em>your</em> person.</p>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px;">
+            <a href="/guides/mothers-day" style="display: block; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 28px 24px; border-radius: 16px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 30px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                <div style="font-size: 2em; margin-bottom: 10px;">🌸</div>
+                <div style="font-weight: 700; font-size: 1.1em; margin-bottom: 6px;">Mother's Day</div>
+                <div style="opacity: 0.9; font-size: 0.9em;">Gifts she'll actually love</div>
+            </a>
+            <a href="/guides/fathers-day" style="display: block; background: linear-gradient(135deg, #2193b0 0%, #6dd5ed 100%); color: white; padding: 28px 24px; border-radius: 16px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 30px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                <div style="font-size: 2em; margin-bottom: 10px;">👔</div>
+                <div style="font-weight: 700; font-size: 1.1em; margin-bottom: 6px;">Father's Day</div>
+                <div style="opacity: 0.9; font-size: 0.9em;">Beyond boring gift cards</div>
+            </a>
+            <a href="/guides/graduation" style="display: block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 28px 24px; border-radius: 16px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 30px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                <div style="font-size: 2em; margin-bottom: 10px;">🎓</div>
+                <div style="font-weight: 700; font-size: 1.1em; margin-bottom: 6px;">Graduation</div>
+                <div style="opacity: 0.9; font-size: 0.9em;">Celebrate their next chapter</div>
+            </a>
+            <a href="/guides/gifts-for-her" style="display: block; background: linear-gradient(135deg, #f7971e 0%, #ffd200 100%); color: white; padding: 28px 24px; border-radius: 16px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 30px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                <div style="font-size: 2em; margin-bottom: 10px;">💝</div>
+                <div style="font-weight: 700; font-size: 1.1em; margin-bottom: 6px;">Gifts for Her</div>
+                <div style="opacity: 0.9; font-size: 0.9em;">Thoughtful picks she'll treasure</div>
+            </a>
+            <a href="/guides/gifts-for-him" style="display: block; background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white; padding: 28px 24px; border-radius: 16px; text-decoration: none; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 30px rgba(0,0,0,0.15)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                <div style="font-size: 2em; margin-bottom: 10px;">🎯</div>
+                <div style="font-weight: 700; font-size: 1.1em; margin-bottom: 6px;">Gifts for Him</div>
+                <div style="opacity: 0.9; font-size: 0.9em;">Gear, gadgets &amp; more</div>
+            </a>
+            <a href="/guides" style="display: block; background: #f3f4f6; color: #374151; padding: 28px 24px; border-radius: 16px; text-decoration: none; border: 2px dashed #d1d5db; transition: transform 0.2s, box-shadow 0.2s;" onmouseover="this.style.transform='translateY(-4px)';this.style.boxShadow='0 12px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='';this.style.boxShadow=''">
+                <div style="font-size: 2em; margin-bottom: 10px;">📋</div>
+                <div style="font-weight: 700; font-size: 1.1em; margin-bottom: 6px;">All Guides</div>
+                <div style="color: #6b7280; font-size: 0.9em;">8 guides &amp; counting →</div>
+            </a>
         </div>
     </div>
 </div>

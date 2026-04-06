@@ -1,0 +1,102 @@
+# GiftWise Voice & Style Guide
+
+**Purpose:** Every guide, blog post, and piece of on-site copy should sound like it was written by a person who knows gifts, knows the recipient, and isn't trying to impress you. This file captures the actual voice — not as vague adjectives but as concrete patterns.
+
+---
+
+## The Core Brand Angle
+
+GiftWise's whole proposition is **hyperspecificity**: the reason a gift lands is that it's matched to the actual person, not a demographic category. The guides should model this even when they can't know the specific recipient. Instead of "craft beer lovers will enjoy this," write "if he checks in at breweries more than restaurants, this is the one." You're showing the reader how to think about fit, not just handing them a list.
+
+Generic gift guides justify picks with emotion. GiftWise justifies picks with **observation**. What does the person actually do? What do they tolerate that they shouldn't have to? What wouldn't they buy for themselves even though they'd use it daily?
+
+---
+
+## Voice Patterns (From Real Writing)
+
+### Be specific where others are vague
+- Not: "he barely played"
+- Yes: "maybe sixty seconds across all of Sunday"
+
+Not: "gifts for coffee lovers"
+Yes: "if her morning doesn't start until the second cup, she has opinions about where the beans came from"
+
+### Acknowledge complexity without hiding behind it
+Flag the caveat and move through it. "I'm no professional but I've coached at several levels, up through and including college" — lead with the disclaimer, then demonstrate the credential. Don't ask for permission to have a view.
+
+Applied to guides: "This is a wide-net pick. If you already know he's a stout guy, the beer club is obvious. If you don't know what he drinks, it still works — the variety is the point."
+
+### Say the uncomfortable thing before the reader thinks it
+"I don't want to come off as a Karen dad." Name the tension directly. In guides: if a product has a real downside, name it. "The Away carry-on is $275. There's no version of this that's cheap. It's worth it if they travel more than twice a year and have been dragging a duffel since high school."
+
+### Warmth that's specific, not performed
+Not: "Thank you so much for everything you do!"
+Yes: "That's especially admirable given you have a day job and many other responsibilities."
+
+In guides: when recommending a product, the warmth comes from understanding the scenario, not from adjectives. "He said he doesn't need anything. He means it. He has no idea what he wants. These solve that by delivering something he'll enjoy without him having to make any decisions."
+
+### Levity drops in without setup
+Don't build to the joke. Don't signal that it's coming. "bonkers week of work travel" lands because it arrives in the middle of a professional email. In guides: "If his laptop takes four minutes to boot and the fan sounds like a small aircraft, this is the upgrade he keeps putting off."
+
+### Ellipsis as trailing thought, not drama
+Used for: letting logic land without exclamation points, for genuinely trailing thoughts. "...and of course, as little as she plays, it's hard to see how she might be part of a problem that's causing losses." The restraint is the point. Don't use ellipsis for suspense or pacing.
+
+### Parentheticals for genuine asides
+"(I don't know folks' names)" — honest admission, not a rhetorical device. In guides: "(at $43/month, even a 3-month subscription is under $130)" — factual aside, not a sales pitch.
+
+### Lead with context, not with the product name
+Contractor email opens with the situation: neighbor selling, 15 years of use, just need the line redrawn. The ask comes after the framing. In guides: earn the recommendation by establishing the scenario first.
+
+---
+
+## Kill List — Things That Don't Sound Like Us
+
+| Phrase/Pattern | Problem | Replace with |
+|---|---|---|
+| "the perfect gift" | No gift is perfect | "the right pick if X" |
+| "they'll absolutely love" | Overclaim | "they'll use it" or say nothing |
+| "practical *and* personal" | Rhyming adjective pair | Pick one |
+| "this is the gift that..." | Melodrama setup | Just describe what it does |
+| "whether you're X or Y" | Hedge-by-listing | Cut it |
+| "at the end of the day" | Never | Never |
+| "takes their next chapter seriously" | Abstract warmth | Describe the actual scenario |
+| Restate the previous sentence as a conclusion | Padding | Cut the restatement |
+| Emotional escalation at the end of a paragraph | AI tell | End on fact or observation, not feeling |
+| "in today's world" / "in today's environment" | Filler | Cut |
+
+---
+
+## Sentence Rhythm
+
+Mix of long clause-heavy sentences and short ones. Don't enforce a pattern — vary by what the content needs. A short sentence after a long one lands harder. A long sentence after a short one slows the reader down in a useful way.
+
+**Not:** "This is a great gift. It is practical. He will love it."
+**Not:** "This certified-refurbished, warranty-backed, open-box MacBook Air M1 from Tech For Less, which has been in business since 2001 and is known for its rigorous grading standards, represents an exceptional value proposition for the price-conscious gift-giver."
+**Yes:** "Open-box M1 MacBook from Tech For Less. About $550. Same device as new, certified refurbished with a real warranty. If his laptop takes four minutes to boot, this is the upgrade he keeps putting off."
+
+---
+
+## Applying to Gift Picks
+
+Each product pick should answer, in order:
+1. **Who is this for, specifically?** (observable behavior, not demographic category)
+2. **What problem does it solve, or what pleasure does it deliver?** (concrete, not emotional)
+3. **Why wouldn't they buy it themselves?** (the gift logic)
+4. One honest caveat if there is one.
+
+Then the link. No summary sentence. The reader can see the button.
+
+### Example — Before (AI voice)
+> "Bose QuietComfort headphones are perfect for the grad who wants to focus, travel, or simply enjoy their music in peace. Whether they're commuting to their new job or settling into a new city, these headphones will be their constant companion — a gift that keeps giving long after the ceremony is over."
+
+### Example — After (GiftWise voice)
+> "If they're moving somewhere new, a new roommate is in their future. Active noise cancelling headphones are the kind of thing people use every day and never buy for themselves because $200 feels indulgent. Certified refurb Bose QC from Tech For Less saves $70 over new with no meaningful difference. The acoustic performance is the same. The box just isn't sealed."
+
+---
+
+## What to Do in Future Sessions
+
+1. Read this file before writing or rewriting any guide content.
+2. If a sentence sounds like something a press release would say, cut it.
+3. If you're not sure whether something sounds right, ask: would Chad say this to someone at a dinner party? If not, rewrite it.
+4. When adding new product picks, start with the scenario (who, when, why) before naming the product.

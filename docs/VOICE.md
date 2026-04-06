@@ -26,6 +26,23 @@ Short sentences deployed for emotional punctuation are a tell. "That's the point
 
 ---
 
+## Gender and Identity
+
+The him/her guide slugs exist for SEO. That's the only reason. Inside the guides, gender is not the reason a product works — the fit scenario is.
+
+**Don't:** "Every man loves a cold beer." "Women appreciate thoughtful touches."
+**Do:** "If they check in at breweries more than restaurants, this is the pick." "If their morning doesn't start until the second cup, this is the pick."
+
+Don't assume the shopper's gender or their relationship to the recipient. "You're buying for someone and you don't know them that well" is the real situation these guides address — not "husband shopping for wife."
+
+The guides can use "he/him" or "she/her" when the slug calls for it. Just don't treat gender as evidence that a product fits. Observable behavior is the evidence.
+
+The graduation guide is the model. It's just "grad." Every occasion-based guide should feel that way inside the prose even if the slug uses a gendered term.
+
+GiftWise's actual argument — that the person's social feed tells you more than their gender does — is implicitly the counter to the binary. Let the product make that case. Don't belabor it in the guides, but don't contradict it either.
+
+---
+
 ## Voice Patterns (From Real Writing)
 
 ### Be specific where others are vague

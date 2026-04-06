@@ -105,7 +105,7 @@ def get_count(event_name: str, date_str: str = None) -> int:
 
 _GUIDE_SLUGS = [
     'mothers-day', 'fathers-day', 'gifts-for-her', 'gifts-for-him',
-    'chocolate-gourmet', 'coffee-tea', 'subscription-boxes', 'tech-gifts',
+    'chocolate-gourmet', 'coffee-tea', 'subscription-boxes', 'tech-gifts', 'graduation',
 ]
 _BLOG_SLUGS = [
     'last-minute-gifts', 'cash-vs-physical-gifts',

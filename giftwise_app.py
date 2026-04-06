@@ -1777,6 +1777,7 @@ def gift_guide_detail(slug):
         'coffee-tea': 'guide_coffee_tea.html',
         'subscription-boxes': 'guide_subscription_boxes.html',
         'tech-gifts': 'guide_tech_gifts.html',
+        'graduation': 'guide_graduation.html',
     }
     template = template_map.get(slug)
     if template:
@@ -1817,6 +1818,7 @@ def sitemap():
         ('coffee-tea', '2026-03-01', 'monthly'),
         ('subscription-boxes', '2026-03-01', 'monthly'),
         ('tech-gifts', '2026-03-01', 'monthly'),
+        ('graduation', '2026-04-06', 'monthly'),
     ]
     _blog = [
         ('last-minute-gifts', '2026-03-01', 'monthly'),

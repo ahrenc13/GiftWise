@@ -1852,6 +1852,13 @@ def robots():
     return Response(content, mimetype='text/plain')
 
 
+@app.route('/googlef18ce1baab96164b.html')
+def google_site_verification():
+    """Google Search Console HTML verification file."""
+    from flask import Response
+    return Response('google-site-verification: googlef18ce1baab96164b.html', mimetype='text/html')
+
+
 @app.route('/about')
 def about():
     """About page — ownership, editorial principles, transparency"""

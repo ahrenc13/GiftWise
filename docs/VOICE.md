@@ -10,6 +10,20 @@ GiftWise's whole proposition is **hyperspecificity**: the reason a gift lands is
 
 Generic gift guides justify picks with emotion. GiftWise justifies picks with **observation**. What does the person actually do? What do they tolerate that they shouldn't have to? What wouldn't they buy for themselves even though they'd use it daily?
 
+## Brand Positioning: Tool, Not Oracle
+
+GiftWise is a means to an end. The gift-giver knows the person. GiftWise helps them act on that knowledge faster. This is not a subtle distinction — it changes how every CTA and closing paragraph should be framed.
+
+**Wrong:** "GiftWise knows what they actually want."
+**Wrong:** "We'll match gifts to what he really cares about."
+**Right:** "You already know more about this person than any gift guide does. Paste their handle and we'll show you what that looks like as a gift list."
+
+The reader is a participant, not a recipient. The guides give them a framework for thinking about fit. GiftWise executes on the knowledge they already have. Never position the product as the authority on what someone wants — that's both untrue and off-putting to anyone who thinks about it for a second.
+
+## Kill the Needle Drop
+
+Short sentences deployed for emotional punctuation are a tell. "That's the point." / "He won't buy it himself." / "That's how you know." These signal "feel something now" to the reader. Cut them. If the observation was worth making, it landed in the sentence before. The period-for-finality move is a crutch — it's trying to make ordinary logic feel like a revelation. Trust the reader to connect it.
+
 ---
 
 ## Voice Patterns (From Real Writing)

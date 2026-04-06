@@ -567,15 +567,17 @@ The DB query fix landed and returned 80 products from 80k cached, 16 sources. Bu
 
 ---
 
-## Current Priorities (Updated Mar 2026)
+## Current Priorities (Updated Apr 2026)
 
-1. **Guide → tool conversion funnel** — Guides get significantly more traffic than the main tool (guide_hit >> rec_run in admin stats). Fix the funnel: add above-fold and mid-page CTAs, fix the 3 incomplete Etsy guides, add CTA to blog index. See "Content & SEO: Guide/Blog Strategy" section below.
-2. **TikTok launch content** — "The Birthday" reel in progress (Midjourney + CapCut). Frames 4-5 done, Frames 1-3 (character emoting) still need generation. See "TikTok Reel Production" section below.
-3. **Awin approvals** — ~35 applications from Feb 25 pending. Check dashboard for new approvals.
-4. **FlexOffers** — Applied Feb 16, status unknown. Check dashboard.
-5. **Impact.com** — Account type issue, second ticket filed. STAT tag + verification phrase on branch `claude/review-claude-docs-kEdui` (merge to main to activate).
-6. **Load test & harden** — Shelve concurrency, Gunicorn worker exhaustion, SQLite write contention under concurrent load. See Opus prompt in `docs/ARCHITECTURE.md`.
-7. **Monitor quality** — Admin dashboard, watch rec_run and affiliate click events.
+1. **Reddit distribution** — Posts drafted for 12 subreddits + situational comment templates. Wave 1 (r/GiftIdeas, r/SideProject, r/ChatGPT, r/InternetIsBeautiful) starts this week, one per day. r/GiftIdeas mod response pending — they may flag self-promotion. Posts are in the session history; ask Claude to regenerate if needed, pointing at `docs/VOICE.md` for style.
+2. **Google Search Console** — Verification route live at `/googlef18ce1baab96164b.html`. Submit `giftwise.fit/sitemap.xml` after verifying ownership. Sitemap includes all 9 guides + blog posts.
+3. **OG default image** — `og-default.png` (1200×630) referenced in `base.html` but doesn't exist yet. Create in Canva and add to `static/images/`. Until then, social shares have no preview image.
+4. **3 incomplete Etsy guides** — `guide_etsy_home_decor.html`, `guide_etsy_jewelry.html`, `guide_etsy_under_50.html` still have placeholder content. Either populate or take down.
+5. **Awin approvals** — ~35 applications from Feb 25 pending. Check dashboard for new approvals.
+6. **FlexOffers** — Applied Feb 16, status unknown. Check dashboard.
+7. **Impact.com** — Account type issue, second ticket filed. STAT tag + verification phrase on branch `claude/review-claude-docs-kEdui` (merge to main to activate).
+8. **Load test & harden** — Shelve concurrency, Gunicorn worker exhaustion, SQLite write contention under concurrent load. See Opus prompt in `docs/ARCHITECTURE.md`.
+9. **Monitor quality** — Admin dashboard, watch rec_run and affiliate click events. Facebook screen recording post live as of Apr 5.
 
 ---
 
@@ -681,26 +683,52 @@ The curator prompt should include this ceiling. The `gift_score` function doesn'
 
 ## Content & SEO: Guide/Blog Strategy
 
-**Key insight (Mar 2026):** Admin dashboard shows `guide_hit` significantly outpacing `rec_run`. Users land on guides via search but don't convert to the main tool. This is the highest-leverage growth fix available.
+**Key insight (Mar 2026):** Admin dashboard shows `guide_hit` significantly outpacing `rec_run`. Users land on guides via search but don't convert to the main tool.
 
-### Current CTA Problems
+**For all guide/blog content writing: read `docs/VOICE.md` first.** It captures Chad's writing style from real email samples, the brand positioning (tool not oracle, participant not recipient), gender/identity stance, and a kill list of AI writing tells. Do not write or rewrite guide content without reading it.
+
+### What Was Fixed (Apr 2026)
+
+| Fix | Status |
+|-----|--------|
+| Above-fold + mid-page CTAs in all guides | ✅ Done |
+| All CTAs → `/demo?ref=guide` (not `/signup`) | ✅ Done |
+| Per-slug tracking (`guide_hit:{slug}`) | ✅ Done |
+| Per-retailer click tracking (`product_click:{retailer}`) | ✅ Done |
+| Sitemap.xml route | ✅ Done |
+| Robots.txt route | ✅ Done |
+| Canonical tags in base.html | ✅ Done |
+| OG/Twitter Card meta tags in base.html with per-guide overrides | ✅ Done |
+| JSON-LD Article + BreadcrumbList schema on all guides | ✅ Done |
+| FAQPage schema on Mother's Day + Father's Day + Graduation guides | ✅ Done |
+| Google Search Console verification route | ✅ Done (`/googlef18ce1baab96164b.html`) |
+| Homepage "Gift Guides by Occasion" section (was zero links to guides) | ✅ Done |
+| Graduation guide (`/guides/graduation`) | ✅ Done |
+| Admin dashboard: retailer breakdown + per-guide/blog hit tables | ✅ Done |
+| Full voice pass on all 9 guides (3 passes total) | ✅ Done |
+
+### Still Open
 
 | Issue | Details |
 |-------|---------|
-| **Bottom-only CTAs** | All guide/blog CTAs are at the very end of the page. Users who bounce mid-read never see them. |
-| **3 Etsy guides incomplete** | `guide_etsy_home_decor.html`, `guide_etsy_jewelry.html`, `guide_etsy_under_50.html` have placeholder content (`[Add product image URL]`, `[ETSY AFFILIATE LINK]`) and NO CTA to the main tool. |
-| **Blog index has no CTA** | `/blog` page is pure navigation — no mention of the tool at all. |
-| **All CTAs → /signup** | No option to go directly to `/demo` for a frictionless try. Users must create an account first. |
-| **No per-guide tracking** | All guides and blog posts aggregate into one `guide_hit` counter. Can't see which guide drives traffic. |
+| **3 Etsy guides incomplete** | `guide_etsy_home_decor.html`, `guide_etsy_jewelry.html`, `guide_etsy_under_50.html` have placeholder content. Populate or take down. |
+| **Blog index CTA** | `/blog` page still has no mention of the tool. |
+| **OG default image** | `static/images/og-default.png` (1200×630) referenced but doesn't exist. Create in Canva. |
+| **`guide_to_tool` funnel event** | Not yet tracked — when someone navigates from a guide to the main tool. |
 
-### What to Fix (in priority order)
+### Guide Inventory (9 guides as of Apr 2026)
 
-1. **Add above-fold CTA** to every guide — a subtle banner or inline callout near the top: "Want gifts personalized to a specific person? Try GiftWise free →" linking to `/demo` (not `/signup`).
-2. **Add mid-page CTA** after 3-4 product recommendations in each guide — contextual, like "These are great general picks. For gifts matched to *their* actual interests, try GiftWise →"
-3. **Fix or remove the 3 incomplete Etsy guides** — they're live pages with broken placeholder content. Either populate them or take them down.
-4. **Add CTA to blog index** (`/blog`) and guide index (`/guides`) — both need a prominent tool callout.
-5. **Add per-slug tracking** — change `track_event('guide_hit')` to `track_event('guide_hit:beauty')` (or add a second event) so you can see which content drives traffic.
-6. **Add `guide_to_tool` funnel event** — track when someone navigates from a guide/blog to the main tool entry point.
+| Slug | Title | Last Updated |
+|------|-------|-------------|
+| `/guides/mothers-day` | Mother's Day | April 2026 |
+| `/guides/fathers-day` | Father's Day | April 2026 |
+| `/guides/graduation` | Graduation | April 2026 |
+| `/guides/gifts-for-her` | Gifts for Her | April 2026 |
+| `/guides/gifts-for-him` | Gifts for Him | April 2026 |
+| `/guides/chocolate-gourmet` | Gourmet Food Gifts | April 2026 |
+| `/guides/coffee-tea` | Coffee & Tea Gifts | April 2026 |
+| `/guides/subscription-boxes` | Subscription Boxes | April 2026 |
+| `/guides/tech-gifts` | Tech Gifts | April 2026 |
 
 ### Keeping Guides Fresh
 
@@ -713,9 +741,13 @@ Start with manual refresh — the 3 Etsy guides need it immediately since they'r
 
 ---
 
-## TikTok Reel Production
+## Video / Social Content
 
-### Video 3: "The Birthday" (In Progress — Mar 2026)
+### What shipped (Apr 2026)
+- **Facebook (Apr 5):** iMovie screen recording of the full GiftWise experience, cut to 44 seconds with wait times removed. Posted to personal network. Authentic, self-deprecating tone. TikTok reel concept ("The Birthday") was built but not posted — pivoted to screen recording as faster/more authentic.
+- **Reddit:** Posts drafted for 12 subreddits + situational comment templates. Wave 1 launching this week. Ask Claude to regenerate them pointing at `docs/VOICE.md` if needed.
+
+### "The Birthday" Reel (Paused — Mar 2026)
 
 **Concept:** 5-frame Midjourney sequence + end card in Canva, assembled in CapCut. Story: woman panics about birthday gift → bad ideas → discovers GiftWise → sees results → group chat celebration.
 

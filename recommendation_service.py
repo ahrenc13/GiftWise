@@ -496,7 +496,20 @@ class RecommendationService:
             )
             splurge_item = grounded_splurge[0] if grounded_splurge else None
             if splurge_item:
-                logger.info(f"Splurge item grounded: {splurge_item.get('name', 'unknown')}")
+                # Price validation: splurge items MUST have a real, positive price.
+                # The FUFU&GAGA incident (Apr 2026) showed a $0/unknown-price item
+                # slipping through as the splurge pick — drop it rather than surface it.
+                splurge_price = splurge_item.get('price') or splurge_item.get('price_range', '')
+                try:
+                    price_str = str(splurge_price).replace('$', '').replace(',', '').split('-')[0].strip()
+                    splurge_price_val = float(price_str) if price_str else 0
+                except (TypeError, ValueError):
+                    splurge_price_val = 0
+                if splurge_price_val < 1:
+                    logger.warning(f"Splurge item '{splurge_item.get('name', 'unknown')}' has no valid price ('{splurge_price}') — dropped")
+                    splurge_item = None
+                else:
+                    logger.info(f"Splurge item grounded: {splurge_item.get('name', 'unknown')} (${splurge_price_val:.0f})")
             else:
                 logger.warning("Splurge item failed grounding — dropped")
 

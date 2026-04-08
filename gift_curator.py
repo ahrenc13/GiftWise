@@ -217,7 +217,6 @@ SPECIFIC VENUES/PLACES:
     # Append splurge candidates section if available (wired Apr 2026).
     # These are higher-priced items ($200-$1500) from the catalog DB, separated from the
     # regular pool. The curator can reference them when designating the SPLURGE PICK.
-    # Opus task: update the SPLURGE PICK instruction to explicitly prefer items from this section.
     if splurge_candidates:
         splurge_formatted = format_products(splurge_candidates)
         products_summary += f"\n\n━━━ SPLURGE CANDIDATES ($200-$1500) ━━━\n\n{splurge_formatted}\n\n━━━ END SPLURGE CANDIDATES ━━━"
@@ -238,13 +237,27 @@ RECIPIENT CONTEXT: This is for {"the user themselves (gifts for you)" if recipie
     if has_splurge:
         splurge_instruction = f"""
 SPLURGE SLOT (1 additional pick — SEPARATE from your {rec_count} regular picks):
-Pick the single most impressive gift from the SPLURGE CANDIDATES section above. This is the "if money were no object" pick — the nicest version of something {pronoun_subject} love, or a truly extraordinary item that matches {pronoun_possessive} strongest interest. Price ceiling: ${splurge_ceiling}. Set "is_splurge": true for this one product only, false for all others.
+The splurge is the "if money were no object" gift — the premium, aspirational version of something {pronoun_subject} are genuinely passionate about. Price range: $200–${splurge_ceiling}.
+
+WHAT MAKES A GOOD SPLURGE:
+- It serves {pronoun_possessive} #1 or #2 passion at a luxury tier. A watch collector gets a premium watch winder. A steak obsessive gets a Japanese knife set. A car model collector gets a museum-quality diecast.
+- The recipient would covet it but never buy it for themselves — that's the whole point.
+- It should make someone say "this person really GETS me" at a level the regular gifts can't reach.
+
+WHAT DISQUALIFIES A SPLURGE:
+- Furniture, wardrobes, large appliances, storage units — these are household purchases, not gifts. Nobody unwraps a wardrobe.
+- Items matching a style preference (e.g. "minimalist") rather than an active passion. "Minimalist" describes HOW they like things, not WHAT they love.
+- Items with no listed price — if you can't verify it's actually in the $200–${splurge_ceiling} range, skip it.
+- Generic premium items (luxury candle, fancy blanket) that could be for anyone. The splurge must be as specific to this person as the regular picks.
+
+IF NO CANDIDATE QUALIFIES: Set "is_splurge": false on ALL items and return only {rec_count} regular picks. An empty splurge slot is better than a bad one. Do NOT force a pick that doesn't meet the criteria above.
+
+If a candidate DOES qualify:
+- Set "is_splurge": true for that one product only
 - MUST come from the SPLURGE CANDIDATES section (not the regular inventory)
-- Should feel aspirational — a meaningful upgrade, not just an expensive version of a basic item
-- If none of the splurge candidates are a good fit for the profile, pick the BEST one anyway and explain why in why_perfect
-- The splurge pick is item #{rec_count + 1} in your product_gifts array (after the {rec_count} regular picks)
+- Place it as item #{rec_count + 1} in your product_gifts array (after the {rec_count} regular picks)
 """
-        splurge_total_line = f"{rec_count} regular product gifts + 1 SPLURGE pick"
+        splurge_total_line = f"{rec_count} regular product gifts + 1 SPLURGE pick (if a worthy candidate exists)"
 
     prompt = f"""You are selecting {splurge_total_line} from a real inventory.
 

@@ -506,7 +506,10 @@ def search_products_diverse(interests: List[str], limit: int = 100,
             if interest_lower in tag_set or any(interest_lower in t for t in tag_set):
                 per_interest_counts[interest_lower] = per_interest_counts.get(interest_lower, 0) + 1
 
-        if splurge_min <= price <= splurge_max:
+        # Price gate: only products with a real, positive price qualify as
+        # splurge candidates. price=0 or price=None means the source didn't
+        # provide a price — these must NOT appear in the splurge slot.
+        if price > 0 and splurge_min <= price <= splurge_max:
             splurge.append(row)
         else:
             regular.append(row)

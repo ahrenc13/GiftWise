@@ -25,6 +25,12 @@ logger = logging.getLogger(__name__)
 # Max products in the merged inventory (so curator prompt stays manageable)
 MAX_INVENTORY_SIZE = 100
 
+# Per-merchant cap: prevents a single Awin/CJ merchant (e.g. OUFER BODY JEWELRY
+# with 2,700+ catalog products) from flooding the pool. Applied to the final merged
+# pool, keyed on source_domain (merchant name). Amazon/eBay are live-only and
+# naturally diverse; this cap primarily guards against catalog-heavy single merchants.
+MAX_PER_MERCHANT = 8
+
 # eBay niche-only scoping (Phase 2, Apr 2026).
 # eBay fires ONLY for interests with fewer DB products than this threshold.
 # With a healthy DB (11,000+ products), most interests have enough coverage
@@ -376,6 +382,25 @@ def search_products_multi_retailer(
     if len(all_products) > MAX_INVENTORY_SIZE:
         all_products = all_products[:MAX_INVENTORY_SIZE]
         logger.info(f"Inventory capped at {MAX_INVENTORY_SIZE} for curation")
+
+    # Per-merchant cap: no single merchant can contribute more than MAX_PER_MERCHANT
+    # products to the final pool. Catches catalog-heavy single merchants (e.g. OUFER
+    # BODY JEWELRY at 19 products) that slip through upstream caps.
+    merchant_counts: dict = defaultdict(int)
+    capped_pool = []
+    capped_merchants = []
+    for p in all_products:
+        merchant = p.get("source_domain", "unknown")
+        if merchant_counts[merchant] < MAX_PER_MERCHANT:
+            capped_pool.append(p)
+            merchant_counts[merchant] += 1
+        else:
+            capped_merchants.append(merchant)
+    if capped_merchants:
+        from collections import Counter
+        dropped = Counter(capped_merchants)
+        logger.info(f"Per-merchant cap ({MAX_PER_MERCHANT}): trimmed {len(capped_merchants)} excess — {dict(dropped)}")
+        all_products = capped_pool
 
     source_counts = defaultdict(int)
     for p in all_products:

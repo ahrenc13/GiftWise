@@ -235,7 +235,7 @@ def _classify_tagged_accounts(tagged_counter):
     return brands, personal
 
 
-def build_recipient_profile(platforms, recipient_type, relationship, claude_client, model=None):
+def build_recipient_profile(platforms, recipient_type, relationship, claude_client, model=None, gift_context=None):
     """
     Build comprehensive recipient profile from scraped social media data.
 
@@ -272,7 +272,7 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
             # Generate hash from platform data for cache lookup.
             # Include a prompt version so cache is invalidated when the
             # analysis prompt changes (e.g. interest attribution fix).
-            _PROMPT_VERSION = "2026-03-22-attribution-v5"
+            _PROMPT_VERSION = "2026-04-08-gift-context-v1"
             cache_data = {
                 'instagram': platforms.get('instagram', {}).get('data', {}),
                 'tiktok': platforms.get('tiktok', {}).get('data', {}),
@@ -280,6 +280,7 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
                 'spotify': platforms.get('spotify', {}).get('data', {}),
                 'spotify_wrapped': platforms.get('spotify_wrapped', {}).get('wrapped_text', ''),
                 'relationship': relationship,
+                'gift_context': gift_context or '',
                 '_prompt_version': _PROMPT_VERSION,
             }
             cache_str = json.dumps(cache_data, sort_keys=True)
@@ -759,10 +760,35 @@ PRIORITY: Want signals > cross-platform confirmed > high engagement > aspiration
     relationship_context = ""
     if recipient_type == 'someone_else' and relationship:
         relationship_context = f"\nRELATIONSHIP TYPE: {relationship}\nThis affects what kinds of gifts are appropriate (e.g., romantic vs. friendly vs. professional)."
-    
-    prompt = f"""Analyze this person's social media data and build a comprehensive profile for gift curation.
 
-{chr(10).join(data_summary)}{relationship_context}
+    # Sanitize gift_context against prompt injection: wrap in explicit delimiters,
+    # strip any closing delimiter sequences the user might try to inject.
+    gift_context_section = ""
+    if gift_context and gift_context.strip():
+        safe_context = gift_context.strip().replace('---END GIFT-GIVER NOTE---', '').replace('</gift_context>', '')
+        has_social_data = bool(data_summary)
+        if has_social_data:
+            gift_context_section = f"""
+
+---GIFT-GIVER NOTE (first-hand knowledge — treat as high-confidence signal)---
+{safe_context}
+---END GIFT-GIVER NOTE---
+If this note mentions a hobby, interest, life event, or product category not visible in the social data, add it as a confirmed interest with high confidence. The gift-giver knows this person directly."""
+        else:
+            gift_context_section = f"""
+
+---PRIMARY INPUT (no social media — this description is your only signal)---
+{safe_context}
+---END PRIMARY INPUT---
+There is no social media data. Build the entire profile from this description. Extract every interest, hobby, life stage clue, aesthetic preference, and price signal you can. Be generous — infer from context (e.g. "obsessed with his smoker" → passionate, active interest in BBQ/grilling/outdoor cooking). Aim for 4-8 interests minimum."""
+        logger.info("Gift context injected into profile analyzer prompt (%d chars, has_social=%s)",
+                    len(safe_context), has_social_data)
+
+    prompt_intro = "Analyze this person's social media data and build a comprehensive profile for gift curation." if data_summary else "Build a gift-recipient profile from the description below."
+
+    prompt = f"""{prompt_intro}
+
+{chr(10).join(data_summary)}{relationship_context}{gift_context_section}
 
 SIGNAL PRIORITY (use these to weight your analysis):
 - **BRAND AFFINITIES**: Tagged brands are direct evidence of ownership/loyalty. Include the brand in style_preferences.brands.

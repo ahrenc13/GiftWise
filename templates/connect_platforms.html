@@ -481,6 +481,76 @@
                 </button>
             </form>
 
+            <!-- No social media bypass — guided questions -->
+            <div style="margin: 24px 0;" id="no-social-section">
+                <button onclick="toggleNoSocial()" id="no-social-toggle"
+                        style="width:100%; padding:14px 20px; background:white; border:2px dashed #d1d5db; border-radius:12px; cursor:pointer; color:#6b7280; font-size:14px; font-weight:600; text-align:left; display:flex; align-items:center; gap:10px;">
+                    <span style="font-size:18px;">✍️</span>
+                    <span>No social media? Answer a few questions instead</span>
+                    <span id="no-social-chevron" style="margin-left:auto; transition:transform 0.2s;">▼</span>
+                </button>
+
+                <div id="no-social-form" style="display:none; padding:22px; border:2px solid #e5e7eb; border-top:none; border-radius:0 0 12px 12px; background:#fafafa;">
+                    <p style="color:#6b7280; font-size:13px; margin:0 0 18px 0; line-height:1.5;">
+                        Answer as many as you can. Specific beats vague every time &mdash; &ldquo;she got really into sourdough during COVID and still bakes every weekend&rdquo; is ten times more useful than &ldquo;she likes cooking.&rdquo;
+                    </p>
+
+                    <div style="margin-bottom:18px;">
+                        <label style="display:block; font-weight:600; color:#374151; font-size:14px; margin-bottom:5px;">
+                            1. What do they do when they have a free afternoon?
+                        </label>
+                        <p style="color:#9ca3af; font-size:12px; margin:0 0 6px 0;">Hobbies, activities, how they unwind. Be specific if you can &mdash; not just &ldquo;outdoors&rdquo; but &ldquo;trail running, specifically&rdquo; or &ldquo;he&rsquo;s been getting into fly fishing.&rdquo;</p>
+                        <textarea id="q1" rows="2" placeholder="e.g. She reads a lot, mostly literary fiction. Runs 3x a week. Started a container garden on her balcony this spring."
+                                  style="width:100%; padding:10px 12px; border:2px solid #e5e7eb; border-radius:8px; font-size:14px; font-family:inherit; resize:vertical; box-sizing:border-box;"
+                                  onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e5e7eb'"></textarea>
+                    </div>
+
+                    <div style="margin-bottom:18px;">
+                        <label style="display:block; font-weight:600; color:#374151; font-size:14px; margin-bottom:5px;">
+                            2. What have they bought recently, or mentioned wanting?
+                        </label>
+                        <p style="color:#9ca3af; font-size:12px; margin:0 0 6px 0;">Things they've hinted at, items they keep looking at, recent purchases that show their taste. &ldquo;He's been watching a lot of YouTube videos about home espresso&rdquo; counts.</p>
+                        <textarea id="q2" rows="2" placeholder="e.g. She mentioned wanting a good chef's knife. Keeps looking at Lululemon. Got really into her Kindle last year."
+                                  style="width:100%; padding:10px 12px; border:2px solid #e5e7eb; border-radius:8px; font-size:14px; font-family:inherit; resize:vertical; box-sizing:border-box;"
+                                  onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e5e7eb'"></textarea>
+                    </div>
+
+                    <div style="margin-bottom:18px;">
+                        <label style="display:block; font-weight:600; color:#374151; font-size:14px; margin-bottom:5px;">
+                            3. How would you describe their home or their style?
+                        </label>
+                        <p style="color:#9ca3af; font-size:12px; margin:0 0 6px 0;">Clean and minimal? Warm and cluttered-in-a-good-way? Into a specific aesthetic or brands? &ldquo;Everything is neutral tones, really organized&rdquo; tells us something.</p>
+                        <textarea id="q3" rows="2" placeholder="e.g. Her apartment is very minimal, lots of plants, neutral colors. Wears mostly basics — Everlane, Uniqlo."
+                                  style="width:100%; padding:10px 12px; border:2px solid #e5e7eb; border-radius:8px; font-size:14px; font-family:inherit; resize:vertical; box-sizing:border-box;"
+                                  onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e5e7eb'"></textarea>
+                    </div>
+
+                    <div style="margin-bottom:18px;">
+                        <label style="display:block; font-weight:600; color:#374151; font-size:14px; margin-bottom:5px;">
+                            4. What&rsquo;s their life stage right now?
+                        </label>
+                        <p style="color:#9ca3af; font-size:12px; margin:0 0 6px 0;">New parent, empty nester, just started a new job, recently moved, recently married, retired, in college&hellip; this shapes what&rsquo;s actually useful as a gift.</p>
+                        <textarea id="q4" rows="2" placeholder="e.g. Just had her first kid six months ago. Back at work. Not sleeping much."
+                                  style="width:100%; padding:10px 12px; border:2px solid #e5e7eb; border-radius:8px; font-size:14px; font-family:inherit; resize:vertical; box-sizing:border-box;"
+                                  onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e5e7eb'"></textarea>
+                    </div>
+
+                    <div style="margin-bottom:20px;">
+                        <label style="display:block; font-weight:600; color:#374151; font-size:14px; margin-bottom:5px;">
+                            5. Anything else? What does this person love that hasn&rsquo;t come up yet?
+                        </label>
+                        <p style="color:#9ca3af; font-size:12px; margin:0 0 6px 0;">Fandoms, sports teams, comfort foods, places they&rsquo;ve lived, things that make them uniquely them. Also: anything to avoid.</p>
+                        <textarea id="q5" rows="2" placeholder="e.g. Huge Formula 1 fan. Originally from Texas, misses the food. Allergic to candles (fragrance sensitivity) — avoid anything scented."
+                                  style="width:100%; padding:10px 12px; border:2px solid #e5e7eb; border-radius:8px; font-size:14px; font-family:inherit; resize:vertical; box-sizing:border-box;"
+                                  onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e5e7eb'"></textarea>
+                    </div>
+
+                    <button onclick="submitGuidedProfile()" class="btn-continue" id="textProfileBtn" style="margin-top:0;">
+                        Find gifts from these answers &rarr;
+                    </button>
+                </div>
+            </div>
+
             <div style="margin: 24px 0; padding: 20px 0; border-top: 2px solid #e5e7eb; border-bottom: 2px solid #e5e7eb;">
                 <p style="color: #666; font-size: 14px; margin-bottom: 12px;">
                     <strong>Just want to see how it works?</strong>
@@ -572,6 +642,66 @@
         const connectedCount = {{ connected_count }};
         if (connectedCount > 0) {
             document.getElementById('continueBtn').disabled = false;
+        }
+
+        function toggleNoSocial() {
+            const form = document.getElementById('no-social-form');
+            const chevron = document.getElementById('no-social-chevron');
+            const toggle = document.getElementById('no-social-toggle');
+            const open = form.style.display === 'none';
+            form.style.display = open ? 'block' : 'none';
+            chevron.style.transform = open ? 'rotate(180deg)' : '';
+            toggle.style.borderRadius = open ? '12px 12px 0 0' : '12px';
+            toggle.style.borderBottom = open ? '2px solid #e5e7eb' : '2px dashed #d1d5db';
+        }
+
+        function submitGuidedProfile() {
+            const labels = [
+                'Free time / hobbies',
+                'Recent purchases or wish list',
+                'Home style and aesthetic',
+                'Life stage',
+                'Other details and anything to avoid'
+            ];
+            const answers = ['q1','q2','q3','q4','q5'].map((id, i) => {
+                const val = (document.getElementById(id) || {}).value || '';
+                return val.trim() ? labels[i] + ': ' + val.trim() : '';
+            }).filter(Boolean);
+
+            if (answers.length === 0) {
+                alert('Please fill in at least one question.');
+                return;
+            }
+            if (answers.join(' ').length < 20) {
+                alert('Please give a bit more detail — even one specific answer helps a lot.');
+                return;
+            }
+
+            const gift_context = answers.join('\n');
+            const btn = document.getElementById('textProfileBtn');
+            btn.disabled = true;
+            btn.textContent = 'Building profile\u2026';
+
+            fetch('/start-text-profile', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({gift_context: gift_context})
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.redirect) {
+                    window.location.href = d.redirect;
+                } else {
+                    alert(d.error || 'Something went wrong. Please try again.');
+                    btn.disabled = false;
+                    btn.textContent = 'Find gifts from these answers \u2192';
+                }
+            })
+            .catch(() => {
+                alert('Something went wrong. Please try again.');
+                btn.disabled = false;
+                btn.textContent = 'Find gifts from these answers \u2192';
+            });
         }
     </script>
 {% endblock %}

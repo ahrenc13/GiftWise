@@ -141,7 +141,8 @@ class RecommendationService:
                                 enhanced_search_terms: Optional[List[str]] = None,
                                 quality_filters: Optional[List[str]] = None,
                                 recipient_age: Optional[int] = None,
-                                recipient_gender: Optional[str] = None) -> List[Dict]:
+                                recipient_gender: Optional[str] = None,
+                                gift_context: Optional[str] = None) -> List[Dict]:
         """
         Generate personalized gift recommendations.
 
@@ -169,7 +170,7 @@ class RecommendationService:
         logger.info("=" * 60)
 
         # STEP 1: Build or use approved recipient profile
-        profile = self._build_profile(user_id, platforms, recipient_type, relationship, approved_profile)
+        profile = self._build_profile(user_id, platforms, recipient_type, relationship, approved_profile, gift_context)
 
         # Validate profile has interests
         profile_for_backend = self._prepare_profile_for_backend(profile)
@@ -230,7 +231,8 @@ class RecommendationService:
         return recommendations
 
     def _build_profile(self, user_id: str, platforms: List[Dict], recipient_type: str,
-                      relationship: str, approved_profile: Optional[Dict]) -> Dict:
+                      relationship: str, approved_profile: Optional[Dict],
+                      gift_context: Optional[str] = None) -> Dict:
         """Build or use approved recipient profile."""
         # Tailor progress message: Spotify-only has no posts to read
         spotify_data = platforms.get('spotify', {}).get('data', {}) if isinstance(platforms, dict) else {}
@@ -253,7 +255,8 @@ class RecommendationService:
         logger.info("STEP 1: Building deep recipient profile...")
         profile = self.build_recipient_profile(
             platforms, recipient_type, relationship,
-            self.claude_client, model=self.profile_model
+            self.claude_client, model=self.profile_model,
+            gift_context=gift_context
         )
 
         if not profile.get('interests'):

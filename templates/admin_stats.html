@@ -120,22 +120,32 @@ h1 { font-size: 20px; color: #9ca3af; margin-bottom: 4px; }
     </div>
 
     <div class="section">
-        <h2>Guide Hits (today / week)</h2>
+        <h2>Guide &amp; Content Hits (today / week)</h2>
         <div style="overflow-x: auto;">
         <table>
             <tr><th>Guide</th><th>Today</th><th>This Week</th></tr>
-            {% for slug, label in [('mothers-day', "Mother's Day"), ('fathers-day', "Father's Day"), ('gifts-for-her', 'Gifts for Her'), ('gifts-for-him', 'Gifts for Him'), ('chocolate-gourmet', 'Chocolate'), ('coffee-tea', 'Coffee & Tea'), ('subscription-boxes', 'Subscriptions'), ('tech-gifts', 'Tech')] %}
+            {% for slug, label in [
+                ('mothers-day', "Mother's Day"),
+                ('fathers-day', "Father's Day"),
+                ('graduation', 'Graduation'),
+                ('gifts-for-her', 'Gifts for Her'),
+                ('gifts-for-him', 'Gifts for Him'),
+                ('chocolate-gourmet', 'Chocolate & Gourmet'),
+                ('coffee-tea', 'Coffee & Tea'),
+                ('subscription-boxes', 'Subscription Boxes'),
+                ('tech-gifts', 'Tech Gifts'),
+                ('last-minute-gifts', 'Last-Minute Gifts'),
+                ('cash-vs-physical-gifts', 'Cash vs Physical'),
+                ('gift-giving-mistakes', 'Gift-Giving Mistakes'),
+                ('gifts-for-someone-who-has-everything', 'Has Everything')
+            ] %}
+            {% set is_guide = slug in ['mothers-day', 'fathers-day', 'graduation', 'gifts-for-her', 'gifts-for-him', 'chocolate-gourmet', 'coffee-tea', 'subscription-boxes', 'tech-gifts'] %}
+            {% set hits_today = data.guide_hits.today[slug] if is_guide else data.blog_hits.today[slug] %}
+            {% set hits_week  = data.guide_hits.week[slug]  if is_guide else data.blog_hits.week[slug] %}
             <tr>
                 <td>{{ label }}</td>
-                <td class="{{ 'zero' if data.guide_hits.today[slug] == 0 else '' }}">{{ data.guide_hits.today[slug] }}</td>
-                <td class="{{ 'zero' if data.guide_hits.week[slug] == 0 else '' }}">{{ data.guide_hits.week[slug] }}</td>
-            </tr>
-            {% endfor %}
-            {% for slug, label in [('last-minute-gifts', 'Last Minute'), ('cash-vs-physical-gifts', 'Cash vs Physical'), ('gift-giving-mistakes', 'Mistakes'), ('gifts-for-someone-who-has-everything', 'Has Everything')] %}
-            <tr>
-                <td style="color:#6b7280">blog: {{ label }}</td>
-                <td class="{{ 'zero' if data.blog_hits.today[slug] == 0 else '' }}">{{ data.blog_hits.today[slug] }}</td>
-                <td class="{{ 'zero' if data.blog_hits.week[slug] == 0 else '' }}">{{ data.blog_hits.week[slug] }}</td>
+                <td class="{{ 'zero' if hits_today == 0 else '' }}">{{ hits_today }}</td>
+                <td class="{{ 'zero' if hits_week == 0 else '' }}">{{ hits_week }}</td>
             </tr>
             {% endfor %}
         </table>

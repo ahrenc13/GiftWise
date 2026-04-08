@@ -302,7 +302,7 @@ Return JSON:
   ],
   "experience_gifts": [
     {{
-      "name": "SHORT, specific experience name (e.g. 'Couples Thai Cooking Class' not 'Cooking Experience')",
+      "name": "SHORT, specific experience name that incorporates local/regional identity when the recipient's city is known. Use the city name, a regional specialty, or a geographic feature to make it feel bespoke: 'Boise Wine Trail Evening' not 'Local Wine Tasting', 'Austin BBQ Pitmaster Class' not 'Cooking Class', 'Pacific Northwest Foraging Walk' not 'Nature Walk'. Exception: do NOT include a city name in concert experience names.",
       "description": "1-2 sentence pitch: what this experience IS and what makes it special. Write it like you're selling someone on the idea.",
       "why_perfect": "2-3 sentences citing SPECIFIC profile evidence from 2+ interests/behaviors. Tell a mini-story connecting {pronoun_possessive} interests to this experience.",
       "experience_category": "one of: cooking_class|art_class|concerts|sports_events|travel|spa_wellness|outdoor_adventure|wine_beer|fitness_class|museum_culture|dining|pet_experience|other",
@@ -341,6 +341,13 @@ EXPERIENCE GIFTS:
 - description should SELL the experience in 1-2 punchy sentences. Not a dry summary.
   BAD: "A cooking class focused on Thai cuisine."
   GOOD: "Learn to make authentic pad thai and green curry from scratch — then eat everything you made with a glass of wine."
+
+LOCATION IDENTITY — MAKE IT FEEL BESPOKE:
+When you know the recipient's city or region ({recipient_city}), use that identity throughout the experience — in the name, description, and why_perfect. Generic experiences feel like filler; locally-grounded experiences feel like you thought about THIS person in THIS place.
+- Use the city/region name when it adds flavor: "Boise Artisanal Tea Workshop", "Denver Alpine Sunset Hike", "New Orleans Jazz Dinner Crawl"
+- Reference regional cuisine, geography, culture, or climate when relevant: Pacific Northwest foraging, Texas BBQ, Brooklyn art scene, mountain town winters
+- Exception: do NOT add a city name to concert experience names (we auto-generate ticket links for {recipient_city})
+- If no location is known, write a vivid, specific experience name anyway — use the activity details to be specific, not the geography
 
 BOOKABLE vs. DIY — PICK THE RIGHT TYPE:
 There are two valid experience types. Match the category to what can actually be delivered:

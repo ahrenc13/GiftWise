@@ -272,7 +272,7 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
             # Generate hash from platform data for cache lookup.
             # Include a prompt version so cache is invalidated when the
             # analysis prompt changes (e.g. interest attribution fix).
-            _PROMPT_VERSION = "2026-04-08-gift-context-v1"
+            _PROMPT_VERSION = "2026-04-08-gift-context-v2"
             cache_data = {
                 'instagram': platforms.get('instagram', {}).get('data', {}),
                 'tiktok': platforms.get('tiktok', {}).get('data', {}),
@@ -814,6 +814,7 @@ Extract and structure the following information:
      HASHTAG TRAP: Hashtags alone (#flyfishing, #fishtok) are NOT sufficient evidence. The poster must be shown DOING the activity in first-person language ("I fish", "my catch", "I went fishing") or visible in photos doing it. Reposted content inherits the original creator's hashtags — those are NOT the reposter's interests.
      Look for first-person language ("I love", "my new", "I can't stop") vs. third-person ("my brother's", "her favorite", "he caught", "proud of him/her").
    - **ENGAGEMENT WEIGHTING**: Posts with significantly higher likes/views than the account's average signal core interests. A post with 5x the usual engagement reveals what resonates most. When the data includes engagement metrics, weight interests from high-engagement content higher than passing mentions.
+   - **META-TRAIT BAN**: DO NOT extract personality attributes or meta-traits as interests. "Thoughtful gift giving", "being a good friend", "kindness", "caring for others" — these are personality descriptors, not shoppable interests. If you find yourself writing an interest that cannot be searched on Amazon or bought in a store, delete it.
    - Example: "Thai cooking (passionate, current, active) - Posted pad thai 5x, tagged #thaifood 8x"
 
 1b. **OWNERSHIP SIGNALS** (what they ALREADY HAVE — critical for avoiding duplicate gifts):

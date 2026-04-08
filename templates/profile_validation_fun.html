@@ -516,15 +516,19 @@
                 </div>
             </div>
 
-            <!-- Add keywords/interests -->
+            <!-- Gift context — free-form supplement -->
             <div class="divider"></div>
             <div class="add-keywords">
-                <div class="add-keywords-label">Have something specific in mind? Add keywords to guide our search.</div>
-                <div class="keyword-input-row">
-                    <input type="text" id="keyword-input" placeholder="e.g. camping gear, board games, espresso..." onkeydown="if(event.key==='Enter'){addKeyword();}">
-                    <button class="keyword-add" onclick="addKeyword()">+ Add</button>
+                <div class="add-keywords-label">Anything we might have missed?</div>
+                <div style="font-size:13px; color:#888; margin-bottom:10px; line-height:1.5;">
+                    Recent life changes, things you've heard them mention, upcoming events, hints they've dropped. The more specific, the better.
                 </div>
-                <div class="added-keywords" id="added-keywords"></div>
+                <textarea id="gift-context"
+                          rows="3"
+                          placeholder="e.g. &quot;She just started running and wants to do a 5K&quot; or &quot;He got really into cold brew this year and keeps eyeing espresso equipment&quot;"
+                          style="width:100%; padding:12px 14px; border:2px solid #e0e0e0; border-radius:10px; font-size:14px; font-family:inherit; resize:vertical; line-height:1.5; box-sizing:border-box;"
+                          onfocus="this.style.borderColor='#667eea'; this.style.boxShadow='0 0 0 2px rgba(102,126,234,0.2)'"
+                          onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none'"></textarea>
             </div>
         </div>
 
@@ -776,7 +780,6 @@
         let generationId = "{{ generation_id }}";
         let pronounPossessive = "{{ pronoun_possessive }}";
         let pronounSubject = "{{ pronoun_subject }}";
-        let addedKeywords = [];
 
         // --- Build persona summary from profile data ---
         (function buildPersonaSummary() {
@@ -979,35 +982,7 @@
             return d.innerHTML;
         }
 
-        // --- Keywords ---
-        function addKeyword() {
-            var input = document.getElementById('keyword-input');
-            var val = input.value.trim();
-            if (!val) return;
-            // Split on commas to allow multiple at once
-            var keywords = val.split(',').map(function(k) { return k.trim(); }).filter(Boolean);
-            keywords.forEach(function(kw) {
-                if (addedKeywords.indexOf(kw) === -1) {
-                    addedKeywords.push(kw);
-                }
-            });
-            input.value = '';
-            renderKeywords();
-            // Store in profileData for submission
-            profileData._extra_keywords = addedKeywords.slice();
-        }
-        function removeKeyword(index) {
-            addedKeywords.splice(index, 1);
-            profileData._extra_keywords = addedKeywords.slice();
-            renderKeywords();
-        }
-        function renderKeywords() {
-            var container = document.getElementById('added-keywords');
-            container.innerHTML = '';
-            addedKeywords.forEach(function(kw, i) {
-                container.innerHTML += '<span class="keyword-chip">' + escapeHtml(kw) + ' <span class="remove-keyword" onclick="removeKeyword(' + i + ')">&times;</span></span>';
-            });
-        }
+        // (keyword chip functions removed — replaced by gift-context textarea)
 
         // --- Quick fact inline editing ---
         function toggleFactEdit(field) {
@@ -1157,12 +1132,16 @@
             var btns = document.querySelectorAll('.primary');
             btns.forEach(function(b) { b.disabled = true; b.textContent = isYou ? 'Finding ideas...' : 'Finding gifts...'; });
 
+            var giftContextEl = document.getElementById('gift-context');
+            var giftContext = giftContextEl ? giftContextEl.value.trim() : '';
+
             var response = await fetch('/api/approve-profile', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     generation_id: generationId,
-                    profile: profileData
+                    profile: profileData,
+                    gift_context: giftContext
                 })
             });
 

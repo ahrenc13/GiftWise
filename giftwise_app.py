@@ -3437,6 +3437,40 @@ def api_approve_profile():
         logger.warning("approve-profile generation_id mismatch")
     session['approved_profile'] = profile
     session.pop('review_generation_id', None)
+    gift_context = (data.get('gift_context') or '').strip()
+    if gift_context:
+        session['gift_context'] = gift_context
+        logger.info("Gift context saved to session (%d chars)", len(gift_context))
+    return jsonify({'success': True, 'redirect': '/generating'})
+
+
+@app.route('/start-text-profile', methods=['POST'])
+def start_text_profile():
+    """No-social bypass: generate recommendations from a plain-text description."""
+    user = get_session_user()
+    if not user:
+        return jsonify({'success': False, 'error': 'Not logged in'}), 401
+
+    data = request.get_json() or {}
+    gift_context = (data.get('gift_context') or '').strip()
+
+    if len(gift_context) < 15:
+        return jsonify({'success': False, 'error': 'Please write at least a sentence or two.'}), 400
+
+    user_id = session['user_id']
+    session['gift_context'] = gift_context
+    logger.info("Text-profile path: gift_context saved (%d chars) for user %s", len(gift_context), user_id[:8])
+
+    # Create a placeholder platform so /generating doesn't redirect away
+    platforms = user.get('platforms', {})
+    platforms['manual_description'] = {
+        'data': {'description': gift_context},
+        'status': 'complete',
+        'method': 'manual',
+        'connected_at': datetime.now().isoformat()
+    }
+    save_user(user_id, {'platforms': platforms})
+
     return jsonify({'success': True, 'redirect': '/generating'})
 
 
@@ -3457,7 +3491,7 @@ def generating_page():
 
 def _run_generation_thread(user_id, user, platforms, recipient_type, relationship,
                            approved_profile, enriched_profile, enhanced_search_terms,
-                           quality_filters, recipient_age, recipient_gender):
+                           quality_filters, recipient_age, recipient_gender, gift_context=None):
     """
     Background thread: runs the full recommendation pipeline via RecommendationService.
 
@@ -3496,6 +3530,8 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
             )
 
             # Run generation pipeline
+            if gift_context:
+                logger.info("[THREAD] Gift context provided (%d chars)", len(gift_context))
             recommendations = service.generate_recommendations(
                 user_id=user_id,
                 user=user,
@@ -3507,12 +3543,13 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                 enhanced_search_terms=enhanced_search_terms,
                 quality_filters=quality_filters,
                 recipient_age=recipient_age,
-                recipient_gender=recipient_gender
+                recipient_gender=recipient_gender,
+                gift_context=gift_context
             )
 
             # Build profile for storage (reuse service method)
             profile = service._build_profile(
-                user_id, platforms, recipient_type, relationship, approved_profile
+                user_id, platforms, recipient_type, relationship, approved_profile, gift_context
             )
 
             # Save recommendations to database
@@ -3639,6 +3676,7 @@ def api_generate_recommendations():
     quality_filters = session.get('quality_filters', [])
     recipient_age = session.get('recipient_age')
     recipient_gender = session.get('recipient_gender')
+    gift_context = session.pop('gift_context', None)
 
     # Initialize progress and start background thread
     _set_gen_progress(user_id, stage='starting', stage_label='Getting started...',
@@ -3650,7 +3688,7 @@ def api_generate_recommendations():
         target=_run_generation_thread,
         args=(user_id, user, platforms, recipient_type, relationship,
               approved_profile, enriched_profile, enhanced_search_terms,
-              quality_filters, recipient_age, recipient_gender),
+              quality_filters, recipient_age, recipient_gender, gift_context),
         daemon=False,  # Non-daemon: Gunicorn worker waits for this thread during graceful shutdown
         name=f"generation-{user_id[:8]}"
     )

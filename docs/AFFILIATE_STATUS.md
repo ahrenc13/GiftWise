@@ -1,6 +1,28 @@
 # Affiliate Partner Status
 
-Last updated: Mar 2026
+Last updated: Apr 2026
+
+## Vendor Evaluation Rubric
+
+When evaluating new Awin (or any network) applicants, apply this rubric before joining. Document verdicts in the "Reviewed & rejected" section of the relevant network.
+
+| Signal | Reject if... |
+|--------|-------------|
+| Commission | < 4% unless exceptional product fit and high EPC |
+| Cookie window | < 7 days |
+| EPC | < $0.10 on an established program (new programs get a pass if other signals are strong) |
+| Approval rate | < 70% (they're declining too many valid clicks) |
+| CVR | < 0.5% is a red flag; < 0.1% is a hard reject |
+| Payment status | Amber = caution; amber + risk flag = reject unless brand is exceptional |
+| Risk level | exposurelevel2 or higher = do not join until established |
+| Product category | Auto parts, pharma, beds, scooters, industrial goods — not giftable |
+| Price range | Median < $10 or > $1,500 with no splurge-tier angle |
+| Brand recognition | No homepage, no reviews, no social presence = junk vendor |
+| Program age | < 6 months old with no EPC data = wait and watch |
+
+**Auto-reject any vendor with 2+ red flags.** Single red flags are judgment calls based on category fit and brand quality.
+
+---
 
 ## Active Networks
 
@@ -14,10 +36,10 @@ GraphQL product search integrated. Filters non-joined advertisers. 15+ static pa
 | MonthlyClubs | varies | subscription, foodies, alcohol | 6 clubs (beer, wine, cheese, flowers, chocolate, coffee) |
 | FlowersFast | 20% | flowers, romance, anniversaries | Same-day delivery. No FTD/Teleflora trademarks. |
 | FragranceShop | 5% | perfume, cologne, beauty | 45-day cookie |
-| GameFly | $5/lead, 10% used | gaming, video games | 0% on new games/consoles |
+| GameFly | $5/lead, 10% used | gaming, video games | 0% on new games/consoles. **Consider dropping** — gaming is a major gift category but GameFly's model (rentals, used purchases) is a weak gift recommendation path. |
 | GreaterGood | 2-15% | pets, philanthropy | Max 1 product returned |
 | GroundLuxe | 10% | wellness, sleep, yoga | Highest EPC ($150-221). No medical claims. |
-| Russell Stover | 5% | chocolate, sweets | 5-day cookie (very short) |
+| Russell Stover | 5% | chocolate, sweets | 5-day cookie (very short). **Consider dropping** — gift shoppers rarely convert within 5 days; zChocolat (20%) covers this category better. |
 | SilverRushStyle | 15% | jewelry, gemstones, bohemian | 60-day cookie, artisan silver |
 | SoccerGarage | 7% (scales to 10%) | soccer | 60-day cookie, ~$125 AOV |
 | TechForLess | 5% | tech, gadgets, laptops | Refurb/open-box electronics |
@@ -36,9 +58,9 @@ Account active. 20 merchants confirmed (Mar 2026). Dynamic feed search live for 
 - Dylan's Candy Bar (14-day cookie — short)
 - Matr Boomie (fair trade, 60-day cookie)
 - Maison Balzac (French glassware)
-- Promeed (silk bedding)
+- Promeed (silk bedding) — **narrow gift fit; monitor EPC before keeping**
 - Prosto Concept (hand-crafted baby pillows, organic, 50% CVR, 4.06 EPC — excellent)
-- King Koil (air mattresses, 30-day cookie, feed+reporting)
+- King Koil (air mattresses, 30-day cookie, feed+reporting) — **low gift fit; consider blocking at sync**
 - Nextrition Pet (premium pet nutrition, 11.6% CVR, 100% approval)
 - Ravin Crossbows (hunting/outdoor, 5% commission, 100% approval, feed enabled)
 
@@ -50,9 +72,14 @@ Account active. 20 merchants confirmed (Mar 2026). Dynamic feed search live for 
 - Goldia.com (fine jewelry, 7.5% commission, $160 AOV, 95K products, 100% approval, green payment)
 - OUTFITR (adventure/camping gear, 10% commission, 30-day cookie)
 
-**Blocked:** Yadea (e-scooters), POSIE AND PENN (beds, amber status)
+**Blocked at sync:** Yadea (e-scooters), POSIE AND PENN (beds, amber status)
 
 **Declined invitations (Mar 2026):** Canadian Insulin (pharma), Oedro (auto parts), PURTY BODY (too niche for gifts)
+
+**Reviewed & rejected (Apr 2026):**
+- **Cronjager** — Hard reject. 0.066% CVR, $0.05 EPC, amber payment status, exposurelevel1 risk, 73% approval rate. UK streetwear brand, narrow category fit.
+- **Tangsem / pgfinds.com** — Pass for now. Commission fields show 0/0 in Awin (program not properly configured). Unknown brand, launched Jul 2025, no track record. 90-day cookie and 100% approval are positives — revisit Q4 2026 if they have real commission data.
+- **Cosabella (US)** — Hold. Legitimate luxury lingerie brand but amber status + exposurelevel2 risk on a program launched Jan 2026 with 0% approval rate, no feed, no EPC data. Revisit Q3 2026.
 
 **~35 more applications pending** from Feb 25. See `AWIN_APPLICATIONS_FEB25.md` for full list with tiers, EPC, conversion rates.
 

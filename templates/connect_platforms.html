@@ -535,9 +535,26 @@
                                   onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e5e7eb'"></textarea>
                     </div>
 
+                    <div style="margin-bottom:18px;">
+                        <label style="display:block; font-weight:600; color:#374151; font-size:14px; margin-bottom:5px;">
+                            5. Where do they live?
+                        </label>
+                        <p style="color:#9ca3af; font-size:12px; margin:0 0 6px 0;">We use this to suggest local experiences &mdash; cooking classes, concerts, spa days. Without it we can only suggest things that work anywhere.</p>
+                        <div style="position:relative; max-width:360px;">
+                            <input type="text" id="location-input-guided"
+                                   placeholder="Start typing a city&hellip;"
+                                   autocomplete="off"
+                                   style="width:100%; padding:10px 12px; border:2px solid #e5e7eb; border-radius:8px; font-size:14px; font-family:inherit; box-sizing:border-box;"
+                                   onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor='#e5e7eb'">
+                            <ul id="location-autocomplete-guided"
+                                style="display:none; position:absolute; left:0; right:0; top:100%; margin-top:4px; background:white; border:1px solid #e0e0e0; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.15); z-index:20; max-height:220px; overflow-y:auto; padding:0; list-style:none;"></ul>
+                        </div>
+                        <span style="font-size:12px; color:#9ca3af; margin-top:4px; display:block;">Optional but helps a lot with the experience recommendations.</span>
+                    </div>
+
                     <div style="margin-bottom:20px;">
                         <label style="display:block; font-weight:600; color:#374151; font-size:14px; margin-bottom:5px;">
-                            5. Anything else? What does this person love that hasn&rsquo;t come up yet?
+                            6. Anything else? What does this person love that hasn&rsquo;t come up yet?
                         </label>
                         <p style="color:#9ca3af; font-size:12px; margin:0 0 6px 0;">Fandoms, sports teams, comfort foods, places they&rsquo;ve lived, things that make them uniquely them. Also: anything to avoid.</p>
                         <textarea id="q5" rows="2" placeholder="e.g. Huge Formula 1 fan. Originally from Texas, misses the food. Allergic to candles (fragrance sensitivity) — avoid anything scented."
@@ -655,6 +672,61 @@
             toggle.style.borderBottom = open ? '2px solid #e5e7eb' : '2px dashed #d1d5db';
         }
 
+        // Location autocomplete for guided form
+        let selectedLocation = '';
+        let locationTimer = null;
+        (function initGuidedLocationAutocomplete() {
+            const input = document.getElementById('location-input-guided');
+            const list = document.getElementById('location-autocomplete-guided');
+            if (!input || !list) return;
+
+            function fetchSuggestions(q) {
+                if (q.length < 2) { list.style.display = 'none'; return; }
+                fetch('/api/places-autocomplete?q=' + encodeURIComponent(q))
+                    .then(r => r.json())
+                    .then(items => {
+                        list.innerHTML = '';
+                        if (!items.length) { list.style.display = 'none'; return; }
+                        items.forEach(item => {
+                            const li = document.createElement('li');
+                            li.textContent = item.display;
+                            li.style.cssText = 'padding:10px 12px; cursor:pointer; border-bottom:1px solid #f0f0f0; font-size:14px; color:#333;';
+                            li.onmouseenter = () => li.style.background = '#f0f4ff';
+                            li.onmouseleave = () => li.style.background = '';
+                            li.onmousedown = e => {
+                                e.preventDefault();
+                                selectedLocation = item.city_region;
+                                input.value = item.city_region;
+                                list.style.display = 'none';
+                            };
+                            list.appendChild(li);
+                        });
+                        list.style.display = 'block';
+                    })
+                    .catch(() => { list.style.display = 'none'; });
+            }
+
+            input.addEventListener('input', () => {
+                selectedLocation = input.value.trim();
+                clearTimeout(locationTimer);
+                const q = input.value.trim();
+                locationTimer = setTimeout(() => fetchSuggestions(q), 220);
+            });
+            input.addEventListener('focus', () => {
+                const q = input.value.trim();
+                if (q.length >= 2) fetchSuggestions(q);
+            });
+            input.addEventListener('blur', () => {
+                setTimeout(() => {
+                    list.style.display = 'none';
+                    selectedLocation = input.value.trim();
+                }, 180);
+            });
+            document.addEventListener('click', e => {
+                if (!input.contains(e.target) && !list.contains(e.target)) list.style.display = 'none';
+            });
+        })();
+
         function submitGuidedProfile() {
             const labels = [
                 'Free time / hobbies',
@@ -667,6 +739,10 @@
                 const val = (document.getElementById(id) || {}).value || '';
                 return val.trim() ? labels[i] + ': ' + val.trim() : '';
             }).filter(Boolean);
+
+            if (selectedLocation) {
+                answers.push('Location: ' + selectedLocation);
+            }
 
             if (answers.length === 0) {
                 alert('Please fill in at least one question.');

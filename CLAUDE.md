@@ -242,7 +242,7 @@ In Railway → Deployments → find the last working deployment → click "Redep
 
 ## Paywall Decision Framework
 
-**Current status (Feb 2026): Paywall is NOT enforced. All users get full free access.**
+**Current status (Apr 2026): Paywall is NOT enforced. All users get full free access. Focus is on catalog depth and rec quality before adding any friction.**
 
 ### The Economics
 
@@ -250,19 +250,36 @@ In Railway → Deployments → find the last working deployment → click "Redep
 - Affiliate revenue per session: ~$0.00–$0.05 (most visitors don't buy; commissions only on purchases)
 - Railway hosting: ~$5–20/month (fixed, doesn't scale with sessions)
 
-**Implication:** You are currently subsidizing every user's session. That's intentional — you need traffic before you can monetize.
+**Implication:** Every session is subsidized. That's intentional at this stage — but affiliate revenue alone may never cover costs if users are treating recs as ideas and not clicking through. Subscription/per-use fees are the more reliable path to covering API costs. See Future Revenue Models section.
+
+### The Free Tier Design (When Ready to Implement)
+
+**1 run per week free, not 1 per day.** One per day is too easy to game — users just come back tomorrow and stay free indefinitely. One per week creates real scarcity without feeling punitive for the core use case (shopping for one person).
+
+**Progressive degradation, not a hard wall.** Showing people what they're missing converts better than blocking them entirely. The curve:
+
+| Run # (within 7-day window) | What they see |
+|---|---|
+| **Run 1** | Full output — all picks, all links, fully clickable. This is the "wow" moment. Don't compromise it. |
+| **Run 2** | 3 picks shown and clickable. Remaining tiles visible but fuzzed — product shape visible, details obscured. |
+| **Run 3+** | All tiles fuzzed. Oblique copy describing the kinds of things they'd see ("a subscription that fits how they actually spend their weekends", "something under $60 they'd never buy themselves"). Upgrade CTA. |
+
+**Why this works better than a hard cutoff:** Run 1 earns trust. Run 2 creates desire — they can see there's more and they want it. Run 3+ creates pressure — they know exactly what they're giving up. A hard wall at run 2 skips the desire phase entirely.
+
+**Do not implement until:**
+1. Rec quality is consistently strong — paywalling mediocre output is a conversion disaster
+2. The $2.99 gift emergency one-time fee is live and tested (this is the proof that anyone will pay at all)
+3. Traffic is above 5 sessions/day sustained — below that, friction costs more in word-of-mouth than it earns
 
 ### Paywall Trigger Thresholds
-
-These are the specific signals to watch in the Railway logs and admin dashboard (`/admin/stats?key=ADMIN_DASHBOARD_KEY`):
 
 | Threshold | Meaning | Action |
 |-----------|---------|--------|
 | **< 5 sessions/day avg** | Growth phase — API cost ~$15/mo, negligible | Keep fully free. Do not restrict anything. |
-| **5–15 sessions/day** | Early traction | Add 1 run/day rate limiting per IP. Still free. Watch whether affiliate clicks are growing. |
-| **15–30 sessions/day sustained** | Real traffic | Calculate: (sessions × $0.10) vs affiliate revenue in Railway affiliate click logs. If cost >> revenue for 2+ weeks, add account requirement. |
-| **30+ sessions/day AND affiliate revenue not catching up** | Paywall decision point | Soft paywall: require free account creation (just email) to run the full pipeline. No charge yet. |
-| **Paying users exist** | Only then | Hard paywall with Stripe. A paywall with zero paying customers is just a conversion-killer. |
+| **5–15 sessions/day** | Early traction | Test $2.99 gift emergency. Watch conversion rate. |
+| **15–30 sessions/day sustained** | Real traffic | Implement 1-run/week free tier with progressive degradation. |
+| **30+ sessions/day AND affiliate revenue not catching up** | Paywall decision point | Soft paywall: require free account (just email) to get first run. |
+| **Paying users exist** | Only then | Full subscription tiers with Stripe. |
 
 ### How to Check Your Session Count
 
@@ -278,28 +295,25 @@ Admin dashboard: /admin/stats?key=YOUR_KEY
 
 ### Before You Ever Flip a Paywall
 
-1. **Inventory must be good first.** Paywalling thin results is a conversion disaster. Wait until Awin/CJ/FlexOffers inventory is robust.
+1. **Rec quality first.** Paywalling thin or inconsistent results is a conversion disaster. This is the current priority.
 2. **TikTok moment:** If the kid posts and traffic spikes, do NOT paywall during that window. Let people run it free, collect emails, build the waitlist. Monetize the warm audience later.
-3. **First paywall should be soft:** Require account creation (free, just email), not payment. This gives you email addresses, lets you track users, and creates a "you're in" feeling without friction.
-4. **Rate limiting before paywalling:** 1 run per IP per day stops abuse while keeping the product free. Implement this before any payment requirement.
+3. **Test willingness to pay cheaply first:** The $2.99 gift emergency (already in code, not yet wired) is the canary. If people won't pay $2.99 for a second run, the subscription model needs rethinking.
+4. **1-run/week is the free tier, not 1/day.** Document this clearly before implementation so it doesn't get built wrong.
 
 ### What the Subscription Tiers Are (Not Yet Enforced)
 
 The code has tier infrastructure built (see `giftwise_app.py` lines ~634+). Planned tiers:
-- **Free:** Full access, 1 run/day rate limit
+- **Free:** 1 full run per week, progressive degradation on subsequent runs
 - **Pro ($4.99–$7.99/month):** Multiple profiles, monthly refresh, shareable profile links
-- **Gift Emergency ($2.99 one-time):** 10 recs, no account needed — impulse buyer capture
+- **Gift Emergency ($2.99 one-time):** Bypass the weekly limit, no account needed — impulse buyer capture
 
-These are NOT enforced yet. The Stripe integration (`/subscribe` route) exists but isn't wired to gatekeeping. Do not wire the paywall until inventory and traffic thresholds above are met.
+These are NOT enforced yet. The Stripe integration (`/subscribe` route) exists but isn't wired to gatekeeping. Do not wire the paywall until quality and traffic thresholds above are met.
 
-### North Star: Affiliate vs. Subscription Priority
+### North Star: Why Subscription Beats Affiliate Long-Term
 
-Right now affiliate revenue is the right focus because:
-1. It requires no payment friction — users just click links
-2. Every approved affiliate network multiplies revenue without code changes
-3. Subscription requires enough volume to justify the conversion funnel overhead
+Affiliate revenue depends on brand recognition in the catalog — if users treat recs as ideas and don't click through, every session is a net loss. Subscription/per-use fees generate revenue based on service quality regardless of whether MonthlyClubs or Sephora is in the catalog. The chicken-and-egg problem with premium brands (need traffic to get Yeti/Sephora approval, need Yeti/Sephora to drive conversions) doesn't affect subscription revenue at all.
 
-Flip this priority when: monthly affiliate revenue is steady but clearly lower than what a 5% subscription conversion rate would generate at your traffic level.
+Flip priority from affiliate to subscription when: API costs are consistently exceeding affiliate revenue, OR when 20+ paying users validate willingness to pay.
 
 ---
 

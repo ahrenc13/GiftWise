@@ -171,12 +171,23 @@ Then the link. No summary sentence. The reader can see the button.
 
 Reddit comments are a different register from guides. The goal is still to be useful and occasionally surface GiftWise, but it's conversational, not editorial. The wrong instinct is to write a polished mini-guide. The right instinct is to sound like a person who actually knows something typing fast.
 
+### Never speak as an authority on the recipient
+
+The poster knows this person. You don't. The failure mode is asserting facts about someone you've never met — "he's the kind of guy who..." / "he'll definitely use it" / "recovery tools are exactly what someone like him needs." That's mansplaining gift psychology to someone who lives with the person.
+
+The fix: offer possibilities, not verdicts. Ask the poster to validate rather than telling them how their person works.
+
+**Not:** "he's probably sore, and a recovery tool is exactly the kind of thing someone like him calls unnecessary until he has one"
+**Yes:** "I sometimes wonder if the 'won't buy it themselves' folks are actually easier than they seem. I figure that's an opp for you?"
+
+Qualifying language that works: "I sometimes wonder if...", "maybe", "I think", "I figure", "as far as I can tell", "might be worth a look". These aren't hedges — they're the honest register of someone who doesn't actually know this person.
+
 ### Typographic looseness is intentional
 
 Inconsistent capitalization — lowercase sentence starts, no trailing period on the last sentence — reads as authentic. Not every thought needs a capital. Not every sentence ends with a period. This is deliberate, not an error.
 
-**Not:** "A Theragun Mini would be a great option. He will use it every day."
-**Yes:** "at $100 a theragun mini is right there. he's probably sore, and a recovery tool is exactly the kind of thing someone like him calls an indulgence and then never buys"
+**Not:** "A Theragun Mini would be a great option at around $100."
+**Yes:** "What about a theragun mini? I think they're like $100."
 
 ### Self-referential entry
 
@@ -187,10 +198,10 @@ Earn the advice before giving it. Start with something personal — a situation 
 
 ### The tool drop
 
-One sentence. Two max. Name the URL, describe what it does in plain terms, stop. Do not pitch. Do not explain the technology. If there's an honest caveat (budget adherence is soft, Instagram scraping requires a public account), say it — it makes the rec more credible, not less.
+"I found a tool" framing — personal discovery, not recommendation. One sentence on what it does. Honest caveat if there is one. Stop.
 
 **Not:** "GiftWise is an AI-powered tool that analyzes social media profiles to generate personalized gift recommendations based on real interests and behavior."
-**Yes:** "giftwise.fit. it pulls from what people post on instagram or tiktok and builds a list. free"
+**Yes:** "I found a tool at giftwise.fit where you paste his handles and it builds a list from what he actually posts about. it's free as far as I can tell"
 **Yes with caveat:** "I think it lets you specify budget but no idea how well it sticks to it"
 
 ### When NOT to mention the tool

@@ -655,6 +655,51 @@ The DB query fix landed and returned 80 products from 80k cached, 16 sources. Bu
 
 ---
 
+## Mother's Day Push (May 10, 2026) — 4 Weeks Out
+
+Mother's Day is the first real seasonal traffic test. The guide is live, the catalog has the right inventory (FlowersFast, MonthlyClubs flowers/chocolate, zChocolat, SilverRushStyle, FragranceShop, Peet's, GroundLuxe), and the rec engine works. This is about distribution and conversion, not building.
+
+### The window
+
+| Week | Dates | Focus |
+|------|-------|-------|
+| **Now** | Apr 9–15 | Foundation: deploy, Search Console, kill placeholder Etsy guides |
+| **Consideration peak** | Apr 15–29 | Outreach: Reddit DMs targeting mom-gift posts, self-promo posts |
+| **Last-minute window** | Apr 29–May 9 | Urgency: FlowersFast same-day angle, last-minute section in guide |
+| **Day of** | May 10 | Watch dashboard. No changes. |
+
+### READY actions (execute in order)
+
+1. **Merge branch + deploy** — everything from this session needs to be live
+2. **Google Search Console** — submit `giftwise.fit/sitemap.xml` now. The Mother's Day guide needs 2–3 weeks to index properly before search traffic peaks. This is the single highest-leverage 2-minute action.
+3. **Kill the 3 Etsy placeholder guides** — `guide_etsy_home_decor.html`, `guide_etsy_jewelry.html`, `guide_etsy_under_50.html`. Thin content hurts domain authority right when we need it. Add 301 redirects and remove from sitemap.
+4. **Reddit DMs** — `python scripts/reddit_scout.py --mode dms` once API credentials land. Mother's Day keyword boost already in the script. Target: r/GiftIdeas posters, r/Mommit, r/daddit, r/AskWomen.
+5. **Self-promo posts** — r/SideProject, r/ChatGPT, r/InternetIsBeautiful. Mother's Day angle: "built a tool that reads someone's Instagram and builds a gift list — timing it for Mother's Day." One post per sub, spaced out.
+
+### What to watch on the dashboard
+
+- `guide_hit:mothers-day` — is organic search finding the guide?
+- `referral_hit:reddit_*` — is outreach driving visits?
+- `rec_run` — are guide visitors converting to the tool?
+- `product_click:awin` + `product_click:cj` — are recs turning into clicks?
+
+If `guide_hit` is climbing but `rec_run` is flat, the guide CTAs aren't converting — tighten the above-fold CTA copy. If `rec_run` is up but `product_click` is flat, rec quality needs attention.
+
+### Revenue levers specific to Mother's Day
+
+- **FlowersFast** (same-day delivery) is the strongest last-minute play — emphasize in the final week
+- **zChocolat** and **MonthlyClubs** chocolate/flowers are the subscription upsell — one gift that arrives multiple times
+- **SilverRushStyle** jewelry and **FragranceShop** are the "she wouldn't buy this for herself" angle
+- The rec engine is the conversion multiplier — a personalized list converts better than a guide browse
+
+### What NOT to do
+
+- Do not add friction (rate limiting, paywall) during any traffic spike from this push
+- Do not change the Mother's Day guide structure during the final 2 weeks — stability > optimization
+- Do not submit new pages to Search Console mid-push — focus indexing credit on existing guide
+
+---
+
 ## Current Priorities (Updated Apr 9, 2026)
 
 **Session start protocol:** Surface the top 3 READY items before doing anything else. If the user hasn't mentioned a specific task, start there.

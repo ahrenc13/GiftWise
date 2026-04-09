@@ -10,3 +10,4 @@ beautifulsoup4==4.12.2
 lxml==5.1.0
 APScheduler>=3.10.0
 pytest>=8.0.0
+praw>=7.7.0

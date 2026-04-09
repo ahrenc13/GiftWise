@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Gifts for Someone Who Has Everything (That Actually Work) - GiftWise{% endblock %}
+
+{% block meta %}
+<meta name="description" content="Five strategies that work when every obvious gift is already taken: consumables, experiences, the deeply personal upgrade, subscriptions done right, and the social media shortcut.">
+<meta name="keywords" content="gifts for someone who has everything, gift ideas hard to shop for, unique gifts, experience gifts">
+{% endblock %}
+{% block og_title %}Gifts for Someone Who Has Everything — GiftWise{% endblock %}
+{% block og_description %}Five strategies for the hardest gift-buying situation: consumables they won't buy themselves, experiences over objects, the upgrade play, subscriptions done right.{% endblock %}
+{% block og_type %}article{% endblock %}
+{% block jsonld %}<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Gifts for Someone Who Has Everything","description":"Five strategies for finding meaningful gifts for people who already own everything they need.","datePublished":"2026-04-09","dateModified":"{{ updated_date_iso }}","publisher":{"@type":"Organization","name":"GiftWise","url":"https://giftwise.fit"}}</script>
+<script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://giftwise.fit"},{"@type":"ListItem","position":2,"name":"Gift Guides","item":"https://giftwise.fit/guides"},{"@type":"ListItem","position":3,"name":"Gifts for Someone Who Has Everything","item":"https://giftwise.fit/guides/gifts-for-someone-who-has-everything"}]}</script>{% endblock %}
+
+{% block extra_css %}
+.nav { background: white; border-bottom: 2px solid #f0f0f0; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; max-width: 1200px; margin: 0 auto; }
+        .nav-logo { font-size: 1.4em; font-weight: 700; color: #667eea; text-decoration: none; }
+        .nav-links a { margin-left: 25px; color: #555; text-decoration: none; font-weight: 500; }
+        .nav-links a:hover { color: #667eea; }
+        .article { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
+        .breadcrumb { font-size: 0.9em; color: #9ca3af; margin-bottom: 30px; }
+        .breadcrumb a { color: #667eea; text-decoration: none; }
+        h1 { font-size: 2.4em; margin-bottom: 15px; color: #1f2937; line-height: 1.3; }
+        .article-meta { color: #9ca3af; font-size: 0.9em; margin-bottom: 30px; }
+        .article-intro { font-size: 1.15em; color: #4b5563; margin-bottom: 35px; border-left: 4px solid #667eea; padding-left: 20px; }
+        .disclosure { background: #fef3c7; border: 1px solid #fcd34d; border-radius: 8px; padding: 12px 18px; margin-bottom: 35px; font-size: 0.85em; color: #92400e; }
+        h2 { font-size: 1.6em; margin-top: 45px; margin-bottom: 20px; color: #1f2937; }
+        h3 { font-size: 1.2em; margin-top: 30px; margin-bottom: 10px; color: #374151; }
+        p { margin-bottom: 18px; }
+        ul, ol { margin-bottom: 18px; margin-left: 30px; }
+        li { margin-bottom: 10px; }
+        a { color: #667eea; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .tip-box { background: #f0f9ff; border-left: 4px solid #0284c7; padding: 20px; margin: 30px 0; border-radius: 4px; }
+        .tip-box h3 { margin-top: 0; color: #0c4a6e; }
+        .cta-box { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 16px; padding: 35px; text-align: center; margin: 50px 0; }
+        .cta-box h2 { color: white; margin-top: 0; margin-bottom: 12px; }
+        .cta-box p { color: rgba(255,255,255,0.9); margin-bottom: 20px; }
+        .cta-box a { background: white; color: #667eea; padding: 12px 30px; border-radius: 25px; text-decoration: none; font-weight: 600; display: inline-block; }
+        .tool-callout { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 16px 22px; margin: 20px 0 30px; display: flex; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .tool-callout-text { flex: 1; font-size: 0.95em; color: #374151; line-height: 1.5; }
+        .tool-callout-btn { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 9px 20px; border-radius: 20px; text-decoration: none; font-weight: 600; font-size: 0.9em; white-space: nowrap; display: inline-block; }
+        .tool-callout-btn:hover { opacity: 0.9; text-decoration: none; }
+        .mid-cta { background: #fafafa; border: 1px solid #e5e7eb; border-left: 4px solid #667eea; border-radius: 0 8px 8px 0; padding: 18px 22px; margin: 35px 0; }
+        .mid-cta p { margin: 0; color: #374151; font-size: 0.95em; line-height: 1.6; }
+        .mid-cta a { color: #667eea; font-weight: 600; }
+        @media (max-width: 768px) { h1 { font-size: 1.8em; } }
+{% endblock %}
+
+{% block content %}
+</div>
+
+    <div class="article">
+        <div class="breadcrumb"><a href="/guides">Gift Guides</a> &rarr; Hard-to-Shop-For</div>
+
+        <h1>Gifts for Someone Who Has Everything</h1>
+        <div class="article-meta">{{ updated_date }} &middot; By the GiftWise Team</div>
+
+        <p class="article-intro">
+            You need a gift for someone who already owns everything they could possibly want. Your mom who says "I don't need anything." Your friend who bought themselves the gadget you were planning to give them. The coworker with impeccable taste and a well-stocked home. Here's how to actually solve this.
+        </p>
+
+        <div class="disclosure">
+            <strong>Affiliate disclosure:</strong> Some links in this guide are affiliate links. If you make a purchase, we may earn a small commission at no cost to you. This doesn't affect our recommendations.
+        </div>
+
+        <div class="tool-callout">
+            <div class="tool-callout-text">
+                <strong>Skip the guesswork entirely.</strong> GiftWise reads their Instagram or TikTok and uses AI to find gifts matched to their actual interests — things they post about but would never buy themselves.
+            </div>
+            <a href="/demo?ref=guide" class="tool-callout-btn">Try GiftWise free &rarr;</a>
+        </div>
+
+        <h2>Reframe the Problem First</h2>
+
+        <p>Someone who has everything they <em>need</em> means you're not buying out of obligation to fill a gap. They've covered the practical stuff. Your job is to find something that's consumable (gets used up, not more clutter), experiential (memories instead of things), or deeply personal (proves you actually know them).</p>
+
+        <p>That's actually a better creative brief than "buy them something useful." The useful stuff they already have.</p>
+
+        <h2>Strategy 1: Consumables They Wouldn't Buy Themselves</h2>
+
+        <p>The case for consumables: they don't add to clutter. They get enjoyed and then they're gone. The trick is picking consumables that feel special rather than practical — things they'd appreciate but would never reach for at checkout.</p>
+
+        <h3>Coffee &amp; Tea</h3>
+        <p>If they drink coffee or tea daily, upgrade their routine. <a href="https://www.peets.com/collections/coffee-subscriptions" target="_blank" rel="nofollow">Peet's Coffee subscriptions</a> deliver single-origin beans on a schedule they control — whole bean or ground, whatever they use. For something Italian and specific, <a href="https://www.illycaffe.com/en-us/" target="_blank" rel="nofollow">illy</a> sells gift sets that feel considered rather than generic. For serious tea drinkers, loose-leaf from <a href="https://www.peets.com/collections/tea" target="_blank" rel="nofollow">Peet's Mighty Leaf</a> is a noticeable upgrade over anything in a grocery store.</p>
+
+        <h3>Gourmet Food</h3>
+        <p>Premium olive oil, aged balsamic, artisan honey, single-origin chocolate — things people use constantly but never buy the good version of themselves. <a href="https://www.goldbelly.com/" target="_blank" rel="nofollow">Goldbelly</a> ships regional specialties and famous restaurant dishes nationwide. It's a good option when you know they love a specific cuisine or region but you're not sure what specific product to send.</p>
+
+        <h3>Chocolate</h3>
+        <p><a href="https://www.zchocolat.com/" target="_blank" rel="nofollow">zChocolat</a> makes French chocolate you can configure by flavor — dark sea salt, milk caramel, white raspberry. They pick the assortment, you pick the box size. At the high end of "food gift" pricing, but it arrives looking like a luxury purchase, not an afterthought.</p>
+
+        <div class="tip-box">
+            <h3>The Replacement Play</h3>
+            <p>Notice something they use every day that's worn out or mediocre — a ratty throw blanket, an old wallet, a scratched cutting board. Buy the excellent version of that specific thing. They'll use it daily and they'll remember you gave it to them. This works best when you can observe their home or habits directly.</p>
+        </div>
+
+        <div class="mid-cta">
+            <p>People who "have everything" still post about what they love, save posts about things they want, and share their current obsessions constantly. <a href="/demo?ref=guide"><strong>GiftWise reads their Instagram or TikTok</strong></a> to find what they'd never buy themselves but would use every day.</p>
+        </div>
+
+        <h2>Strategy 2: Experiences Over Objects</h2>
+
+        <p>For someone with a full home, an experience has two advantages: it doesn't take up space, and the memory outlasts any object. The caveat is that experience gifts only work when they're specific to the person — "cooking class" for someone who doesn't cook is worse than a generic gift card.</p>
+
+        <h3>Classes &amp; Workshops</h3>
+        <p><a href="https://www.masterclass.com/" target="_blank" rel="nofollow">MasterClass</a> subscriptions work when you know what they're interested in learning — they have courses from legitimate experts in cooking, writing, music, sports, business. <a href="https://www.cozymeal.com/" target="_blank" rel="nofollow">Cozymeal</a> offers in-person cooking classes with professional chefs in most major cities. Both are gift-card-friendly if you're not sure which specific class fits.</p>
+
+        <h3>Concerts, Shows, Events</h3>
+        <p>Tickets to see someone they love perform — an artist, a sports team, a theater production they've mentioned — work especially well as gifts because most people won't buy floor seats or premium tickets for themselves. The memory is the gift. This is also one of the few cases where going together is part of the gift.</p>
+
+        <h3>Travel &amp; Local Experiences</h3>
+        <p><a href="https://www.airbnb.com/s/experiences" target="_blank" rel="nofollow">Airbnb Experiences</a> — food tours, private photography walks, foraging hikes, sailing — are available in most cities and are better than generic spa gift cards because they're specific and memorable. For milestone birthdays or anniversaries, a weekend trip with a specific itinerary built around their interests tends to land better than any object.</p>
+
+        <h2>Strategy 3: Listen for the Micro-Complaint</h2>
+
+        <p>People who have everything still complain about small, specific annoyances. "My phone never has battery." "I can never find my keys." "The ice from my freezer tastes like freezer." Pay attention to these. They're telling you exactly what to buy.</p>
+
+        <p>Solve the specific problem at a quality level they'd never spend on themselves. A premium portable charger instead of a cheap one. An AirTag for the person who loses their keys weekly. A countertop ice maker that produces the good pellet ice. These land because they're obviously tailored — you heard them say something and you acted on it.</p>
+
+        <h2>Strategy 4: Subscriptions Done Right</h2>
+
+        <p>Subscriptions work for "has everything" people because they're ongoing rather than a single clutter-creating object. The failure mode is picking a generic one — a random wine club when you don't know if they drink wine. Match the subscription to a specific, confirmed interest.</p>
+
+        <ul>
+            <li><strong><a href="https://www.bookofthemonth.com/" target="_blank" rel="nofollow">Book of the Month</a></strong> — for confirmed readers. They choose from five new hardcovers each month, so they don't end up with something they've read or wouldn't pick.</li>
+            <li><strong><a href="https://www.thesill.com/pages/plant-subscription" target="_blank" rel="nofollow">The Sill plant subscription</a></strong> — for people whose home already has plants and could handle more. A new houseplant monthly.</li>
+            <li><strong>MonthlyClubs</strong> — beer, wine, or cheese delivered monthly. Works when you know their actual preferences; risky if you're guessing.</li>
+            <li><strong>Streaming services</strong> — a year of something they already use is a genuinely practical gift, especially for students or people who just moved.</li>
+        </ul>
+
+        <h2>Strategy 5: The Donation Play</h2>
+
+        <p>For people who genuinely don't want more things, a donation to a cause they care about can be meaningful — but only if you choose <em>their</em> cause, not yours. "I donated in your name to [organization they've mentioned or volunteered for]" is personal. "I donated to a charity" isn't.</p>
+
+        <p>Make it tangible when you give it. A printed receipt or a handwritten note explaining the donation and why you chose that organization does more work than a forwarded email confirmation.</p>
+
+        <h2>What Doesn't Work</h2>
+
+        <ul>
+            <li><strong>Generic gift baskets.</strong> They communicate "I didn't know what to get you" at $80 per basket.</li>
+            <li><strong>Home decor you chose yourself.</strong> Unless you know their style intimately, decorative objects are high-risk — they'll live in a closet or get donated.</li>
+            <li><strong>Cheap versions of things they already have good versions of.</strong> Someone with a quality kitchen knife set doesn't need a $25 set.</li>
+            <li><strong>Novelty items.</strong> If they wanted a novelty item, they'd own it already.</li>
+        </ul>
+
+        <h2>The Actual Shortcut: Their Social Media</h2>
+
+        <p>People who "have everything" still post about what they love, save content about things they want, and broadcast their current obsessions constantly. Their Instagram and TikTok are a live inventory of what they care about right now — not two years ago when you last saw them.</p>
+
+        <p>That's what GiftWise is built for. Paste their handle and we pull their actual interests — what they post about, what aesthetic shows up in their feed, what they clearly spend time on — and turn that into a gift list. Takes about 30 seconds. Take it or leave it, but it tends to surface things you wouldn't have thought of on your own.</p>
+
+        <div class="cta-box">
+            <h2>Their feed already has the answer.</h2>
+            <p>Paste their Instagram or TikTok and we'll show you what they'd actually want — based on what they post, save, and engage with right now.</p>
+            <a href="/demo?ref=guide">Try GiftWise free &rarr;</a>
+        </div>
+
+        <div style="margin-top:40px; padding-top:30px; border-top:2px solid #f0f0f0;">
+            <h2 style="font-size:1.2em; color:#6b7280; margin-bottom:16px;">More Gift Guides</h2>
+            <div style="display:flex; flex-wrap:wrap; gap:12px;">
+                <a href="/guides/subscription-boxes" style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px 16px; text-decoration:none; color:#374151; font-size:0.9em; font-weight:500;">Subscription Box Gifts &rarr;</a>
+                <a href="/guides/coffee-tea" style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px 16px; text-decoration:none; color:#374151; font-size:0.9em; font-weight:500;">Coffee &amp; Tea Gifts &rarr;</a>
+                <a href="/guides/chocolate-gourmet" style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px 16px; text-decoration:none; color:#374151; font-size:0.9em; font-weight:500;">Gourmet Food Gifts &rarr;</a>
+                <a href="/guides/tech-gifts" style="background:#f9fafb; border:1px solid #e5e7eb; border-radius:8px; padding:10px 16px; text-decoration:none; color:#374151; font-size:0.9em; font-weight:500;">Tech Gifts &rarr;</a>
+            </div>
+        </div>
+    </div>
+{% endblock %}

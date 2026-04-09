@@ -104,12 +104,14 @@ def get_count(event_name: str, date_str: str = None) -> int:
 
 
 _GUIDE_SLUGS = [
-    'mothers-day', 'fathers-day', 'gifts-for-her', 'gifts-for-him',
-    'chocolate-gourmet', 'coffee-tea', 'subscription-boxes', 'tech-gifts', 'graduation',
+    'mothers-day', 'fathers-day', 'graduation',
+    'gifts-for-her', 'gifts-for-him',
+    'chocolate-gourmet', 'coffee-tea', 'subscription-boxes', 'tech-gifts',
+    'gifts-for-someone-who-has-everything',
 ]
+# Blog slugs kept for historical hit data only — routes now 301 redirect.
 _BLOG_SLUGS = [
-    'last-minute-gifts', 'cash-vs-physical-gifts',
-    'gift-giving-mistakes', 'gifts-for-someone-who-has-everything',
+    'last-minute-gifts', 'cash-vs-physical-gifts', 'gift-giving-mistakes',
 ]
 _RETAILERS = ['ebay', 'amazon', 'cj', 'awin', 'other']
 

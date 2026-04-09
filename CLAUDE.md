@@ -567,17 +567,59 @@ The DB query fix landed and returned 80 products from 80k cached, 16 sources. Bu
 
 ---
 
-## Current Priorities (Updated Apr 2026)
+## Current Priorities (Updated Apr 9, 2026)
 
-1. **Reddit distribution** — Posts drafted for 12 subreddits + situational comment templates. Wave 1 (r/GiftIdeas, r/SideProject, r/ChatGPT, r/InternetIsBeautiful) starts this week, one per day. r/GiftIdeas mod response pending — they may flag self-promotion. Posts are in the session history; ask Claude to regenerate if needed, pointing at `docs/VOICE.md` for style.
-2. **Google Search Console** — Verification route live at `/googlef18ce1baab96164b.html`. Submit `giftwise.fit/sitemap.xml` after verifying ownership. Sitemap includes all 9 guides + blog posts.
-3. **OG default image** — `og-default.png` (1200×630) referenced in `base.html` but doesn't exist yet. Create in Canva and add to `static/images/`. Until then, social shares have no preview image.
-4. **3 incomplete Etsy guides** — `guide_etsy_home_decor.html`, `guide_etsy_jewelry.html`, `guide_etsy_under_50.html` still have placeholder content. Either populate or take down.
-5. **Awin approvals** — ~35 applications from Feb 25 pending. Check dashboard for new approvals.
-6. **FlexOffers** — Applied Feb 16, status unknown. Check dashboard.
-7. **Impact.com** — Account type issue, second ticket filed. STAT tag + verification phrase on branch `claude/review-claude-docs-kEdui` (merge to main to activate).
-8. **Load test & harden** — Shelve concurrency, Gunicorn worker exhaustion, SQLite write contention under concurrent load. See Opus prompt in `docs/ARCHITECTURE.md`.
-9. **Monitor quality** — Admin dashboard, watch rec_run and affiliate click events. Facebook screen recording post live as of Apr 5.
+**Session start protocol:** Surface the top 3 READY items before doing anything else. If the user hasn't mentioned a specific task, start there.
+
+---
+
+### READY — no blockers, execute now
+
+| # | Task | What to do |
+|---|------|-----------|
+| 1 | **Reddit Wave 1 (manual)** | r/SideProject, r/ChatGPT, r/InternetIsBeautiful — one post per day. r/GiftIdeas: comment replies only (not self-promotion posts). Ask Claude to draft/regenerate pointing at `docs/VOICE.md`. |
+| 2 | **Take down 3 placeholder Etsy guides** | `guide_etsy_home_decor.html`, `guide_etsy_jewelry.html`, `guide_etsy_under_50.html` have placeholder content — SEO liability. Add 301 redirects: home_decor → `/guides/gifts-for-her`, jewelry → `/guides/gifts-for-her`, under_50 → `/guides`. Remove from sitemap. |
+| 3 | **Drop Russell Stover + GameFly from CJ sync** | Low-quality / irrelevant merchants in catalog. Add to exclusion list in `catalog_sync.py`. |
+| 4 | **Block King Koil in Awin** | Add to merchant exclusion list in `awin_searcher.py`. |
+| 5 | **14-Item Phase 2: Sonnet-safe tasks** | Template UI for splurge tile (`recommendations.html`) + eBay niche-only scoping (`multi_retailer_searcher.py`). Full spec in the 14-Item section below. |
+| 6 | **Catalog-First Architecture Phase 2** | Tasks 1-3 + 5 (remove live CJ/Awin from session-time, wire eBay niche-only, retune diversity cap). Full spec in Pending Opus Tasks → Catalog-First section. |
+| 7 | **Google Search Console sitemap** | Verification route already live at `/googlef18ce1baab96164b.html`. Go to Search Console → verify ownership → submit `giftwise.fit/sitemap.xml`. 2-minute user action. |
+
+---
+
+### BLOCKED — waiting on external party or user action
+
+| Task | Blocker | Next step |
+|------|---------|-----------|
+| **Reddit scout automation** | Reddit API credentials pending approval | When credentials arrive: add to Railway env vars (`REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USERNAME`, `REDDIT_PASSWORD`), test `scripts/reddit_scout.py` |
+| **OG default image** | User must create asset | Make `og-default.png` 1200×630 in Canva (cream bg, GiftWise logo, tagline). Add to `static/images/`. Until then social shares have no preview. |
+| **Awin approvals** | ~35 applications pending since Feb 25 | Check Awin dashboard for new approvals; wire new merchants in `awin_searcher.py`. See `docs/AWIN_APPLICATIONS_FEB25.md`. |
+| **FlexOffers** | Applied Feb 16, status unknown | Check FlexOffers dashboard. |
+| **Impact.com** | Account type issue, ticket filed | Branch `claude/review-claude-docs-kEdui` has STAT tag + verification phrase — merge to main once Impact.com resolves. |
+| **Rakuten** | Account active, no brand applications submitted | Apply to Sephora, Nordstrom, and others. See `docs/AFFILIATE_NETWORK_RESEARCH.md`. |
+
+---
+
+### NEXT UP — ready after one prerequisite
+
+| Task | Prerequisite |
+|------|-------------|
+| **Reddit scout automation** | API credentials |
+| **14-Item Phase 2: Splurge curator prompt** | Opus session — add to next Opus task queue (`gift_curator.py`) |
+| **Experience booking link monetization** | Awin/CJ approvals (Sur La Table, ClassPass, Viator/Expedia) |
+| **Load test & harden** | Warrants attention at ~15 sessions/day. See Opus prompt in `docs/ARCHITECTURE.md`. |
+
+---
+
+### MONITOR — no action, just watch
+
+| Signal | Where to check | Threshold for action |
+|--------|---------------|---------------------|
+| **Session count** | Railway Metrics → Requests ÷ 7 | See paywall thresholds in Paywall Decision Framework |
+| **Affiliate clicks** | Admin dashboard (`/admin/stats`) → retailer breakdown | Growing click rate = inventory is working |
+| **Source diversity** | Railway logs → "Product source breakdown:" | Any source > 40% warrants investigation |
+| **Facebook post traffic** | Admin dashboard rec_run count | Spike coming: do NOT paywall during it |
+| **Duplicate in-flight Claude calls** | Railway logs → duplicate profile hash | Not critical now; fix before load testing |
 
 ---
 

@@ -114,6 +114,13 @@ _BLOG_SLUGS = [
     'last-minute-gifts', 'cash-vs-physical-gifts', 'gift-giving-mistakes',
 ]
 _RETAILERS = ['ebay', 'amazon', 'cj', 'awin', 'other']
+_REFERRAL_SOURCES = [
+    'reddit_giftideas',
+    'reddit_sideproject',
+    'reddit_chatgpt',
+    'reddit_internetisbeautiful',
+    'reddit',
+]
 
 
 def get_dashboard_data() -> dict:
@@ -139,7 +146,8 @@ def get_dashboard_data() -> dict:
     retailer_events = [f'product_click:{r}' for r in _RETAILERS]
     guide_events = [f'guide_hit:{s}' for s in _GUIDE_SLUGS]
     blog_events = [f'blog_hit:{s}' for s in _BLOG_SLUGS]
-    all_events = events + retailer_events + guide_events + blog_events
+    referral_events = [f'referral_hit:{s}' for s in _REFERRAL_SOURCES]
+    all_events = events + retailer_events + guide_events + blog_events + referral_events
 
     conn = _connect()
     try:
@@ -175,6 +183,11 @@ def get_dashboard_data() -> dict:
             'week':  {s: sum(counts.get(f"{d}:blog_hit:{s}", 0) for d in week_keys) for s in _BLOG_SLUGS},
         }
 
+        referral_hits = {
+            'today': {s: counts.get(f"{today_str}:referral_hit:{s}", 0) for s in _REFERRAL_SOURCES},
+            'week':  {s: sum(counts.get(f"{d}:referral_hit:{s}", 0) for d in week_keys) for s in _REFERRAL_SOURCES},
+        }
+
         return {
             'today': today_counts,
             'week': week_counts,
@@ -182,6 +195,7 @@ def get_dashboard_data() -> dict:
             'clicks_by_retailer': clicks_by_retailer,
             'guide_hits': guide_hits,
             'blog_hits': blog_hits,
+            'referral_hits': referral_hits,
             'generated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
         }
     finally:

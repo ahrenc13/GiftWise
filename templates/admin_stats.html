@@ -120,6 +120,28 @@ h1 { font-size: 20px; color: #9ca3af; margin-bottom: 4px; }
     </div>
 
     <div class="section">
+        <h2>Referral Sources (today / week)</h2>
+        <div style="overflow-x: auto;">
+        <table>
+            <tr><th>Source</th><th>Today</th><th>This Week</th></tr>
+            {% for source, label in [
+                ('reddit_giftideas', 'Reddit r/GiftIdeas'),
+                ('reddit_sideproject', 'Reddit r/SideProject'),
+                ('reddit_chatgpt', 'Reddit r/ChatGPT'),
+                ('reddit_internetisbeautiful', 'Reddit r/InternetIsBeautiful'),
+                ('reddit', 'Reddit (other)'),
+            ] %}
+            <tr>
+                <td>{{ label }}</td>
+                <td class="{{ 'zero' if data.referral_hits.today[source] == 0 else 'highlight' }}">{{ data.referral_hits.today[source] }}</td>
+                <td class="{{ 'zero' if data.referral_hits.week[source] == 0 else '' }}">{{ data.referral_hits.week[source] }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+        </div>
+    </div>
+
+    <div class="section">
         <h2>Guide &amp; Content Hits (today / week)</h2>
         <div style="overflow-x: auto;">
         <table>

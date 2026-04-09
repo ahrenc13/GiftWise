@@ -242,7 +242,7 @@ In Railway → Deployments → find the last working deployment → click "Redep
 
 ## Paywall Decision Framework
 
-**Current status (Feb 2026): Paywall is NOT enforced. All users get full free access.**
+**Current status (Apr 2026): Paywall is NOT enforced. All users get full free access. Focus is on catalog depth and rec quality before adding any friction.**
 
 ### The Economics
 
@@ -250,19 +250,36 @@ In Railway → Deployments → find the last working deployment → click "Redep
 - Affiliate revenue per session: ~$0.00–$0.05 (most visitors don't buy; commissions only on purchases)
 - Railway hosting: ~$5–20/month (fixed, doesn't scale with sessions)
 
-**Implication:** You are currently subsidizing every user's session. That's intentional — you need traffic before you can monetize.
+**Implication:** Every session is subsidized. That's intentional at this stage — but affiliate revenue alone may never cover costs if users are treating recs as ideas and not clicking through. Subscription/per-use fees are the more reliable path to covering API costs. See Future Revenue Models section.
+
+### The Free Tier Design (When Ready to Implement)
+
+**1 run per week free, not 1 per day.** One per day is too easy to game — users just come back tomorrow and stay free indefinitely. One per week creates real scarcity without feeling punitive for the core use case (shopping for one person).
+
+**Progressive degradation, not a hard wall.** Showing people what they're missing converts better than blocking them entirely. The curve:
+
+| Run # (within 7-day window) | What they see |
+|---|---|
+| **Run 1** | Full output — all picks, all links, fully clickable. This is the "wow" moment. Don't compromise it. |
+| **Run 2** | 3 picks shown and clickable. Remaining tiles visible but fuzzed — product shape visible, details obscured. |
+| **Run 3+** | All tiles fuzzed. Oblique copy describing the kinds of things they'd see ("a subscription that fits how they actually spend their weekends", "something under $60 they'd never buy themselves"). Upgrade CTA. |
+
+**Why this works better than a hard cutoff:** Run 1 earns trust. Run 2 creates desire — they can see there's more and they want it. Run 3+ creates pressure — they know exactly what they're giving up. A hard wall at run 2 skips the desire phase entirely.
+
+**Do not implement until:**
+1. Rec quality is consistently strong — paywalling mediocre output is a conversion disaster
+2. The $2.99 gift emergency one-time fee is live and tested (this is the proof that anyone will pay at all)
+3. Traffic is above 5 sessions/day sustained — below that, friction costs more in word-of-mouth than it earns
 
 ### Paywall Trigger Thresholds
-
-These are the specific signals to watch in the Railway logs and admin dashboard (`/admin/stats?key=ADMIN_DASHBOARD_KEY`):
 
 | Threshold | Meaning | Action |
 |-----------|---------|--------|
 | **< 5 sessions/day avg** | Growth phase — API cost ~$15/mo, negligible | Keep fully free. Do not restrict anything. |
-| **5–15 sessions/day** | Early traction | Add 1 run/day rate limiting per IP. Still free. Watch whether affiliate clicks are growing. |
-| **15–30 sessions/day sustained** | Real traffic | Calculate: (sessions × $0.10) vs affiliate revenue in Railway affiliate click logs. If cost >> revenue for 2+ weeks, add account requirement. |
-| **30+ sessions/day AND affiliate revenue not catching up** | Paywall decision point | Soft paywall: require free account creation (just email) to run the full pipeline. No charge yet. |
-| **Paying users exist** | Only then | Hard paywall with Stripe. A paywall with zero paying customers is just a conversion-killer. |
+| **5–15 sessions/day** | Early traction | Test $2.99 gift emergency. Watch conversion rate. |
+| **15–30 sessions/day sustained** | Real traffic | Implement 1-run/week free tier with progressive degradation. |
+| **30+ sessions/day AND affiliate revenue not catching up** | Paywall decision point | Soft paywall: require free account (just email) to get first run. |
+| **Paying users exist** | Only then | Full subscription tiers with Stripe. |
 
 ### How to Check Your Session Count
 
@@ -278,32 +295,103 @@ Admin dashboard: /admin/stats?key=YOUR_KEY
 
 ### Before You Ever Flip a Paywall
 
-1. **Inventory must be good first.** Paywalling thin results is a conversion disaster. Wait until Awin/CJ/FlexOffers inventory is robust.
+1. **Rec quality first.** Paywalling thin or inconsistent results is a conversion disaster. This is the current priority.
 2. **TikTok moment:** If the kid posts and traffic spikes, do NOT paywall during that window. Let people run it free, collect emails, build the waitlist. Monetize the warm audience later.
-3. **First paywall should be soft:** Require account creation (free, just email), not payment. This gives you email addresses, lets you track users, and creates a "you're in" feeling without friction.
-4. **Rate limiting before paywalling:** 1 run per IP per day stops abuse while keeping the product free. Implement this before any payment requirement.
+3. **Test willingness to pay cheaply first:** The $2.99 gift emergency (already in code, not yet wired) is the canary. If people won't pay $2.99 for a second run, the subscription model needs rethinking.
+4. **1-run/week is the free tier, not 1/day.** Document this clearly before implementation so it doesn't get built wrong.
 
 ### What the Subscription Tiers Are (Not Yet Enforced)
 
 The code has tier infrastructure built (see `giftwise_app.py` lines ~634+). Planned tiers:
-- **Free:** Full access, 1 run/day rate limit
+- **Free:** 1 full run per week, progressive degradation on subsequent runs
 - **Pro ($4.99–$7.99/month):** Multiple profiles, monthly refresh, shareable profile links
-- **Gift Emergency ($2.99 one-time):** 10 recs, no account needed — impulse buyer capture
+- **Gift Emergency ($2.99 one-time):** Bypass the weekly limit, no account needed — impulse buyer capture
 
-These are NOT enforced yet. The Stripe integration (`/subscribe` route) exists but isn't wired to gatekeeping. Do not wire the paywall until inventory and traffic thresholds above are met.
+These are NOT enforced yet. The Stripe integration (`/subscribe` route) exists but isn't wired to gatekeeping. Do not wire the paywall until quality and traffic thresholds above are met.
 
-### North Star: Affiliate vs. Subscription Priority
+### North Star: Why Subscription Beats Affiliate Long-Term
 
-Right now affiliate revenue is the right focus because:
-1. It requires no payment friction — users just click links
-2. Every approved affiliate network multiplies revenue without code changes
-3. Subscription requires enough volume to justify the conversion funnel overhead
+Affiliate revenue depends on brand recognition in the catalog — if users treat recs as ideas and don't click through, every session is a net loss. Subscription/per-use fees generate revenue based on service quality regardless of whether MonthlyClubs or Sephora is in the catalog. The chicken-and-egg problem with premium brands (need traffic to get Yeti/Sephora approval, need Yeti/Sephora to drive conversions) doesn't affect subscription revenue at all.
 
-Flip this priority when: monthly affiliate revenue is steady but clearly lower than what a 5% subscription conversion rate would generate at your traffic level.
+Flip priority from affiliate to subscription when: API costs are consistently exceeding affiliate revenue, OR when 20+ paying users validate willingness to pay.
 
 ---
 
-## What This Is
+## Future Revenue Models (Do Not Build Yet)
+
+These require a stronger catalog, proven recommendation quality, and real traffic before they're worth building. Document them here so they don't get lost.
+
+**Prerequisites for both:**
+- Consistent recommendation quality across a range of profile types (not just social-media-heavy users)
+- Catalog deep enough that monthly re-runs surface genuinely different picks
+- Paying users on the core product first — validate willingness to pay before building new surfaces
+
+---
+
+### Model 1: GiftWise for [Name] — Recurring Gift Intelligence
+
+**What it is:** A subscription where you sign up on behalf of specific people you buy for. Every month (or quarter), GiftWise rescans their current social footprint and delivers a "here's what [Sarah] is into right now" email to you. 3–5 picks from catalog, fresh to this month's signals. You decide whether to buy any of them. We earn affiliate commission on clicks regardless.
+
+**The core insight:** The rec engine already does this on demand. The subscription is the same pipeline on a schedule, with a presentation layer that justifies a recurring fee. You're not paying for the list — you're paying to not have to remember to do this, and to get caught before the occasion rather than the morning of.
+
+**Revenue stack:** Subscription fee (~$4.99–$9.99/month) covers API cost and then some. Affiliate commission on clicks is upside on top of that. A subscriber tracking 3 people generates $15–30/month before any purchases.
+
+**What it requires to build:**
+- Scheduled re-analysis (run pipeline on the Nth of each month per subscriber)
+- Profile memory so the same picks don't recur month after month
+- Email delivery of curated output (SendGrid/Mailgun, ~$15/month fixed)
+- Stripe subscription billing (already partially wired)
+- "Manage my people" dashboard — add profiles, set occasions, set budget
+
+**Hard problems:**
+- Instagram scraping reliability: a paid service can't fail silently. Needs graceful degradation ("we couldn't reach Sarah's profile this month, here's what we found last month").
+- Privacy framing matters more when it's recurring. "Stay thoughtful automatically" lands right. Anything that sounds like surveillance doesn't.
+- Profile freshness: if someone's account goes private or changes handles, the service breaks for that slot.
+
+**When to build:** After the first 20–30 paying users on the core product validate that people will pay for personalization. Not before.
+
+---
+
+### Model 2: B2B — Corporate and Concierge Gifting
+
+**What it is:** The same rec engine sold as a service to businesses that gift at scale — HR departments buying employee gifts, sales teams gifting clients, executive assistants managing multiple relationships. The current corporate gifting market is almost entirely generic (Visa gift cards, branded swag, wine). GiftWise's value prop: scan the recipient's LinkedIn or social and send something that actually fits who they are.
+
+**Three entry points:**
+
+1. **Corporate gifting dashboard** — A company uploads a list of employees or clients (names + LinkedIn/social handles), sets a budget, and GiftWise generates a personalized gift list for each one. HR reviews and approves. Purchases go through existing affiliate links or a bulk order process.
+   - Revenue: per-recipient fee ($5–15/recipient) + affiliate commission on purchases
+   - Volume pricing for large companies
+
+2. **Concierge/EA tool** — Personal assistants who manage gifting for executives already spend hours on this. GiftWise is a force multiplier. Pitch: "your client's LinkedIn tells us more than a generic gift catalog does."
+   - Revenue: monthly SaaS fee per seat (~$49–99/month)
+
+3. **White-label API** — A retailer (Nordstrom, Etsy, etc.) licenses the rec engine to power their own "find the perfect gift" feature. They bring the catalog; we bring the personalization intelligence.
+   - Revenue: API licensing fee, negotiated per deal
+   - Highest ceiling, longest sales cycle
+
+**What makes B2B viable:**
+- The consent/privacy issue flips: companies legitimately collect employee/client social data as part of their CRM. Processing it for gifting is within normal business relationship scope.
+- The willingness-to-pay is already proven in corporate gifting — companies spend $258/employee/year on average. Getting 10% of that budget routed through a smarter tool is a real pitch.
+- Sales cycle is longer than consumer, but contract sizes are much larger.
+
+**Hard problems:**
+- Sales motion is completely different from consumer. Requires outbound, demos, procurement approval cycles.
+- Data privacy compliance (GDPR, CCPA) becomes a real concern when processing employee data at company request.
+- Quality bar is higher — a bad recommendation to a corporate client damages a relationship the company cares about.
+
+**When to build:** After the consumer product has demonstrated recommendation quality consistently. The B2B pitch depends entirely on "our recs are good" — if you can't prove that with consumer users first, the enterprise sale doesn't close.
+
+---
+
+### Relationship Between the Three Models
+
+| Model | Who pays | Why they pay | Catalog dependency |
+|-------|----------|-------------|-------------------|
+| Affiliate (current) | Nobody directly — paid by vendors | Discovery + trust | Medium |
+| Subscription (Model 1) | Gift-givers | Automation + recurring relevance | High — needs fresh picks monthly |
+| B2B (Model 2) | Companies | Scale + personalization at volume | High — needs broad category coverage |
+
+The affiliate model funds the catalog and quality work. Model 1 is the natural first expansion — same audience, same pipeline, just recurring. Model 2 is the larger bet that requires a proven track record first.
 
 AI-powered gift recommendation engine. Users paste a social media handle → Flask scrapes their profile → Claude analyzes interests → searches multiple retailers → Claude curates gifts → programmatic cleanup → display with affiliate links.
 
@@ -567,17 +655,59 @@ The DB query fix landed and returned 80 products from 80k cached, 16 sources. Bu
 
 ---
 
-## Current Priorities (Updated Apr 2026)
+## Current Priorities (Updated Apr 9, 2026)
 
-1. **Reddit distribution** — Posts drafted for 12 subreddits + situational comment templates. Wave 1 (r/GiftIdeas, r/SideProject, r/ChatGPT, r/InternetIsBeautiful) starts this week, one per day. r/GiftIdeas mod response pending — they may flag self-promotion. Posts are in the session history; ask Claude to regenerate if needed, pointing at `docs/VOICE.md` for style.
-2. **Google Search Console** — Verification route live at `/googlef18ce1baab96164b.html`. Submit `giftwise.fit/sitemap.xml` after verifying ownership. Sitemap includes all 9 guides + blog posts.
-3. **OG default image** — `og-default.png` (1200×630) referenced in `base.html` but doesn't exist yet. Create in Canva and add to `static/images/`. Until then, social shares have no preview image.
-4. **3 incomplete Etsy guides** — `guide_etsy_home_decor.html`, `guide_etsy_jewelry.html`, `guide_etsy_under_50.html` still have placeholder content. Either populate or take down.
-5. **Awin approvals** — ~35 applications from Feb 25 pending. Check dashboard for new approvals.
-6. **FlexOffers** — Applied Feb 16, status unknown. Check dashboard.
-7. **Impact.com** — Account type issue, second ticket filed. STAT tag + verification phrase on branch `claude/review-claude-docs-kEdui` (merge to main to activate).
-8. **Load test & harden** — Shelve concurrency, Gunicorn worker exhaustion, SQLite write contention under concurrent load. See Opus prompt in `docs/ARCHITECTURE.md`.
-9. **Monitor quality** — Admin dashboard, watch rec_run and affiliate click events. Facebook screen recording post live as of Apr 5.
+**Session start protocol:** Surface the top 3 READY items before doing anything else. If the user hasn't mentioned a specific task, start there.
+
+---
+
+### READY — no blockers, execute now
+
+| # | Task | What to do |
+|---|------|-----------|
+| 1 | **Reddit Wave 1 (manual)** | r/SideProject, r/ChatGPT, r/InternetIsBeautiful — one post per day. r/GiftIdeas: comment replies only (not self-promotion posts). Ask Claude to draft/regenerate pointing at `docs/VOICE.md`. |
+| 2 | **Take down 3 placeholder Etsy guides** | `guide_etsy_home_decor.html`, `guide_etsy_jewelry.html`, `guide_etsy_under_50.html` have placeholder content — SEO liability. Add 301 redirects: home_decor → `/guides/gifts-for-her`, jewelry → `/guides/gifts-for-her`, under_50 → `/guides`. Remove from sitemap. |
+| 3 | **Drop Russell Stover + GameFly from CJ sync** | Low-quality / irrelevant merchants in catalog. Add to exclusion list in `catalog_sync.py`. |
+| 4 | **Block King Koil in Awin** | Add to merchant exclusion list in `awin_searcher.py`. |
+| 5 | **14-Item Phase 2: Sonnet-safe tasks** | Template UI for splurge tile (`recommendations.html`) + eBay niche-only scoping (`multi_retailer_searcher.py`). Full spec in the 14-Item section below. |
+| 6 | **Catalog-First Architecture Phase 2** | Tasks 1-3 + 5 (remove live CJ/Awin from session-time, wire eBay niche-only, retune diversity cap). Full spec in Pending Opus Tasks → Catalog-First section. |
+| 7 | **Google Search Console sitemap** | Verification route already live at `/googlef18ce1baab96164b.html`. Go to Search Console → verify ownership → submit `giftwise.fit/sitemap.xml`. 2-minute user action. |
+
+---
+
+### BLOCKED — waiting on external party or user action
+
+| Task | Blocker | Next step |
+|------|---------|-----------|
+| **Reddit scout automation** | Reddit API credentials pending approval | When credentials arrive: add to Railway env vars (`REDDIT_CLIENT_ID`, `REDDIT_CLIENT_SECRET`, `REDDIT_USERNAME`, `REDDIT_PASSWORD`), test `scripts/reddit_scout.py` |
+| **OG default image** | User must create asset | Make `og-default.png` 1200×630 in Canva (cream bg, GiftWise logo, tagline). Add to `static/images/`. Until then social shares have no preview. |
+| **Awin approvals** | ~35 applications pending since Feb 25 | Check Awin dashboard for new approvals; wire new merchants in `awin_searcher.py`. See `docs/AWIN_APPLICATIONS_FEB25.md`. |
+| **FlexOffers** | Applied Feb 16, status unknown | Check FlexOffers dashboard. |
+| **Impact.com** | Account type issue, ticket filed | Branch `claude/review-claude-docs-kEdui` has STAT tag + verification phrase — merge to main once Impact.com resolves. |
+| **Rakuten** | Account active, no brand applications submitted | Apply to Sephora, Nordstrom, and others. See `docs/AFFILIATE_NETWORK_RESEARCH.md`. |
+
+---
+
+### NEXT UP — ready after one prerequisite
+
+| Task | Prerequisite |
+|------|-------------|
+| **Reddit scout automation** | API credentials |
+| **14-Item Phase 2: Splurge curator prompt** | Opus session — add to next Opus task queue (`gift_curator.py`) |
+| **Experience booking link monetization** | Awin/CJ approvals (Sur La Table, ClassPass, Viator/Expedia) |
+| **Load test & harden** | Warrants attention at ~15 sessions/day. See Opus prompt in `docs/ARCHITECTURE.md`. |
+
+---
+
+### MONITOR — no action, just watch
+
+| Signal | Where to check | Threshold for action |
+|--------|---------------|---------------------|
+| **Session count** | Railway Metrics → Requests ÷ 7 | See paywall thresholds in Paywall Decision Framework |
+| **Affiliate clicks** | Admin dashboard (`/admin/stats`) → retailer breakdown | Growing click rate = inventory is working |
+| **Source diversity** | Railway logs → "Product source breakdown:" | Any source > 40% warrants investigation |
+| **Facebook post traffic** | Admin dashboard rec_run count | Spike coming: do NOT paywall during it |
+| **Duplicate in-flight Claude calls** | Railway logs → duplicate profile hash | Not critical now; fix before load testing |
 
 ---
 

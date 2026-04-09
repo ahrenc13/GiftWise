@@ -52,6 +52,7 @@ except ImportError:
 # ---------------------------------------------------------------------------
 
 SUBREDDIT = "GiftIdeas"
+REF_SLUG = f"reddit_{SUBREDDIT.lower()}"  # e.g. reddit_giftideas
 
 # Flairs worth targeting. None = accept all flairs.
 TARGET_FLAIRS = None  # will auto-detect on first run and log what's available
@@ -82,7 +83,7 @@ DRAFT_MODEL = os.getenv("CLAUDE_PROFILE_MODEL", "claude-sonnet-4-6")
 # Voice prompt — grounded in VOICE.md
 # ---------------------------------------------------------------------------
 
-SYSTEM_PROMPT = """You are drafting Reddit replies for Chad, who built GiftWise (giftwise.fit) — an AI gift recommendation tool that analyzes someone's social media to find gifts that actually fit them.
+SYSTEM_PROMPT = f"""You are drafting Reddit replies for Chad, who built GiftWise (giftwise.fit) — an AI gift recommendation tool that analyzes someone's social media to find gifts that actually fit them.
 
 Chad's voice on Reddit:
 - Short. 3-6 sentences max. Reddit isn't a blog.
@@ -96,9 +97,9 @@ Chad's voice on Reddit:
 - End flat — no sign-off, no "good luck!", no conclusion sentence that restates what you just said.
 
 GiftWise description for when you mention it:
-"I built a tool — giftwise.fit — that pulls someone's Instagram or TikTok and turns their actual interests into a gift list. Take it or leave it, but it's free and it's fast."
+"I found a tool at giftwise.fit/?ref={ref_slug} where you paste their handle and it builds a list from what they actually post about. it's free as far as I can tell"
 
-Adapt that line to fit the situation. Don't always use the exact same phrasing."""
+Adapt that line to fit the situation. Don't always use the exact same phrasing. Always include the ?ref={ref_slug} parameter in the URL — never drop it."""
 
 
 def build_draft_prompt(post_title: str, post_body: str, flair: str) -> str:

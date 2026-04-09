@@ -303,7 +303,81 @@ Flip this priority when: monthly affiliate revenue is steady but clearly lower t
 
 ---
 
-## What This Is
+## Future Revenue Models (Do Not Build Yet)
+
+These require a stronger catalog, proven recommendation quality, and real traffic before they're worth building. Document them here so they don't get lost.
+
+**Prerequisites for both:**
+- Consistent recommendation quality across a range of profile types (not just social-media-heavy users)
+- Catalog deep enough that monthly re-runs surface genuinely different picks
+- Paying users on the core product first — validate willingness to pay before building new surfaces
+
+---
+
+### Model 1: GiftWise for [Name] — Recurring Gift Intelligence
+
+**What it is:** A subscription where you sign up on behalf of specific people you buy for. Every month (or quarter), GiftWise rescans their current social footprint and delivers a "here's what [Sarah] is into right now" email to you. 3–5 picks from catalog, fresh to this month's signals. You decide whether to buy any of them. We earn affiliate commission on clicks regardless.
+
+**The core insight:** The rec engine already does this on demand. The subscription is the same pipeline on a schedule, with a presentation layer that justifies a recurring fee. You're not paying for the list — you're paying to not have to remember to do this, and to get caught before the occasion rather than the morning of.
+
+**Revenue stack:** Subscription fee (~$4.99–$9.99/month) covers API cost and then some. Affiliate commission on clicks is upside on top of that. A subscriber tracking 3 people generates $15–30/month before any purchases.
+
+**What it requires to build:**
+- Scheduled re-analysis (run pipeline on the Nth of each month per subscriber)
+- Profile memory so the same picks don't recur month after month
+- Email delivery of curated output (SendGrid/Mailgun, ~$15/month fixed)
+- Stripe subscription billing (already partially wired)
+- "Manage my people" dashboard — add profiles, set occasions, set budget
+
+**Hard problems:**
+- Instagram scraping reliability: a paid service can't fail silently. Needs graceful degradation ("we couldn't reach Sarah's profile this month, here's what we found last month").
+- Privacy framing matters more when it's recurring. "Stay thoughtful automatically" lands right. Anything that sounds like surveillance doesn't.
+- Profile freshness: if someone's account goes private or changes handles, the service breaks for that slot.
+
+**When to build:** After the first 20–30 paying users on the core product validate that people will pay for personalization. Not before.
+
+---
+
+### Model 2: B2B — Corporate and Concierge Gifting
+
+**What it is:** The same rec engine sold as a service to businesses that gift at scale — HR departments buying employee gifts, sales teams gifting clients, executive assistants managing multiple relationships. The current corporate gifting market is almost entirely generic (Visa gift cards, branded swag, wine). GiftWise's value prop: scan the recipient's LinkedIn or social and send something that actually fits who they are.
+
+**Three entry points:**
+
+1. **Corporate gifting dashboard** — A company uploads a list of employees or clients (names + LinkedIn/social handles), sets a budget, and GiftWise generates a personalized gift list for each one. HR reviews and approves. Purchases go through existing affiliate links or a bulk order process.
+   - Revenue: per-recipient fee ($5–15/recipient) + affiliate commission on purchases
+   - Volume pricing for large companies
+
+2. **Concierge/EA tool** — Personal assistants who manage gifting for executives already spend hours on this. GiftWise is a force multiplier. Pitch: "your client's LinkedIn tells us more than a generic gift catalog does."
+   - Revenue: monthly SaaS fee per seat (~$49–99/month)
+
+3. **White-label API** — A retailer (Nordstrom, Etsy, etc.) licenses the rec engine to power their own "find the perfect gift" feature. They bring the catalog; we bring the personalization intelligence.
+   - Revenue: API licensing fee, negotiated per deal
+   - Highest ceiling, longest sales cycle
+
+**What makes B2B viable:**
+- The consent/privacy issue flips: companies legitimately collect employee/client social data as part of their CRM. Processing it for gifting is within normal business relationship scope.
+- The willingness-to-pay is already proven in corporate gifting — companies spend $258/employee/year on average. Getting 10% of that budget routed through a smarter tool is a real pitch.
+- Sales cycle is longer than consumer, but contract sizes are much larger.
+
+**Hard problems:**
+- Sales motion is completely different from consumer. Requires outbound, demos, procurement approval cycles.
+- Data privacy compliance (GDPR, CCPA) becomes a real concern when processing employee data at company request.
+- Quality bar is higher — a bad recommendation to a corporate client damages a relationship the company cares about.
+
+**When to build:** After the consumer product has demonstrated recommendation quality consistently. The B2B pitch depends entirely on "our recs are good" — if you can't prove that with consumer users first, the enterprise sale doesn't close.
+
+---
+
+### Relationship Between the Three Models
+
+| Model | Who pays | Why they pay | Catalog dependency |
+|-------|----------|-------------|-------------------|
+| Affiliate (current) | Nobody directly — paid by vendors | Discovery + trust | Medium |
+| Subscription (Model 1) | Gift-givers | Automation + recurring relevance | High — needs fresh picks monthly |
+| B2B (Model 2) | Companies | Scale + personalization at volume | High — needs broad category coverage |
+
+The affiliate model funds the catalog and quality work. Model 1 is the natural first expansion — same audience, same pipeline, just recurring. Model 2 is the larger bet that requires a proven track record first.
 
 AI-powered gift recommendation engine. Users paste a social media handle → Flask scrapes their profile → Claude analyzes interests → searches multiple retailers → Claude curates gifts → programmatic cleanup → display with affiliate links.
 

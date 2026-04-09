@@ -54,9 +54,9 @@ The most powerful thing a guide can do is make a reader think "how did they know
 
 Five patterns that do this:
 
-**1. The aspirational frustration.** Describe the gap between what they'd enjoy and what they let themselves buy. *"Drinks $15 wine because $25 feels indulgent, even though she'd notice the difference."* Anyone who matches this recognizes it immediately.
+**1. The aspirational frustration.** Describe the gap between what they'd enjoy and what they let themselves buy. *"Drinks $15 wine because $25 feels indulgent, even though she'd notice the difference."*
 
-**2. The secret identity.** Name the thing they do without the label they'd reject. *"Doesn't call himself a foodie but has strong opinions about olive oil."* Works because it sidesteps the self-image obstacle.
+**2. The secret identity.** Name the thing they do without the label they'd reject. *"Doesn't call himself a foodie but has strong opinions about olive oil."*
 
 **3. The unexpressed conflict.** Name the internal tension before they say it. *"He says he doesn't need anything, and he means it — which means he already bought the one thing he was going to ask for."*
 
@@ -64,7 +64,7 @@ Five patterns that do this:
 
 **5. The situation, not the demographic.** Life transitions are more specific than age brackets. *"Just moved somewhere they don't know anyone yet"* is more recognizable than *"young adult."* *"Just got the promotion, still acts like they don't deserve it"* is more specific than *"professional."*
 
-None of these require current events. They require paying attention to how people actually behave, then being willing to say it plainly. The reader who matches will feel seen. The reader who doesn't will still find it credible — because it sounds like someone who pays attention, not someone who assembled a list.
+None of these require current events. They require paying attention to how people actually behave, then being willing to say it plainly. The reader who doesn't match will still find it credible — because it sounds like someone who pays attention, not someone who assembled a list.
 
 ---
 

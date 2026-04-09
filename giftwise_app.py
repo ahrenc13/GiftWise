@@ -1545,6 +1545,9 @@ def onesignal_worker():
 @app.route('/')
 def index():
     """Landing page"""
+    ref = request.args.get('ref', '')
+    if ref:
+        track_event(f'referral_hit:{ref}')
     return render_template('index.html')
 
 @app.route('/demo')
@@ -1554,9 +1557,12 @@ def demo_mode():
     For admin: redirects to real pipeline with @chadahren pre-filled.
     For public: shows sample recommendations with pre-canned data.
     """
-    # Track guide-to-tool funnel conversions
-    if request.args.get('ref') == 'guide':
+    # Track guide-to-tool funnel conversions and other referral sources
+    ref = request.args.get('ref', '')
+    if ref == 'guide':
         track_event('guide_to_tool')
+    elif ref:
+        track_event(f'referral_hit:{ref}')
 
     # ADMIN TESTING: If admin email, create real test user with @chadahren
     admin_emails = os.getenv('ADMIN_EMAILS', '').split(',')

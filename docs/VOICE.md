@@ -167,9 +167,46 @@ Then the link. No summary sentence. The reader can see the button.
 
 ---
 
+## Reddit Comment Format
+
+Reddit comments are a different register from guides. The goal is still to be useful and occasionally surface GiftWise, but it's conversational, not editorial. The wrong instinct is to write a polished mini-guide. The right instinct is to sound like a person who actually knows something typing fast.
+
+### Typographic looseness is intentional
+
+Inconsistent capitalization — lowercase sentence starts, no trailing period on the last sentence — reads as authentic. Not every thought needs a capital. Not every sentence ends with a period. This is deliberate, not an error.
+
+**Not:** "A Theragun Mini would be a great option. He will use it every day."
+**Yes:** "at $100 a theragun mini is right there. he's probably sore, and a recovery tool is exactly the kind of thing someone like him calls an indulgence and then never buys"
+
+### Self-referential entry
+
+Earn the advice before giving it. Start with something personal — a situation you recognize, a thing you've done — before pivoting to the suggestion. This is what separates a human reply from a bot reply.
+
+**Not:** "You should try giftwise.fit, it's a tool that..."
+**Yes:** "one of my things is that I want to give good gifts but often miss the mark. I once asked my phone what I want for my own birthday."
+
+### The tool drop
+
+One sentence. Two max. Name the URL, describe what it does in plain terms, stop. Do not pitch. Do not explain the technology. If there's an honest caveat (budget adherence is soft, Instagram scraping requires a public account), say it — it makes the rec more credible, not less.
+
+**Not:** "GiftWise is an AI-powered tool that analyzes social media profiles to generate personalized gift recommendations based on real interests and behavior."
+**Yes:** "giftwise.fit. it pulls from what people post on instagram or tiktok and builds a list. free"
+**Yes with caveat:** "I think it lets you specify budget but no idea how well it sticks to it"
+
+### When NOT to mention the tool
+
+If the question has a specific clear answer, answer it and stop. Dropping GiftWise into every reply reads as spam. Use it when the person is genuinely stuck with no obvious path — not as a reflex at the end of every comment.
+
+### Length
+
+3-5 sentences. Two short paragraphs at most. If it takes more than that, the advice is too complicated.
+
+---
+
 ## What to Do in Future Sessions
 
 1. Read this file before writing or rewriting any guide content.
 2. If a sentence sounds like something a press release would say, cut it.
 3. If you're not sure whether something sounds right, ask: would Chad say this to someone at a dinner party? If not, rewrite it.
 4. When adding new product picks, start with the scenario (who, when, why) before naming the product.
+5. For Reddit comment drafts: re-read the Reddit Comment Format section above. Check for polished sentence structure, consistent capitalization, trailing periods — these are the tells. Remove them.

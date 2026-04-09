@@ -527,9 +527,15 @@ else:
 @app.context_processor
 def inject_global_config():
     """Inject site-wide config into every template automatically."""
+    from datetime import datetime
+    now = datetime.now()
     return {
         'onesignal_app_id': ONESIGNAL_APP_ID,
         'onesignal_safari_id': ONESIGNAL_SAFARI_ID,
+        # Dynamic guide dates — always current so guides never look stale
+        'updated_date': now.strftime('Updated %-d %B %Y'),      # "Updated 9 April 2026"
+        'updated_date_iso': now.strftime('%Y-%m-%d'),            # "2026-04-09" for JSON-LD
+        'updated_date_month_year': now.strftime('%B %Y'),        # "April 2026"
     }
 
 # ============================================================================
@@ -1778,67 +1784,56 @@ def gift_guide_detail(slug):
         'subscription-boxes': 'guide_subscription_boxes.html',
         'tech-gifts': 'guide_tech_gifts.html',
         'graduation': 'guide_graduation.html',
+        'gifts-for-someone-who-has-everything': 'guide_gifts_for_someone_who_has_everything.html',
     }
     template = template_map.get(slug)
     if template:
         return render_template(template)
     return render_template('error.html', error_message="Guide not found."), 404
 
+# Blog routes — 301 permanent redirects. Blog section removed; content
+# folded into subject-specific guides.
 @app.route('/blog')
-def blog_index():
-    """Blog index — editorial content for publisher positioning"""
-    return render_template('blog.html')
+@app.route('/blog/')
+def blog_redirect():
+    return redirect('/guides', 301)
 
 @app.route('/blog/<slug>')
-def blog_post(slug):
-    """Individual blog article"""
-    track_event(f'blog_hit:{slug}')
-    blog_map = {
-        'last-minute-gifts': 'blog_last_minute_gifts.html',
-        'cash-vs-physical-gifts': 'blog_cash_vs_physical_gift.html',
-        'gift-giving-mistakes': 'blog_gift_giving_mistakes.html',
-        'gifts-for-someone-who-has-everything': 'blog_gifts_for_someone_who_has_everything.html',
+def blog_post_redirect(slug):
+    # gifts-for-someone-who-has-everything promoted to a full guide
+    if slug == 'gifts-for-someone-who-has-everything':
+        return redirect('/guides/gifts-for-someone-who-has-everything', 301)
+    # Others redirect to the most relevant guide or guides index
+    redirect_map = {
+        'last-minute-gifts': '/guides/mothers-day',
+        'cash-vs-physical-gifts': '/guides/graduation',
+        'gift-giving-mistakes': '/guides',
     }
-    template = blog_map.get(slug)
-    if template:
-        return render_template(template)
-    return render_template('error.html', error_message="Article not found."), 404
+    return redirect(redirect_map.get(slug, '/guides'), 301)
 
 @app.route('/sitemap.xml')
 def sitemap():
     """XML sitemap for search engine indexing."""
     from flask import Response
     _BASE = 'https://giftwise.fit'
-    _guides = [
-        ('mothers-day', '2026-04-05', 'monthly'),
-        ('fathers-day', '2026-04-05', 'monthly'),
-        ('gifts-for-her', '2026-03-01', 'monthly'),
-        ('gifts-for-him', '2026-03-01', 'monthly'),
-        ('chocolate-gourmet', '2026-03-01', 'monthly'),
-        ('coffee-tea', '2026-03-01', 'monthly'),
-        ('subscription-boxes', '2026-03-01', 'monthly'),
-        ('tech-gifts', '2026-03-01', 'monthly'),
-        ('graduation', '2026-04-06', 'monthly'),
-    ]
-    _blog = [
-        ('last-minute-gifts', '2026-03-01', 'monthly'),
-        ('cash-vs-physical-gifts', '2026-03-01', 'monthly'),
-        ('gift-giving-mistakes', '2026-03-01', 'monthly'),
-        ('gifts-for-someone-who-has-everything', '2026-03-01', 'monthly'),
+    from datetime import datetime
+    _today = datetime.now().strftime('%Y-%m-%d')
+    _guide_slugs = [
+        'mothers-day', 'fathers-day', 'graduation',
+        'gifts-for-her', 'gifts-for-him',
+        'chocolate-gourmet', 'coffee-tea', 'subscription-boxes', 'tech-gifts',
+        'gifts-for-someone-who-has-everything',
     ]
     _core = [
-        ('/', '2026-04-05', 'weekly'),
-        ('/guides', '2026-04-05', 'weekly'),
-        ('/blog', '2026-03-01', 'monthly'),
-        ('/demo', '2026-04-05', 'weekly'),
+        ('/', 'weekly'),
+        ('/guides', 'weekly'),
+        ('/demo', 'weekly'),
     ]
     urls = []
-    for path, lastmod, freq in _core:
-        urls.append(f'  <url><loc>{_BASE}{path}</loc><lastmod>{lastmod}</lastmod><changefreq>{freq}</changefreq></url>')
-    for slug, lastmod, freq in _guides:
-        urls.append(f'  <url><loc>{_BASE}/guides/{slug}</loc><lastmod>{lastmod}</lastmod><changefreq>{freq}</changefreq></url>')
-    for slug, lastmod, freq in _blog:
-        urls.append(f'  <url><loc>{_BASE}/blog/{slug}</loc><lastmod>{lastmod}</lastmod><changefreq>{freq}</changefreq></url>')
+    for path, freq in _core:
+        urls.append(f'  <url><loc>{_BASE}{path}</loc><lastmod>{_today}</lastmod><changefreq>{freq}</changefreq></url>')
+    for slug in _guide_slugs:
+        urls.append(f'  <url><loc>{_BASE}/guides/{slug}</loc><lastmod>{_today}</lastmod><changefreq>weekly</changefreq></url>')
     xml = '<?xml version="1.0" encoding="UTF-8"?>\n'
     xml += '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
     xml += '\n'.join(urls)

@@ -139,7 +139,7 @@ h1 { font-size: 20px; color: #9ca3af; margin-bottom: 4px; }
                 ('gift-giving-mistakes', 'Gift-Giving Mistakes'),
                 ('gifts-for-someone-who-has-everything', 'Has Everything')
             ] %}
-            {% set is_guide = slug in ['mothers-day', 'fathers-day', 'graduation', 'gifts-for-her', 'gifts-for-him', 'chocolate-gourmet', 'coffee-tea', 'subscription-boxes', 'tech-gifts'] %}
+            {% set is_guide = slug in ['mothers-day', 'fathers-day', 'graduation', 'gifts-for-her', 'gifts-for-him', 'chocolate-gourmet', 'coffee-tea', 'subscription-boxes', 'tech-gifts', 'gifts-for-someone-who-has-everything'] %}
             {% set hits_today = data.guide_hits.today[slug] if is_guide else data.blog_hits.today[slug] %}
             {% set hits_week  = data.guide_hits.week[slug]  if is_guide else data.blog_hits.week[slug] %}
             <tr>

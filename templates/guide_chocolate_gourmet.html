@@ -8,7 +8,7 @@
 {% block og_title %}Best Food Gifts for People Who Are Impossible to Shop For — GiftWise{% endblock %}
 {% block og_description %}When in doubt, food works. World-champion French chocolate, wine baskets, cheese subscriptions — 10 gourmet gifts that land every time.{% endblock %}
 {% block og_type %}article{% endblock %}
-{% block jsonld %}<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Best Food Gifts for People Who Are Impossible to Shop For","description":"World-champion French chocolate, wine baskets, cheese subscriptions — 10 gourmet gifts.","datePublished":"2026-03-01","dateModified":"2026-03-01","publisher":{"@type":"Organization","name":"GiftWise","url":"https://giftwise.fit"}}</script>
+{% block jsonld %}<script type="application/ld+json">{"@context":"https://schema.org","@type":"Article","headline":"Best Food Gifts for People Who Are Impossible to Shop For","description":"World-champion French chocolate, wine baskets, cheese subscriptions — 10 gourmet gifts.","datePublished":"2026-03-01","dateModified":"{{ updated_date_iso }}","publisher":{"@type":"Organization","name":"GiftWise","url":"https://giftwise.fit"}}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[{"@type":"ListItem","position":1,"name":"Home","item":"https://giftwise.fit"},{"@type":"ListItem","position":2,"name":"Gift Guides","item":"https://giftwise.fit/guides"},{"@type":"ListItem","position":3,"name":"Gourmet Food Gifts","item":"https://giftwise.fit/guides/chocolate-gourmet"}]}</script>
 <script type="application/ld+json">{"@context":"https://schema.org","@type":"ItemList","name":"Best Food Gifts","numberOfItems":10,"itemListElement":[{"@type":"ListItem","position":1,"name":"zChocolat French Chocolate Assortments"},{"@type":"ListItem","position":2,"name":"zChocolat 24K Gold Chocolates"},{"@type":"ListItem","position":3,"name":"Ghirardelli Pick & Mix"},{"@type":"ListItem","position":4,"name":"Russell Stover Build-A-Box"},{"@type":"ListItem","position":5,"name":"MonthlyClubs Gourmet Cheese of the Month"},{"@type":"ListItem","position":6,"name":"MonthlyClubs International Wine Club"},{"@type":"ListItem","position":7,"name":"MonthlyClubs Chocolate of the Month"},{"@type":"ListItem","position":8,"name":"WineBasket Wine Gift Baskets"},{"@type":"ListItem","position":9,"name":"Capalbo's Gourmet Fruit & Cheese"},{"@type":"ListItem","position":10,"name":"Ghirardelli Gift Boxes"}]}</script>{% endblock %}
 
@@ -60,7 +60,7 @@
         <div class="breadcrumb"><a href="/guides">Gift Guides</a> &rarr; Chocolate &amp; Gourmet</div>
 
         <h1>Best Food Gifts for People Who Are Impossible to Shop For</h1>
-        <div class="article-meta">Updated March 2026 &middot; By the Giftwise Team</div>
+        <div class="article-meta">{{ updated_date }} &middot; By the Giftwise Team</div>
 
         <p class="article-intro">
             You know the person. They say they don't need anything, they haven't updated a wish list since the Obama administration, and they return half of what they receive. Food sidesteps all of that. Nobody sends back chocolate. Nobody regifts a wine subscription. If you pick something worth giving, a food gift stops being the safe option and starts being the one people ask about.

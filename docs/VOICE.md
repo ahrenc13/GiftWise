@@ -171,9 +171,32 @@ Then the link. No summary sentence. The reader can see the button.
 
 Reddit comments are a different register from guides. The goal is still to be useful and occasionally surface GiftWise, but it's conversational, not editorial. The wrong instinct is to write a polished mini-guide. The right instinct is to sound like a person who actually knows something typing fast.
 
+### Speak from lived experience, not expertise
+
+The counseling principle: "I wonder" and "I feel like" aren't hedges — they're honest framing. All you can actually offer is your own perspective. This is both more truthful and more persuasive than declarations. You don't know this person's recipient. You don't know their situation. You can only share what you've noticed, tried, or thought about.
+
+**First-person perspective markers that work:**
+- "I wonder if..."
+- "I feel like..."
+- "I sometimes think..."
+- "I've been surprised by..."
+- "I don't know if this applies but..."
+- "have you tried..." / "have you thought about..."
+
+These couch suggestions in lived experience and leave the poster in the driver's seat. They're not politeness hedges — they accurately describe what you're actually doing: offering a perspective, not issuing a verdict.
+
+### Socratic over declarative
+
+A question invites someone to think. A statement asks them to agree. The question is almost always the better move — it's also harder to feel patronized by a question.
+
+**Not:** "You should reach out to authors on social media — some of them are really accessible."
+**Yes:** "have you thought about reaching out to any of her favorite authors on social media? I've been surprised at how accessible some of them are"
+
+This applies to ideas, suggestions, and product picks. Frame as something worth exploring, not something worth doing.
+
 ### Never speak as an authority on the recipient
 
-The poster knows this person. You don't. The failure mode is asserting facts about someone you've never met — "he's the kind of guy who..." / "he'll definitely use it" / "recovery tools are exactly what someone like him needs." That's mansplaining gift psychology to someone who lives with the person.
+The poster knows this person. You don't. The failure mode is asserting facts about someone you've never met — "he's the kind of guy who..." / "he'll definitely use it" / "recovery tools are exactly what someone like him needs." That's speaking with authority you don't have.
 
 The fix: offer possibilities, not verdicts. Ask the poster to validate rather than telling them how their person works.
 

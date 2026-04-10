@@ -136,6 +136,7 @@ Contractor email opens with the situation: neighbor selling, 15 years of use, ju
 | Restate the previous sentence as a conclusion | Padding | Cut the restatement |
 | Emotional escalation at the end of a paragraph | AI tell | End on fact or observation, not feeling |
 | "in today's world" / "in today's environment" | Filler | Cut |
+| Adverbs | Almost always filler or hedging what the verb should do on its own | Cut or rewrite the verb. "genuinely useful" → "useful." "actually works" → "works." "really matters" → "matters." If the adverb is load-bearing, the verb is wrong. |
 
 ---
 

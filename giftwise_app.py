@@ -3883,6 +3883,18 @@ def toggle_favorite(rec_index, user=None):
     
     return jsonify({'success': True, 'action': action, 'favorited': rec_index in favorites})
 
+@app.route('/api/feedback', methods=['POST'])
+def submit_feedback():
+    """One-click thumbs up/down on the recommendations page."""
+    data = request.get_json(silent=True) or {}
+    rating = data.get('rating', '')
+    if rating not in ('up', 'down'):
+        return jsonify({'error': 'invalid rating'}), 400
+    track_event(f'feedback:thumbs_{rating}')
+    logger.info(f"[FEEDBACK] thumbs_{rating}")
+    return jsonify({'success': True})
+
+
 @app.route('/api/track-click', methods=['POST'])
 def track_product_click():
     """Track outbound product link clicks for conversion analytics."""
@@ -4482,6 +4494,63 @@ def admin_stats():
     data['catalog'] = get_catalog_stats()
     data['awin_catalog'] = get_awin_catalog_stats()
     return render_template('admin_stats.html', data=data)
+
+
+@app.route('/admin/signups')
+def admin_signups():
+    """Dump all signups — email, relationship, created_at, referral source."""
+    key = request.args.get('key', '')
+    if not ADMIN_KEY or key != ADMIN_KEY:
+        return render_template('error.html', error="Not found.", error_code=404), 404
+
+    users = []
+    try:
+        with shelve.open(USER_DB, flag='r') as db:
+            for uid, data in db.items():
+                if not isinstance(data, dict):
+                    continue
+                email = data.get('email', uid)
+                users.append({
+                    'email': email,
+                    'relationship': data.get('relationship', ''),
+                    'recipient_type': data.get('recipient_type', ''),
+                    'created_at': data.get('created_at', ''),
+                    'utm_source': data.get('utm_source') or data.get('referrer') or '',
+                    'tier': data.get('subscription_tier', 'free'),
+                })
+    except Exception as e:
+        logger.error(f"admin_signups error: {e}")
+
+    users.sort(key=lambda u: u['created_at'], reverse=True)
+
+    fmt = request.args.get('format', '')
+    if fmt == 'csv':
+        import csv, io
+        out = io.StringIO()
+        writer = csv.DictWriter(out, fieldnames=['email','relationship','recipient_type','created_at','utm_source','tier'])
+        writer.writeheader()
+        writer.writerows(users)
+        return out.getvalue(), 200, {
+            'Content-Type': 'text/csv',
+            'Content-Disposition': 'attachment; filename="giftwise_signups.csv"'
+        }
+
+    rows = ''.join(
+        f'<tr><td>{u["email"]}</td><td>{u["relationship"]}</td>'
+        f'<td>{u["recipient_type"]}</td><td>{u["created_at"][:10] if u["created_at"] else ""}</td>'
+        f'<td>{u["utm_source"]}</td><td>{u["tier"]}</td></tr>'
+        for u in users
+    )
+    html = f"""<!DOCTYPE html><html><head><title>Signups</title>
+    <style>body{{font-family:monospace;padding:20px}} table{{border-collapse:collapse;width:100%}}
+    th,td{{border:1px solid #ccc;padding:6px 10px;text-align:left}} th{{background:#f0f0f0}}
+    a{{color:#6366f1}}</style></head><body>
+    <h2>Signups ({len(users)}) &nbsp; <a href="/admin/signups?key={key}&format=csv">Download CSV</a>
+    &nbsp; <a href="/admin/stats?key={key}">← Dashboard</a></h2>
+    <table><thead><tr><th>Email</th><th>Relationship</th><th>Recipient type</th>
+    <th>Signed up</th><th>Source</th><th>Tier</th></tr></thead>
+    <tbody>{rows}</tbody></table></body></html>"""
+    return html
 
 
 import threading as _threading

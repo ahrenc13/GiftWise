@@ -354,7 +354,7 @@ os.makedirs(_DATA_DIR, exist_ok=True)
 
 # Gift Emergency run credits — shelve-backed, keyed by email
 GIFT_EMERGENCY_DB = os.path.join(_DATA_DIR, 'gift_emergency')
-# Legacy user shelve (fallback path when storage_service unavailable)
+# User shelve — both legacy code and repository use this path so records survive redeploys
 USER_DB = os.path.join(_DATA_DIR, 'giftwise_db')
 
 def grant_gift_emergency_run(email):
@@ -438,13 +438,17 @@ else:
 # ============================================================================
 # Import new decoupled modules to reduce code duplication and improve testability
 try:
-    from repositories import get_user_repository
+    from repositories import get_user_repository, ShelveUserRepository, set_user_repository
     from middleware.auth import require_login, require_tier, optional_login, api_route
     from config import get_settings
     REFACTORED_MODULES_AVAILABLE = True
-    logger.info("✅ Phase 1 refactoring modules loaded (repository, auth middleware, config)")
+    # Point repository at the persistent volume path so signups survive redeploys
+    set_user_repository(ShelveUserRepository(db_path=USER_DB))
+    logger.info(f"✅ Phase 1 refactoring modules loaded (repository, auth middleware, config) — user DB: {USER_DB}")
 except ImportError as e:
     REFACTORED_MODULES_AVAILABLE = False
+    ShelveUserRepository = None
+    set_user_repository = None
     logger.warning(f"⚠️ Refactored modules not available, using legacy code: {e}")
     # Fallback to legacy functions if refactored modules aren't available
     get_user_repository = None

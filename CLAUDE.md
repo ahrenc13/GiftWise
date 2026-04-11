@@ -648,7 +648,7 @@ The DB query fix landed and returned 80 products from 80k cached, 16 sources. Bu
 - **Etsy API returns 403 Forbidden** on all search queries. Known/expected — Etsy has rejected dev credentials multiple times. Etsy searches are wasted API calls until credentials are approved.
 - **Duplicate in-flight Claude API calls** — two concurrent profile analysis requests for the same profile hash (`3c6142ae`) because the caching layer doesn't prevent in-flight duplicates. Not critical at current volume, but will waste API spend under load. Consider adding an in-flight lock (e.g., a dict of pending profile hashes) so the second request waits for the first to finish and uses its cached result.
 - **Railway severity mislabeling** — Gunicorn logs to stderr, so Railway tags all INFO-level logs as "error" severity in the dashboard. This is cosmetic; filter by message content, not severity badge.
-- **405 Method Not Allowed** (one-off, Mar 17) — likely a bot or misconfigured client hitting a route with wrong HTTP method. No action needed unless it recurs.
+- **405 Method Not Allowed** — escalating. Was a single cluster (Mar 17), now 6 incidents spread throughout Apr 10. Bot or persistent scanner. Real users unaffected. Added URL logging to 405 handler (READY #8) to identify which endpoint is being targeted.
 - **Stripe not configured** — expected at current stage (paywall not enforced).
 - **Catalog sync healthy** — CJ: ~3,995 products across 40 search terms. Awin: ~7,743 products across 26 joined feeds.
 - **Claude model in use:** `claude-sonnet-4-20250514` for both profile analysis and curation.
@@ -700,7 +700,48 @@ If `guide_hit` is climbing but `rec_run` is flat, the guide CTAs aren't converti
 
 ---
 
-## Current Priorities (Updated Apr 9, 2026)
+## Reddit Outreach (Apr 2026)
+
+**Primary goal:** Insert GiftWise into people's consciousness. Secondary: build reputation as a caring gift advisor.
+
+**Status:** Wave 1 in progress (manual). Reddit API credentials still pending.
+
+### Sub-specific strategy
+
+| Sub | Approach | Notes |
+|-----|----------|-------|
+| r/GiftIdeas | **DMs only** | Comments are banned. DM posters who are genuinely stuck. |
+| r/gifts | **Public comments** | Comments allowed. Public replies compound via search. |
+| r/SideProject, r/ChatGPT, r/InternetIsBeautiful | Self-promo post | One post per sub, spaced out. Mother's Day angle. |
+| r/Mommit, r/daddit, r/AskWomen | DMs | Target mom-gift posts once API credentials arrive. |
+
+### Voice rules (short version)
+
+Read `docs/VOICE.md` before drafting. Key rules:
+- **Socratic over declarative.** "I wonder if..." not "you should..."
+- **Never speak as authority on the recipient.** You don't know this person.
+- **No adverbs.** "genuinely," "actually," "really," "just" — cut them.
+- **No em dashes.** Use a period or comma instead.
+- **No trailing period on the last line**
+- **Typographic looseness.** Lowercase sentence starts.
+- **3-5 sentences.** Two short paragraphs at most.
+- **Lead with context, not the product name.**
+- **Only drop GiftWise when no clear answer exists.** Dropping it into every reply reads as spam.
+
+### Tool drop format
+
+```
+I found a tool at giftwise.fit where you paste their handle and it builds a list from what they post about. free as far as I can tell
+```
+
+With caveat if relevant: `I think it lets you specify budget but no idea how well it sticks to it`
+
+- No `?ref=` in DMs — feels tracked in a one-to-one context
+- `?ref=reddit` is fine in public comments
+
+---
+
+## Current Priorities (Updated Apr 11, 2026)
 
 **Session start protocol:** Surface the top 3 READY items before doing anything else. If the user hasn't mentioned a specific task, start there.
 
@@ -710,13 +751,14 @@ If `guide_hit` is climbing but `rec_run` is flat, the guide CTAs aren't converti
 
 | # | Task | What to do |
 |---|------|-----------|
-| 1 | **Reddit Wave 1 (manual)** | r/SideProject, r/ChatGPT, r/InternetIsBeautiful — one post per day. r/GiftIdeas: comment replies only (not self-promotion posts). Ask Claude to draft/regenerate pointing at `docs/VOICE.md`. |
+| 1 | **Reddit Wave 1 (in progress)** | r/GiftIdeas: DMs only (comments banned). r/gifts: public comments. r/SideProject, r/ChatGPT, r/InternetIsBeautiful: one self-promo post per sub. See Reddit Outreach section above for voice rules and tool drop format. Ask Claude to draft pointing at `docs/VOICE.md`. |
 | 2 | **Take down 3 placeholder Etsy guides** | `guide_etsy_home_decor.html`, `guide_etsy_jewelry.html`, `guide_etsy_under_50.html` have placeholder content — SEO liability. Add 301 redirects: home_decor → `/guides/gifts-for-her`, jewelry → `/guides/gifts-for-her`, under_50 → `/guides`. Remove from sitemap. |
 | 3 | **Drop Russell Stover + GameFly from CJ sync** | Low-quality / irrelevant merchants in catalog. Add to exclusion list in `catalog_sync.py`. |
 | 4 | **Block King Koil in Awin** | Add to merchant exclusion list in `awin_searcher.py`. |
 | 5 | **14-Item Phase 2: Sonnet-safe tasks** | Template UI for splurge tile (`recommendations.html`) + eBay niche-only scoping (`multi_retailer_searcher.py`). Full spec in the 14-Item section below. |
 | 6 | **Catalog-First Architecture Phase 2** | Tasks 1-3 + 5 (remove live CJ/Awin from session-time, wire eBay niche-only, retune diversity cap). Full spec in Pending Opus Tasks → Catalog-First section. |
 | 7 | **Google Search Console sitemap** | Verification route already live at `/googlef18ce1baab96164b.html`. Go to Search Console → verify ownership → submit `giftwise.fit/sitemap.xml`. 2-minute user action. |
+| 8 | **Add URL logging to 405 handler** | Add `request.url` + `request.method` to the 405 error handler in `giftwise_app.py`. 405s escalating — 6 incidents on Apr 10 spread throughout the day. Need to know which endpoint bots are hitting before this gets noisier. |
 
 ---
 

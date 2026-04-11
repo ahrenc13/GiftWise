@@ -5038,9 +5038,16 @@ def internal_error(error):
 
 @app.errorhandler(404)
 def not_found(error):
-    return render_template('error.html', 
+    return render_template('error.html',
                          error="Page not found.",
                          error_code=404), 404
+
+@app.errorhandler(405)
+def method_not_allowed(error):
+    logger.warning(f"[405] {request.method} {request.url}")
+    return render_template('error.html',
+                         error="Method not allowed.",
+                         error_code=405), 405
 
 @app.errorhandler(Exception)
 def handle_exception(e):

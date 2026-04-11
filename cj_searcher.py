@@ -699,77 +699,6 @@ _FRAGRANCESHOP_TRIGGER_INTERESTS = {
 
 
 # ---------------------------------------------------------------------------
-# GAMEFLY — Static curated products (approved CJ partner, Feb 2026)
-# Advertiser ID (ADV_CID): 1132500
-# Evergreen Link ID 15733829 — deep-link enabled, $18.73 3-month / $37.00 7-day EPC
-#   Base: https://www.dpbolvw.net/click-101660899-15733829
-# Commission:
-#   - $5.00 per subscription signup (25-day referral period)
-#   - 10% on used games, accessories, collectibles, used movies (10-day referral)
-#   - 0% on new games and consoles — do NOT recommend buying new via GameFly
-#   - Gift certificates are non-commissionable
-# T&C:
-#   - No GameFly trademark in domains/URLs (not relevant)
-#   - Only CJ-provided coupon codes
-#   - Social media promotions must tag @GameFly and #GameFly
-# ---------------------------------------------------------------------------
-
-_GAMEFLY_EVERGREEN_BASE = "https://www.dpbolvw.net/click-101660899-15733829"
-
-
-_GAMEFLY_ALL_PRODUCTS = [
-    {
-        # Evergreen link 15733829 — $37.00 7-day EPC, deep-link enabled
-        'title': "GameFly — Video Game Rental Subscription",
-        'link': 'https://www.dpbolvw.net/click-101660899-15733829',
-        'snippet': (
-            "Unlimited video game rentals delivered to their door — PS5, Xbox, and Nintendo Switch. "
-            "Try the newest releases without paying full price. Plans start at $9.50/month."
-        ),
-        'image': 'https://www.lduhtrp.net/image-101660899-10671020',
-        'thumbnail': 'https://www.lduhtrp.net/image-101660899-10671020',
-        'image_url': 'https://www.lduhtrp.net/image-101660899-10671020',
-        'source_domain': 'gamefly.com',
-        'price': 'From $9.50/month',
-        'product_id': 'gamefly-subscription',
-        'search_query': 'video game subscription gift gaming',
-        'interest_match': 'video games',
-        'interest_matches': {'video games', 'gaming', 'console gaming', 'playstation', 'xbox', 'nintendo', 'nintendo switch', 'ps5', 'esports', 'game streaming', 'twitch', 'competitive gaming'},
-        'priority': 2,
-        'brand': 'GameFly',
-        'advertiser_id': 'gamefly-cj',
-    },
-    {
-        # Link 10891486 — Used Game Best Sellers ($9.09 EPC, 10% commission)
-        'title': "GameFly — Pre-Played Video Games",
-        'link': 'https://www.tkqlhce.com/click-101660899-10891486',
-        'snippet': (
-            "Pre-played PS5, Xbox, and Nintendo Switch games in excellent condition — "
-            "original case and manuals included. A huge selection of titles at reduced prices."
-        ),
-        'image': 'https://www.ftjcfx.com/image-101660899-15520667',
-        'thumbnail': 'https://www.ftjcfx.com/image-101660899-15520667',
-        'image_url': 'https://www.ftjcfx.com/image-101660899-15520667',
-        'source_domain': 'gamefly.com',
-        'price': 'Varies by game',
-        'product_id': 'gamefly-used-games',
-        'search_query': 'used video games gift',
-        'interest_match': 'video games',
-        'interest_matches': {'video games', 'gaming', 'retro gaming', 'console gaming', 'playstation', 'xbox', 'nintendo'},
-        'priority': 3,
-        'brand': 'GameFly',
-        'advertiser_id': 'gamefly-cj',
-    },
-]
-
-_GAMEFLY_TRIGGER_INTERESTS = {
-    'video games', 'gaming', 'console gaming', 'playstation', 'xbox',
-    'nintendo', 'nintendo switch', 'ps5', 'esports', 'game streaming',
-    'twitch', 'competitive gaming', 'retro gaming', 'pc gaming',
-}
-
-
-# ---------------------------------------------------------------------------
 # GREATERGOOD — Static curated products (approved CJ partner, Feb 2026)
 # Advertiser ID (ADV_CID): 4046728
 # Evergreen Link ID 15734341 — deep-link enabled, $6.45 3-month EPC
@@ -903,106 +832,6 @@ _GROUNDLUXE_TRIGGER_INTERESTS = {
     'recovery', 'biohacking', 'self-care', 'health', 'pilates',
     'fitness', 'running', 'cycling', 'sports', 'chronic pain',
 }
-
-
-# ---------------------------------------------------------------------------
-# RUSSELL STOVER CHOCOLATES — Static curated products (approved CJ partner, Feb 2026)
-# Advertiser ID (ADV_CID): 4441453
-# Evergreen Link ID 15736776 — deep-link enabled, $1.50 7-day EPC
-#   Base: https://www.kqzyfj.com/click-101660899-15736776
-# Commission: 5%, 5-day referral period (short — must buy within 5 days), 1 occurrence
-# Non-commissionable: Gift Baskets, Gift Cards, Outlet items, Gift Wrap
-# T&C:
-#   - Trademark terms (Russell Stover, Whitman's, Build-A-Box, etc.) protected for SEM
-#     bidding only — editorial content use is permitted
-#   - Only CJ-provided images and creative
-#   - Only CJ-provided coupon codes
-#   - Email campaigns require prior written approval (not relevant — we don't email)
-# ---------------------------------------------------------------------------
-
-_RUSSELLSTOVER_ALL_PRODUCTS = [
-    {
-        # Evergreen link 15736776 — deep-link enabled (best general link)
-        'title': "Russell Stover Chocolates — Classic American Boxed Chocolates",
-        'link': 'https://www.kqzyfj.com/click-101660899-15736776',
-        'snippet': (
-            "Handcrafted American chocolates — assorted truffles, caramels, and creams "
-            "in classic gift boxes. A timeless, universally loved gift for any occasion."
-        ),
-        'image': 'https://www.tqlkg.com/image-101660899-12221994',
-        'thumbnail': 'https://www.tqlkg.com/image-101660899-12221994',
-        'image_url': 'https://www.tqlkg.com/image-101660899-12221994',
-        'source_domain': 'russellstover.com',
-        'price': 'From $12.99',
-        'product_id': 'russellstover-chocolates',
-        'search_query': 'boxed chocolates gift candy',
-        'interest_match': 'chocolate',
-        'interest_matches': {'chocolate', 'sweets', 'candy', 'confectionery', 'dessert', 'baking', 'gourmet food', 'foodie', 'entertaining'},
-        'priority': 3,
-        'brand': 'Russell Stover',
-        'advertiser_id': 'russellstover-cj',
-    },
-    {
-        # Link 12377127 — Build-A-Box custom chocolate box (compelling gift angle)
-        'title': "Russell Stover Build-A-Box — Custom Chocolate Gift",
-        'link': 'https://www.kqzyfj.com/click-101660899-12377127',
-        'snippet': (
-            "Build a personalized box of chocolates — choose your favorite flavors "
-            "from truffles, caramels, creams, and more. Available in four sizes."
-        ),
-        'image': 'https://www.lduhtrp.net/image-101660899-12222027',
-        'thumbnail': 'https://www.lduhtrp.net/image-101660899-12222027',
-        'image_url': 'https://www.lduhtrp.net/image-101660899-12222027',
-        'source_domain': 'russellstover.com',
-        'price': 'From $14.99',
-        'product_id': 'russellstover-buildabox',
-        'search_query': 'custom chocolate box personalized gift',
-        'interest_match': 'chocolate',
-        'interest_matches': {'chocolate', 'sweets', 'candy', 'confectionery', 'dessert', 'personalization', 'gourmet food', 'foodie'},
-        'priority': 3,
-        'brand': 'Russell Stover',
-        'advertiser_id': 'russellstover-cj',
-    },
-]
-
-_RUSSELLSTOVER_TRIGGER_INTERESTS = {
-    'chocolate', 'sweets', 'candy', 'confectionery', 'dessert',
-    'baking', 'gourmet food', 'foodie', 'entertaining',
-}
-
-
-def get_russellstover_products_for_profile(profile):
-    """
-    Return Russell Stover products when the profile has chocolate/sweets interests.
-
-    Static list using direct CJ click URLs. ADV_CID: 4441453.
-    Commission: 5%, 5-day cookie (short). NON-commissionable: Gift Baskets, Gift Cards.
-
-    Returns at most 1 product — MonthlyClubs already covers artisan chocolate subscriptions;
-    Russell Stover is the "classic American boxed chocolates" option.
-    """
-    interests = profile.get('interests', [])
-    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
-
-    scored = []
-    for p in _RUSSELLSTOVER_ALL_PRODUCTS:
-        score = 0
-        for key in p.get('interest_matches', set()):
-            if key in interest_names:
-                score += 2
-            elif any(key in n or n in key for n in interest_names):
-                score += 1
-        if score > 0:
-            scored.append((score, p))
-
-    if not scored:
-        return []
-
-    scored.sort(key=lambda x: -x[0])
-    # Prefer Build-A-Box when "personalization" matches; otherwise generic chocolates
-    result = [p for _, p in scored[:1]]
-    logger.info(f"Russell Stover: {len(result)} products matched profile interests {interest_names & _RUSSELLSTOVER_TRIGGER_INTERESTS}")
-    return result
 
 
 # ---------------------------------------------------------------------------
@@ -1318,40 +1147,6 @@ def get_greatergood_products_for_profile(profile):
     scored.sort(key=lambda x: -x[0])
     result = [p for _, p in scored[:1]]  # Max 1 — narrow niche
     logger.info(f"GreaterGood: {len(result)} products matched profile interests {interest_names & _GREATERGOOD_TRIGGER_INTERESTS}")
-    return result
-
-
-def get_gamefly_products_for_profile(profile):
-    """
-    Return GameFly products when the profile has matching gaming interests.
-
-    Static list using direct CJ click URLs. ADV_CID: 1132500.
-    Commission: $5/lead for subscriptions, 10% on used games/accessories.
-    NOTE: 0% commission on new games — only recommend rental or used game purchase.
-
-    Returns at most 1-2 products scored by interest match.
-    """
-    interests = profile.get('interests', [])
-    interest_names = {i.get('name', '').lower() for i in interests if i.get('name')}
-
-    scored = []
-    for p in _GAMEFLY_ALL_PRODUCTS:
-        score = 0
-        for key in p.get('interest_matches', set()):
-            if key in interest_names:
-                score += 2
-            elif any(key in n or n in key for n in interest_names):
-                score += 1
-        if score > 0:
-            scored.append((score, p))
-
-    if not scored:
-        return []
-
-    scored.sort(key=lambda x: -x[0])
-    # For gaming profiles, return both products; otherwise just the subscription
-    result = [p for _, p in scored[:2]]
-    logger.info(f"GameFly: {len(result)} products matched profile interests {interest_names & _GAMEFLY_TRIGGER_INTERESTS}")
     return result
 
 
@@ -2977,10 +2772,8 @@ def search_products_cj(profile, api_key, company_id=None, publisher_id=None, tar
         (get_winebasket_products_for_profile, "Winebasket/BabyBasket/Capalbo's"),
         (get_flowersfast_products_for_profile, "FlowersFast"),
         (get_fragranceshop_products_for_profile, "FragranceShop"),
-        (get_gamefly_products_for_profile, "GameFly"),
         (get_greatergood_products_for_profile, "GreaterGood"),
         (get_groundluxe_products_for_profile, "GroundLuxe"),
-        (get_russellstover_products_for_profile, "Russell Stover"),
         (get_ghirardelli_products_for_profile, "Ghirardelli"),
         (get_silverrushstyle_products_for_profile, "SilverRushStyle"),
     ]:

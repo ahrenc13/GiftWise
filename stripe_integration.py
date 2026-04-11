@@ -81,18 +81,19 @@ def create_one_time_checkout_session(customer_email, price_id, success_url, canc
         return None
 
     try:
-        session = stripe.checkout.Session.create(
-            customer_email=customer_email,
-            payment_method_types=['card'],
-            line_items=[{
+        client = stripe.StripeClient(STRIPE_SECRET_KEY)
+        session = client.checkout.sessions.create({
+            'customer_email': customer_email,
+            'payment_method_types': ['card'],
+            'line_items': [{
                 'price': price_id,
                 'quantity': 1,
             }],
-            mode='payment',
-            success_url=success_url + '?session_id={CHECKOUT_SESSION_ID}',
-            cancel_url=cancel_url,
-            metadata=metadata or {},
-        )
+            'mode': 'payment',
+            'success_url': success_url + '?session_id={CHECKOUT_SESSION_ID}',
+            'cancel_url': cancel_url,
+            'metadata': metadata or {},
+        })
         logger.info(f"Created one-time checkout for {customer_email}: {session.id}")
         return session.url
     except Exception as e:

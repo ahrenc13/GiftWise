@@ -1187,7 +1187,7 @@ AWIN_MAX_ROWS_PER_FEED = 5000
 AWIN_BUFFER_BYTES = 8 * 1024 * 1024
 
 # Domains hard-blocked from Awin (mirrors _AWIN_BLOCKED_DOMAINS in awin_searcher.py)
-_AWIN_SYNC_BLOCKED_ADVERTISER_NAMES = {"yadea", "posie and penn"}
+_AWIN_SYNC_BLOCKED_ADVERTISER_NAMES = {"yadea", "posie and penn", "king koil"}
 
 # Flat list of all catalog terms for interest tagging
 _ALL_CATALOG_TERMS: List[str] = [t for (t, _p, _c) in ALL_SYNC_TERMS]

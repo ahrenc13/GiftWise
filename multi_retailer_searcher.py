@@ -42,7 +42,6 @@ EBAY_NICHE_CAP = 7                  # max total eBay products across all weak in
 
 def search_products_multi_retailer(
     profile,
-    etsy_key=None,
     awin_data_feed_api_key=None,
     ebay_client_id=None,
     ebay_client_secret=None,
@@ -61,7 +60,6 @@ def search_products_multi_retailer(
     Search across multiple retailers.
 
     Strategy:
-    - Try Etsy first (best for personalized gifts)
     - Add Awin products (feed-based)
     - Add eBay products (Browse API)
     - Add ShareASale products (brand names, legacy)
@@ -75,7 +73,7 @@ def search_products_multi_retailer(
     """
     logger.info(f"Multi-retailer search: target {target_count} products")
     logger.info(
-        f"Available: Etsy={bool(etsy_key)}, Awin={bool(awin_data_feed_api_key)}, eBay={bool(ebay_client_id and ebay_client_secret)}, ShareASale={bool(shareasale_id)}, CJ={bool(cj_api_key)}, Amazon={bool(amazon_key)}"
+        f"Available: Awin={bool(awin_data_feed_api_key)}, eBay={bool(ebay_client_id and ebay_client_secret)}, ShareASale={bool(shareasale_id)}, CJ={bool(cj_api_key)}, Amazon={bool(amazon_key)}"
     )
 
     all_products = []
@@ -212,17 +210,6 @@ def search_products_multi_retailer(
     # Each callable captures its credentials via closure and returns a product list.
     # Failures are isolated — one retailer timing out doesn't block the others.
     retailer_tasks = []
-
-    if etsy_key:
-        def _run_etsy():
-            from etsy_searcher import search_products_etsy
-            _notify('Etsy', searching=True)
-            products = search_products_etsy(profile, etsy_key, target_count=per_vendor_target)
-            _notify('Etsy', count=len(products), done=True)
-            return 'Etsy', products
-        retailer_tasks.append(_run_etsy)
-    else:
-        logger.info("Etsy API key not set - skipping Etsy")
 
     if awin_data_feed_api_key:
         def _run_awin():

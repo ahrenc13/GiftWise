@@ -354,7 +354,6 @@ class RecommendationService:
 
         search_result = self.search_products_multi_retailer(
             profile_for_backend,
-            etsy_key=os.environ.get('ETSY_API_KEY', ''),
             awin_data_feed_api_key=os.environ.get('AWIN_DATA_FEED_API_KEY', ''),
             ebay_client_id=os.environ.get('EBAY_CLIENT_ID', ''),
             ebay_client_secret=os.environ.get('EBAY_CLIENT_SECRET', ''),

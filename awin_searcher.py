@@ -80,6 +80,7 @@ AWIN_MAX_PRICE_USD = 1500
 _AWIN_BLOCKED_DOMAINS = {
     "store.yadea.com",
     "posieandpenn.co.uk",
+    "kingkoil.com",   # Mattresses — not gifts
 }
 
 # ---------------------------------------------------------------------------

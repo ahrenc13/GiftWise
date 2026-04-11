@@ -4505,19 +4505,21 @@ def admin_signups():
 
     users = []
     try:
-        with shelve.open(USER_DB, flag='r') as db:
-            for uid, data in db.items():
-                if not isinstance(data, dict):
-                    continue
-                email = data.get('email', uid)
-                users.append({
-                    'email': email,
-                    'relationship': data.get('relationship', ''),
-                    'recipient_type': data.get('recipient_type', ''),
-                    'created_at': data.get('created_at', ''),
-                    'utm_source': data.get('utm_source') or data.get('referrer') or '',
-                    'tier': data.get('subscription_tier', 'free'),
-                })
+        if REFACTORED_MODULES_AVAILABLE and get_user_repository:
+            all_records = get_user_repository().list_all()
+        else:
+            all_records = []
+            with shelve.open(USER_DB, flag='r') as db:
+                all_records = [v for k, v in db.items() if k.startswith('user_') and isinstance(v, dict)]
+        for data in all_records:
+            users.append({
+                'email': data.get('email', ''),
+                'relationship': data.get('relationship', ''),
+                'recipient_type': data.get('recipient_type', ''),
+                'created_at': data.get('created_at', ''),
+                'utm_source': data.get('utm_source') or data.get('referrer') or '',
+                'tier': data.get('subscription_tier', 'free'),
+            })
     except Exception as e:
         logger.error(f"admin_signups error: {e}")
 

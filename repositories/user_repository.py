@@ -165,6 +165,15 @@ class ShelveUserRepository:
             logger.error(f"Error checking user existence {user_id}: {e}")
             return False
 
+    def list_all(self) -> list:
+        """Return all user records as a list of dicts."""
+        try:
+            with self._db_connection() as db:
+                return [v for k, v in db.items() if k.startswith('user_') and isinstance(v, dict)]
+        except Exception as e:
+            logger.error(f"Error listing users: {e}")
+            return []
+
 
 # Singleton instance (can be swapped for testing/different backends)
 _user_repository: Optional[UserRepository] = None

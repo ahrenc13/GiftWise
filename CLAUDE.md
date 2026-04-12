@@ -741,9 +741,25 @@ With caveat if relevant: `I think it lets you specify budget but no idea how wel
 
 ---
 
-## Current Priorities (Updated Apr 11, 2026)
+## Current Priorities (Updated Apr 12, 2026)
 
 **Session start protocol:** Surface the top 3 READY items before doing anything else. If the user hasn't mentioned a specific task, start there.
+
+---
+
+### Recently Completed (Apr 11–12, 2026)
+
+| Task | Status |
+|------|--------|
+| **Etsy removed from pipeline** | ✅ Done — dead code removed from `multi_retailer_searcher.py` + `recommendation_service.py` |
+| **Stripe $2.99 gift emergency** | ✅ End-to-end confirmed working — checkout (direct HTTP) + webhook (manual HMAC, bypasses broken SDK v7) |
+| **Post-payment redirect** | ✅ Fixed — `gift_emergency_success.html` now sends users to `/connect-platforms` not `/` |
+| **Thumbs up/down feedback** | ✅ Live on recommendations page → `/api/feedback` → `feedback:thumbs_up/down` events |
+| **Admin signups list** | ✅ `/admin/signups` shows all signups, CSV download; repository path fixed to `/data/giftwise_db` |
+| **405 URL logging** | ✅ Done in branch — `[405] METHOD url` now logged |
+| **Google Search Console sitemap** | ✅ Submitted — `giftwise.fit/sitemap.xml` |
+| **Reddit Wave 1** | ✅ Done — DMs sent to r/GiftIdeas targets; posts live on r/SideProject, r/ChatGPT, r/InternetIsBeautiful; r/gifts public comments sent |
+| **Branch needs merge** | ⚠️ `claude/reddit-gifts-outreach-i1sje` has all of the above — merge to main to deploy |
 
 ---
 
@@ -751,14 +767,13 @@ With caveat if relevant: `I think it lets you specify budget but no idea how wel
 
 | # | Task | What to do |
 |---|------|-----------|
-| 1 | **Reddit Wave 1 (in progress)** | r/GiftIdeas: DMs only (comments banned). r/gifts: public comments. r/SideProject, r/ChatGPT, r/InternetIsBeautiful: one self-promo post per sub. See Reddit Outreach section above for voice rules and tool drop format. Ask Claude to draft pointing at `docs/VOICE.md`. |
+| 1 | **Merge branch to main** | `claude/reddit-gifts-outreach-i1sje` — all Apr 11–12 fixes. Nothing deploys until this merges. |
 | 2 | **Take down 3 placeholder Etsy guides** | `guide_etsy_home_decor.html`, `guide_etsy_jewelry.html`, `guide_etsy_under_50.html` have placeholder content — SEO liability. Add 301 redirects: home_decor → `/guides/gifts-for-her`, jewelry → `/guides/gifts-for-her`, under_50 → `/guides`. Remove from sitemap. |
 | 3 | **Drop Russell Stover + GameFly from CJ sync** | Low-quality / irrelevant merchants in catalog. Add to exclusion list in `catalog_sync.py`. |
 | 4 | **Block King Koil in Awin** | Add to merchant exclusion list in `awin_searcher.py`. |
-| 5 | **14-Item Phase 2: Sonnet-safe tasks** | Template UI for splurge tile (`recommendations.html`) + eBay niche-only scoping (`multi_retailer_searcher.py`). Full spec in the 14-Item section below. |
-| 6 | **Catalog-First Architecture Phase 2** | Tasks 1-3 + 5 (remove live CJ/Awin from session-time, wire eBay niche-only, retune diversity cap). Full spec in Pending Opus Tasks → Catalog-First section. |
-| 7 | **Google Search Console sitemap** | Verification route already live at `/googlef18ce1baab96164b.html`. Go to Search Console → verify ownership → submit `giftwise.fit/sitemap.xml`. 2-minute user action. |
-| 8 | **Add URL logging to 405 handler** | Add `request.url` + `request.method` to the 405 error handler in `giftwise_app.py`. 405s escalating — 6 incidents on Apr 10 spread throughout the day. Need to know which endpoint bots are hitting before this gets noisier. |
+| 5 | **Reddit Wave 2** | Continue r/GiftIdeas DMs + r/gifts comments as new posts appear. Reddit API credentials still pending — doing manually for now. |
+| 6 | **14-Item Phase 2: Sonnet-safe tasks** | Template UI for splurge tile (`recommendations.html`) + eBay niche-only scoping (`multi_retailer_searcher.py`). Full spec in the 14-Item section below. |
+| 7 | **Catalog-First Architecture Phase 2** | Tasks 1-3 + 5 (remove live CJ/Awin from session-time, wire eBay niche-only, retune diversity cap). Full spec in Pending Opus Tasks → Catalog-First section. |
 
 ---
 

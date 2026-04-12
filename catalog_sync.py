@@ -100,6 +100,14 @@ MIN_SCORE_TO_STORE = 0.15
 # TikTok Shop advertiser ID in CJ — used for TikTok-specific queries
 TIKTOK_SHOP_ADV_ID = "7563286"
 
+# CJ advertisers whose products should never enter the catalog.
+# GameFly: video game rental service — products are subscriptions, not gifts.
+# Russell Stover: bulk/generic candy, low-margin, poor gift presentation.
+_CJ_EXCLUDED_ADVERTISERS = {
+    "gamefly",
+    "russell stover",
+}
+
 
 # ---------------------------------------------------------------------------
 # INTEREST TERM CATALOG
@@ -939,9 +947,13 @@ def _fetch_cj_page(keyword: str, page: int = 0,
         except (TypeError, ValueError):
             price_val = 0.0
 
+        advertiser_name = item.get('advertiserName', 'CJ')
+        if advertiser_name.lower() in _CJ_EXCLUDED_ADVERTISERS:
+            continue
+
         parsed.append({
             'product_id':    item.get('id', ''),
-            'retailer':      item.get('advertiserName', 'CJ'),
+            'retailer':      advertiser_name,
             'title':         item.get('title', ''),
             'description':   (item.get('description') or '')[:500],
             'price':         price_val,

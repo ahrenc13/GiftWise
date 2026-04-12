@@ -7,6 +7,10 @@ Date: January 2026
 """
 
 import os
+import hmac
+import hashlib
+import json
+import time
 import stripe
 import logging
 from datetime import datetime
@@ -135,6 +139,48 @@ def create_portal_session(customer_id, return_url):
         return None
 
 
+def _verify_and_parse_webhook(payload, sig_header, secret):
+    """
+    Manually verify Stripe webhook signature (bypasses broken SDK v7).
+    Stripe signs webhooks with HMAC-SHA256 using the endpoint's signing secret.
+    Header format: t=TIMESTAMP,v1=SIG1,v1=SIG2,...
+    """
+    parts = {}
+    for part in sig_header.split(','):
+        k, _, v = part.partition('=')
+        k = k.strip()
+        if k == 'v1':
+            parts.setdefault('v1', []).append(v.strip())
+        else:
+            parts[k] = v.strip()
+
+    timestamp = parts.get('t')
+    signatures = parts.get('v1', [])
+
+    if not timestamp or not signatures:
+        raise ValueError("Invalid Stripe-Signature header format")
+
+    try:
+        ts = int(timestamp)
+        if abs(time.time() - ts) > 300:
+            raise ValueError("Webhook timestamp too old (replay attack?)")
+    except (TypeError, ValueError) as e:
+        raise ValueError(f"Bad timestamp: {e}")
+
+    body = payload if isinstance(payload, str) else payload.decode('utf-8')
+    signed_payload = f"{timestamp}.{body}"
+    expected = hmac.new(
+        secret.encode('utf-8'),
+        signed_payload.encode('utf-8'),
+        hashlib.sha256,
+    ).hexdigest()
+
+    if not any(hmac.compare_digest(expected, sig) for sig in signatures):
+        raise ValueError("No signatures found matching the expected signature for payload")
+
+    return json.loads(body)
+
+
 def handle_webhook(payload, sig_header):
     """
     Handle Stripe webhook events
@@ -157,16 +203,11 @@ def handle_webhook(payload, sig_header):
         return None
     
     try:
-        event = stripe.Webhook.construct_event(
-            payload, sig_header, STRIPE_WEBHOOK_SECRET
-        )
-    except ValueError as e:
-        logger.error(f"Invalid webhook payload: {e}")
-        return None
-    except stripe.error.SignatureVerificationError as e:
+        event = _verify_and_parse_webhook(payload, sig_header, STRIPE_WEBHOOK_SECRET)
+    except Exception as e:
         logger.error(f"Invalid webhook signature: {e}")
         return None
-    
+
     event_type = event['type']
     data = event['data']['object']
     

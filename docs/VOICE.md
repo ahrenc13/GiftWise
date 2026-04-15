@@ -236,6 +236,32 @@ If the question has a specific clear answer, answer it and stop. Dropping GiftWi
 
 3-5 sentences. Two short paragraphs at most. If it takes more than that, the advice is too complicated.
 
+### Casual openers are fine
+
+"Dang," "honestly," "huh," "oh man" — these are how people actually talk. Don't polish them out. A casual opener signals a human in the thread, not a content machine. Don't manufacture one if it doesn't fit, but don't sand it off if it does.
+
+### Cut setup sentences
+
+Don't preview the advice you're about to give. "Something that acknowledges her specifically will land better than anything generic" is a setup sentence — it announces what you're about to say instead of saying it. Lead with the actual advice. If the advice is good, the reader will feel it without being told to.
+
+This is distinct from the needle drop (which comes after). The setup sentence comes before. Both are dead weight.
+
+### Compressed colloquial over writerly
+
+"Hard bid" instead of "genuinely a lot to hold." "Legit impressive" instead of "genuinely impressive." The colloquial form earns more trust in Reddit threads because it doesn't sound like someone who sat down to write. The adverb kill list still applies — cut "genuinely," "actually," "really" — but colloquial intensifiers like "legit" are different. They're register, not filler.
+
+### Soften the GiftWise drop
+
+"The tool at giftwise.fit seems built exactly for that" lands better than "that's exactly the problem giftwise.fit was built for." The "seems" is honest — you're not the product's PR person. Third-party distanced framing ("the tool at") reads as discovery, not promotion. This is already in the tool drop section but worth stating as a rule: never sound like you're selling it. Sound like you found it.
+
+### Avoid hyperbole in product descriptions
+
+"Well-known" not "iconic." "Good" not "exceptional." "Solid" not "impressive" (unless "legit impressive" fits the register). Overstatement is the tell of someone who doesn't actually know the product — it sounds like a description written from a product page. Understatement reads as credibility.
+
+### "Might" over "often" for advice
+
+"A donation to a rescue might mean more than anything physical" not "often means more." You don't know this person or this situation. "Might" is honest. "Often" claims authority over a population you've never surveyed.
+
 ---
 
 ## What to Do in Future Sessions

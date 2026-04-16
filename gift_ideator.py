@@ -81,6 +81,13 @@ RULES
 - search_terms must be concrete enough to actually return results on Google
 - price_range must be realistic for this type of item
 
+SPLURGE PICK
+Also generate one splurge concept — the nicest version of something that fits \
+this person, or an extravagant experience. Price: ${splurge_min}–${splurge_ceiling}. \
+This should feel like a "if money were no object" pick that still makes sense \
+for who they are. Apply the same quality bar: bridges signals, specific, \
+answers why they wouldn't buy it themselves.
+
 Return JSON only. No markdown fences, no explanation before or after.
 
 {{
@@ -96,8 +103,28 @@ Return JSON only. No markdown fences, no explanation before or after.
       "interest_match": "primary interest label",
       "confidence_level": "safe_bet or adventurous"
     }}
-  ]
+  ],
+  "splurge_concept": {{
+    "name": "3-7 word concept label",
+    "description": "1-2 sentences",
+    "why_perfect": "Why this lands — specific to their signals",
+    "signal_intersection": "Which signals this bridges",
+    "search_terms": ["specific search query 1", "specific search query 2"],
+    "gift_type": "physical",
+    "price_range": "$X\u2013$Y (must be ${splurge_min}–${splurge_ceiling})",
+    "interest_match": "primary interest label",
+    "confidence_level": "adventurous"
+  }}
 }}"""
+
+# Splurge ceiling by budget category — mirrors inventory mode behavior
+_SPLURGE_CEILINGS = {
+    'budget': 300,
+    'moderate': 500,
+    'premium': 1000,
+    'luxury': 1500,
+}
+_SPLURGE_MIN = 200
 
 
 def _format_profile_for_prompt(profile: Dict) -> Dict[str, str]:
@@ -155,6 +182,7 @@ def _format_profile_for_prompt(profile: Dict) -> Dict[str, str]:
         'aesthetic_line': aesthetic_line,
         'price_line': price_line,
         'location_line': location_line,
+        'budget_category': budget_cat,
     }
 
 
@@ -184,7 +212,7 @@ def ideate_gifts(
         {
             'product_gifts': [list of concept dicts],
             'experience_gifts': [],
-            'splurge_item': None,
+            'splurge_item': concept dict with is_splurge=True, or None,
         }
         Each concept dict has: name, description, why_perfect, search_terms,
         gift_type, price_range, interest_match, confidence_level, signal_intersection,
@@ -194,6 +222,8 @@ def ideate_gifts(
 
     # Build profile summary
     fields = _format_profile_for_prompt(profile)
+    budget_category = fields.pop('budget_category', 'moderate')
+    splurge_ceiling = _SPLURGE_CEILINGS.get(budget_category, 500)
 
     ontology_section = ''
     if ontology_briefing and ontology_briefing.strip():
@@ -202,15 +232,17 @@ def ideate_gifts(
     prompt = _IDEATOR_PROMPT.format(
         rec_count=rec_count,
         ontology_section=ontology_section,
+        splurge_min=_SPLURGE_MIN,
+        splurge_ceiling=splurge_ceiling,
         **fields,
     )
 
-    logger.info(f"IDEATOR: Generating {rec_count} gift concepts (model={model})")
+    logger.info(f"IDEATOR: Generating {rec_count} concepts + splurge (ceiling=${splurge_ceiling}, model={model})")
 
     try:
         response = claude_client.messages.create(
             model=model,
-            max_tokens=3500,
+            max_tokens=4000,
             system=_IDEATOR_SYSTEM,
             messages=[{'role': 'user', 'content': prompt}],
         )
@@ -227,7 +259,8 @@ def ideate_gifts(
 
         data = json.loads(raw)
         concepts = data.get('gift_concepts', [])
-        logger.info(f"IDEATOR: Parsed {len(concepts)} concepts")
+        splurge_raw = data.get('splurge_concept')
+        logger.info(f"IDEATOR: Parsed {len(concepts)} concepts, splurge={'yes' if splurge_raw else 'no'}")
 
     except json.JSONDecodeError as e:
         logger.error(f"IDEATOR: JSON parse failed: {e}")
@@ -237,14 +270,12 @@ def ideate_gifts(
         logger.error(f"IDEATOR: Claude call failed: {e}")
         return {'product_gifts': [], 'experience_gifts': [], 'splurge_item': None}
 
-    # Convert concepts to product_gift format
-    product_gifts = []
-    for concept in concepts:
+    # Convert a raw concept dict to product_gift format
+    def _concept_to_gift(concept, is_splurge=False):
         search_terms = concept.get('search_terms') or []
         primary_search = search_terms[0] if search_terms else concept.get('name', '')
         search_url = f"https://www.google.com/search?q={quote(primary_search)}"
-
-        product_gifts.append({
+        return {
             'name': concept.get('name', 'Gift Concept'),
             'description': concept.get('description', ''),
             'why_perfect': concept.get('why_perfect', ''),
@@ -253,16 +284,24 @@ def ideate_gifts(
             'gift_type': 'physical',
             'price_range': concept.get('price_range', ''),
             'interest_match': concept.get('interest_match', ''),
-            'confidence_level': concept.get('confidence_level', 'safe_bet'),
+            'confidence_level': concept.get('confidence_level', 'adventurous' if is_splurge else 'safe_bet'),
             'is_concept': True,
+            'is_splurge': is_splurge,
             'where_to_buy': 'Search',
             'product_url': search_url,
             'purchase_link': search_url,
             'image_url': '',
-        })
+        }
+
+    product_gifts = [_concept_to_gift(c) for c in concepts]
+
+    splurge_item = None
+    if splurge_raw:
+        splurge_item = _concept_to_gift(splurge_raw, is_splurge=True)
+        logger.info(f"IDEATOR: Splurge concept: '{splurge_item['name']}' ({splurge_item['price_range']})")
 
     return {
         'product_gifts': product_gifts,
         'experience_gifts': [],
-        'splurge_item': None,
+        'splurge_item': splurge_item,
     }

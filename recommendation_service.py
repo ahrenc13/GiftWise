@@ -123,6 +123,14 @@ class RecommendationService:
             self.get_experience_providers = None
 
         try:
+            from gift_ideator import ideate_gifts
+            self.ideate_gifts = ideate_gifts
+            self.concept_mode_available = True
+        except ImportError:
+            self.ideate_gifts = None
+            self.concept_mode_available = False
+
+        try:
             from revenue_optimizer import intelligent_product_filter, track_profile_interests, track_curation_outcome
             self.intelligent_product_filter = intelligent_product_filter
             self.track_profile_interests = track_profile_interests
@@ -186,6 +194,14 @@ class RecommendationService:
             enriched_profile, enhanced_search_terms, quality_filters
         )
 
+        # CONCEPT MODE: Skip inventory entirely, ideate directly from profile signals.
+        # Enable with GIFT_CONCEPT_MODE=true in Railway env vars.
+        if os.environ.get('GIFT_CONCEPT_MODE', '').lower() == 'true':
+            return self._generate_concept_recommendations(
+                profile_for_backend, enriched_profile, enhanced_search_terms,
+                recipient_type, relationship, recipient_age, recipient_gender
+            )
+
         # STEP 3: Search retailers for products
         products, splurge_candidates = self._search_products(
             user_id, profile_for_backend, enhanced_search_terms
@@ -228,6 +244,87 @@ class RecommendationService:
         recommendations = self._process_images(user_id, recommendations)
 
         logger.info(f"Generation complete! {len(recommendations)} recommendations generated.")
+        return recommendations
+
+    def _generate_concept_recommendations(
+        self,
+        profile: Dict,
+        enriched_profile: Optional[Dict],
+        enhanced_search_terms: List[str],
+        recipient_type: str,
+        relationship: str,
+        recipient_age: Optional[int],
+        recipient_gender: Optional[str],
+    ) -> List[Dict]:
+        """
+        Concept mode: skip inventory, generate gift concepts from profile signals only.
+
+        Returns a list of recommendation dicts with search links instead of
+        affiliate URLs. Enable with GIFT_CONCEPT_MODE=true env var.
+        """
+        if not self.concept_mode_available or not self.ideate_gifts:
+            raise ValueError("Concept mode not available — gift_ideator.py missing.")
+
+        logger.info("CONCEPT MODE: Skipping inventory search, generating concepts directly")
+        self.progress_callback(
+            stage='curating',
+            stage_label='Reading the signals — building a gift map just for them...'
+        )
+
+        # Get ontology briefing (zero-cost enrichment — still useful for ideation)
+        ontology_briefing = None
+        try:
+            from interest_ontology import enrich_profile_with_ontology
+            result = enrich_profile_with_ontology(profile)
+            ontology_briefing = result.get('curator_briefing', '')
+            if ontology_briefing:
+                logger.info(f"CONCEPT MODE: Ontology briefing ready ({len(ontology_briefing)} chars)")
+        except Exception as e:
+            logger.warning(f"CONCEPT MODE: Ontology unavailable ({e}), continuing without")
+
+        # Ideate concepts
+        ideated = self.ideate_gifts(
+            profile, recipient_type, relationship, self.claude_client,
+            rec_count=10, ontology_briefing=ontology_briefing,
+            model=self.curator_model,
+        )
+
+        concepts = ideated.get('product_gifts', [])
+        if not concepts:
+            raise ValueError("Unable to generate gift concepts. Please try again.")
+
+        logger.info(f"CONCEPT MODE: {len(concepts)} concepts generated")
+
+        self.progress_callback(
+            stage='images',
+            stage_label=f'Found {len(concepts)} gift ideas. Wrapping up...'
+        )
+
+        # Format as recommendations (no images, no affiliate links)
+        recommendations = []
+        for c in concepts:
+            recommendations.append({
+                'name': c.get('name', 'Gift Concept'),
+                'description': c.get('description', ''),
+                'why_perfect': c.get('why_perfect', ''),
+                'price_range': c.get('price_range', ''),
+                'where_to_buy': 'Search',
+                'product_url': c.get('purchase_link', ''),
+                'purchase_link': c.get('purchase_link', ''),
+                'image_url': '',
+                'image': '',
+                'gift_type': 'physical',
+                'confidence_level': c.get('confidence_level', 'safe_bet'),
+                'is_splurge': False,
+                'is_concept': True,
+                'interest_match': c.get('interest_match', ''),
+                'signal_intersection': c.get('signal_intersection', ''),
+                'search_terms': c.get('search_terms', []),
+                'is_direct_link': False,
+                'link_source': 'concept_search',
+            })
+
+        logger.info(f"CONCEPT MODE: {len(recommendations)} recommendations assembled")
         return recommendations
 
     def _build_profile(self, user_id: str, platforms: List[Dict], recipient_type: str,

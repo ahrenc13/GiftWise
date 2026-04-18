@@ -272,7 +272,7 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
             # Generate hash from platform data for cache lookup.
             # Include a prompt version so cache is invalidated when the
             # analysis prompt changes (e.g. interest attribution fix).
-            _PROMPT_VERSION = "2026-04-08-gift-context-v2"
+            _PROMPT_VERSION = "2026-04-18-human-pet-disambig-v1"
             cache_data = {
                 'instagram': platforms.get('instagram', {}).get('data', {}),
                 'tiktok': platforms.get('tiktok', {}).get('data', {}),
@@ -798,6 +798,13 @@ SIGNAL PRIORITY (use these to weight your analysis):
 
 Extract and structure the following information:
 
+HUMAN vs PET DISAMBIGUATION (check this before interest extraction):
+When a recurring name appears in the data (Harlow, Max, Lucy, Bella, Charlie, Cooper, Luna, Rocky, etc.), decide whether it refers to a human (child, partner, family member) or an animal using surrounding evidence.
+- Human child cues: birthday cake + candles, age in years ("turned 3", "her first birthday"), school/daycare/preschool references, height/growth comments, photos with cribs/car seats/strollers, first steps/first words language, clothing sizes in toddler/kid terms.
+- Dog/pet cues: "pup", "puppy", "walks", "good boy/girl", paw emoji, leash, vet visits, breed mentions ("golden retriever"), dog park references.
+- DEFAULT WHEN AMBIGUOUS: treat as human child. A false-positive child produces better gifts than a false-positive dog.
+- If the name refers to a human child (or any human), do NOT extract "dog ownership", "pet parent", or similar animal-care interests on the basis of posts about that person.
+
 1. **SPECIFIC INTERESTS** (not generic categories - specific, evidence-based interests):
    - List 8-12 specific interests with concrete evidence. When the person has many posts/videos (e.g. 50+), you MUST extract multiple distinct interests—do NOT collapse everything into one or two themes.
    - For each interest: name, evidence from posts, intensity (casual/moderate/passionate), type (aspirational|current)
@@ -815,6 +822,7 @@ Extract and structure the following information:
      Look for first-person language ("I love", "my new", "I can't stop") vs. third-person ("my brother's", "her favorite", "he caught", "proud of him/her").
    - **ENGAGEMENT WEIGHTING**: Posts with significantly higher likes/views than the account's average signal core interests. A post with 5x the usual engagement reveals what resonates most. When the data includes engagement metrics, weight interests from high-engagement content higher than passing mentions.
    - **META-TRAIT BAN**: DO NOT extract personality attributes or meta-traits as interests. "Thoughtful gift giving", "being a good friend", "kindness", "caring for others" — these are personality descriptors, not shoppable interests. If you find yourself writing an interest that cannot be searched on Amazon or bought in a store, delete it.
+   - **signal_quotes** (required, 0-3 per interest): Include up to 3 VERBATIM snippets from the raw data that support this interest — actual caption fragments, hashtags, tagged account names, artist names, place names, show titles, author names, or other specific entities mentioned. Keep each quote under 120 characters; truncate mid-phrase with an ellipsis if needed. Prefer concrete proper nouns over adjective-only fragments (e.g. "just finished Abundance by @ezraklein" beats "loves reading"). If the raw data does not contain a usable quote for this interest, return an empty list — DO NOT invent or paraphrase. These quotes drive downstream gift ideation — they are the difference between a generic "political activism" gift and one grounded in THIS person's actual signals.
    - Example: "Thai cooking (passionate, current, active) - Posted pad thai 5x, tagged #thaifood 8x"
 
 1b. **OWNERSHIP SIGNALS** (what they ALREADY HAVE — critical for avoiding duplicate gifts):
@@ -868,7 +876,8 @@ Return ONLY a JSON object with this structure:
       "type": "aspirational|current",
       "is_work": false,
       "activity_type": "passive|active|both",
-      "confidence": "high|medium|low"
+      "confidence": "high|medium|low",
+      "signal_quotes": ["verbatim quote or entity from the data", "another verbatim quote", "third verbatim quote — up to 3, empty list if none are genuinely in the source data"]
     }}
   ],
   "location_context": {{

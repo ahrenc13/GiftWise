@@ -37,23 +37,35 @@ _IDEATOR_SYSTEM = (
 _IDEATOR_PROMPT = """\
 Generate {rec_count} gift concepts for this person.
 
-You have NO product catalog. Ideate freely. Describe the KIND of thing that \
-would land — specific enough to find on Google or Amazon in under 60 seconds, \
-not so specific you're naming a single SKU.
+You have NO product catalog. Ideate freely from their actual signals — the raw \
+texture of who they are, not a tidied category label. The quotes below are the \
+hero of this work. The interest names are shorthand; the quotes are the person.
 
 {ontology_section}\
 RECIPIENT PROFILE
-Interests: {interests_summary}
+
+{interest_blocks}
+
 {ownership_line}\
 {aesthetic_line}\
 {price_line}\
 {location_line}
-HOW STRONG CONCEPTS WORK
+STAGE A — PORTRAIT (write this first, before any concepts)
+
+Write one sentence describing this specific person. Reference their actual \
+quotes. Not the category they fall into. Not "she's into political activism" — \
+something like "she attends Indianapolis school-board meetings, quotes Ezra \
+Klein, and just finished reading Abundance." The portrait forces the concepts \
+that follow to fit THIS person rather than the noun on the interest label.
+
+Then generate concepts that match the portrait.
+
+STAGE B — CONCEPTS
 
 A concept lands when it:
-- Bridges 2+ of this person's interests. The intersection is where the \
-interesting gifts live. "Indie music × thrifting × sustainability" might suggest \
-a restored vintage audio piece — not a band t-shirt.
+- Bridges 2+ of this person's specific signals (the quotes, not just the labels). \
+The intersection is where the interesting gifts live. "Indie music × thrifting × \
+sustainability" might suggest a restored vintage audio piece — not a band t-shirt.
 - Names a specific kind of object or experience, not a category. \
 "Small-batch natural wine club, farm-direct subscription" is a concept. \
 "Wine gift" is not.
@@ -66,10 +78,13 @@ A concept fails when it:
 - Restates an interest + noun ("into coffee → coffee mug", "hiker → hiking boots")
 - Duplicates something they already own (see ownership signals above)
 - Could appear unchanged on a generic gift guide
+- Could have been generated from just the interest label without the quotes. \
+If you could remove the quotes above and still arrive at this concept, it's too \
+generic. Regenerate from the quotes, not the label.
 
 VOICE RULES FOR why_perfect
-- Reference specific signals from this profile, not generic praise
-- No adverbs: cut "genuinely", "really", "actually", "truly"
+- Reference specific quotes or evidence from this profile, not generic praise
+- No adverbs: cut "genuinely", "really", "actually", "truly", "just"
 - No needle drops: don't end with "that's why this works" or "that's the point"
 - No "perfect gift" or "they'll absolutely love it" — describe the fit, not the feeling
 - 2-3 sentences max
@@ -84,19 +99,20 @@ RULES
 SPLURGE PICK
 Also generate one splurge concept — the nicest version of something that fits \
 this person, or an extravagant experience. Price: ${splurge_min}–${splurge_ceiling}. \
-This should feel like a "if money were no object" pick that still makes sense \
-for who they are. Apply the same quality bar: bridges signals, specific, \
-answers why they wouldn't buy it themselves.
+This should feel like an "if money were no object" pick that still makes sense \
+for who they are. Apply the same quality bar: bridges signals, grounded in their \
+actual quotes, specific, answers why they wouldn't buy it themselves.
 
 Return JSON only. No markdown fences, no explanation before or after.
 
 {{
+  "portrait": "one sentence describing this specific person, grounded in their quotes — not the category",
   "gift_concepts": [
     {{
       "name": "3-7 word concept label (not a brand name, a concept)",
       "description": "1-2 sentences: what this is specifically and why it fits",
-      "why_perfect": "Why this lands for THIS person. Specific. References their actual signals.",
-      "signal_intersection": "Which 2+ interests this bridges, or the dominant single signal",
+      "why_perfect": "Why this lands for THIS person. Specific. References their actual signals or quotes.",
+      "signal_intersection": "Which 2+ interests or quotes this bridges, or the dominant single signal",
       "search_terms": ["specific search query 1", "specific search query 2"],
       "gift_type": "physical",
       "price_range": "$X\u2013$Y",
@@ -107,7 +123,7 @@ Return JSON only. No markdown fences, no explanation before or after.
   "splurge_concept": {{
     "name": "3-7 word concept label",
     "description": "1-2 sentences",
-    "why_perfect": "Why this lands — specific to their signals",
+    "why_perfect": "Why this lands — specific to their signals or quotes",
     "signal_intersection": "Which signals this bridges",
     "search_terms": ["specific search query 1", "specific search query 2"],
     "gift_type": "physical",
@@ -128,24 +144,44 @@ _SPLURGE_MIN = 200
 
 
 def _format_profile_for_prompt(profile: Dict) -> Dict[str, str]:
-    """Extract and format key signals from profile dict for the ideation prompt."""
+    """Extract and format key signals from profile dict for the ideation prompt.
+
+    Each interest is rendered as a block with its verbatim signal_quotes so the
+    ideator reasons over raw evidence rather than a tidied category label.
+    """
     interests = profile.get('interests', [])
 
-    interest_parts = []
+    blocks = []
     for i in interests:
         name = (i.get('name') or '').strip()
         if not name:
             continue
         intensity = (i.get('intensity') or '').strip()
-        evidence = (i.get('evidence') or i.get('description') or '').strip()[:120]
-        part = name
-        if intensity:
-            part += f" ({intensity})"
-        if evidence:
-            part += f" — {evidence}"
-        interest_parts.append(part)
+        evidence = (i.get('evidence') or i.get('description') or '').strip()[:180]
+        raw_quotes = i.get('signal_quotes') or []
 
-    interests_summary = '; '.join(interest_parts) if interest_parts else 'not specified'
+        header = f"- {name}"
+        if intensity:
+            header += f" ({intensity})"
+        lines = [header]
+        if evidence:
+            lines.append(f"  evidence: {evidence}")
+
+        cleaned = []
+        for q in raw_quotes:
+            if not q:
+                continue
+            q_str = str(q).strip().replace('\n', ' ').replace('\r', '')
+            if q_str:
+                cleaned.append(q_str[:120])
+        if cleaned:
+            lines.append("  quotes:")
+            for q in cleaned[:3]:
+                lines.append(f'    "{q}"')
+
+        blocks.append('\n'.join(lines))
+
+    interest_blocks = '\n'.join(blocks) if blocks else '- (no interests identified)'
 
     # Ownership signals — things to avoid
     ownership = profile.get('ownership_signals', [])
@@ -177,7 +213,7 @@ def _format_profile_for_prompt(profile: Dict) -> Dict[str, str]:
         location_line = ''
 
     return {
-        'interests_summary': interests_summary,
+        'interest_blocks': interest_blocks,
         'ownership_line': ownership_line,
         'aesthetic_line': aesthetic_line,
         'price_line': price_line,
@@ -260,6 +296,9 @@ def ideate_gifts(
         data = json.loads(raw)
         concepts = data.get('gift_concepts', [])
         splurge_raw = data.get('splurge_concept')
+        portrait = (data.get('portrait') or '').strip()
+        if portrait:
+            logger.info(f"IDEATOR: Portrait: {portrait[:240]}")
         logger.info(f"IDEATOR: Parsed {len(concepts)} concepts, splurge={'yes' if splurge_raw else 'no'}")
 
     except json.JSONDecodeError as e:

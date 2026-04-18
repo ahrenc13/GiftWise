@@ -272,7 +272,7 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
             # Generate hash from platform data for cache lookup.
             # Include a prompt version so cache is invalidated when the
             # analysis prompt changes (e.g. interest attribution fix).
-            _PROMPT_VERSION = "2026-04-18-signal-quotes-v1"
+            _PROMPT_VERSION = "2026-04-18-human-pet-disambig-v1"
             cache_data = {
                 'instagram': platforms.get('instagram', {}).get('data', {}),
                 'tiktok': platforms.get('tiktok', {}).get('data', {}),
@@ -797,6 +797,13 @@ SIGNAL PRIORITY (use these to weight your analysis):
 - **HIGH-RESONANCE content** (3x+ engagement): These topics are core identity. Weight them higher than average posts.
 
 Extract and structure the following information:
+
+HUMAN vs PET DISAMBIGUATION (check this before interest extraction):
+When a recurring name appears in the data (Harlow, Max, Lucy, Bella, Charlie, Cooper, Luna, Rocky, etc.), decide whether it refers to a human (child, partner, family member) or an animal using surrounding evidence.
+- Human child cues: birthday cake + candles, age in years ("turned 3", "her first birthday"), school/daycare/preschool references, height/growth comments, photos with cribs/car seats/strollers, first steps/first words language, clothing sizes in toddler/kid terms.
+- Dog/pet cues: "pup", "puppy", "walks", "good boy/girl", paw emoji, leash, vet visits, breed mentions ("golden retriever"), dog park references.
+- DEFAULT WHEN AMBIGUOUS: treat as human child. A false-positive child produces better gifts than a false-positive dog.
+- If the name refers to a human child (or any human), do NOT extract "dog ownership", "pet parent", or similar animal-care interests on the basis of posts about that person.
 
 1. **SPECIFIC INTERESTS** (not generic categories - specific, evidence-based interests):
    - List 8-12 specific interests with concrete evidence. When the person has many posts/videos (e.g. 50+), you MUST extract multiple distinct interests—do NOT collapse everything into one or two themes.

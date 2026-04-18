@@ -290,20 +290,21 @@ class RecommendationService:
         )
 
         concepts = ideated.get('product_gifts', [])
+        splurge_concept = ideated.get('splurge_item')
+
         if not concepts:
             raise ValueError("Unable to generate gift concepts. Please try again.")
 
-        logger.info(f"CONCEPT MODE: {len(concepts)} concepts generated")
+        logger.info(f"CONCEPT MODE: {len(concepts)} concepts + splurge={'yes' if splurge_concept else 'no'}")
 
         self.progress_callback(
             stage='images',
-            stage_label=f'Found {len(concepts)} gift ideas. Wrapping up...'
+            stage_label=f'Found {len(concepts) + (1 if splurge_concept else 0)} gift ideas. Wrapping up...'
         )
 
-        # Format as recommendations (no images, no affiliate links)
-        recommendations = []
-        for c in concepts:
-            recommendations.append({
+        # Concepts already formatted by ideate_gifts — pass through with image/link fields
+        def _as_rec(c):
+            return {
                 'name': c.get('name', 'Gift Concept'),
                 'description': c.get('description', ''),
                 'why_perfect': c.get('why_perfect', ''),
@@ -315,16 +316,22 @@ class RecommendationService:
                 'image': '',
                 'gift_type': 'physical',
                 'confidence_level': c.get('confidence_level', 'safe_bet'),
-                'is_splurge': False,
+                'is_splurge': c.get('is_splurge', False),
                 'is_concept': True,
                 'interest_match': c.get('interest_match', ''),
                 'signal_intersection': c.get('signal_intersection', ''),
                 'search_terms': c.get('search_terms', []),
                 'is_direct_link': False,
                 'link_source': 'concept_search',
-            })
+            }
 
-        logger.info(f"CONCEPT MODE: {len(recommendations)} recommendations assembled")
+        recommendations = [_as_rec(c) for c in concepts]
+
+        if splurge_concept:
+            recommendations.append(_as_rec(splurge_concept))
+            logger.info(f"CONCEPT MODE: Splurge appended: '{splurge_concept.get('name', '?')}'")
+
+        logger.info(f"CONCEPT MODE: {len(recommendations)} total recommendations assembled")
         return recommendations
 
     def _build_profile(self, user_id: str, platforms: List[Dict], recipient_type: str,

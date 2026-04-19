@@ -272,7 +272,7 @@ def build_recipient_profile(platforms, recipient_type, relationship, claude_clie
             # Generate hash from platform data for cache lookup.
             # Include a prompt version so cache is invalidated when the
             # analysis prompt changes (e.g. interest attribution fix).
-            _PROMPT_VERSION = "2026-04-18-human-pet-disambig-v1"
+            _PROMPT_VERSION = "2026-04-18-signal-momentum-v1"
             cache_data = {
                 'instagram': platforms.get('instagram', {}).get('data', {}),
                 'tiktok': platforms.get('tiktok', {}).get('data', {}),
@@ -823,7 +823,12 @@ When a recurring name appears in the data (Harlow, Max, Lucy, Bella, Charlie, Co
    - **ENGAGEMENT WEIGHTING**: Posts with significantly higher likes/views than the account's average signal core interests. A post with 5x the usual engagement reveals what resonates most. When the data includes engagement metrics, weight interests from high-engagement content higher than passing mentions.
    - **META-TRAIT BAN**: DO NOT extract personality attributes or meta-traits as interests. "Thoughtful gift giving", "being a good friend", "kindness", "caring for others" — these are personality descriptors, not shoppable interests. If you find yourself writing an interest that cannot be searched on Amazon or bought in a store, delete it.
    - **signal_quotes** (required, 0-3 per interest): Include up to 3 VERBATIM snippets from the raw data that support this interest — actual caption fragments, hashtags, tagged account names, artist names, place names, show titles, author names, or other specific entities mentioned. Keep each quote under 120 characters; truncate mid-phrase with an ellipsis if needed. Prefer concrete proper nouns over adjective-only fragments (e.g. "just finished Abundance by @ezraklein" beats "loves reading"). If the raw data does not contain a usable quote for this interest, return an empty list — DO NOT invent or paraphrase. These quotes drive downstream gift ideation — they are the difference between a generic "political activism" gift and one grounded in THIS person's actual signals.
-   - Example: "Thai cooking (passionate, current, active) - Posted pad thai 5x, tagged #thaifood 8x"
+   - **signal_momentum** (required): One of "rising" | "stable" | "fading". Use the TEMPORAL SIGNALS section above when available:
+     • "rising" = interest appears in the rising/momentum list, OR clearly more frequent in recent posts than older ones, OR is tied to a current cultural moment (recent event, viral moment, recent news cycle) where the person's engagement may be ephemeral
+     • "fading" = interest appears in the fading list, OR present in older content but absent recently
+     • "stable" = the default. Established interest with sustained activity over time, OR interest where timing is unclear (no temporal signal). Most interests should be "stable" unless evidence pushes them otherwise.
+     This drives the downstream durability gate: high-commitment gifts (travel, permanent installations, $300+) should NOT be built on "rising" interests, since those may be moments rather than identity. When in doubt, choose "stable" — it preserves more gift ideation latitude than "rising" does.
+   - Example: "Thai cooking (passionate, current, active, momentum: stable) - Posted pad thai 5x, tagged #thaifood 8x over 18 months"
 
 1b. **OWNERSHIP SIGNALS** (what they ALREADY HAVE — critical for avoiding duplicate gifts):
    - If they're holding, wearing, or standing in front of something in photos, they own it. Don't recommend it.
@@ -877,7 +882,8 @@ Return ONLY a JSON object with this structure:
       "is_work": false,
       "activity_type": "passive|active|both",
       "confidence": "high|medium|low",
-      "signal_quotes": ["verbatim quote or entity from the data", "another verbatim quote", "third verbatim quote — up to 3, empty list if none are genuinely in the source data"]
+      "signal_quotes": ["verbatim quote or entity from the data", "another verbatim quote", "third verbatim quote — up to 3, empty list if none are genuinely in the source data"],
+      "signal_momentum": "rising|stable|fading"
     }}
   ],
   "location_context": {{

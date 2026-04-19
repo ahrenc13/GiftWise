@@ -34,12 +34,54 @@ _IDEATOR_SYSTEM = (
     "make the gift-giver think: I wouldn't have thought of that, but it's exactly right."
 )
 
+_PORTRAIT_SYSTEM = (
+    "You write character portraits for gift recommendations. You work only from "
+    "the verbatim signals provided — captions, quotes, named places. You never "
+    "invent details that aren't in the source material. Your portraits are the "
+    "anchor that downstream gift ideation reasons against, so accuracy matters "
+    "more than flourish."
+)
+
+_PORTRAIT_PROMPT = """\
+Write a 2-3 sentence portrait of this specific person. The portrait will be \
+used as an anchor for generating gift concepts, so it must capture who THIS \
+person is — not the category their interests fall into.
+
+{ontology_section}\
+RECIPIENT SIGNALS
+
+{interest_blocks}
+
+{ownership_line}\
+{aesthetic_line}\
+{location_line}{venues_line}
+RULES
+- Reference their actual quotes and named specifics — books they mentioned, \
+places they tagged, things they do. Not "she's into political activism" — \
+something like "she attends Indianapolis school-board meetings, quotes Ezra \
+Klein, and just finished reading Abundance."
+- Use details ONLY from the signals above. If you cannot point to a quote, \
+evidence line, or named venue that supports a detail, do not include it.
+- No standalone personality adjectives (passionate, dedicated, thoughtful, \
+creative, adventurous, curious). Show the behavior; let the reader infer the \
+trait. "She quotes Ezra Klein" not "she's politically engaged."
+- No adverbs (genuinely, really, actually, just, truly).
+- 2-3 sentences. One paragraph.
+- Lowercase sentence starts are fine. No trailing period required on the last \
+sentence.
+
+Return ONLY the portrait text. No JSON, no labels, no commentary."""
+
 _IDEATOR_PROMPT = """\
 Generate {rec_count} gift concepts for this person.
 
 You have NO product catalog. Ideate freely from their actual signals — the raw \
 texture of who they are, not a tidied category label. The quotes below are the \
 hero of this work. The interest names are shorthand; the quotes are the person.
+
+PORTRAIT (anchor — every concept must fit THIS person, not the category labels)
+
+{portrait}
 
 {ontology_section}\
 RECIPIENT PROFILE
@@ -49,19 +91,7 @@ RECIPIENT PROFILE
 {ownership_line}\
 {aesthetic_line}\
 {price_line}\
-{location_line}
-STAGE A — PORTRAIT (write this first, before any concepts)
-
-Write one sentence describing this specific person. Reference their actual \
-quotes. Not the category they fall into. Not "she's into political activism" — \
-something like "she attends Indianapolis school-board meetings, quotes Ezra \
-Klein, and just finished reading Abundance." The portrait forces the concepts \
-that follow to fit THIS person rather than the noun on the interest label.
-
-Then generate concepts that match the portrait.
-
-STAGE B — CONCEPTS
-
+{location_line}{venues_line}
 A concept lands when it:
 - Bridges 2+ of this person's specific signals (the quotes, not just the labels). \
 The intersection is where the interesting gifts live. "Indie music × thrifting × \
@@ -106,7 +136,6 @@ actual quotes, specific, answers why they wouldn't buy it themselves.
 Return JSON only. No markdown fences, no explanation before or after.
 
 {{
-  "portrait": "one sentence describing this specific person, grounded in their quotes — not the category",
   "gift_concepts": [
     {{
       "name": "3-7 word concept label (not a brand name, a concept)",
@@ -203,8 +232,8 @@ def _format_profile_for_prompt(profile: Dict) -> Dict[str, str]:
 
     # Location
     loc = profile.get('location_context') or {}
-    city = (loc.get('city_region') or '').strip()
-    state = (loc.get('state') or '').strip()
+    city = (loc.get('city_region') or '').strip() if loc.get('city_region') else ''
+    state = (loc.get('state') or '').strip() if loc.get('state') else ''
     if city and state:
         location_line = f"Location: {city}, {state}\n"
     elif city:
@@ -212,14 +241,95 @@ def _format_profile_for_prompt(profile: Dict) -> Dict[str, str]:
     else:
         location_line = ''
 
+    # Specific venues — places the person has personally tagged or posted from.
+    # These are GROUND TRUTH for venue-naming. Anything outside this list must be
+    # described by type (a local independent X) or named only if it's a known
+    # institution (symphony, museum, university). Hallucination guardrail.
+    venues = profile.get('specific_venues') or []
+    venue_lines = []
+    for v in venues[:12]:
+        if isinstance(v, dict):
+            name = (v.get('name') or '').strip()
+            vtype = (v.get('type') or '').strip()
+            vloc = (v.get('location') or '').strip()
+            if not name:
+                continue
+            parts_str = name
+            if vtype:
+                parts_str += f" ({vtype})"
+            if vloc:
+                parts_str += f" — {vloc}"
+            venue_lines.append(f"  - {parts_str}")
+        elif isinstance(v, str) and v.strip():
+            venue_lines.append(f"  - {v.strip()}")
+    if venue_lines:
+        venues_line = (
+            "Places she has named (GROUND TRUTH — safe to reference by name; "
+            "outside this list, describe venue TYPE or cite known institutions only):\n"
+            + '\n'.join(venue_lines) + '\n'
+        )
+    else:
+        venues_line = ''
+
     return {
         'interest_blocks': interest_blocks,
         'ownership_line': ownership_line,
         'aesthetic_line': aesthetic_line,
         'price_line': price_line,
         'location_line': location_line,
+        'venues_line': venues_line,
         'budget_category': budget_cat,
     }
+
+
+def build_portrait(
+    profile: Dict,
+    claude_client,
+    ontology_briefing: Optional[str] = None,
+    model: Optional[str] = None,
+) -> str:
+    """Generate a 2-3 sentence character portrait from raw profile signals.
+
+    Runs as a separate Claude call before ideation so the portrait gets dedicated
+    attention (and the resulting text becomes a reasoning anchor for the
+    downstream ideation call rather than competing with concept generation in a
+    single pass). Grounded only in verbatim quotes, evidence lines, and named
+    venues — does not invent details.
+
+    Returns the portrait text, or empty string on failure (ideator will fall
+    back to reasoning over the raw signals alone).
+    """
+    model = model or os.environ.get('CLAUDE_CURATOR_MODEL', _DEFAULT_MODEL)
+
+    fields = _format_profile_for_prompt(profile)
+    fields.pop('budget_category', None)
+    fields.pop('price_line', None)
+
+    ontology_section = ''
+    if ontology_briefing and ontology_briefing.strip():
+        ontology_section = f"THEMATIC INTELLIGENCE\n{ontology_briefing}\n\n"
+
+    prompt = _PORTRAIT_PROMPT.format(
+        ontology_section=ontology_section,
+        **fields,
+    )
+
+    try:
+        response = claude_client.messages.create(
+            model=model,
+            max_tokens=400,
+            system=_PORTRAIT_SYSTEM,
+            messages=[{'role': 'user', 'content': prompt}],
+        )
+        portrait = response.content[0].text.strip()
+        # Strip stray markdown or quote wrapping if present
+        if portrait.startswith('"') and portrait.endswith('"'):
+            portrait = portrait[1:-1].strip()
+        logger.info(f"PORTRAIT: {portrait[:280]}")
+        return portrait
+    except Exception as e:
+        logger.error(f"PORTRAIT: Claude call failed: {e}")
+        return ''
 
 
 def ideate_gifts(
@@ -256,6 +366,15 @@ def ideate_gifts(
     """
     model = model or os.environ.get('CLAUDE_CURATOR_MODEL', _DEFAULT_MODEL)
 
+    # Build the portrait first as a separate Claude call. Becomes the anchor
+    # input to the ideation prompt rather than being generated alongside concepts.
+    portrait = build_portrait(
+        profile,
+        claude_client,
+        ontology_briefing=ontology_briefing,
+        model=model,
+    )
+
     # Build profile summary
     fields = _format_profile_for_prompt(profile)
     budget_category = fields.pop('budget_category', 'moderate')
@@ -265,8 +384,11 @@ def ideate_gifts(
     if ontology_briefing and ontology_briefing.strip():
         ontology_section = f"THEMATIC INTELLIGENCE\n{ontology_briefing}\n\n"
 
+    portrait_for_prompt = portrait if portrait else '(portrait unavailable — reason directly from the signals below)'
+
     prompt = _IDEATOR_PROMPT.format(
         rec_count=rec_count,
+        portrait=portrait_for_prompt,
         ontology_section=ontology_section,
         splurge_min=_SPLURGE_MIN,
         splurge_ceiling=splurge_ceiling,
@@ -296,9 +418,6 @@ def ideate_gifts(
         data = json.loads(raw)
         concepts = data.get('gift_concepts', [])
         splurge_raw = data.get('splurge_concept')
-        portrait = (data.get('portrait') or '').strip()
-        if portrait:
-            logger.info(f"IDEATOR: Portrait: {portrait[:240]}")
         logger.info(f"IDEATOR: Parsed {len(concepts)} concepts, splurge={'yes' if splurge_raw else 'no'}")
 
     except json.JSONDecodeError as e:

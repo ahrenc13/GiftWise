@@ -112,12 +112,70 @@ A concept fails when it:
 If you could remove the quotes above and still arrive at this concept, it's too \
 generic. Regenerate from the quotes, not the label.
 
-VOICE RULES FOR why_perfect
+DURABILITY GATE (anti-fad rule)
+Concepts that involve high cost ($300+), travel, or permanent installation must \
+NOT be built primarily on a "rising" signal. Rising signals are ephemeral — a \
+news cycle, a recent enthusiasm. Anchor expensive or permanent ideas to \
+"stable" signals, multi-year evidence, or interests with deep textural quotes. \
+A space-program moment is a fascination; it's not a reason to suggest a \
+Florida launch trip or a permanent kitchen backsplash. If your only support \
+is a rising signal, scale the concept down (a book, a print, a streamable doc) \
+or pick a different signal to build on.
+
+AMALGAM CONCEPTS (physical + experiential pairing)
+A few of your concepts may be amalgams — one gift composed of two parts: a \
+physical object plus an experience that activates it. A vinyl + concert ticket. \
+A field guide + state-park membership. A cast-iron pan + cooking class. Use the \
+optional "parts" field for these. The two parts must reinforce each other — \
+not just two unrelated gifts bundled. Don't force amalgams; only when the \
+intersection is obvious.
+
+PLAYBOOK FIELDS (optional, per concept — use judgment)
+The recipient won't see this card; the gift-giver will. Their job is to find \
+and buy something that fits the concept. Help them. For each concept, populate \
+ONLY the playbook fields where you can be specific and useful — leave the rest \
+empty rather than fill them with generic content.
+- what_it_is: One sentence clarifying the concept for someone unfamiliar. \
+("Leaves of Grass is Walt Whitman's 1855 poetry collection — a foundational \
+American work; first editions are the collector's prize.") Useful when the \
+giver may not know why this matters.
+- sweet_spot: The version that lands. ("Look for the 1860 third edition or \
+later — earlier ones are museum-priced. Avoid abridged anthologies.") Most \
+important field — separates good execution from disappointing.
+- where_to_look: Specific marketplaces or shop types. ("AbeBooks, Heritage \
+Auctions, or any well-reviewed antiquarian bookseller.") Only name marketplaces \
+you are confident exist and serve this category. Do not invent shop names.
+- search_phrases: 1-3 phrases the giver can paste into Google or a marketplace \
+search to find this. ("Leaves of Grass first edition", "Whitman 1860 third \
+edition") Concrete, not generic.
+- what_to_skip: Common wrong turns. ("Don't grab a paperback Penguin Classics \
+edition — that's a $12 high-school reader, not a gift.")
+
+VOICE RULES FOR why_perfect AND PLAYBOOK FIELDS
 - Reference specific quotes or evidence from this profile, not generic praise
 - No adverbs: cut "genuinely", "really", "actually", "truly", "just"
 - No needle drops: don't end with "that's why this works" or "that's the point"
 - No "perfect gift" or "they'll absolutely love it" — describe the fit, not the feeling
-- 2-3 sentences max
+- 2-3 sentences max for why_perfect
+
+ANTI-HALLUCINATION RULES (highest priority)
+- Do NOT invent specific stores, marketplaces, brand names, or product lines \
+that you are not confident exist. If you don't know a specific seller for a \
+concept, say "well-reviewed independent shop" or "specialty retailer" rather \
+than fabricating a name.
+- Do NOT name a specific city venue (a particular restaurant, store, gallery) \
+unless it appears in the GROUND TRUTH venues list above OR it is a major \
+institution you are confident exists (a city's symphony, a well-known museum, \
+a flagship university).
+- Do NOT cite specific prices for unique or rare items as if they were known \
+facts. Use ranges ("$200–$800 depending on edition") and acknowledge \
+uncertainty in price_range when warranted.
+- If you cannot ground a detail in the signals or in well-known fact, OMIT it. \
+A shorter, more conservative concept is better than a confident-sounding \
+fabricated one. Hallucinations destroy trust faster than thin concepts do.
+- search_phrases must be queries that will return real results on Google or \
+the named marketplace. Test mentally: would I actually find this with this \
+phrase?
 
 RULES
 - At least 3 concepts must explicitly bridge 2+ signals
@@ -131,9 +189,15 @@ Also generate one splurge concept — the nicest version of something that fits 
 this person, or an extravagant experience. Price: ${splurge_min}–${splurge_ceiling}. \
 This should feel like an "if money were no object" pick that still makes sense \
 for who they are. Apply the same quality bar: bridges signals, grounded in their \
-actual quotes, specific, answers why they wouldn't buy it themselves.
+actual quotes, specific, answers why they wouldn't buy it themselves. Splurge \
+concepts must respect the durability gate — no expensive or permanent picks \
+built on rising signals alone.
 
 Return JSON only. No markdown fences, no explanation before or after.
+
+For OPTIONAL fields below: include them when you can be specific and grounded; \
+OMIT them entirely (don't include the key) when you'd otherwise fill them with \
+generic or speculative content.
 
 {{
   "gift_concepts": [
@@ -146,7 +210,17 @@ Return JSON only. No markdown fences, no explanation before or after.
       "gift_type": "physical",
       "price_range": "$X\u2013$Y",
       "interest_match": "primary interest label",
-      "confidence_level": "safe_bet or adventurous"
+      "confidence_level": "safe_bet or adventurous",
+      "what_it_is": "OPTIONAL — one sentence clarifying the concept for someone unfamiliar",
+      "sweet_spot": "OPTIONAL — the version that lands; what to choose vs avoid",
+      "where_to_look": "OPTIONAL — specific marketplaces or shop types",
+      "search_phrases": ["OPTIONAL — concrete query 1", "concrete query 2"],
+      "what_to_skip": "OPTIONAL — common wrong turns",
+      "parts": {{
+        "OPTIONAL_amalgam_only": "include this object only for amalgam concepts",
+        "physical_part": "the physical object (e.g. 'Vinyl pressing of the album')",
+        "experiential_part": "the experience that activates it (e.g. 'Tickets to the next tour stop in their region')"
+      }}
     }}
   ],
   "splurge_concept": {{
@@ -158,7 +232,12 @@ Return JSON only. No markdown fences, no explanation before or after.
     "gift_type": "physical",
     "price_range": "$X\u2013$Y (must be ${splurge_min}–${splurge_ceiling})",
     "interest_match": "primary interest label",
-    "confidence_level": "adventurous"
+    "confidence_level": "adventurous",
+    "what_it_is": "OPTIONAL — one sentence clarifying the concept",
+    "sweet_spot": "OPTIONAL — the version that lands",
+    "where_to_look": "OPTIONAL — specific marketplaces or shop types",
+    "search_phrases": ["OPTIONAL — concrete query 1"],
+    "what_to_skip": "OPTIONAL — common wrong turns"
   }}
 }}"""
 
@@ -186,12 +265,18 @@ def _format_profile_for_prompt(profile: Dict) -> Dict[str, str]:
         if not name:
             continue
         intensity = (i.get('intensity') or '').strip()
+        momentum = (i.get('signal_momentum') or '').strip().lower()
         evidence = (i.get('evidence') or i.get('description') or '').strip()[:180]
         raw_quotes = i.get('signal_quotes') or []
 
-        header = f"- {name}"
+        header_parts = []
         if intensity:
-            header += f" ({intensity})"
+            header_parts.append(intensity)
+        if momentum and momentum in ('rising', 'fading'):
+            header_parts.append(momentum)
+        header = f"- {name}"
+        if header_parts:
+            header += f" ({', '.join(header_parts)})"
         lines = [header]
         if evidence:
             lines.append(f"  evidence: {evidence}")
@@ -354,15 +439,19 @@ def ideate_gifts(
         model: Claude model override
 
     Returns:
-        Dict matching curate_gifts() format:
+        Dict matching curate_gifts() format, plus portrait:
         {
             'product_gifts': [list of concept dicts],
             'experience_gifts': [],
             'splurge_item': concept dict with is_splurge=True, or None,
+            'portrait': str (2-3 sentence character portrait, may be empty on failure),
         }
         Each concept dict has: name, description, why_perfect, search_terms,
         gift_type, price_range, interest_match, confidence_level, signal_intersection,
-        is_concept=True, purchase_link (Google search URL), where_to_buy='Search'.
+        is_concept=True, is_amalgam (bool), purchase_link (Google search URL),
+        where_to_buy='Search'. Optional playbook fields when populated:
+        what_it_is, sweet_spot, where_to_look, search_phrases, what_to_skip,
+        parts ({physical_part, experiential_part}).
     """
     model = model or os.environ.get('CLAUDE_CURATOR_MODEL', _DEFAULT_MODEL)
 
@@ -400,7 +489,7 @@ def ideate_gifts(
     try:
         response = claude_client.messages.create(
             model=model,
-            max_tokens=4000,
+            max_tokens=8000,
             system=_IDEATOR_SYSTEM,
             messages=[{'role': 'user', 'content': prompt}],
         )
@@ -423,17 +512,38 @@ def ideate_gifts(
     except json.JSONDecodeError as e:
         logger.error(f"IDEATOR: JSON parse failed: {e}")
         logger.error(f"IDEATOR: Raw (first 500): {raw[:500] if 'raw' in dir() else 'n/a'}")
-        return {'product_gifts': [], 'experience_gifts': [], 'splurge_item': None}
+        return {'product_gifts': [], 'experience_gifts': [], 'splurge_item': None, 'portrait': portrait}
     except Exception as e:
         logger.error(f"IDEATOR: Claude call failed: {e}")
-        return {'product_gifts': [], 'experience_gifts': [], 'splurge_item': None}
+        return {'product_gifts': [], 'experience_gifts': [], 'splurge_item': None, 'portrait': portrait}
 
     # Convert a raw concept dict to product_gift format
     def _concept_to_gift(concept, is_splurge=False):
+        # Prefer playbook search_phrases for the primary search URL when present —
+        # they're the giver-facing, marketplace-ready queries.
+        search_phrases = concept.get('search_phrases') or []
         search_terms = concept.get('search_terms') or []
-        primary_search = search_terms[0] if search_terms else concept.get('name', '')
+        primary_search = (
+            (search_phrases[0] if search_phrases else None)
+            or (search_terms[0] if search_terms else None)
+            or concept.get('name', '')
+        )
         search_url = f"https://www.google.com/search?q={quote(primary_search)}"
-        return {
+
+        # Optional amalgam parts. Only carry through if both sides are present —
+        # a half-amalgam is a single-part gift, not an amalgam.
+        parts_raw = concept.get('parts') or {}
+        parts = None
+        if isinstance(parts_raw, dict):
+            physical = (parts_raw.get('physical_part') or '').strip()
+            experiential = (parts_raw.get('experiential_part') or '').strip()
+            if physical and experiential:
+                parts = {
+                    'physical_part': physical,
+                    'experiential_part': experiential,
+                }
+
+        gift = {
             'name': concept.get('name', 'Gift Concept'),
             'description': concept.get('description', ''),
             'why_perfect': concept.get('why_perfect', ''),
@@ -445,11 +555,27 @@ def ideate_gifts(
             'confidence_level': concept.get('confidence_level', 'adventurous' if is_splurge else 'safe_bet'),
             'is_concept': True,
             'is_splurge': is_splurge,
+            'is_amalgam': bool(parts),
             'where_to_buy': 'Search',
             'product_url': search_url,
             'purchase_link': search_url,
             'image_url': '',
         }
+
+        # Optional playbook fields — only attach if non-empty so downstream
+        # templates can render conditionally without checking for empty strings.
+        for field in ('what_it_is', 'sweet_spot', 'where_to_look', 'what_to_skip'):
+            value = (concept.get(field) or '').strip()
+            if value:
+                gift[field] = value
+        if search_phrases:
+            cleaned_phrases = [str(p).strip() for p in search_phrases if str(p).strip()]
+            if cleaned_phrases:
+                gift['search_phrases'] = cleaned_phrases[:3]
+        if parts:
+            gift['parts'] = parts
+
+        return gift
 
     product_gifts = [_concept_to_gift(c) for c in concepts]
 
@@ -458,8 +584,13 @@ def ideate_gifts(
         splurge_item = _concept_to_gift(splurge_raw, is_splurge=True)
         logger.info(f"IDEATOR: Splurge concept: '{splurge_item['name']}' ({splurge_item['price_range']})")
 
+    amalgam_count = sum(1 for g in product_gifts if g.get('is_amalgam'))
+    playbook_count = sum(1 for g in product_gifts if g.get('sweet_spot'))
+    logger.info(f"IDEATOR: {amalgam_count} amalgams, {playbook_count} concepts with sweet_spot guidance")
+
     return {
         'product_gifts': product_gifts,
         'experience_gifts': [],
         'splurge_item': splurge_item,
+        'portrait': portrait,
     }

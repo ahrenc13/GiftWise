@@ -165,6 +165,144 @@ input[type="range"] {
     gap: 10px;
 }
 
+/* Portrait block — shown once above concept tiles */
+.concept-portrait-block {
+    background: #fafaf9;
+    border-left: 3px solid #a855f7;
+    border-radius: 0 8px 8px 0;
+    padding: 14px 18px;
+    margin-bottom: 24px;
+    font-size: 0.95em;
+    line-height: 1.6;
+    color: #374151;
+    font-style: italic;
+}
+
+/* Concept tile — compact */
+.rec-concept-compact {
+    padding: 20px;
+}
+.rec-concept-label {
+    display: inline-block;
+    font-size: 0.72em;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #7c3aed;
+    margin-bottom: 10px;
+}
+.rec-concept-compact .rec-name {
+    font-size: 1.05em;
+    margin: 0 0 8px;
+    line-height: 1.3;
+}
+.rec-concept-teaser {
+    font-size: 0.87em;
+    color: #4b5563;
+    line-height: 1.5;
+    margin-bottom: 12px;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+.rec-concept-compact .rec-compact-meta {
+    margin-top: 4px;
+}
+
+/* Concept tile — expanded */
+.rec-concept-fit {
+    font-size: 0.92em;
+    color: #374151;
+    line-height: 1.6;
+    margin: 10px 0 18px;
+    padding: 12px 14px;
+    background: #f9fafb;
+    border-radius: 8px;
+}
+
+/* Playbook section */
+.concept-playbook {
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    overflow: hidden;
+    margin: 16px 0;
+}
+.playbook-field {
+    padding: 11px 14px;
+    border-bottom: 1px solid #f3f4f6;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.playbook-field:last-child { border-bottom: none; }
+.playbook-field.sweet-spot {
+    background: #fefce8;
+}
+.playbook-label {
+    font-size: 0.72em;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: #9ca3af;
+}
+.playbook-field.sweet-spot .playbook-label { color: #92400e; }
+.playbook-body {
+    font-size: 0.88em;
+    color: #374151;
+    line-height: 1.5;
+}
+
+/* Amalgam pairing */
+.concept-amalgam {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin: 14px 0;
+    padding: 12px 14px;
+    background: #eff6ff;
+    border-radius: 10px;
+}
+.amalgam-part {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+.amalgam-label {
+    font-size: 0.72em;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: #3b82f6;
+}
+.amalgam-body { font-size: 0.88em; color: #1e3a5f; line-height: 1.4; }
+.amalgam-plus {
+    font-size: 1.3em;
+    color: #93c5fd;
+    padding-top: 14px;
+    flex-shrink: 0;
+}
+
+/* Search phrases for concept tiles */
+.concept-searches { margin: 14px 0 6px; }
+.concept-searches .search-label {
+    font-size: 0.78em;
+    color: #6b7280;
+    margin: 0 0 6px;
+}
+.concept-search-btn {
+    display: inline-block;
+    margin-top: 12px;
+    padding: 11px 22px;
+    background: #7c3aed;
+    color: #fff;
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: 0.9em;
+    font-weight: 600;
+}
+
 /* Recommendations Grid */
 .recommendations-grid {
     display: grid;
@@ -793,12 +931,10 @@ input[type="range"] {
         <!-- Backdrop for focused card overlay -->
         <div class="card-backdrop" id="card-backdrop"></div>
 
-        <!-- Concept mode banner -->
         {% if recommendations and recommendations[0].is_concept %}
-        <div class="concept-mode-banner">
-            <span style="font-size: 1.3em;">✦</span>
-            <span>These are gift <em>concepts</em>, not inventory picks. Each one is built from their signals. Click "Search for this" to find it online.</span>
-        </div>
+        {% if concept_portrait %}
+        <div class="concept-portrait-block">{{ concept_portrait }}</div>
+        {% endif %}
         {% endif %}
 
         <!-- Recommendations Grid -->
@@ -813,6 +949,20 @@ input[type="range"] {
                 <button class="card-close-btn" onclick="event.stopPropagation(); closeCard();" aria-label="Close">&times;</button>
                 <!-- Compact View -->
                 <div class="rec-compact-view">
+                {% if rec.is_concept %}
+                    <div class="rec-concept-compact">
+                        <span class="rec-concept-label">
+                            {% if rec.is_splurge %}Splurge Pick{% elif rec.is_amalgam %}Gift Pairing{% else %}Gift Concept{% endif %}
+                        </span>
+                        <h2 class="rec-name">{{ rec.name }}</h2>
+                        <div class="rec-concept-teaser">{{ rec.description }}</div>
+                        <div class="rec-compact-meta">
+                            {% if rec.price_range %}<span class="rec-compact-price">{{ rec.price_range }}</span>{% endif %}
+                            <span class="rec-compact-source" style="background: #ede9fe; color: #6d28d9;">Search to find</span>
+                        </div>
+                        <div class="expand-indicator">Click for details</div>
+                    </div>
+                {% else %}
                     <div class="rec-image-container" style="position: relative;">
                         <span class="splurge-label">Splurge Pick · up to ${{ splurge_ceiling }}</span>
                         {% if rec.image_url %}
@@ -823,17 +973,7 @@ input[type="range"] {
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                         <div class="rec-image-placeholder" style="display: none;">🎁</div>
                         {% elif rec.gift_type == 'experience' %}
-                        {% if rec.image_url %}
-                        <img src="{{ rec.image_url }}"
-                             alt="{{ rec.name }}"
-                             class="rec-image"
-                             loading="lazy"
-                             style="object-position: center top;"
-                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-                        <div class="rec-image-placeholder" style="display: none; background: linear-gradient(135deg, #7c3aed, #a855f7); font-size: 2.8em;">
-                        {% else %}
                         <div class="rec-image-placeholder" style="background: linear-gradient(135deg, #7c3aed, #a855f7); font-size: 2.8em;">
-                        {% endif %}
                             {% if rec.experience_category == 'cooking_class' %}👨‍🍳
                             {% elif rec.experience_category == 'art_class' %}🎨
                             {% elif rec.experience_category == 'concerts' %}🎵
@@ -873,6 +1013,7 @@ input[type="range"] {
                             {% endif %}
                         </div>
                     </div>
+                {% endif %}
                 </div>
 
                 <!-- Expanded View -->
@@ -906,10 +1047,11 @@ input[type="range"] {
                         </div>
                     </div>
                     
+                    {% if not rec.is_concept %}
                     <div class="rec-image-container">
                         {% if rec.image_url %}
-                        <img src="{{ rec.image_url }}" 
-                             alt="{{ rec.name }}" 
+                        <img src="{{ rec.image_url }}"
+                             alt="{{ rec.name }}"
                              class="rec-image"
                              loading="lazy"
                              onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
@@ -918,23 +1060,75 @@ input[type="range"] {
                         <div class="rec-image-placeholder">🎁</div>
                         {% endif %}
                     </div>
-                    
+                    {% endif %}
+
                     <h2 class="rec-name">{{ rec.name }}</h2>
                     <p class="rec-description">{{ rec.description }}</p>
-                    <div class="rec-why">
-                        <strong>Why it's perfect for {{ 'you' if user.recipient_type == 'myself' else 'them' }}:</strong> {{ rec.why_perfect }}
+
+                    {% if rec.is_concept %}
+                    <div class="rec-concept-fit">{{ rec.why_perfect }}</div>
+
+                    {% if rec.is_amalgam and rec.parts %}
+                    <div class="concept-amalgam">
+                        <div class="amalgam-part">
+                            <span class="amalgam-label">The object</span>
+                            <span class="amalgam-body">{{ rec.parts.physical_part }}</span>
+                        </div>
+                        <span class="amalgam-plus">+</span>
+                        <div class="amalgam-part">
+                            <span class="amalgam-label">The experience</span>
+                            <span class="amalgam-body">{{ rec.parts.experiential_part }}</span>
+                        </div>
                     </div>
-                    {% if rec.is_concept and rec.search_terms %}
-                    <div style="margin: 14px 0 4px;">
-                        <p style="font-size: 0.82em; color: #6b7280; margin: 0 0 6px;">Try searching for:</p>
+                    {% endif %}
+
+                    {% if rec.what_it_is or rec.sweet_spot or rec.where_to_look or rec.what_to_skip %}
+                    <div class="concept-playbook">
+                        {% if rec.what_it_is %}
+                        <div class="playbook-field">
+                            <span class="playbook-label">What it is</span>
+                            <span class="playbook-body">{{ rec.what_it_is }}</span>
+                        </div>
+                        {% endif %}
+                        {% if rec.sweet_spot %}
+                        <div class="playbook-field sweet-spot">
+                            <span class="playbook-label">The sweet spot</span>
+                            <span class="playbook-body">{{ rec.sweet_spot }}</span>
+                        </div>
+                        {% endif %}
+                        {% if rec.where_to_look %}
+                        <div class="playbook-field">
+                            <span class="playbook-label">Where to look</span>
+                            <span class="playbook-body">{{ rec.where_to_look }}</span>
+                        </div>
+                        {% endif %}
+                        {% if rec.what_to_skip %}
+                        <div class="playbook-field">
+                            <span class="playbook-label">What to skip</span>
+                            <span class="playbook-body">{{ rec.what_to_skip }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+
+                    {% set phrases = rec.search_phrases or rec.search_terms %}
+                    {% if phrases %}
+                    <div class="concept-searches">
+                        <p class="search-label">Start searching with:</p>
                         <div class="search-term-chips">
-                            {% for term in rec.search_terms %}
-                            <a href="https://www.google.com/search?q={{ term | urlencode }}"
+                            {% for phrase in phrases %}
+                            <a href="https://www.google.com/search?q={{ phrase | urlencode }}"
                                target="_blank"
                                class="search-term-chip"
-                               onclick="event.stopPropagation(); trackClick(this.href, 'concept_search_term');">{{ term }}</a>
+                               onclick="event.stopPropagation(); trackClick(this.href, 'concept_search');">{{ phrase }}</a>
                             {% endfor %}
                         </div>
+                    </div>
+                    {% endif %}
+
+                    {% else %}
+                    <div class="rec-why">
+                        <strong>Why it's perfect for {{ 'you' if user.recipient_type == 'myself' else 'them' }}:</strong> {{ rec.why_perfect }}
                     </div>
                     {% endif %}
                     {% if rec.gift_type == 'experience' and rec.materials_needed %}
@@ -968,9 +1162,16 @@ input[type="range"] {
                     {% endif %}
                     <div class="rec-footer">
                         {% if rec.price_range %}<div class="rec-price">{{ rec.price_range }}</div>{% endif %}
+                        {% if not rec.is_concept %}
                         <div class="rec-where">Available at: {{ rec.where_to_buy }}</div>
+                        {% endif %}
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            {% if rec.gift_type == 'experience' %}
+                            {% if rec.is_concept %}
+                            <a href="{{ rec.purchase_link }}" target="_blank" class="concept-search-btn"
+                               onclick="event.stopPropagation(); trackClick('{{ rec.purchase_link }}', 'concept');">
+                                Start your search →
+                            </a>
+                            {% elif rec.gift_type == 'experience' %}
                             {% if rec.reservation_link %}
                             <a href="{{ rec.reservation_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation(); trackClick('{{ rec.reservation_link }}', 'reservation');" style="background: #059669;">
                                 Reserve / Book →
@@ -992,16 +1193,13 @@ input[type="range"] {
                                 Find options →
                             </a>
                             {% endif %}
-                            {% endif %}
-                            {% if rec.gift_type == 'physical' and rec.purchase_link %}
-                            <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation(); trackClick('{{ rec.purchase_link }}', '{{ 'concept' if rec.is_concept else 'physical' }}');" style="font-size: 1.05em; padding: 12px 24px; {% if rec.is_concept %}background: #7c3aed;{% endif %}">
-                                {% if rec.is_concept %}Search for this{% elif rec.where_to_buy %}Buy on {{ rec.where_to_buy }}{% else %}Shop Now{% endif %} →
+                            {% else %}
+                            <a href="{{ rec.purchase_link }}" target="_blank" class="rec-link" onclick="event.stopPropagation(); trackClick('{{ rec.purchase_link }}', 'physical');" style="font-size: 1.05em; padding: 12px 24px;">
+                                {% if rec.where_to_buy %}Buy on {{ rec.where_to_buy }}{% else %}Shop Now{% endif %} →
                             </a>
-                            {% if not rec.is_concept %}
                             <button onclick="event.stopPropagation(); copyLink('{{ rec.purchase_link }}', this)" class="rec-link" style="background: #6b7280; cursor: pointer; border: none;">
                                 📋 Copy Link
                             </button>
-                            {% endif %}
                             {% endif %}
                         </div>
                     </div>

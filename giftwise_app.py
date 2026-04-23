@@ -3537,7 +3537,7 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
             # Run generation pipeline
             if gift_context:
                 logger.info("[THREAD] Gift context provided (%d chars)", len(gift_context))
-            recommendations = service.generate_recommendations(
+            _result = service.generate_recommendations(
                 user_id=user_id,
                 user=user,
                 platforms=platforms,
@@ -3551,6 +3551,11 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
                 recipient_gender=recipient_gender,
                 gift_context=gift_context
             )
+            # Concept mode returns (recommendations, portrait); inventory mode returns list.
+            if isinstance(_result, tuple):
+                recommendations, concept_portrait = _result
+            else:
+                recommendations, concept_portrait = _result, ''
 
             # Build profile for storage (reuse service method)
             profile = service._build_profile(
@@ -3559,12 +3564,15 @@ def _run_generation_thread(user_id, user, platforms, recipient_type, relationshi
 
             # Save recommendations to database
             quality = check_data_quality(platforms)
-            save_user(user_id, {
+            save_to = {
                 'recommendations': recommendations,
                 'data_quality': quality,
                 'last_generated': datetime.now().isoformat(),
                 'recipient_profile': profile
-            })
+            }
+            if concept_portrait:
+                save_to['concept_portrait'] = concept_portrait
+            save_user(user_id, save_to)
 
             logger.info("Generation complete! %d recommendations saved.", len(recommendations))
             track_event('rec_run')
@@ -3789,6 +3797,8 @@ def view_recommendations(user=None):
     _budget_cat = _profile.get('price_signals', {}).get('budget_category', 'unknown')
     splurge_ceiling = _SPLURGE_CEILING_MAP.get(_budget_cat, 500)
 
+    concept_portrait = user.get('concept_portrait', '')
+
     return render_template('recommendations.html',
                          recommendations=visible_recommendations,
                          data_quality=data_quality,
@@ -3801,7 +3811,8 @@ def view_recommendations(user=None):
                          product_count=product_count,
                          experience_count=experience_count,
                          locked_count=locked_count,
-                         splurge_ceiling=splurge_ceiling)
+                         splurge_ceiling=splurge_ceiling,
+                         concept_portrait=concept_portrait)
 
 
 @app.route('/recommendations/experience/<int:index>')

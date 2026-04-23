@@ -1,5 +1,33 @@
 # GiftWise — Project Intelligence
 
+## 🔄 SESSION HANDOFF — April 23, 2026
+
+**Active branch:** `claude/evidence-based-gift-ideator-E2xbk` (9 commits ahead of main, pushed to GitHub)
+
+**Status:** Branch is PR-ready on the intelligence side. Concept tiles now render as briefing cards (no broken image slots, no "Available at: Search" footer).
+
+**Recent commits on this branch:**
+- Commit 5: `build_portrait()` — separate Claude call producing a grounded portrait block above the concept grid
+- Commit 6: Playbook fields (`sweet_spot`, `what_it_is`, `where_to_look`, `search_phrases`, `what_to_skip`), amalgam `parts`, durability gate, anti-hallucination guardrails, `max_tokens` 4000→8000
+- Commit 7: Confidence-ladder hedging — `signal_weight` (strong/moderate/light) from `intensity × momentum`; hedging ladder in ideation prompt (strong→declarative, moderate→measured, light→hedged copy + scaled gifts)
+- Commit 8: Concept tile UX redesign — portrait block above grid, briefing-card tile format, no image slot, playbook section, search-phrase chips, "Start your search →" CTA; fixed `_as_rec()` silently dropping all playbook fields; threaded portrait through `recommendation_service.py` → `giftwise_app.py` → template
+
+**KNOWN BUG — fix this session (high priority):**
+Splurge slot still generating NASA travel concepts despite the durability gate. Root cause: `passionate + rising → moderate` in `signal_weight`, and moderate allows $300+ with hedged copy. But splurge is expensive by definition — it should be blocked on ANY rising signal.
+
+Two-part fix needed in `gift_ideator.py`:
+1. In `_IDEATOR_PROMPT` splurge section, add: "Splurge must NOT be built on any rising signal, regardless of intensity — expensive commitments cannot ride an ephemeral enthusiasm."
+2. Consider hardening `signal_weight`: `passionate + rising → light` (not moderate). A 29x engagement spike on one post ≠ durable passion; cultural moment inflates engagement without proving lasting interest.
+
+**CLAUDE.md trimming (do this session):**
+This file is too long and buries operational instructions. Ask Opus: "Rewrite CLAUDE.md using context engineering principles. Keep: session-start priorities, pipeline summary, key files, three-layer intelligence architecture, development rules, opus-only zones, debugging approach, fix verification protocol. Cut: resolved bug histories, past session narratives, full business strategy (already in docs/), seasonal push plans, long reference tables. Target: first 20% of the file = everything Claude needs to start working. Goal: ~30-40% of current length."
+
+**Pre-existing issues (not blocking):**
+- Session cookie overflow: 4400+ bytes vs 4093 limit — browsers may silently discard; needs separate fix
+- Duplicate in-flight profile analysis calls when scrape completes (two workers hit the same profile hash)
+
+---
+
 **When the user asks you to debug something:** Read the "Debugging Approach" section below first. Follow it (vary the layer, ask for high-leverage signals, cheap checks before deep ones) before spending time on server-side theories.
 
 ---

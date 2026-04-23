@@ -211,9 +211,15 @@ Also generate one splurge concept — the nicest version of something that fits 
 this person, or an extravagant experience. Price: ${splurge_min}–${splurge_ceiling}. \
 This should feel like an "if money were no object" pick that still makes sense \
 for who they are. Apply the same quality bar: bridges signals, grounded in their \
-actual quotes, specific, answers why they wouldn't buy it themselves. Splurge \
-concepts must respect the durability gate — no expensive or permanent picks \
-built on rising signals alone.
+actual quotes, specific, answers why they wouldn't buy it themselves.
+
+Splurge must NOT be built on any rising signal, regardless of intensity — \
+expensive commitments cannot ride an ephemeral enthusiasm. Even a "passionate" \
+rising signal is a moment, not a pattern; a viral post or news-cycle spike \
+inflates engagement without proving a durable interest. Anchor the splurge to \
+a stable signal with multi-year evidence, or pick a different signal to build \
+on. If no stable signal supports a splurge-priced concept, scale the splurge \
+down to the low end of the range against a safer signal rather than force it.
 
 Return JSON only. No markdown fences, no explanation before or after.
 
@@ -293,8 +299,16 @@ def _format_profile_for_prompt(profile: Dict) -> Dict[str, str]:
 
         # Signal weight: intensity × momentum → strong / moderate / light.
         # Drives hedging ladder in the prompt — strong = declarative, light = hedge copy.
+        # passionate + rising collapses to light: a high-engagement spike on one post
+        # isn't durable passion, and the durability gate must block splurge-priced or
+        # permanent concepts that ride an ephemeral enthusiasm.
         if intensity == 'passionate':
-            signal_weight = 'strong' if momentum == 'stable' else 'moderate'
+            if momentum == 'stable':
+                signal_weight = 'strong'
+            elif momentum == 'rising':
+                signal_weight = 'light'
+            else:
+                signal_weight = 'moderate'
         elif intensity == 'moderate':
             signal_weight = 'moderate' if momentum == 'stable' else 'light'
         else:

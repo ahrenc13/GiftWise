@@ -291,6 +291,7 @@ class RecommendationService:
 
         concepts = ideated.get('product_gifts', [])
         splurge_concept = ideated.get('splurge_item')
+        concept_portrait = ideated.get('portrait', '')
 
         if not concepts:
             raise ValueError("Unable to generate gift concepts. Please try again.")
@@ -302,9 +303,12 @@ class RecommendationService:
             stage_label=f'Found {len(concepts) + (1 if splurge_concept else 0)} gift ideas. Wrapping up...'
         )
 
-        # Concepts already formatted by ideate_gifts — pass through with image/link fields
+        # Concepts already formatted by ideate_gifts — pass through all fields.
+        _OPTIONAL_PLAYBOOK = ('what_it_is', 'sweet_spot', 'where_to_look',
+                              'search_phrases', 'what_to_skip', 'parts')
+
         def _as_rec(c):
-            return {
+            rec = {
                 'name': c.get('name', 'Gift Concept'),
                 'description': c.get('description', ''),
                 'why_perfect': c.get('why_perfect', ''),
@@ -317,6 +321,7 @@ class RecommendationService:
                 'gift_type': 'physical',
                 'confidence_level': c.get('confidence_level', 'safe_bet'),
                 'is_splurge': c.get('is_splurge', False),
+                'is_amalgam': c.get('is_amalgam', False),
                 'is_concept': True,
                 'interest_match': c.get('interest_match', ''),
                 'signal_intersection': c.get('signal_intersection', ''),
@@ -324,6 +329,12 @@ class RecommendationService:
                 'is_direct_link': False,
                 'link_source': 'concept_search',
             }
+            # Optional playbook fields — only attach if present so templates
+            # can gate on truthiness without checking for empty strings.
+            for field in _OPTIONAL_PLAYBOOK:
+                if c.get(field):
+                    rec[field] = c[field]
+            return rec
 
         recommendations = [_as_rec(c) for c in concepts]
 
@@ -332,7 +343,7 @@ class RecommendationService:
             logger.info(f"CONCEPT MODE: Splurge appended: '{splurge_concept.get('name', '?')}'")
 
         logger.info(f"CONCEPT MODE: {len(recommendations)} total recommendations assembled")
-        return recommendations
+        return recommendations, concept_portrait
 
     def _build_profile(self, user_id: str, platforms: List[Dict], recipient_type: str,
                       relationship: str, approved_profile: Optional[Dict],

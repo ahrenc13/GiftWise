@@ -177,6 +177,28 @@ fabricated one. Hallucinations destroy trust faster than thin concepts do.
 the named marketplace. Test mentally: would I actually find this with this \
 phrase?
 
+SIGNAL WEIGHT LADDER
+Each interest above is tagged [signal: strong / moderate / light]. This drives \
+how you write about it — the confidence of the prose should match the certainty \
+of the signal.
+
+strong (passionate + stable): write with full confidence. The interest is \
+established and sustained. Concepts built here can be declarative.
+
+moderate (passionate + rising/fading, OR moderate + stable): write with \
+measured confidence. Don't oversell the fit. A brief "based on consistent \
+posts about X" grounds it without hedging.
+
+light (moderate + rising/fading, OR any casual): write with explicit hedging. \
+Example: "based on a few recent posts about X — may reflect a lasting \
+interest, or could be the news cycle." Scale the gift commitment accordingly: \
+a book, a print, a short class — not a trip or a permanent installation. \
+Let the giver decide what to do with uncertain signal.
+
+The durability gate (from above) applies to light signals: no travel, \
+permanent installations, or $300+ gifts built primarily on light signals. \
+For moderate signals at those price points, hedging the copy is acceptable.
+
 RULES
 - At least 3 concepts must explicitly bridge 2+ signals
 - At least 2 should be surprising — things the giver wouldn't naturally reach for
@@ -264,19 +286,27 @@ def _format_profile_for_prompt(profile: Dict) -> Dict[str, str]:
         name = (i.get('name') or '').strip()
         if not name:
             continue
-        intensity = (i.get('intensity') or '').strip()
+        intensity = (i.get('intensity') or '').strip().lower()
         momentum = (i.get('signal_momentum') or '').strip().lower()
         evidence = (i.get('evidence') or i.get('description') or '').strip()[:180]
         raw_quotes = i.get('signal_quotes') or []
 
-        header_parts = []
-        if intensity:
-            header_parts.append(intensity)
+        # Signal weight: intensity × momentum → strong / moderate / light.
+        # Drives hedging ladder in the prompt — strong = declarative, light = hedge copy.
+        if intensity == 'passionate':
+            signal_weight = 'strong' if momentum == 'stable' else 'moderate'
+        elif intensity == 'moderate':
+            signal_weight = 'moderate' if momentum == 'stable' else 'light'
+        else:
+            signal_weight = 'light'
+
+        header_parts = [intensity] if intensity else []
         if momentum and momentum in ('rising', 'fading'):
             header_parts.append(momentum)
         header = f"- {name}"
         if header_parts:
             header += f" ({', '.join(header_parts)})"
+        header += f" [signal: {signal_weight}]"
         lines = [header]
         if evidence:
             lines.append(f"  evidence: {evidence}")

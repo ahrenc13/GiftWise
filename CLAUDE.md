@@ -6,11 +6,9 @@ AI-powered gift recommendation engine. User pastes a social handle → Flask scr
 
 ## 🔄 Session Handoff — April 22, 2026
 
-**Active branch:** `claude/fix-splurge-durability-gate` (1 commit ahead of main, pushed).
+**Active branch:** `main` (splurge durability gate merged and deployed).
 
 **Just shipped:** Splurge durability gate — `passionate + rising → light` in `signal_weight`, and the splurge section of `_IDEATOR_PROMPT` now prohibits rising signals categorically. Root cause of the NASA-travel-concept bug: the ladder granted `moderate` signals a hedge-and-proceed option at splurge price points, giving the model a rationalization path.
-
-**This session:** Rewriting CLAUDE.md using context engineering principles. Target: ~30-40% of prior length, first 20% = everything Claude needs to start working.
 
 **Pre-existing (not blocking):**
 - Session cookie overflow: 4400+ bytes vs 4093 limit — browsers may silently discard.
@@ -198,13 +196,9 @@ Do not build, suggest, or scope-creep into:
 
 | # | Task | Notes |
 |---|------|-------|
-| 1 | **Merge `claude/fix-splurge-durability-gate` to main** | Splurge gate fix. Open PR when ready. |
-| 2 | **Take down 3 placeholder Etsy guides** | `guide_etsy_home_decor.html`, `guide_etsy_jewelry.html`, `guide_etsy_under_50.html`. Add 301s → `/guides/gifts-for-her` or `/guides`. Remove from sitemap. |
-| 3 | **Drop Russell Stover + GameFly from CJ sync** | Exclusion list in `catalog_sync.py`. |
-| 4 | **Block King Koil in Awin** | Exclusion list in `awin_searcher.py`. |
-| 5 | **Reddit Wave 2** | Manual DMs/comments on r/GiftIdeas and r/gifts. API credentials still pending. |
-| 6 | **14-Item Phase 2 (Sonnet-safe)** | Splurge-tile UI in `recommendations.html`; eBay niche-only scoping in `multi_retailer_searcher.py` (use `per_interest_counts` to target weak-coverage interests only). |
-| 7 | **Catalog-First Phase 2** | Remove live CJ/Awin from session-time paths; retune source diversity caps. See `docs/ARCHITECTURE.md`. |
+| 1 | **Reddit Wave 2** | Manual DMs/comments on r/GiftIdeas and r/gifts. API credentials still pending. |
+| 2 | **14-Item Phase 2 (Sonnet-safe)** | Splurge-tile UI in `recommendations.html`; eBay niche-only scoping in `multi_retailer_searcher.py` (use `per_interest_counts` to target weak-coverage interests only). |
+| 3 | **Catalog-First Phase 2** | Remove live CJ/Awin from session-time paths; retune source diversity caps. See `docs/ARCHITECTURE.md`. |
 
 ### BLOCKED — waiting on external party
 

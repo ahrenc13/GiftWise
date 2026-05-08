@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+
+{% block title %}GiftWise Evals{% endblock %}
+
+{% block extra_css %}
+h1 { font-size: 20px; color: #9ca3af; margin-bottom: 4px; }
+.ts { font-size: 12px; color: #6b7280; margin-bottom: 24px; }
+
+/* Run controls */
+.run-bar {
+    display: flex; gap: 10px; align-items: center; margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+.btn {
+    background: #3b82f6; color: #fff; border: none; border-radius: 8px;
+    padding: 8px 18px; font-size: 14px; cursor: pointer; font-weight: 600;
+}
+.btn:disabled { background: #374151; color: #6b7280; cursor: default; }
+.btn.secondary { background: #1f2937; color: #d1d5db; }
+select {
+    background: #1f2937; color: #d1d5db; border: 1px solid #374151;
+    border-radius: 8px; padding: 8px 12px; font-size: 13px;
+}
+
+/* Log window */
+#log-panel {
+    background: #0f172a; border-radius: 10px; padding: 14px 16px;
+    font-size: 12px; font-family: monospace; color: #86efac;
+    max-height: 200px; overflow-y: auto; margin-bottom: 24px;
+    display: none;
+    white-space: pre-wrap;
+}
+
+/* Summary row */
+.summary {
+    display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px;
+}
+.summary-chip {
+    background: #1f2937; border-radius: 10px; padding: 10px 16px;
+    font-size: 13px; display: flex; flex-direction: column; align-items: center; min-width: 80px;
+}
+.summary-chip .val { font-size: 28px; font-weight: 700; }
+.summary-chip .lbl { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
+.green .val { color: #34d399; }
+.yellow .val { color: #fbbf24; }
+.red .val { color: #f87171; }
+
+/* Fixture cards */
+.fixture-card {
+    background: #1f2937; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px;
+}
+.fixture-header {
+    display: flex; justify-content: space-between; align-items: flex-start;
+    flex-wrap: wrap; gap: 8px; margin-bottom: 12px;
+}
+.fixture-name { font-size: 16px; font-weight: 700; color: #f9fafb; }
+.fixture-desc { font-size: 12px; color: #6b7280; margin-top: 2px; }
+.badge {
+    font-size: 12px; font-weight: 700; border-radius: 6px; padding: 3px 10px;
+}
+.badge-pass { background: #064e3b; color: #34d399; }
+.badge-flag { background: #451a03; color: #fbbf24; }
+.badge-error { background: #450a0a; color: #f87171; }
+
+.dims { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.dim-chip {
+    background: #111827; border-radius: 8px; padding: 6px 10px;
+    font-size: 12px; min-width: 120px;
+}
+.dim-chip .dim-name { color: #9ca3af; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; }
+.dim-chip .dim-score { font-size: 20px; font-weight: 700; margin-top: 2px; }
+.dim-chip .dim-note { color: #6b7280; font-size: 11px; margin-top: 2px; line-height: 1.4; }
+.score-5 { color: #34d399; }
+.score-4 { color: #6ee7b7; }
+.score-3 { color: #fbbf24; }
+.score-2 { color: #fb923c; }
+.score-1 { color: #f87171; }
+
+.concepts-list { font-size: 12px; color: #6b7280; }
+.concepts-list strong { color: #d1d5db; }
+.failure-modes { font-size: 11px; color: #6b7280; margin-top: 6px; }
+.failure-modes span { background: #1e1b4b; color: #a5b4fc; border-radius: 4px; padding: 1px 6px; margin-right: 4px; }
+
+.no-results {
+    text-align: center; color: #4b5563; padding: 60px 20px; font-size: 14px;
+}
+
+h2 { font-size: 15px; color: #9ca3af; margin-bottom: 14px; }
+{% endblock %}
+
+{% block content %}
+<h1>Eval Dashboard</h1>
+<div class="ts">
+    {% if finished_at %}Last run: {{ finished_at[:16].replace('T', ' ') }}{% else %}No runs yet{% endif %}
+</div>
+
+<div class="run-bar">
+    <button class="btn" id="run-btn" onclick="startRun()">Run All Evals</button>
+    <select id="fixture-select">
+        <option value="">— or pick one fixture —</option>
+        {% for name in fixture_names %}
+        <option value="{{ name }}">{{ name }}</option>
+        {% endfor %}
+    </select>
+    <span id="status-text" style="font-size:13px; color:#6b7280;"></span>
+</div>
+
+<div id="log-panel"></div>
+
+<div id="results-area">
+    <div class="no-results" id="placeholder">No results yet — hit Run All Evals to generate scores.</div>
+</div>
+
+<script>
+const ADMIN_KEY = {{ admin_key | tojson }};
+let polling = null;
+
+function apiUrl(path) {
+    return path + '?key=' + encodeURIComponent(ADMIN_KEY);
+}
+
+function startRun() {
+    const fixture = document.getElementById('fixture-select').value || null;
+    document.getElementById('run-btn').disabled = true;
+    document.getElementById('log-panel').style.display = 'block';
+    document.getElementById('log-panel').textContent = 'Starting…\n';
+    document.getElementById('status-text').textContent = 'Running…';
+
+    fetch(apiUrl('/admin/evals/run'), {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({fixture: fixture})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            document.getElementById('status-text').textContent = 'Error: ' + data.error;
+            document.getElementById('run-btn').disabled = false;
+            return;
+        }
+        pollStatus();
+    })
+    .catch(e => {
+        document.getElementById('status-text').textContent = 'Network error: ' + e;
+        document.getElementById('run-btn').disabled = false;
+    });
+}
+
+function pollStatus() {
+    if (polling) clearInterval(polling);
+    polling = setInterval(() => {
+        fetch(apiUrl('/admin/evals/status'))
+        .then(r => r.json())
+        .then(state => {
+            const logEl = document.getElementById('log-panel');
+            logEl.textContent = state.log.join('\n');
+            logEl.scrollTop = logEl.scrollHeight;
+
+            if (!state.running) {
+                clearInterval(polling);
+                document.getElementById('run-btn').disabled = false;
+                if (state.results) {
+                    document.getElementById('status-text').textContent =
+                        'Done — ' + (state.finished_at || '').slice(0,16).replace('T',' ');
+                    renderResults(state.results);
+                } else {
+                    document.getElementById('status-text').textContent =
+                        'Error: ' + (state.error || 'unknown');
+                }
+            }
+        });
+    }, 1500);
+}
+
+function scoreClass(s) {
+    if (s === null || s === undefined) return '';
+    if (s >= 5) return 'score-5';
+    if (s >= 4) return 'score-4';
+    if (s >= 3) return 'score-3';
+    if (s >= 2) return 'score-2';
+    return 'score-1';
+}
+
+function renderResults(results) {
+    const DIMS = ['specificity','evidence_grounding','splurge_integrity','ownership_avoidance','diversity'];
+    const DIM_LABELS = {
+        specificity: 'Specificity',
+        evidence_grounding: 'Evidence',
+        splurge_integrity: 'Splurge',
+        ownership_avoidance: 'Ownership',
+        diversity: 'Diversity',
+    };
+
+    let passed = 0, flagged = 0, errored = 0;
+    results.forEach(r => {
+        if (r.run_error || r.judge_error) errored++;
+        else if ((r.flags||[]).length > 0) flagged++;
+        else passed++;
+    });
+
+    let html = '';
+
+    // Summary row
+    html += `<div class="summary">
+        <div class="summary-chip green"><div class="val">${passed}</div><div class="lbl">Passed</div></div>
+        <div class="summary-chip yellow"><div class="val">${flagged}</div><div class="lbl">Flagged</div></div>
+        <div class="summary-chip red"><div class="val">${errored}</div><div class="lbl">Errors</div></div>
+        <div class="summary-chip"><div class="val">${results.length}</div><div class="lbl">Total</div></div>
+    </div>`;
+
+    html += '<h2>Fixture Results</h2>';
+
+    results.forEach(r => {
+        const error = r.run_error || r.judge_error;
+        let badgeHtml, overallHtml = '';
+
+        if (error) {
+            badgeHtml = `<span class="badge badge-error">Error</span>`;
+        } else if ((r.flags||[]).length > 0) {
+            badgeHtml = `<span class="badge badge-flag">⚠ Flagged</span>`;
+        } else {
+            badgeHtml = `<span class="badge badge-pass">✓ Pass</span>`;
+        }
+
+        if (r.overall !== null && r.overall !== undefined) {
+            overallHtml = `<span style="font-size:13px; color:#9ca3af; margin-left:8px;">${r.overall}/5 overall</span>`;
+        }
+
+        let dimsHtml = '';
+        if (!error && r.scores) {
+            dimsHtml = '<div class="dims">';
+            DIMS.forEach(dim => {
+                const d = r.scores[dim];
+                if (!d) return;
+                const s = d.score;
+                const cls = scoreClass(s);
+                dimsHtml += `<div class="dim-chip">
+                    <div class="dim-name">${DIM_LABELS[dim]||dim}</div>
+                    <div class="dim-score ${cls}">${s !== null && s !== undefined ? s+'/5' : '—'}</div>
+                    <div class="dim-note">${(d.note||'').slice(0,80)}</div>
+                </div>`;
+            });
+            dimsHtml += '</div>';
+        }
+
+        let conceptsHtml = '';
+        const summary = r.output_summary;
+        if (summary) {
+            const names = (summary.concept_names||[]).join(', ');
+            const splurge = summary.splurge_name ? ` · Splurge: <strong>${summary.splurge_name}</strong>` : '';
+            conceptsHtml = `<div class="concepts-list">${names}${splurge}</div>`;
+        }
+
+        const failureModes = (r.failure_modes||[]).map(f => `<span>${f}</span>`).join('');
+
+        html += `<div class="fixture-card">
+            <div class="fixture-header">
+                <div>
+                    <div class="fixture-name">${r.fixture_name}${overallHtml}</div>
+                    <div class="fixture-desc">${r.description||''}</div>
+                </div>
+                ${badgeHtml}
+            </div>
+            ${error ? `<div style="color:#f87171; font-size:13px;">Error: ${error}</div>` : ''}
+            ${dimsHtml}
+            ${conceptsHtml}
+            ${failureModes ? `<div class="failure-modes">Watch for: ${failureModes}</div>` : ''}
+        </div>`;
+    });
+
+    document.getElementById('results-area').innerHTML = html;
+}
+
+// Seed with server-side results if available
+{% if results %}
+renderResults({{ results | tojson }});
+{% endif %}
+
+{% if running %}
+// Run is in progress — start polling immediately
+document.getElementById('run-btn').disabled = true;
+document.getElementById('log-panel').style.display = 'block';
+document.getElementById('status-text').textContent = 'Running…';
+pollStatus();
+{% endif %}
+</script>
+{% endblock %}

@@ -4511,6 +4511,186 @@ def admin_stats():
     return render_template('admin_stats.html', data=data)
 
 
+# ---- Eval dashboard state (in-memory, per-process) ----
+_eval_state = {
+    "running": False,
+    "log": [],
+    "results": None,
+    "started_at": None,
+    "finished_at": None,
+    "error": None,
+}
+_eval_lock = threading.Lock()
+
+
+def _run_evals_background(fixture_name=None):
+    """Run evals in a background thread and update _eval_state."""
+    import sys as _sys
+    import os as _os
+
+    def _log(msg):
+        with _eval_lock:
+            _eval_state["log"].append(msg)
+        logger.info(f"[evals] {msg}")
+
+    with _eval_lock:
+        _eval_state["running"] = True
+        _eval_state["log"] = []
+        _eval_state["results"] = None
+        _eval_state["error"] = None
+        _eval_state["started_at"] = datetime.now().isoformat()
+        _eval_state["finished_at"] = None
+
+    try:
+        _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+        from evals.fixtures import FIXTURES
+        from evals.runner import run_fixture
+        from evals.judge import score_output
+
+        fixtures = FIXTURES
+        if fixture_name:
+            fixtures = [f for f in FIXTURES if f["name"] == fixture_name]
+            if not fixtures:
+                raise ValueError(f"No fixture named '{fixture_name}'")
+
+        pipeline_model = os.environ.get("CLAUDE_CURATOR_MODEL", "claude-sonnet-4-6")
+        judge_model = "claude-sonnet-4-6"
+        client = anthropic.Anthropic()
+
+        _log(f"Starting {len(fixtures)} fixture(s) — model: {pipeline_model}")
+
+        results = []
+        for fixture in fixtures:
+            _log(f"Running fixture: {fixture['name']}…")
+            run_result = run_fixture(fixture, client, pipeline_model)
+            output = run_result.get("output")
+            run_error = run_result.get("error")
+
+            record = {
+                "fixture_name": fixture["name"],
+                "description": fixture["description"],
+                "failure_modes": fixture["failure_modes"],
+                "run_error": run_error,
+                "output_summary": None,
+                "scores": {},
+                "overall": None,
+                "flags": [],
+                "judge_error": None,
+            }
+
+            if output:
+                record["output_summary"] = {
+                    "concept_count": len(output.get("product_gifts", [])),
+                    "has_splurge": bool(output.get("splurge_item")),
+                    "has_portrait": bool(output.get("portrait")),
+                    "concept_names": [c.get("name") for c in output.get("product_gifts", [])],
+                    "splurge_name": output.get("splurge_item", {}).get("name") if output.get("splurge_item") else None,
+                }
+
+            if run_error:
+                _log(f"  ERROR: {run_error}")
+            else:
+                _log(f"  Pipeline OK — {record['output_summary']['concept_count']} concepts")
+                judge_result = score_output(fixture, output, client, judge_model)
+                record["scores"] = judge_result.get("scores", {})
+                record["overall"] = judge_result.get("overall")
+                record["flags"] = judge_result.get("flags", [])
+                record["judge_error"] = judge_result.get("error")
+                flag_str = f"  flags: {record['flags']}" if record["flags"] else "  no flags"
+                _log(f"  Overall: {record['overall']}/5{flag_str}")
+
+            results.append(record)
+
+        # Persist results
+        _os.makedirs("evals/results", exist_ok=True)
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M")
+        out_path = f"evals/results/{timestamp}.json"
+        latest_path = "evals/results/latest.json"
+        with open(out_path, "w") as f:
+            json.dump(results, f, indent=2)
+        with open(latest_path, "w") as f:
+            json.dump(results, f, indent=2)
+
+        _log(f"Done — results saved to {out_path}")
+
+        with _eval_lock:
+            _eval_state["results"] = results
+            _eval_state["finished_at"] = datetime.now().isoformat()
+
+    except Exception as e:
+        _log(f"Fatal error: {e}")
+        with _eval_lock:
+            _eval_state["error"] = str(e)
+            _eval_state["finished_at"] = datetime.now().isoformat()
+    finally:
+        with _eval_lock:
+            _eval_state["running"] = False
+
+
+@app.route('/admin/evals')
+def admin_evals():
+    key = request.args.get('key', '')
+    if not ADMIN_KEY or key != ADMIN_KEY:
+        return render_template('error.html', error="Not found.", error_code=404), 404
+
+    # Try to load latest saved results from disk if none in memory
+    latest_results = _eval_state.get("results")
+    latest_path = os.path.join(os.path.dirname(__file__), "evals/results/latest.json")
+    if latest_results is None and os.path.exists(latest_path):
+        try:
+            with open(latest_path) as f:
+                latest_results = json.load(f)
+        except Exception:
+            latest_results = None
+
+    from evals.fixtures import FIXTURES
+    fixture_names = [f["name"] for f in FIXTURES]
+
+    return render_template(
+        'admin_evals.html',
+        admin_key=key,
+        results=latest_results,
+        fixture_names=fixture_names,
+        running=_eval_state["running"],
+        started_at=_eval_state.get("started_at"),
+        finished_at=_eval_state.get("finished_at"),
+    )
+
+
+@app.route('/admin/evals/run', methods=['POST'])
+def admin_evals_run():
+    key = request.args.get('key', '')
+    if not ADMIN_KEY or key != ADMIN_KEY:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    with _eval_lock:
+        if _eval_state["running"]:
+            return jsonify({'error': 'Already running'}), 409
+
+    fixture_name = request.json.get('fixture') if request.is_json else None
+    t = threading.Thread(target=_run_evals_background, args=(fixture_name,), daemon=True)
+    t.start()
+    return jsonify({'ok': True})
+
+
+@app.route('/admin/evals/status')
+def admin_evals_status():
+    key = request.args.get('key', '')
+    if not ADMIN_KEY or key != ADMIN_KEY:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    with _eval_lock:
+        state = {
+            "running": _eval_state["running"],
+            "log": list(_eval_state["log"]),
+            "results": _eval_state["results"],
+            "started_at": _eval_state["started_at"],
+            "finished_at": _eval_state["finished_at"],
+            "error": _eval_state["error"],
+        }
+    return jsonify(state)
+
+
 @app.route('/admin/signups')
 def admin_signups():
     """Dump all signups — email, relationship, created_at, referral source."""
